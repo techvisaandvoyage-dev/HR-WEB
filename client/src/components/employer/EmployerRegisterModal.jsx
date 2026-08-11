@@ -12,6 +12,12 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // OTP State
+  const [showOtpBox, setShowOtpBox] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '']);
 
   // Step 3 state
   const [companyName, setCompanyName] = useState('');
@@ -26,11 +32,31 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
   const [website, setWebsite] = useState('');
   const [hiringFor, setHiringFor] = useState('your_company');
 
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   if (!isOpen) return null;
 
   const handleSendOtp = () => {
-    if (mobile.length >= 10 && termsChecked) {
-      setStep(2);
+    // Implement OTP sending logic here
+    setShowOtpBox(true);
+  };
+
+  const handleVerifyOtpAndContinue = () => {
+    // Optional: add OTP verification logic here
+    setStep(2);
+  };
+
+  const handleOtpChange = (index, value) => {
+    if (value.length <= 1 && /^\d*$/.test(value)) {
+      const newOtp = [...otp];
+      newOtp[index] = value;
+      setOtp(newOtp);
+      // Auto-focus next input
+      if (value !== '' && index < 3) {
+        const nextInput = document.getElementById(`employer-otp-${index + 1}`);
+        if (nextInput) nextInput.focus();
+      }
     }
   };
 
@@ -39,9 +65,52 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
     setStep(3);
   };
 
-  const handleFinalRegister = (e) => {
+  const handleFinalRegister = async (e) => {
     e.preventDefault();
-    setStep(4);
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/employer/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mobile,
+          accountType,
+          fullName,
+          email,
+          password,
+          hiringFor,
+          companyName,
+          industry,
+          employees,
+          designation,
+          location,
+          aboutCompany,
+          website
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem('employerToken', data.token);
+        setStep(4);
+      } else {
+        setError(data.message || 'Registration failed');
+      }
+    } catch (err) {
+      setError('Server error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -126,20 +195,58 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
                   </label>
                 </div>
 
-                {/* Send OTP Button */}
+                {/* OTP Input Section */}
+                {showOtpBox && (
+                  <div className="space-y-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <label className="block text-sm font-bold text-gray-900 text-center">
+                      Enter OTP sent to +91 {mobile}
+                    </label>
+                    <div className="flex justify-center gap-4">
+                      {otp.map((digit, index) => (
+                        <input
+                          key={index}
+                          id={`employer-otp-${index}`}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength="1"
+                          value={digit}
+                          onChange={(e) => handleOtpChange(index, e.target.value)}
+                          className="w-12 h-12 text-center text-xl font-bold rounded-xl border border-gray-300 focus:border-palette-400 focus:ring-2 focus:ring-palette-400 outline-none transition-all bg-white"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Send OTP / Continue Button */}
                 <div className="pt-2">
-                  <button 
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={mobile.length < 10 || !termsChecked}
-                    className={`w-full py-3.5 font-bold rounded-full transition-all duration-300 ${
-                      mobile.length >= 10 && termsChecked
-                        ? 'bg-palette-400 hover:bg-palette-900 text-white shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transform hover:-translate-y-0.5' 
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    Send OTP
-                  </button>
+                  {!showOtpBox ? (
+                    <button 
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={mobile.length < 10 || !termsChecked}
+                      className={`w-full py-3.5 font-bold rounded-full transition-all duration-300 ${
+                        mobile.length >= 10 && termsChecked
+                          ? 'bg-palette-400 hover:bg-palette-900 text-white shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transform hover:-translate-y-0.5' 
+                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Send OTP
+                    </button>
+                  ) : (
+                    <button 
+                      type="button"
+                      onClick={handleVerifyOtpAndContinue}
+                      disabled={otp.some(d => d === '')}
+                      className={`w-full py-3.5 font-bold rounded-full transition-all duration-300 ${
+                        !otp.some(d => d === '')
+                          ? 'bg-palette-900 hover:bg-palette-400 text-white shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transform hover:-translate-y-0.5' 
+                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Continue
+                    </button>
+                  )}
                 </div>
               </div>
               
@@ -243,13 +350,31 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
                   <label className="block text-sm font-bold text-gray-900">
                     Create password
                   </label>
-                  <input 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Re-enter Password Input */}
@@ -257,14 +382,34 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
                   <label className="block text-sm font-bold text-gray-900">
                     Re-enter password
                   </label>
-                  <input 
-                    type="password" 
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter password"
-                    className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showConfirmPassword ? "text" : "password"} 
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password"
+                      className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
+                    >
+                      {showConfirmPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
+
+                {error && <div className="text-red-500 text-sm font-semibold text-center">{error}</div>}
 
                 {/* Register Button */}
                 <div className="pt-2">
@@ -292,6 +437,32 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
                 <p className="text-xs text-gray-500 max-w-[200px] leading-relaxed">
                   Tell us about your company to complete registration
                 </p>
+              </div>
+
+              {/* Summary of what was added so far */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Account Details</span>
+                  <button type="button" onClick={() => setStep(2)} className="text-xs text-palette-400 font-bold hover:text-palette-900 transition-colors">Edit</button>
+                </div>
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                  <div>
+                    <span className="text-gray-500 block text-xs">Name</span>
+                    <span className="font-semibold text-gray-900 truncate block">{fullName || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block text-xs">Mobile</span>
+                    <span className="font-semibold text-gray-900 truncate block">+91 {mobile}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500 block text-xs">Email</span>
+                    <span className="font-semibold text-gray-900 truncate block">{email || '-'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500 block text-xs">Account Type</span>
+                    <span className="font-semibold text-gray-900 block">{accountType === 'company' ? 'Company/business' : 'Individual/proprietor'}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Form */}
@@ -382,9 +553,11 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
                   <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://www.example.com" className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400" />
                 </div>
 
+                {error && <div className="text-red-500 text-sm font-semibold text-center">{error}</div>}
+
                 <div className="pt-2">
-                  <button type="submit" className="w-full py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5">
-                    Continue
+                  <button disabled={loading} type="submit" className="w-full py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5">
+                    {loading ? 'Creating...' : 'Continue'}
                   </button>
                 </div>
               </form>

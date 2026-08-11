@@ -39,8 +39,8 @@ const LocationAutocomplete = ({
 
       setIsLoading(true);
       try {
-        // OpenStreetMap Nominatim API for geocoding
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=15`);
+        // LocationIQ Autocomplete API - Filtered for cities and states in India
+        const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=pk.7314b93604200f3007d3b610030e6f1b&q=${encodeURIComponent(query)}&limit=10&tag=place:city,place:town,place:village,place:state&countrycodes=in`);
         const data = await res.json();
         setSuggestions(data);
         setIsOpen(true);
@@ -56,8 +56,33 @@ const LocationAutocomplete = ({
     return () => clearTimeout(debounceTimer);
   }, [query]);
 
+  const formatLocationName = (suggestion) => {
+    if (suggestion.address) {
+      const city = suggestion.address.city || suggestion.address.town || suggestion.address.village || suggestion.address.county;
+      const state = suggestion.address.state;
+      const country = suggestion.address.country;
+      
+      const parts = [];
+      if (city) parts.push(city);
+      if (state && state !== city) parts.push(state);
+      if (country) parts.push(country);
+      
+      if (parts.length > 0) return parts.join(', ');
+    }
+    
+    // Fallback if address object is incomplete
+    let parts = suggestion.display_name.split(',').map(p => p.trim());
+    // Filter out pincodes (numbers)
+    parts = parts.filter(p => isNaN(p));
+    // If too many parts, just keep the most relevant (first, state, country)
+    if (parts.length > 3) {
+      return `${parts[0]}, ${parts[parts.length-2]}, ${parts[parts.length-1]}`;
+    }
+    return parts.join(', ');
+  };
+
   const handleSelect = (suggestion) => {
-    const locationName = suggestion.display_name;
+    const locationName = formatLocationName(suggestion);
     setQuery(locationName);
     setIsOpen(false);
     if (onChange) {
@@ -101,7 +126,7 @@ const LocationAutocomplete = ({
                 {suggestion.name || suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.display_name.split(',')[0]}
               </div>
               <div className="text-xs text-gray-500 truncate mt-0.5">
-                {suggestion.display_name}
+                {formatLocationName(suggestion)}
               </div>
             </li>
           ))}

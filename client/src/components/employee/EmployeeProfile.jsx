@@ -3,6 +3,271 @@ import { useNavigate } from 'react-router-dom';
 import LocationAutocomplete from '../common/LocationAutocomplete';
 import ImageCropperModal from '../common/ImageCropperModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
+import CustomDropdown from '../common/CustomDropdown';
+import InstituteAutocomplete from '../common/InstituteAutocomplete';
+import CustomMonthPicker from '../common/CustomMonthPicker';
+
+const boardOptions = [
+  { label: '-----All India-----', isGroupLabel: true },
+  { value: 'CBSE', label: 'CBSE (Central Board of Secondary Education)' },
+  { value: 'ICSE', label: 'ICSE/ISC (Council for the Indian School Certificate Examinations)' },
+  { value: 'NIOS', label: 'NIOS (National Open School)' },
+  { value: 'IB/IGCSE', label: 'IB (International Baccalaureate)' },
+  { label: '-----State Boards-----', isGroupLabel: true },
+  { value: 'Andhra Pradesh Board', label: 'Andhra Pradesh Board of Secondary Education' },
+  { value: 'Assam Board', label: 'Assam Board of Secondary Education' },
+  { value: 'Bihar Board', label: 'Bihar School Examination Board' },
+  { value: 'Chhattisgarh Board', label: 'Chhattisgarh Board of Secondary Education' },
+  { value: 'Goa Board', label: 'Goa Board of Secondary & Higher Secondary Education' },
+  { value: 'Gujarat Board', label: 'Gujarat Secondary & Higher Secondary Education Board' },
+  { value: 'Haryana Board', label: 'Haryana Board of School Education' },
+  { value: 'Himachal Pradesh Board', label: 'Himachal Pradesh Board of School Education' },
+  { value: 'J&K Board', label: 'J&K State Board of School Education' },
+  { value: 'Jharkhand Board', label: 'Jharkhand Academic Council' },
+  { value: 'Karnataka Board', label: 'Karnataka Secondary Education Examination Board' },
+  { value: 'Kerala Board', label: 'Kerala Board of Public Examinations' },
+  { value: 'Madhya Pradesh Board', label: 'Madhya Pradesh Board of Secondary Education' },
+  { value: 'Maharashtra Board', label: 'Maharashtra State Board of Secondary & Higher Secondary Education' },
+  { value: 'Manipur Board', label: 'Manipur Board of Secondary Education' },
+  { value: 'Meghalaya Board', label: 'Meghalaya Board of School Education' },
+  { value: 'Mizoram Board', label: 'Mizoram Board of School Education' },
+  { value: 'Nagaland Board', label: 'Nagaland Board of School Education' },
+  { value: 'Odisha Board', label: 'Odisha Board of Secondary Education' },
+  { value: 'Punjab Board', label: 'Punjab School Education Board' },
+  { value: 'Rajasthan Board', label: 'Rajasthan Board of Secondary Education' },
+  { value: 'Tamil Nadu Board', label: 'Tamil Nadu Board of Secondary Education' },
+  { value: 'Telangana Board', label: 'Telangana Board of Secondary Education' },
+  { value: 'Tripura Board', label: 'Tripura Board of Secondary Education' },
+  { value: 'UP Board', label: 'Uttar Pradesh Madhyamik Shiksha Parishad' },
+  { value: 'Uttarakhand Board', label: 'Uttarakhand Board of School Education' },
+  { value: 'West Bengal Board', label: 'West Bengal Board of Secondary Education' },
+  { value: 'Other State Board', label: 'Other State Board' },
+];
+
+const educationTypeOptions = [
+  { value: '10th', label: '10th' },
+  { value: '12th', label: '12th' },
+  { value: 'Graduation/Diploma', label: 'Graduation/Diploma' },
+  { value: 'Masters/Post-Graduation', label: 'Masters/Post-Graduation' },
+];
+
+const gradingSystemOptions = [
+  { value: 'Scale 10 Grading System', label: 'Scale 10 Grading System' },
+  { value: 'Scale 4 Grading System', label: 'Scale 4 Grading System' },
+  { value: '% Marks of 100 Maximum', label: '% Marks of 100 Maximum' }
+];
+
+const startYearOptions = Array.from({length: 30}, (_, i) => {
+  const year = new Date().getFullYear() - i;
+  return { value: String(year), label: String(year) };
+});
+
+const endYearOptions = Array.from({length: 30}, (_, i) => {
+  const year = new Date().getFullYear() - i + 5;
+  return { value: String(year), label: String(year) };
+});
+
+const undergradCourses = [
+  { value: 'B.A', label: 'B.A (Bachelor of Arts)' },
+  { value: 'B.Sc', label: 'B.Sc (Bachelor of Science)' },
+  { value: 'B.Com', label: 'B.Com (Bachelor of Commerce)' },
+  { value: 'B.Tech/B.E.', label: 'B.Tech/B.E. (Bachelor of Technology/Engineering)' },
+  { value: 'BBA', label: 'BBA (Bachelor of Business Administration)' },
+  { value: 'BCA', label: 'BCA (Bachelor of Computer Applications)' },
+  { value: 'B.Arch', label: 'B.Arch (Bachelor of Architecture)' },
+  { value: 'B.Des', label: 'B.Des (Bachelor of Design)' },
+  { value: 'B.Ed', label: 'B.Ed (Bachelor of Education)' },
+  { value: 'BFA', label: 'BFA (Bachelor of Fine Arts)' },
+  { value: 'B.Pharm', label: 'B.Pharm (Bachelor of Pharmacy)' },
+  { value: 'BSN', label: 'BSN (Bachelor of Science in Nursing)' },
+  { value: 'LLB', label: 'LLB (Bachelor of Laws)' },
+  { value: 'MBBS', label: 'MBBS (Bachelor of Medicine)' }
+];
+
+const postgradCourses = [
+  { value: 'M.A', label: 'M.A (Master of Arts)' },
+  { value: 'M.Sc', label: 'M.Sc (Master of Science)' },
+  { value: 'M.Com', label: 'M.Com (Master of Commerce)' },
+  { value: 'M.Tech/M.E.', label: 'M.Tech/M.E. (Master of Technology/Engineering)' },
+  { value: 'MBA/PGDM', label: 'MBA/PGDM (Master of Business Administration)' },
+  { value: 'MCA', label: 'MCA (Master of Computer Applications)' },
+  { value: 'M.Arch', label: 'M.Arch (Master of Architecture)' },
+  { value: 'M.Des', label: 'M.Des (Master of Design)' },
+  { value: 'M.Ed', label: 'M.Ed (Master of Education)' },
+  { value: 'M.Pharm', label: 'M.Pharm (Master of Pharmacy)' },
+  { value: 'LLM', label: 'LLM (Master of Laws)' },
+  { value: 'MD/MS', label: 'MD/MS (Doctor of Medicine/Master of Surgery)' }
+];
+
+const doctoralAndOtherCourses = [
+  { value: 'Ph.D', label: 'Ph.D (Doctor of Philosophy)' },
+  { value: 'Diploma', label: 'Diploma / Advanced Diploma' },
+  { value: 'Associate Degree', label: 'Associate Degree (A.A. / A.S.)' },
+  { value: 'Certificate', label: 'Certificate Course' },
+  { value: 'Other', label: 'Other Course' }
+];
+
+const employmentTypeOptions = [
+  { value: 'Full-time', label: 'Full-time' },
+  { value: 'Part-time', label: 'Part-time' },
+  { value: 'Contract', label: 'Contract' },
+  { value: 'Freelance', label: 'Freelance' },
+  { value: 'Internship', label: 'Internship' }
+];
+
+const noticePeriodOptions = [
+  { value: '15 Days', label: '15 Days' },
+  { value: '30 Days', label: '30 Days' },
+  { value: '60 Days', label: '60 Days' },
+  { value: '90+ Days', label: '90+ Days' },
+  { value: 'Immediately available', label: 'Immediately available' }
+];
+
+const designationOptions = [
+  // Tech & Engineering
+  { value: 'Software Engineer', label: 'Software Engineer' },
+  { value: 'Senior Software Engineer', label: 'Senior Software Engineer' },
+  { value: 'Frontend Developer', label: 'Frontend Developer' },
+  { value: 'Backend Developer', label: 'Backend Developer' },
+  { value: 'Full Stack Developer', label: 'Full Stack Developer' },
+  { value: 'Mobile App Developer', label: 'Mobile App Developer' },
+  { value: 'DevOps Engineer', label: 'DevOps Engineer' },
+  { value: 'QA Engineer', label: 'QA Engineer' },
+  { value: 'System Administrator', label: 'System Administrator' },
+  { value: 'Database Administrator', label: 'Database Administrator' },
+  { value: 'Cloud Architect', label: 'Cloud Architect' },
+  { value: 'Data Scientist', label: 'Data Scientist' },
+  { value: 'Data Analyst', label: 'Data Analyst' },
+  { value: 'Machine Learning Engineer', label: 'Machine Learning Engineer' },
+  { value: 'Network Engineer', label: 'Network Engineer' },
+  { value: 'Security Analyst', label: 'Security Analyst' },
+  
+  // Product & Design
+  { value: 'Product Manager', label: 'Product Manager' },
+  { value: 'Project Manager', label: 'Project Manager' },
+  { value: 'Scrum Master', label: 'Scrum Master' },
+  { value: 'UI/UX Designer', label: 'UI/UX Designer' },
+  { value: 'Graphic Designer', label: 'Graphic Designer' },
+  { value: 'Product Designer', label: 'Product Designer' },
+
+  // Business, Sales & Marketing
+  { value: 'Marketing Executive', label: 'Marketing Executive' },
+  { value: 'Digital Marketing Manager', label: 'Digital Marketing Manager' },
+  { value: 'Content Writer', label: 'Content Writer' },
+  { value: 'SEO Specialist', label: 'SEO Specialist' },
+  { value: 'Sales Manager', label: 'Sales Manager' },
+  { value: 'Sales Executive', label: 'Sales Executive' },
+  { value: 'Business Development Manager', label: 'Business Development Manager' },
+  { value: 'Account Manager', label: 'Account Manager' },
+  { value: 'Customer Success Manager', label: 'Customer Success Manager' },
+
+  // Finance, HR & Ops
+  { value: 'HR Manager', label: 'HR Manager' },
+  { value: 'HR Executive', label: 'HR Executive' },
+  { value: 'Talent Acquisition Specialist', label: 'Talent Acquisition Specialist' },
+  { value: 'Financial Analyst', label: 'Financial Analyst' },
+  { value: 'Accountant', label: 'Accountant' },
+  { value: 'Operations Manager', label: 'Operations Manager' },
+  { value: 'Business Analyst', label: 'Business Analyst' },
+  { value: 'Consultant', label: 'Consultant' },
+  { value: 'Legal Advisor', label: 'Legal Advisor' },
+  
+  { value: 'Other', label: 'Other Designation' }
+];
+
+const salaryTypeOptions = [
+  { value: 'Yearly', label: 'Yearly' },
+  { value: 'Monthly', label: 'Monthly' },
+  { value: 'Hourly', label: 'Hourly' }
+];
+
+const currencyOptions = [
+  { value: 'INR', label: 'INR (₹)' },
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+  { value: 'CAD', label: 'CAD ($)' },
+  { value: 'AUD', label: 'AUD ($)' },
+  { value: 'SGD', label: 'SGD ($)' },
+  { value: 'AED', label: 'AED (د.إ)' }
+];
+
+const allSkillsOptions = [
+  // Tech & Engineering
+  { value: 'JavaScript', label: 'JavaScript' },
+  { value: 'React', label: 'React' },
+  { value: 'Node.js', label: 'Node.js' },
+  { value: 'Python', label: 'Python' },
+  { value: 'Java', label: 'Java' },
+  { value: 'C++', label: 'C++' },
+  { value: 'C#', label: 'C#' },
+  { value: 'PHP', label: 'PHP' },
+  { value: 'Ruby', label: 'Ruby' },
+  { value: 'Swift', label: 'Swift' },
+  { value: 'Kotlin', label: 'Kotlin' },
+  { value: 'Go', label: 'Go' },
+  { value: 'Rust', label: 'Rust' },
+  { value: 'SQL', label: 'SQL' },
+  { value: 'MongoDB', label: 'MongoDB' },
+  { value: 'PostgreSQL', label: 'PostgreSQL' },
+  { value: 'AWS', label: 'AWS' },
+  { value: 'Azure', label: 'Azure' },
+  { value: 'Google Cloud (GCP)', label: 'Google Cloud (GCP)' },
+  { value: 'Docker', label: 'Docker' },
+  { value: 'Kubernetes', label: 'Kubernetes' },
+  { value: 'Git', label: 'Git' },
+  { value: 'Linux', label: 'Linux' },
+  { value: 'Machine Learning', label: 'Machine Learning' },
+  { value: 'Artificial Intelligence', label: 'Artificial Intelligence' },
+  { value: 'Data Science', label: 'Data Science' },
+  { value: 'Data Analysis', label: 'Data Analysis' },
+  
+  // Design & Product
+  { value: 'Figma', label: 'Figma' },
+  { value: 'Adobe XD', label: 'Adobe XD' },
+  { value: 'Photoshop', label: 'Photoshop' },
+  { value: 'Illustrator', label: 'Illustrator' },
+  { value: 'Sketch', label: 'Sketch' },
+  { value: 'UI Design', label: 'UI Design' },
+  { value: 'UX Research', label: 'UX Research' },
+  { value: 'Wireframing', label: 'Wireframing' },
+  { value: 'Prototyping', label: 'Prototyping' },
+  { value: 'Product Management', label: 'Product Management' },
+  { value: 'Agile/Scrum', label: 'Agile/Scrum' },
+  { value: 'Jira', label: 'Jira' },
+  
+  // Business, Sales & Marketing
+  { value: 'SEO', label: 'SEO' },
+  { value: 'Content Marketing', label: 'Content Marketing' },
+  { value: 'Social Media Marketing', label: 'Social Media Marketing' },
+  { value: 'Email Marketing', label: 'Email Marketing' },
+  { value: 'Google Analytics', label: 'Google Analytics' },
+  { value: 'Google Ads', label: 'Google Ads' },
+  { value: 'Sales Strategy', label: 'Sales Strategy' },
+  { value: 'B2B Sales', label: 'B2B Sales' },
+  { value: 'CRM Software', label: 'CRM Software (Salesforce, etc.)' },
+  { value: 'Business Development', label: 'Business Development' },
+  { value: 'Account Management', label: 'Account Management' },
+  { value: 'Copywriting', label: 'Copywriting' },
+  
+  // Finance & HR
+  { value: 'Accounting', label: 'Accounting' },
+  { value: 'Financial Analysis', label: 'Financial Analysis' },
+  { value: 'Excel (Advanced)', label: 'Excel (Advanced)' },
+  { value: 'Payroll Management', label: 'Payroll Management' },
+  { value: 'Talent Acquisition', label: 'Talent Acquisition' },
+  { value: 'Employee Relations', label: 'Employee Relations' },
+  { value: 'Performance Management', label: 'Performance Management' },
+  { value: 'Interviewing', label: 'Interviewing' },
+  
+  // Soft Skills
+  { value: 'Leadership', label: 'Leadership' },
+  { value: 'Communication', label: 'Communication' },
+  { value: 'Problem Solving', label: 'Problem Solving' },
+  { value: 'Time Management', label: 'Time Management' },
+  { value: 'Teamwork', label: 'Teamwork' },
+  { value: 'Public Speaking', label: 'Public Speaking' }
+];
 
 const EmployeeProfile = () => {
   const navigate = useNavigate();
@@ -59,6 +324,26 @@ const EmployeeProfile = () => {
     if (isLoaded) {
       localStorage.setItem('userProfile', JSON.stringify(formData));
       localStorage.setItem('hasProfile', 'true');
+
+      const timer = setTimeout(async () => {
+        try {
+          const token = localStorage.getItem('employeeToken');
+          if (token) {
+            await fetch('http://localhost:5000/api/employee/profile', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify(formData)
+            });
+          }
+        } catch (err) {
+          console.error("Profile autosave error:", err);
+        }
+      }, 1500);
+
+      return () => clearTimeout(timer);
     }
   }, [formData, isLoaded]);
 
@@ -138,8 +423,19 @@ const EmployeeProfile = () => {
     if (formData.phone) score += 10;
     else missing.push({ label: 'Add Phone Number', points: 10, target: 'basic' });
 
-    if (formData.professionalDetails?.currentLocation) score += 10;
-    else missing.push({ label: 'Add Current Location', points: 10, target: 'basic' });
+    if (!formData.isFresher) {
+      if (formData.professionalDetails?.currentDesignation && formData.professionalDetails?.currentSalary) {
+        score += 10;
+      } else {
+        missing.push({ label: 'Professional Overview', points: 10, target: 'professional' });
+      }
+    } else {
+      if (formData.professionalDetails?.expectedSalary) {
+        score += 10;
+      } else {
+        missing.push({ label: 'Professional Overview', points: 10, target: 'professional' });
+      }
+    }
 
     if (formData.brief) {
       score += 10;
@@ -249,7 +545,13 @@ const EmployeeProfile = () => {
       <div className="w-full md:w-80 bg-[#FFF8EE] rounded-xl p-6 border border-orange-100 space-y-5 flex-shrink-0 self-stretch flex flex-col justify-between">
         <ul className="space-y-4 text-sm font-semibold text-gray-700">
           {missing.slice(0, 3).map((item, idx) => (
-            <li key={idx} className="flex items-center justify-between cursor-pointer group" onClick={() => document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth' })}>
+            <li key={idx} className="flex items-center justify-between cursor-pointer group" onClick={() => {
+              if (item.label === 'Add Profile Picture') {
+                setIsAvatarModalOpen(true);
+              } else {
+                document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}>
               <span className="flex items-center gap-3 group-hover:text-green-600 transition-colors">
                 <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center border border-gray-200 text-gray-500 shadow-sm group-hover:border-green-300 group-hover:text-green-600 transition-colors">
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
@@ -638,13 +940,29 @@ const EmployeeProfile = () => {
                         <input type="text" placeholder="Phone Number" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
                       )}
 
-                      {item.label === 'Add Current Location' && (
-                        <LocationAutocomplete 
-                          value={formData.professionalDetails?.currentLocation || ''}
-                          onChange={(val) => setP('currentLocation', val)}
-                          placeholder="e.g. Pune, Maharashtra"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500"
-                        />
+                      {item.label === 'Professional Overview' && (
+                        <div className="flex flex-col gap-3">
+                          {!formData.isFresher && (
+                            <input type="text" placeholder="Current Designation" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.currentDesignation || ''} onChange={e => setP('currentDesignation', e.target.value)} />
+                          )}
+                          <input type="url" placeholder="LinkedIn Profile URL" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.linkedinUrl || ''} onChange={e => setP('linkedinUrl', e.target.value)} />
+                          <div className="flex gap-3">
+                            <select value={p.salaryType || 'Yearly'} onChange={e => setP('salaryType', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500 bg-white">
+                              <option value="Yearly">Yearly</option>
+                              <option value="Monthly">Monthly</option>
+                            </select>
+                            <select value={p.currency || 'INR'} onChange={e => setP('currency', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500 bg-white">
+                              <option value="INR">INR (₹)</option>
+                              <option value="USD">USD ($)</option>
+                            </select>
+                          </div>
+                          <div className="flex gap-3">
+                            {!formData.isFresher && (
+                              <input type="text" placeholder="Current Salary" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.currentSalary || ''} onChange={e => setP('currentSalary', e.target.value)} />
+                            )}
+                            <input type="text" placeholder="Expected Salary" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', e.target.value)} />
+                          </div>
+                        </div>
                       )}
 
                       {item.label === 'Add Brief about yourself' && (
@@ -819,25 +1137,24 @@ const EmployeeProfile = () => {
                         <div className="space-y-6 pt-6 px-4 pb-[140px] md:pt-2 md:px-0 md:pb-0 flex-1">
                           <div>
                             <label className="block text-sm font-bold text-gray-900 mb-1.5">Education <span className="text-red-500">*</span></label>
-                            <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.educationType || ''} onChange={e => updateArray('qualifications', idx, 'educationType', e.target.value)}>
-                              <option value="">Select education type</option>
-                              <option value="10th">10th</option>
-                              <option value="12th">12th</option>
-                              <option value="Graduation/Diploma">Graduation/Diploma</option>
-                              <option value="Masters/Post-Graduation">Masters/Post-Graduation</option>
-                            </select>
+                            <CustomDropdown
+                              options={educationTypeOptions}
+                              value={q.educationType || ''}
+                              onChange={val => updateArray('qualifications', idx, 'educationType', val)}
+                              placeholder="Select education type"
+                            />
                           </div>
 
                           {isSchool && (
                             <>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Board <span className="text-red-500">*</span></label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.board || ''} onChange={e => updateArray('qualifications', idx, 'board', e.target.value)}>
-                                  <option value="">Select board</option>
-                                  <option value="CBSE">CBSE</option>
-                                  <option value="ICSE">ICSE</option>
-                                  <option value="State Board">State Board</option>
-                                </select>
+                                <CustomDropdown 
+                                  options={boardOptions}
+                                  value={q.board || ''}
+                                  onChange={val => updateArray('qualifications', idx, 'board', val)}
+                                  placeholder="Select board"
+                                />
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Passing out year <span className="text-red-500">*</span></label>
@@ -868,48 +1185,52 @@ const EmployeeProfile = () => {
                             <>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute <span className="text-red-500">*</span></label>
-                                <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Select university/institute" value={q.university || ''} onChange={e => updateArray('qualifications', idx, 'university', e.target.value)} />
+                                <InstituteAutocomplete 
+                                  value={q.university || ''}
+                                  onChange={val => updateArray('qualifications', idx, 'university', val)}
+                                  placeholder="Search global university/institute..."
+                                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
+                                />
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.course || ''} onChange={e => updateArray('qualifications', idx, 'course', e.target.value)}>
-                                  <option value="">Select course</option>
-                                  <option value="B.Tech/B.E.">B.Tech/B.E.</option>
-                                  <option value="B.Sc">B.Sc</option>
-                                  <option value="B.Com">B.Com</option>
-                                  <option value="B.A">B.A</option>
-                                  <option value="BBA">BBA</option>
-                                  <option value="M.Tech/M.E.">M.Tech/M.E.</option>
-                                  <option value="MBA/PGDM">MBA/PGDM</option>
-                                  <option value="MCA">MCA</option>
-                                </select>
+                                <CustomDropdown
+                                  options={q.educationType === 'Graduation/Diploma' ? [...undergradCourses, ...doctoralAndOtherCourses] : [...postgradCourses, ...doctoralAndOtherCourses]}
+                                  value={q.course || ''}
+                                  onChange={val => updateArray('qualifications', idx, 'course', val)}
+                                  placeholder="Select course"
+                                />
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration <span className="text-red-500">*</span></label>
                                 <div className="flex items-center gap-4">
-                                  <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.startYear || ''} onChange={e => updateArray('qualifications', idx, 'startYear', e.target.value)}>
-                                    <option value="">Starting year</option>
-                                    {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => (
-                                      <option key={year} value={year}>{year}</option>
-                                    ))}
-                                  </select>
+                                  <div className="flex-1">
+                                    <CustomDropdown
+                                      options={startYearOptions}
+                                      value={q.startYear || ''}
+                                      onChange={val => updateArray('qualifications', idx, 'startYear', val)}
+                                      placeholder="Starting year"
+                                    />
+                                  </div>
                                   <span className="font-bold text-gray-900">To</span>
-                                  <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.endYear || ''} onChange={e => updateArray('qualifications', idx, 'endYear', e.target.value)}>
-                                    <option value="">Ending year</option>
-                                    {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
-                                      <option key={year} value={year}>{year}</option>
-                                    ))}
-                                  </select>
+                                  <div className="flex-1">
+                                    <CustomDropdown
+                                      options={endYearOptions}
+                                      value={q.endYear || ''}
+                                      onChange={val => updateArray('qualifications', idx, 'endYear', val)}
+                                      placeholder="Ending year"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Grading system</label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.gradingSystem || ''} onChange={e => updateArray('qualifications', idx, 'gradingSystem', e.target.value)}>
-                                  <option value="">Select grading system</option>
-                                  <option value="Scale 10 Grading System">Scale 10 Grading System</option>
-                                  <option value="Scale 4 Grading System">Scale 4 Grading System</option>
-                                  <option value="% Marks of 100 Maximum">% Marks of 100 Maximum</option>
-                                </select>
+                                <CustomDropdown
+                                  options={gradingSystemOptions}
+                                  value={q.gradingSystem || ''}
+                                  onChange={val => updateArray('qualifications', idx, 'gradingSystem', val)}
+                                  placeholder="Select grading system"
+                                />
                               </div>
                               {q.gradingSystem && (
                                 <div>
@@ -1082,16 +1403,16 @@ const EmployeeProfile = () => {
                                               </div>
                                               <div>
                                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Employment Type <span className="text-red-500">*</span></label>
-                                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.employmentType || ''} onChange={e => {
-                                                  const newExp = [...(formData.experience || [])];
-                                                  newExp[cIdx].roles[rIdx].employmentType = e.target.value;
-                                                  setFormData({...formData, experience: newExp});
-                                                }}>
-                                                  <option value="">Select</option>
-                                                  <option value="Full-time">Full-time</option>
-                                                  <option value="Part-time">Part-time</option>
-                                                  <option value="Contract">Contract</option>
-                                                </select>
+                                                <CustomDropdown
+                                                  options={employmentTypeOptions}
+                                                  value={role.employmentType || ''}
+                                                  onChange={val => {
+                                                    const newExp = [...(formData.experience || [])];
+                                                    newExp[cIdx].roles[rIdx].employmentType = val;
+                                                    setFormData({...formData, experience: newExp});
+                                                  }}
+                                                  placeholder="Select"
+                                                />
                                               </div>
                                               <div className="flex items-center mt-6">
                                                 <input type="checkbox" id={`current-${cIdx}-${rIdx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500 mr-3" checked={role.currentCompany || false} onChange={e => {
@@ -1105,20 +1426,28 @@ const EmployeeProfile = () => {
                                               <div className="space-y-6">
                                                 <div>
                                                   <label className="block text-sm font-bold text-gray-900 mb-1.5">Joining <span className="text-red-500">*</span></label>
-                                                  <input type="month" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.joiningDate || ''} onChange={e => {
-                                                    const newExp = [...(formData.experience || [])];
-                                                    newExp[cIdx].roles[rIdx].joiningDate = e.target.value;
-                                                    setFormData({...formData, experience: newExp});
-                                                  }} />
+                                                  <CustomMonthPicker
+                                                    value={role.joiningDate || ''}
+                                                    onChange={val => {
+                                                      const newExp = [...(formData.experience || [])];
+                                                      newExp[cIdx].roles[rIdx].joiningDate = val;
+                                                      setFormData({...formData, experience: newExp});
+                                                    }}
+                                                    placeholder="Select joining date"
+                                                  />
                                                 </div>
                                                 {!role.currentCompany && (
                                                   <div>
                                                     <label className="block text-sm font-bold text-gray-900 mb-1.5">Leaving <span className="text-red-500">*</span></label>
-                                                    <input type="month" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.leavingDate || ''} onChange={e => {
-                                                      const newExp = [...(formData.experience || [])];
-                                                      newExp[cIdx].roles[rIdx].leavingDate = e.target.value;
-                                                      setFormData({...formData, experience: newExp});
-                                                    }} />
+                                                    <CustomMonthPicker
+                                                      value={role.leavingDate || ''}
+                                                      onChange={val => {
+                                                        const newExp = [...(formData.experience || [])];
+                                                        newExp[cIdx].roles[rIdx].leavingDate = val;
+                                                        setFormData({...formData, experience: newExp});
+                                                      }}
+                                                      placeholder="Select leaving date"
+                                                    />
                                                   </div>
                                                 )}
                                               </div>
@@ -1154,17 +1483,18 @@ const EmployeeProfile = () => {
                                 {hasCurrentRole && (
                                   <div className="mt-6 pt-6 border-t border-gray-200">
                                     <label className="block text-sm font-bold text-gray-900 mb-1.5">Notice Period</label>
-                                    <select className="w-1/2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={exp.noticePeriod || ''} onChange={e => {
-                                      const newExp = [...(formData.experience || [])];
-                                      newExp[cIdx].noticePeriod = e.target.value;
-                                      setFormData({...formData, experience: newExp});
-                                    }}>
-                                      <option value="">Select</option>
-                                      <option value="15 Days">15 Days</option>
-                                      <option value="30 Days">30 Days</option>
-                                      <option value="60 Days">60 Days</option>
-                                      <option value="90+ Days">90+ Days</option>
-                                    </select>
+                                    <div className="w-full md:w-1/2">
+                                      <CustomDropdown
+                                        options={noticePeriodOptions}
+                                        value={exp.noticePeriod || ''}
+                                        onChange={val => {
+                                          const newExp = [...(formData.experience || [])];
+                                          newExp[cIdx].noticePeriod = val;
+                                          setFormData({...formData, experience: newExp});
+                                        }}
+                                        placeholder="Select"
+                                      />
+                                    </div>
                                   </div>
                                 )}
                                   {/* Mobile Save Button */}
@@ -1234,52 +1564,36 @@ const EmployeeProfile = () => {
                 <div className={`grid-cols-1 md:grid-cols-2 gap-6 ${isEditingProfOverviewMobile ? 'grid p-4 pb-24 md:p-0' : 'hidden md:grid'}`}>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Designation <span className="text-red-500">*</span></label>
-                    <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={p.currentDesignation || ''} onChange={e => setP('currentDesignation', e.target.value)} />
+                    <CustomDropdown
+                      options={designationOptions}
+                      value={p.currentDesignation || ''}
+                      onChange={val => setP('currentDesignation', val)}
+                      placeholder="Search or type designation"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-1.5">LinkedIn Profile URL <span className="text-red-500">*</span></label>
                     <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={p.linkedinUrl || ''} onChange={e => setP('linkedinUrl', e.target.value)} />
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location <span className="text-red-500">*</span></label>
-                    <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={p.currentLocation || ''} onChange={e => setP('currentLocation', e.target.value)} />
-                  </div>
                   <div className="col-span-1 md:col-span-2 mt-2">
                     <div className="mb-6 flex gap-4">
                       <div className="flex-1">
                         <label className="block text-xs font-bold text-gray-700 mb-1.5">Salary Type</label>
-                        <div className="relative w-full">
-                          <select 
-                            value={p.salaryType || 'Yearly'}
-                            onChange={(e) => setP('salaryType', e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
-                          >
-                            <option value="Yearly">Yearly</option>
-                            <option value="Monthly">Monthly</option>
-                            <option value="Hourly">Hourly</option>
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                          </div>
-                        </div>
+                        <CustomDropdown
+                          options={salaryTypeOptions}
+                          value={p.salaryType || 'Yearly'}
+                          onChange={val => setP('salaryType', val)}
+                          placeholder="Select"
+                        />
                       </div>
                       <div className="flex-1">
                         <label className="block text-xs font-bold text-gray-700 mb-1.5">Currency</label>
-                        <div className="relative w-full">
-                          <select 
-                            value={p.currency || 'INR'}
-                            onChange={(e) => setP('currency', e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
-                          >
-                            <option value="INR">INR (₹)</option>
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                          </div>
-                        </div>
+                        <CustomDropdown
+                          options={currencyOptions}
+                          value={p.currency || 'INR'}
+                          onChange={val => setP('currency', val)}
+                          placeholder="Select"
+                        />
                       </div>
                     </div>
 
@@ -1364,7 +1678,20 @@ const EmployeeProfile = () => {
                         </span>
                       ))}
                     </div>
-                    <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Type a skill and hit Enter" value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={handleSkillKeyDown} />
+                    <CustomDropdown
+                      options={allSkillsOptions}
+                      value=""
+                      onChange={val => {
+                        if (val) {
+                          const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()) : [];
+                          if (!currentSkills.includes(val)) {
+                            currentSkills.push(val);
+                            setP('skills', currentSkills.join(', '));
+                          }
+                        }
+                      }}
+                      placeholder="Search or select a skill to add..."
+                    />
                   </div>
                 </div>
 

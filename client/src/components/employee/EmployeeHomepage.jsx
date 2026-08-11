@@ -5,10 +5,46 @@ import EmployeeNavbar from '../common/EmployeeNavbar';
 
 const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedJobId, setSelectedJobId] = useState(location.state?.selectedJobId || (jobs.length > 0 ? jobs[0].id : null));
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
+  const [showToast, setShowToast] = useState(location.state?.profileCreated || location.state?.loggedIn || false);
+  const [toastType, setToastType] = useState(location.state?.profileCreated ? 'created' : (location.state?.loggedIn ? 'login' : ''));
+  const [toastName, setToastName] = useState('');
+  
+  const [mobileSearchTerm, setMobileSearchTerm] = useState('');
+  const [showMobileSuggestions, setShowMobileSuggestions] = useState(false);
+  const mobileSearchRef = React.useRef(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (mobileSearchRef.current && !mobileSearchRef.current.contains(event.target)) {
+        setShowMobileSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredMobileJobs = mobileSearchTerm 
+    ? jobs.filter(job => job.title.toLowerCase().includes(mobileSearchTerm.toLowerCase()) || job.company.toLowerCase().includes(mobileSearchTerm.toLowerCase()))
+    : [];
+
+  useEffect(() => {
+    if (showToast) {
+      const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+      setToastName(profile.firstName || 'User');
+      
+      const timer = setTimeout(() => {
+        setShowToast(false);
+        // Clean up state so refresh doesn't show it again
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast, navigate, location.pathname]);
   
   const [savedJobs, setSavedJobs] = useState(() => {
     try {
@@ -30,7 +66,6 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     });
   };
 
-  const navigate = useNavigate();
 
 
   const selectedJob = jobs.find(j => j.id === selectedJobId);
@@ -39,7 +74,41 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       
       {/* Navbar */}
-      <EmployeeNavbar />
+      <EmployeeNavbar jobs={jobs} />
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="relative overflow-hidden bg-[#b8ecc6] rounded-[20px] shadow-lg w-[380px] p-4 flex items-center gap-4 border border-[#a8e2b8]">
+            {/* Background Blobs */}
+            <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-[#9be2ae] rounded-full mix-blend-multiply opacity-60"></div>
+            <div className="absolute -left-2 -top-4 w-16 h-16 bg-[#8ddc9f] rounded-full mix-blend-multiply opacity-50"></div>
+            <div className="absolute top-2 right-12 w-20 h-20 bg-[#c7f4d2] rounded-full mix-blend-multiply opacity-70"></div>
+            
+            {/* Content */}
+            <div className="relative z-10 w-11 h-11 shrink-0 bg-white rounded-full flex items-center justify-center shadow-sm">
+              <svg className="w-6 h-6 text-[#299555]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            
+            <div className="relative z-10 flex-1">
+              <h4 className="text-[#153a23] font-extrabold text-[15px] leading-tight mb-1">
+                {toastType === 'login' ? `Welcome back, ${toastName}!` : `Hyy ${toastName}, your account created`}
+              </h4>
+              <p className="text-[#2b6542] text-xs font-semibold">
+                {toastType === 'login' ? "We're glad to see you again." : "Welcome to your new employee profile!"}
+              </p>
+            </div>
+            
+            <button onClick={() => setShowToast(false)} className="relative z-10 shrink-0 text-[#2b6542] hover:text-[#153a23] transition-colors self-start mt-0.5">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 flex md:gap-6 items-start h-[calc(100vh-125px)] overflow-hidden">
@@ -49,9 +118,38 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
           
           {/* Mobile Search Bar */}
           <div className="md:hidden flex flex-col gap-2 mb-2">
-            <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
-              <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input type="text" placeholder="Job title, keywords..." className="w-full bg-transparent border-none outline-none text-sm text-gray-900" />
+            <div className="relative" ref={mobileSearchRef}>
+              <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
+                <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input 
+                  type="text" 
+                  placeholder="Job title, keywords..." 
+                  value={mobileSearchTerm}
+                  onChange={(e) => {
+                    setMobileSearchTerm(e.target.value);
+                    setShowMobileSuggestions(true);
+                  }}
+                  onFocus={() => setShowMobileSuggestions(true)}
+                  className="w-full bg-transparent border-none outline-none text-sm text-gray-900" 
+                />
+              </div>
+              {showMobileSuggestions && mobileSearchTerm && (
+                <div className="absolute top-[110%] left-0 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[100] max-h-64 overflow-y-auto">
+                  {filteredMobileJobs.length > 0 ? filteredMobileJobs.slice(0, 5).map(job => (
+                    <div key={job.id} onClick={() => { setMobileSearchTerm(job.title); setShowMobileSuggestions(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
+                      <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600 text-xs shrink-0">
+                        {job.companyInitial}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900 text-sm">{job.title}</div>
+                        <div className="text-xs text-gray-500">{job.company} • {job.location}</div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="px-4 py-3 text-sm text-gray-500 text-center">No jobs found</div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
               <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>

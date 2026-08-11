@@ -4,6 +4,7 @@ import EmployeeHomepage from './components/employee/EmployeeHomepage';
 import EmployeeProfile from './components/employee/EmployeeProfile';
 import EmployeeLoginModal from './components/employee/EmployeeLoginModal';
 import EmployeeRegisterModal from './components/employee/EmployeeRegisterModal';
+import EmployeeOnboarding from './components/employee/EmployeeOnboarding';
 import EmployerLoginModal from './components/employer/EmployerLoginModal';
 import EmployerRegisterModal from './components/employer/EmployerRegisterModal';
 import MyJobs from './components/employee/myjobs/MyJobs';
@@ -13,11 +14,23 @@ import { dummyJobs } from './data/dummyJobs';
 import { dummyCandidates } from './data/dummyCandidates';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('employeeToken') || !!localStorage.getItem('employerToken'));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userRole, setUserRole] = useState(null); // 'employee' or 'employer'
+  const [userRole, setUserRole] = useState(localStorage.getItem('employeeToken') ? 'employee' : (localStorage.getItem('employerToken') ? 'employer' : null));
   const [searchJobTitle, setSearchJobTitle] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = React.useRef(null);
   const [searchLocation, setSearchLocation] = useState('');
+
+  React.useEffect(() => {
+    const handleClickOutsideSearch = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutsideSearch);
+    return () => document.removeEventListener('mousedown', handleClickOutsideSearch);
+  }, []);
   const [jobs, setJobs] = useState(dummyJobs);
   const [candidates, setCandidates] = useState(() => {
     try {
@@ -162,12 +175,16 @@ function App() {
     setIsEmployerLoginOpen(true);
   };
 
-  const handleEmployeeLoginSuccess = () => {
+  const handleEmployeeLoginSuccess = (data) => {
     setIsLoggedIn(true);
     setUserRole('employee');
     setIsEmployeeLoginOpen(false);
     setIsEmployeeRegisterOpen(false);
-    navigate('/employee');
+    if (data?.isNewUser) {
+      navigate('/employee/onboarding');
+    } else {
+      navigate('/employee', { state: { loggedIn: true } });
+    }
   };
 
   const handleEmployerLoginSuccess = () => {
@@ -256,7 +273,7 @@ function App() {
         <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-palette-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
 
         {/* Hero Section */}
-        <div className="w-full max-w-4xl relative z-10 flex flex-col items-center text-center space-y-12 min-h-[45vh] justify-center mb-6 mt-8">
+        <div className="w-full max-w-4xl relative z-30 flex flex-col items-center text-center space-y-12 min-h-[45vh] justify-center mb-6 mt-8">
           <div className="space-y-4 px-4">
             <h1 className="text-4xl md:text-7xl font-roboto font-black tracking-tight text-palette-900 leading-tight">
               Find Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-palette-400 to-palette-900">Dream Job</span>
@@ -267,17 +284,38 @@ function App() {
           </div>
 
           <div className="w-full max-w-4xl bg-white p-2 md:p-3 rounded-3xl md:rounded-full shadow-2xl shadow-palette-200/50 flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3 border border-palette-100 transition-all duration-500 z-20 relative">
-            <div className="flex-1 w-full flex items-center px-4 md:px-6 py-3 bg-palette-100/30 rounded-2xl md:rounded-full border-b md:border-b-0 md:border-r border-palette-100/50">
+            <div className="flex-1 w-full flex items-center px-4 md:px-6 py-3 bg-palette-100/30 rounded-2xl md:rounded-full border-b md:border-b-0 md:border-r border-palette-100/50 relative" ref={searchRef}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6 text-palette-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input 
                 type="text" 
                 value={searchJobTitle}
-                onChange={(e) => setSearchJobTitle(e.target.value)}
+                onChange={(e) => {
+                  setSearchJobTitle(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
                 placeholder="Job title, keywords..." 
                 className="w-full bg-transparent border-none outline-none px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium"
               />
+              {showSuggestions && searchJobTitle && (
+                <div className="absolute top-[110%] left-0 w-[120%] bg-white rounded-2xl shadow-xl border border-palette-100 py-2 z-[100] max-h-64 overflow-y-auto text-left">
+                  {filteredHomepageJobs.length > 0 ? filteredHomepageJobs.slice(0, 5).map(job => (
+                    <div key={job.id} onClick={() => { setSearchJobTitle(job.title); setShowSuggestions(false); }} className="px-5 py-3 hover:bg-palette-50 cursor-pointer flex items-center gap-4 border-b border-palette-50 last:border-0 transition-colors">
+                      <div className="w-10 h-10 bg-palette-100 rounded-xl flex items-center justify-center font-bold text-palette-900 text-sm shrink-0">
+                        {job.companyInitial}
+                      </div>
+                      <div>
+                        <div className="font-bold text-palette-900 text-base">{job.title}</div>
+                        <div className="text-sm text-palette-900/70">{job.company} • {job.location}</div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="px-5 py-4 text-base text-palette-900/60 text-center font-medium">No jobs found for "{searchJobTitle}"</div>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="flex-1 w-full flex items-center px-4 md:px-6 py-3 bg-palette-100/30 rounded-2xl md:rounded-full">
@@ -414,6 +452,11 @@ function App() {
         <Route 
           path="/employee" 
           element={isLoggedIn ? <EmployeeHomepage jobs={jobs} applyToJob={applyToJob} /> : <Navigate to="/" />} 
+        />
+
+        <Route 
+          path="/employee/onboarding" 
+          element={isLoggedIn ? <EmployeeOnboarding /> : <Navigate to="/" />} 
         />
 
         <Route 

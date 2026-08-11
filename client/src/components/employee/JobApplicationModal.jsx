@@ -208,11 +208,11 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const FastStep1Experience = () => (
     <div className="space-y-6 animate-fade-in max-w-md mx-auto py-8">
       <h3 className="text-2xl font-bold text-gray-900 mb-2">Enter a job that shows relevant experience</h3>
-      <p className="text-gray-500 mb-6">We share one job title with the employer to introduce you as a candidate.</p>
+      <p className="text-gray-500 mb-6">We share your designation with the employer to introduce you as a candidate.</p>
       
       <div className="space-y-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Job title</label>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Your Designation</label>
           <input type="text" className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" value={fastFormData.relevantJobTitle || ''} onChange={e => setFastFormData({...fastFormData, relevantJobTitle: e.target.value})} />
         </div>
       </div>
@@ -373,13 +373,8 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
       
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
         <div>
-          <p className="text-sm text-gray-500 mb-1">Job title</p>
+          <p className="text-sm text-gray-500 mb-1">Your Designation</p>
           <p className="font-bold text-gray-900">{fastFormData.relevantJobTitle || 'Not specified'}</p>
-        </div>
-        <hr className="border-gray-100" />
-        <div>
-          <p className="text-sm text-gray-500 mb-1">Company</p>
-          <p className="font-bold text-gray-900">{fastFormData.relevantCompany || 'Not specified'}</p>
         </div>
       </div>
     </div>
