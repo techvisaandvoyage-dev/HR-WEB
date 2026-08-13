@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import LocationAutocomplete from '../common/LocationAutocomplete';const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }) => {
+import LocationAutocomplete from '../common/LocationAutocomplete';
+import CustomDropdown from '../common/CustomDropdown';
+
+const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }) => {
   const [step, setStep] = useState(1);
   
   // Step 1 state
@@ -35,6 +38,33 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const industryOptions = [
+    { value: 'Information Technology', label: 'Information Technology' },
+    { value: 'Finance', label: 'Finance' },
+    { value: 'Healthcare', label: 'Healthcare' },
+    { value: 'Manufacturing', label: 'Manufacturing' },
+    { value: 'Education', label: 'Education' },
+    { value: 'Other', label: 'Other' },
+  ];
+
+  const employeeOptions = [
+    { value: '1-10', label: '1-10' },
+    { value: '11-50', label: '11-50' },
+    { value: '51-200', label: '51-200' },
+    { value: '201-500', label: '201-500' },
+    { value: '500+', label: '500+' },
+  ];
+
+  const designationOptions = [
+    { value: 'HR Manager', label: 'HR Manager' },
+    { value: 'Recruiter', label: 'Recruiter' },
+    { value: 'Talent Acquisition', label: 'Talent Acquisition' },
+    { value: 'Founder / CEO', label: 'Founder / CEO' },
+    { value: 'Director', label: 'Director' },
+    { value: 'Hiring Manager', label: 'Hiring Manager' },
+    { value: 'Other', label: 'Other' },
+  ];
+
   if (!isOpen) return null;
 
   const handleSendOtp = () => {
@@ -62,6 +92,11 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
 
   const handleBasicDetailsSubmit = (e) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
+    setError('');
     setStep(3);
   };
 
@@ -76,7 +111,7 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/employer/auth/register', {
+      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employer/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -412,15 +447,31 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
                 {error && <div className="text-red-500 text-sm font-semibold text-center">{error}</div>}
 
                 {/* Register Button */}
-                <div className="pt-2">
+                <div className="pt-2 flex items-center gap-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setStep(1)} 
+                    className="w-1/3 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-full transition-all duration-300"
+                  >
+                    Back
+                  </button>
                   <button 
                     type="submit"
-                    className="w-full py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5"
+                    className="w-2/3 py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5"
                   >
                     Continue
                   </button>
                 </div>
               </form>
+
+              {/* Login instead link */}
+              {onLoginClick && (
+                <div className="mt-6 text-center">
+                  <button onClick={onLoginClick} className="text-sm text-palette-900 font-semibold hover:text-palette-400 transition-colors">
+                    Already have an account? Login
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -506,32 +557,32 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
 
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">Select industry</label>
-                  <select value={industry} onChange={(e) => setIndustry(e.target.value)} className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all text-gray-700 bg-white">
-                    <option value="" disabled>Select industry</option>
-                    <option value="IT">Information Technology</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Manufacturing">Manufacturing</option>
-                    <option value="Education">Education</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <CustomDropdown 
+                    options={industryOptions} 
+                    value={industry} 
+                    onChange={setIndustry} 
+                    placeholder="Select industry" 
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">Number of Employees</label>
-                  <select value={employees} onChange={(e) => setEmployees(e.target.value)} className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all text-gray-700 bg-white">
-                    <option value="" disabled>Select range</option>
-                    <option value="1-10">1-10</option>
-                    <option value="11-50">11-50</option>
-                    <option value="51-200">51-200</option>
-                    <option value="201-500">201-500</option>
-                    <option value="500+">500+</option>
-                  </select>
+                  <CustomDropdown 
+                    options={employeeOptions} 
+                    value={employees} 
+                    onChange={setEmployees} 
+                    placeholder="Select range" 
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">Your designation</label>
-                  <input type="text" value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="e.g. HR Manager" className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400" />
+                  <CustomDropdown 
+                    options={designationOptions} 
+                    value={designation} 
+                    onChange={setDesignation} 
+                    placeholder="e.g. HR Manager" 
+                  />
                 </div>
 
                 <div className="space-y-1.5">
@@ -555,12 +606,28 @@ import LocationAutocomplete from '../common/LocationAutocomplete';const Employer
 
                 {error && <div className="text-red-500 text-sm font-semibold text-center">{error}</div>}
 
-                <div className="pt-2">
-                  <button disabled={loading} type="submit" className="w-full py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5">
+                <div className="pt-2 flex items-center gap-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setStep(2)} 
+                    className="w-1/3 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-full transition-all duration-300"
+                  >
+                    Back
+                  </button>
+                  <button disabled={loading} type="submit" className="w-2/3 py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5">
                     {loading ? 'Creating...' : 'Continue'}
                   </button>
                 </div>
               </form>
+
+              {/* Login instead link */}
+              {onLoginClick && (
+                <div className="mt-6 text-center">
+                  <button onClick={onLoginClick} className="text-sm text-palette-900 font-semibold hover:text-palette-400 transition-colors">
+                    Already have an account? Login
+                  </button>
+                </div>
+              )}
             </>
           )}
 

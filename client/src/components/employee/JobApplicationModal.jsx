@@ -112,7 +112,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     localStorage.setItem('userProfile', JSON.stringify(formData));
     localStorage.setItem('hasProfile', 'true');
@@ -122,18 +122,35 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
       try {
         const savedApplied = localStorage.getItem('appliedJobs');
         let appliedJobs = savedApplied ? JSON.parse(savedApplied) : [];
-        // Add if not already applied
-        if (!appliedJobs.some(a => a.id === job.id)) {
-          appliedJobs.push({
-            id: job.id,
-            status: 'Applied',
-            date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-          });
-          localStorage.setItem('appliedJobs', JSON.stringify(appliedJobs));
-          
-          // Send candidate data to global state
-          if (applyToJob) {
-            applyToJob(job.id, {
+          // Add if not already applied
+          if (!appliedJobs.some(a => a.id === job.id)) {
+            appliedJobs.push({
+              id: job.id,
+              status: 'Applied',
+              date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+            });
+            localStorage.setItem('appliedJobs', JSON.stringify(appliedJobs));
+            
+            // Save candidate profile to backend first
+            try {
+              const token = localStorage.getItem('employeeToken');
+              if (token) {
+                await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify(formData)
+                });
+              }
+            } catch (err) {
+              console.error("Failed to save profile to backend before applying", err);
+            }
+            
+            // Send candidate data to global state
+            if (applyToJob) {
+            const success = await applyToJob(job.id, {
               name: (formData.firstName || formData.lastName) ? `${formData.firstName || ''} ${formData.lastName || ''}`.trim() : 'Applicant',
               email: formData.email,
               phone: formData.phone,
@@ -156,6 +173,9 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                 { title: job.title, status: 'Applied', color: 'bg-blue-50 text-blue-600 border border-blue-100' }
               ]
             });
+            if (!success) {
+              return; // Application failed on backend
+            }
           }
         }
       } catch (err) {

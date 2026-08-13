@@ -23,7 +23,9 @@ app.use(cors());
 // Mount routers
 app.use('/api/employee/auth', employeeAuthRoutes);
 app.use('/api/employee/profile', employeeProfileRoutes);
+app.use('/api/employee/jobs', require('./employee/routes/jobRoutes'));
 app.use('/api/employer/auth', employerAuthRoutes);
+app.use('/api/employer/jobs', require('./employer/routes/jobRoutes'));
 
 const PORT = process.env.PORT || 5000;
 

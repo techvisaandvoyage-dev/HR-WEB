@@ -28,8 +28,10 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const activeJobs = jobs.filter(job => job.status !== 'Closed');
+
   const filteredMobileJobs = mobileSearchTerm 
-    ? jobs.filter(job => job.title.toLowerCase().includes(mobileSearchTerm.toLowerCase()) || job.company.toLowerCase().includes(mobileSearchTerm.toLowerCase()))
+    ? activeJobs.filter(job => job.title.toLowerCase().includes(mobileSearchTerm.toLowerCase()) || job.company.toLowerCase().includes(mobileSearchTerm.toLowerCase()))
     : [];
 
   useEffect(() => {
@@ -111,10 +113,10 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 flex md:gap-6 items-start h-[calc(100vh-125px)] overflow-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 flex md:gap-6 items-start min-h-[calc(100vh-100px)]">
         
         {/* Left Column (Job List) */}
-        <div className={`w-full md:w-[400px] flex-shrink-0 flex-col gap-3 h-full overflow-y-auto pr-2 pb-24 md:pb-0 custom-scrollbar ${isMobileDetailsOpen ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-[400px] flex-shrink-0 flex-col gap-3 pb-24 md:pb-0 ${isMobileDetailsOpen ? 'hidden md:flex' : 'flex'}`}>
           
           {/* Mobile Search Bar */}
           <div className="md:hidden flex flex-col gap-2 mb-2">
@@ -157,7 +159,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
             </div>
           </div>
 
-          {jobs.map(job => (
+          {activeJobs.map(job => (
             <div 
               key={job.id} 
               onClick={() => { setSelectedJobId(job.id); setIsMobileDetailsOpen(true); }}
@@ -217,7 +219,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
         {/* Right Column (Job Details) */}
         {selectedJob && (
-          <div className={`flex-1 w-full bg-white border border-gray-200 rounded-xl h-full overflow-hidden relative flex-col ${!isMobileDetailsOpen ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`flex-1 w-full bg-white border border-gray-200 rounded-xl sticky top-24 h-[calc(100vh-120px)] overflow-hidden flex-col ${!isMobileDetailsOpen ? 'hidden md:flex' : 'flex'}`}>
             
             <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col pb-24 md:pb-0">
               {/* Mobile Back Button */}

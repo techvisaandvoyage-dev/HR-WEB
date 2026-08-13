@@ -16,9 +16,9 @@ const DashboardOverview = ({ jobs = [], candidates = [], toggleJobStatus }) => {
   ];
 
   const activeJobsCount = jobs.filter(j => j.status !== 'Closed').length;
-  const totalAppsCount = candidates.reduce((sum, c) => sum + (c.history?.length || 0), 0) || 124; // Fallback if no candidates
-  const totalCandidatesCount = candidates.length || 98;
-  const shortlistedCount = candidates.reduce((sum, c) => sum + (c.history?.filter(h => h.status === 'Shortlisted').length || 0), 0) || 24;
+  const totalAppsCount = candidates.reduce((sum, c) => sum + (c.history?.length || 0), 0);
+  const totalCandidatesCount = candidates.length;
+  const shortlistedCount = candidates.reduce((sum, c) => sum + (c.history?.filter(h => h.status === 'Shortlisted').length || 0), 0);
 
   const stats = [
     { label: 'Active Jobs', value: activeJobsCount.toString(), trend: 'Updated just now', trendColor: 'text-gray-500', icon: (

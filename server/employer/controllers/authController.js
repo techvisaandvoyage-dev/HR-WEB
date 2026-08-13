@@ -86,16 +86,15 @@ exports.login = async (req, res) => {
 
 // @desc    Get current logged in employer
 // @route   GET /api/employer/auth/me
-// @access  Private (Needs auth middleware, but we'll mock it for now if middleware isn't present)
+// @access  Private
 exports.getMe = async (req, res) => {
   try {
-    // Assuming you have an auth middleware that sets req.user
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Not authorized' });
-    }
-    
     const employer = await Employer.findById(req.user.id);
     
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
+
     res.status(200).json({
       success: true,
       data: employer
@@ -103,5 +102,99 @@ exports.getMe = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Update employer profile
+// @route   PUT /api/employer/auth/update
+// @access  Private
+exports.updateProfile = async (req, res) => {
+  try {
+    const { 
+      fullName, mobile, companyName, industry, employees, 
+      designation, location, aboutCompany, website, hiringFor
+    } = req.body;
+
+    const employer = await Employer.findById(req.user.id);
+
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
+
+    // Update fields
+    if (fullName) employer.fullName = fullName;
+    if (mobile) employer.mobile = mobile;
+    if (companyName) employer.companyName = companyName;
+    if (industry) employer.industry = industry;
+    if (employees) employer.employees = employees;
+    if (designation) employer.designation = designation;
+    if (location) employer.location = location;
+    if (aboutCompany !== undefined) employer.aboutCompany = aboutCompany;
+    if (website !== undefined) employer.website = website;
+    if (hiringFor) employer.hiringFor = hiringFor;
+
+    await employer.save();
+
+    res.status(200).json({
+      success: true,
+      data: employer
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Request OTP for forgot password
+// @route   POST /api/employer/auth/forgot-password/otp
+// @access  Public
+exports.forgotPasswordOtp = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    
+    if (!identifier) {
+      return res.status(400).json({ message: 'Please provide mobile number or email' });
+    }
+
+    const employer = await Employer.findOne({
+      $or: [{ email: identifier }, { mobile: identifier }]
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // In a real app, send actual OTP via email/SMS here
+    res.json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Reset password
+// @route   POST /api/employer/auth/reset-password
+// @access  Public
+exports.resetPassword = async (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+    
+    if (!identifier || !password) {
+      return res.status(400).json({ message: 'Please provide all fields' });
+    }
+
+    const employer = await Employer.findOne({
+      $or: [{ email: identifier }, { mobile: identifier }]
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    employer.password = password;
+    await employer.save();
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

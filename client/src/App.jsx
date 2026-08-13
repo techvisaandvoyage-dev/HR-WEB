@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import EmployeeHomepage from './components/employee/EmployeeHomepage';
 import EmployeeProfile from './components/employee/EmployeeProfile';
 import EmployeeLoginModal from './components/employee/EmployeeLoginModal';
@@ -11,12 +11,19 @@ import MyJobs from './components/employee/myjobs/MyJobs';
 import EmployerDashboard from './components/employer/dashboard/EmployerDashboard';
 import LocationAutocomplete from './components/common/LocationAutocomplete';
 import { dummyJobs } from './data/dummyJobs';
-import { dummyCandidates } from './data/dummyCandidates';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('employeeToken') || !!localStorage.getItem('employerToken'));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userRole, setUserRole] = useState(localStorage.getItem('employeeToken') ? 'employee' : (localStorage.getItem('employerToken') ? 'employer' : null));
+  const [userRole, setUserRole] = useState(() => {
+    const isEmployerRoute = window.location.pathname.startsWith('/employer');
+    if (isEmployerRoute && localStorage.getItem('employerToken')) return 'employer';
+    if (!isEmployerRoute && localStorage.getItem('employeeToken')) return 'employee';
+    // Fallbacks
+    if (localStorage.getItem('employerToken')) return 'employer';
+    if (localStorage.getItem('employeeToken')) return 'employee';
+    return null;
+  });
   const [searchJobTitle, setSearchJobTitle] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = React.useRef(null);
@@ -31,123 +38,179 @@ function App() {
     document.addEventListener('mousedown', handleClickOutsideSearch);
     return () => document.removeEventListener('mousedown', handleClickOutsideSearch);
   }, []);
-  const [jobs, setJobs] = useState(dummyJobs);
-  const [candidates, setCandidates] = useState(() => {
-    try {
-      const saved = localStorage.getItem('globalCandidates');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
+  const [jobs, setJobs] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const isEmployerRoute = location.pathname.startsWith('/employer');
+    if (isEmployerRoute && localStorage.getItem('employerToken')) {
+      setUserRole('employer');
+    } else if (!isEmployerRoute && localStorage.getItem('employeeToken')) {
+      setUserRole('employee');
     }
-  });
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (userRole === 'employer') {
+          const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/jobs', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
+          });
+          const data = await res.json();
+          if (data.success) {
+            setJobs(data.data.map(job => ({ ...job, id: job._id })));
+          }
+          
+          const appRes = await fetch('https://hr-website-kzdw.onrender.com/api/employer/jobs/applications', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
+          });
+          const appData = await appRes.json();
+          if (appData.success) {
+            const candidatesMap = {};
+            
+            appData.data.forEach(app => {
+              try {
+                const emp = app.employeeId;
+                if (!emp || !app.jobId) return;
+                if (!candidatesMap[emp._id]) {
+                  candidatesMap[emp._id] = {
+                    id: emp._id,
+                    name: emp.name || 'Unknown Candidate',
+                    email: emp.email,
+                    phone: emp.mobile,
+                    location: emp.location,
+                    initials: emp.name ? emp.name.charAt(0).toUpperCase() : 'C',
+                    bg: 'bg-green-600',
+                    date: new Date(app.createdAt).toLocaleDateString(),
+                    history: [],
+                    // Additional profile data for the Candidate Profile sidebar
+                    summary: emp.brief || (emp.professionalDetails && emp.professionalDetails.majorAchievements) || '',
+                    skills: (emp.professionalDetails && emp.professionalDetails.skills) ? emp.professionalDetails.skills.split(',').map(s => s.trim()) : [],
+                    experience: emp.experience || [],
+                    education: (emp.qualifications || []).map(q => ({
+                      degree: q.course || q.educationType || 'Degree',
+                      year: (q.startYear && q.endYear) ? `${q.startYear} - ${q.endYear}` : (q.endYear || 'Year'),
+                      institution: q.university || q.board || 'Institution'
+                    })),
+                    currentCTC: (emp.professionalDetails && emp.professionalDetails.currentSalary) || 'N/A',
+                    expectedCTC: (emp.professionalDetails && emp.professionalDetails.expectedSalary) || 'N/A',
+                  };
+                }
+                
+                candidatesMap[emp._id].history.push({
+                  appId: app._id,
+                  title: app.jobId?.title || 'Unknown Job',
+                  status: app.status,
+                  color: app.statusColor,
+                  date: new Date(app.createdAt).toLocaleDateString()
+                });
+                
+                // Update last active date to most recent application
+                if (new Date(app.createdAt) > new Date(candidatesMap[emp._id].date)) {
+                  candidatesMap[emp._id].date = new Date(app.createdAt).toLocaleDateString();
+                }
+              } catch (err) {
+                console.error("Error processing application:", app, err);
+              }
+            });
+            
+            setCandidates(Object.values(candidatesMap));
+          }
+        } else {
+          // Employee or Public
+          const res = await fetch('https://hr-website-kzdw.onrender.com/api/employee/jobs');
+          const data = await res.json();
+          if (data.success) {
+            setJobs(data.data.map(job => ({ ...job, id: job._id })));
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching data:", e);
+      }
+    };
+    fetchData();
+  }, [userRole, isLoggedIn]);
 
   const addJob = (newJob) => {
     setJobs(prev => [newJob, ...prev]);
   };
 
-  const toggleJobStatus = (jobId) => {
-    setJobs(prevJobs => prevJobs.map(job => {
-      if (job.id === jobId) {
-        const isCurrentlyClosed = job.status === 'Closed';
-        return { 
-          ...job, 
-          status: isCurrentlyClosed ? 'Active' : 'Closed',
-          statusColor: isCurrentlyClosed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-        };
-      }
-      return job;
-    }));
-  };
-
-  const applyToJob = (jobId, candidateData) => {
-    // Increment job applications count
-    setJobs(prevJobs => prevJobs.map(job => 
-      job.id === jobId ? { ...job, applications: (job.applications || 0) + 1 } : job
-    ));
-
-    // Add candidate to global list or update existing candidate
-    setCandidates(prev => {
-      let updatedList;
-      const existingIdx = prev.findIndex(c => c.email === candidateData.email);
-      if (existingIdx >= 0) {
-        const updated = [...prev];
-        const existing = updated[existingIdx];
-        const newHistoryItem = candidateData.history && candidateData.history[0] ? candidateData.history[0] : { title: 'Unknown Job', status: 'Applied', color: 'bg-blue-50 text-blue-600 border border-blue-100' };
-        
-        updated[existingIdx] = {
-          ...existing,
-          apps: (existing.apps || 1) + 1,
-          date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-          status: 'New',
-          statusColor: 'bg-blue-50 text-blue-600 border border-blue-100',
-          history: [...(existing.history || []), newHistoryItem]
-        };
-        updatedList = updated;
-      } else {
-        updatedList = [...prev, {
-          id: Date.now(),
-          jobId,
-          ...candidateData,
-          status: 'New',
-          statusColor: 'bg-blue-50 text-blue-600 border border-blue-100',
-          date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-        }];
-      }
-      localStorage.setItem('globalCandidates', JSON.stringify(updatedList));
-      return updatedList;
-    });
-  };
-
-  const updateCandidateStatus = (candidateId, newStatus, jobTitle = null) => {
-    setCandidates(prev => {
-      let targetJobId = null;
-      const updatedCandidates = prev.map(c => {
-        if (c.id === candidateId) {
-           let color = 'bg-blue-50 text-blue-600 border border-blue-100';
-           if (newStatus.toLowerCase() === 'shortlisted') color = 'bg-green-50 text-green-600 border border-green-100';
-           else if (newStatus.toLowerCase() === 'rejected') color = 'bg-red-50 text-red-600 border border-red-100';
-           else if (newStatus.toLowerCase() === 'viewed') color = 'bg-gray-100 text-gray-700 border border-gray-200';
-           
-           // Update history if jobTitle is provided, or if it's a global update (like Viewed)
-           let newHistory = c.history || [];
-           if (jobTitle) {
-             newHistory = newHistory.map(h => 
-               h.title === jobTitle ? { ...h, status: newStatus, color } : h
-             );
-           } else {
-             newHistory = newHistory.map(h => 
-               (h.status === 'New' || h.status === 'Applied' || !jobTitle) ? { ...h, status: newStatus, color } : h
-             );
-           }
-           
-           // If no jobTitle or it's the main job, update targetJobId
-           if (!jobTitle || c.jobId === jobs.find(j => j.title === jobTitle)?.id) {
-             targetJobId = c.jobId;
-           } else {
-             targetJobId = jobs.find(j => j.title === jobTitle)?.id;
-           }
-
-           // Always update top-level status when any job application is updated
-           return { ...c, status: newStatus, statusColor: color, history: newHistory };
-        }
-        return c;
+  const toggleJobStatus = async (jobId) => {
+    try {
+      const res = await fetch(`https://hr-website-kzdw.onrender.com/api/employer/jobs/${jobId}/status`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
       });
-      
-      if (targetJobId) {
-        try {
-          const applied = JSON.parse(localStorage.getItem('appliedJobs') || '[]');
-          const updated = applied.map(job => 
-            String(job.id) === String(targetJobId) ? { ...job, status: newStatus } : job
-          );
-          localStorage.setItem('appliedJobs', JSON.stringify(updated));
-        } catch (e) {
-          console.error(e);
-        }
+      const data = await res.json();
+      if (data.success) {
+        setJobs(prevJobs => prevJobs.map(job => 
+          job.id === jobId ? { ...job, status: data.data.status, statusColor: data.data.statusColor } : job
+        ));
       }
-      localStorage.setItem('globalCandidates', JSON.stringify(updatedCandidates));
-      return updatedCandidates;
-    });
+    } catch (e) {
+      console.error(e);
+    }
   };
+
+  const applyToJob = async (jobId, candidateData) => {
+    try {
+      const res = await fetch(`https://hr-website-kzdw.onrender.com/api/employee/jobs/${jobId}/apply`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('employeeToken')}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Optimistically increment application count in jobs
+        setJobs(prevJobs => prevJobs.map(job => 
+          job.id === jobId ? { ...job, applications: (job.applications || 0) + 1 } : job
+        ));
+        return true;
+      } else {
+        alert(data.message);
+        return false;
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to apply for job.");
+      return false;
+    }
+  };
+
+  const updateCandidateStatus = async (appId, newStatus) => {
+    try {
+      const res = await fetch(`https://hr-website-kzdw.onrender.com/api/employer/jobs/applications/${appId}/status`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('employerToken')}` 
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setCandidates(prev => prev.map(c => {
+          const updatedHistory = c.history.map(h => 
+            h.appId === appId ? { ...h, status: data.data.status, color: data.data.statusColor } : h
+          );
+          return { ...c, history: updatedHistory };
+        }));
+      } else {
+        alert(data.message);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update status.");
+    }
+  };
+
+
 
   const [isEmployeeLoginOpen, setIsEmployeeLoginOpen] = useState(false);
   const [isEmployeeRegisterOpen, setIsEmployeeRegisterOpen] = useState(false);
@@ -377,7 +440,7 @@ function App() {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                       </svg>
-                      Company
+                      {job.details?.industry || job.industry || 'Company'}
                     </div>
                   </div>
                   <button className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -451,17 +514,17 @@ function App() {
         
         <Route 
           path="/employee" 
-          element={isLoggedIn ? <EmployeeHomepage jobs={jobs} applyToJob={applyToJob} /> : <Navigate to="/" />} 
+          element={isLoggedIn && userRole === 'employee' ? <EmployeeHomepage jobs={jobs} applyToJob={applyToJob} /> : <Navigate to="/" />} 
         />
 
         <Route 
           path="/employee/onboarding" 
-          element={isLoggedIn ? <EmployeeOnboarding /> : <Navigate to="/" />} 
+          element={isLoggedIn && userRole === 'employee' ? <EmployeeOnboarding /> : <Navigate to="/" />} 
         />
 
         <Route 
           path="/profile" 
-          element={isLoggedIn ? <EmployeeProfile /> : <Navigate to="/" />} 
+          element={isLoggedIn && userRole === 'employee' ? <EmployeeProfile /> : <Navigate to="/" />} 
         />
 
         <Route 
@@ -477,7 +540,7 @@ function App() {
               <EmployerDashboard 
                 jobs={jobs} 
                 addJob={addJob}
-                candidates={[...dummyCandidates, ...candidates]}
+                candidates={candidates}
                 updateCandidateStatus={updateCandidateStatus}
                 toggleJobStatus={toggleJobStatus}
               />

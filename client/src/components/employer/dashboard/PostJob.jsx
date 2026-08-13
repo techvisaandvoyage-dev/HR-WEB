@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import LocationAutocomplete from '../../common/LocationAutocomplete';
 
+const formatIndianNumber = (numStr) => {
+  const digits = String(numStr).replace(/\D/g, '');
+  if (!digits) return '';
+  return new Intl.NumberFormat('en-IN').format(Number(digits));
+};
+
 const PostJob = ({ addJob }) => {
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(1);
@@ -14,15 +20,34 @@ const PostJob = ({ addJob }) => {
     Monthly: { min: '', max: '' },
     Hourly: { min: '', max: '' }
   });
-  const [qualification, setQualification] = useState('Select Qualification');
-  const [customQualification, setCustomQualification] = useState('');
-  const [stream, setStream] = useState('Select Stream');
-  const [customStream, setCustomStream] = useState('');
   const [jobData, setJobData] = useState({
     title: '', employmentType: '', experience: '', openings: '', location: '', workplaceType: '',
     about: '', responsibilities: '', skills: '',
     qualification: '', stream: '', category: ''
   });
+  const [employerDetails, setEmployerDetails] = useState({ companyName: 'My Company', industry: 'Company' });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('employerToken');
+        if (!token) return;
+        const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          setEmployerDetails({
+            companyName: data.data.companyName || 'My Company',
+            industry: data.data.industry || 'Company'
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch employer profile", err);
+      }
+    };
+    fetchProfile();
+  }, []);
   
   const steps = [
     { id: 1, name: 'Job Details' },
@@ -289,9 +314,9 @@ const PostJob = ({ addJob }) => {
                       <div>
                         <input 
                           type="text" 
-                          placeholder={salaryType === 'Yearly' ? `${cSym}5,00,000` : salaryType === 'Monthly' ? `${cSym}40,000` : `${cSym}300`}
+                          placeholder={salaryType === 'Yearly' ? 'write the amount in LPA' : salaryType === 'Monthly' ? `${cSym}40,000` : `${cSym}300`}
                           value={salaryValues[salaryType].min}
-                          onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], min: e.target.value}})}
+                          onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], min: formatIndianNumber(e.target.value)}})}
                           className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">Minimum</p>
@@ -299,9 +324,9 @@ const PostJob = ({ addJob }) => {
                       <div>
                         <input 
                           type="text" 
-                          placeholder={salaryType === 'Yearly' ? `${cSym}8,00,000` : salaryType === 'Monthly' ? `${cSym}60,000` : `${cSym}600`}
+                          placeholder={salaryType === 'Yearly' ? 'write the amount in LPA' : salaryType === 'Monthly' ? `${cSym}60,000` : `${cSym}600`}
                           value={salaryValues[salaryType].max}
-                          onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], max: e.target.value}})}
+                          onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], max: formatIndianNumber(e.target.value)}})}
                           className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">Maximum</p>
@@ -316,75 +341,73 @@ const PostJob = ({ addJob }) => {
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Job Category</label>
-                  <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors appearance-none bg-white">
-                    <option>Select category</option>
-                    <option>Engineering</option>
-                    <option>Design</option>
-                    <option>Marketing</option>
-                    <option>Sales</option>
-                  </select>
+                  <input 
+                    list="job-categories"
+                    value={jobData.category}
+                    onChange={(e) => setJobData({...jobData, category: e.target.value})}
+                    placeholder="Select or type a category"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors bg-white"
+                  />
+                  <datalist id="job-categories">
+                    <option value="Engineering" />
+                    <option value="Design" />
+                    <option value="Marketing" />
+                    <option value="Sales" />
+                    <option value="Human Resources" />
+                    <option value="Finance" />
+                    <option value="Customer Support" />
+                    <option value="Operations" />
+                    <option value="Information Technology" />
+                    <option value="Data Science" />
+                  </datalist>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Qualification</label>
-                  <div className="relative mb-2">
-                    <select 
-                      value={qualification}
-                      onChange={(e) => setQualification(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
-                    >
-                      <option value="Select Qualification">Select Qualification</option>
-                      <option value="High School">High School</option>
-                      <option value="Diploma">Diploma</option>
-                      <option value="Bachelor's Degree">Bachelor's Degree</option>
-                      <option value="Master's Degree">Master's Degree</option>
-                      <option value="Doctorate (PhD)">Doctorate (PhD)</option>
-                      <option value="Custom">Custom...</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                    </div>
-                  </div>
-                  {qualification === 'Custom' && (
-                    <input 
-                      type="text" 
-                      placeholder="Enter custom qualification" 
-                      value={customQualification}
-                      onChange={(e) => setCustomQualification(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 animate-in slide-in-from-top-2 fade-in"
-                    />
-                  )}
+                  <input 
+                    list="qualifications"
+                    value={jobData.qualification}
+                    onChange={(e) => setJobData({...jobData, qualification: e.target.value})}
+                    placeholder="Select or type qualification"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all bg-white"
+                  />
+                  <datalist id="qualifications">
+                    <option value="High School" />
+                    <option value="Diploma" />
+                    <option value="Bachelor's Degree" />
+                    <option value="Master's Degree" />
+                    <option value="Doctorate (PhD)" />
+                    <option value="B.Tech / B.E." />
+                    <option value="M.Tech / M.E." />
+                    <option value="MBA" />
+                    <option value="BCA" />
+                    <option value="MCA" />
+                    <option value="B.Com" />
+                    <option value="M.Com" />
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Stream / Major</label>
-                  <div className="relative mb-2">
-                    <select 
-                      value={stream}
-                      onChange={(e) => setStream(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
-                    >
-                      <option value="Select Stream">Select Stream</option>
-                      <option value="Computer Science / IT">Computer Science / IT</option>
-                      <option value="Engineering (Mechanical, Civil, etc.)">Engineering (Mechanical, Civil, etc.)</option>
-                      <option value="Business Administration / Management">Business Administration / Management</option>
-                      <option value="Commerce / Finance">Commerce / Finance</option>
-                      <option value="Arts / Humanities">Arts / Humanities</option>
-                      <option value="Custom">Custom...</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                    </div>
-                  </div>
-                  {stream === 'Custom' && (
-                    <input 
-                      type="text" 
-                      placeholder="Enter custom stream" 
-                      value={customStream}
-                      onChange={(e) => setCustomStream(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 animate-in slide-in-from-top-2 fade-in"
-                    />
-                  )}
+                  <input 
+                    list="streams"
+                    value={jobData.stream}
+                    onChange={(e) => setJobData({...jobData, stream: e.target.value})}
+                    placeholder="Select or type stream"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all bg-white"
+                  />
+                  <datalist id="streams">
+                    <option value="Computer Science / IT" />
+                    <option value="Engineering (Mechanical, Civil, etc.)" />
+                    <option value="Business Administration / Management" />
+                    <option value="Commerce / Finance" />
+                    <option value="Arts / Humanities" />
+                    <option value="Electronics & Communication" />
+                    <option value="Electrical Engineering" />
+                    <option value="Marketing" />
+                    <option value="Human Resources" />
+                    <option value="Data Science / AI" />
+                  </datalist>
                 </div>
               </div>
             </div>
@@ -405,7 +428,7 @@ const PostJob = ({ addJob }) => {
                       <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> {jobData.workplaceType || 'Not specified'}</span>
                       <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> {jobData.location || 'Not specified'}</span>
                       <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg> {jobData.experience || 'Not specified'}</span>
-                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> {salaryValues[salaryType].min && salaryValues[salaryType].max ? `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Yearly' ? 'Annual' : salaryType === 'Monthly' ? 'Monthly' : 'Hourly'}` : 'Salary not specified'}</span>
+                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> {salaryValues[salaryType].min && salaryValues[salaryType].max ? (salaryType === 'Yearly' ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} Lacs PA` : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'Monthly' : 'Hourly'}`) : 'Salary not specified'}</span>
                     </div>
                   </div>
 
@@ -413,11 +436,11 @@ const PostJob = ({ addJob }) => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white p-4 rounded-lg border border-gray-200">
                       <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">Qualification</span>
-                      <span className="font-semibold text-gray-900">{qualification === 'Custom' ? (customQualification || 'Not specified') : (qualification === 'Select Qualification' ? 'Not specified' : qualification)}</span>
+                      <span className="font-semibold text-gray-900">{jobData.qualification || 'Not specified'}</span>
                     </div>
                     <div className="bg-white p-4 rounded-lg border border-gray-200">
                       <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">Stream / Major</span>
-                      <span className="font-semibold text-gray-900">{stream === 'Custom' ? (customStream || 'Not specified') : (stream === 'Select Stream' ? 'Not specified' : stream)}</span>
+                      <span className="font-semibold text-gray-900">{jobData.stream || 'Not specified'}</span>
                     </div>
                   </div>
 
@@ -466,18 +489,15 @@ const PostJob = ({ addJob }) => {
                 </button>
               )}
               <button 
-                onClick={activeStep === 4 ? () => {
+                onClick={activeStep === 4 ? async () => {
                   const newJob = {
-                    id: Date.now(),
-                    company: "My Company",
-                    companyInitial: "M",
+                    company: employerDetails.companyName,
+                    companyInitial: employerDetails.companyName.charAt(0).toUpperCase() || "C",
                     title: jobData.title || 'Untitled Job',
                     location: jobData.location || 'Not specified',
-                    salary: salaryValues[salaryType].min && salaryValues[salaryType].max ? `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Yearly' ? 'per year' : salaryType === 'Monthly' ? 'per month' : 'per hour'}` : 'Not specified',
+                    salary: salaryValues[salaryType].min && salaryValues[salaryType].max ? (salaryType === 'Yearly' ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} Lacs PA` : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'per month' : 'per hour'}`) : 'Not specified',
                     employerProvided: true,
-                    postedAt: "Just now",
                     easyApply: true,
-                    applications: 0,
                     qualifications: skillsList.map(s => ({ name: s, met: true })),
                     details: {
                       workLocation: jobData.workplaceType || "On-site",
@@ -486,15 +506,35 @@ const PostJob = ({ addJob }) => {
                       experience: jobData.experience || "Not specified",
                       aboutRole: jobData.about || "",
                       responsibilities: jobData.responsibilities || "",
-                      qualification: qualification === 'Custom' ? customQualification : (qualification === 'Select Qualification' ? '' : qualification),
-                      stream: stream === 'Custom' ? customStream : (stream === 'Select Stream' ? '' : stream),
-                      category: jobData.category || "General"
-                    },
-                    skills: skillsList
+                      qualification: jobData.qualification || "",
+                      stream: jobData.stream || "",
+                      category: jobData.category || "General",
+                      industry: employerDetails.industry
+                    }
                   };
-                  if (addJob) addJob(newJob);
-                  alert("Job Published Successfully!");
-                  navigate('/employer');
+                  
+                  try {
+                    const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/jobs', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('employerToken')}`
+                      },
+                      body: JSON.stringify(newJob)
+                    });
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                      if (addJob) addJob(data.data);
+                      alert("Job Published Successfully!");
+                      navigate('/employer');
+                    } else {
+                      alert("Error: " + data.message);
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    alert("Error publishing job");
+                  }
                 } : handleNext}
                 className="px-8 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm"
               >

@@ -7,7 +7,7 @@ import CandidatesTab from './CandidatesTab';
 import ApplicationsTab from './ApplicationsTab';
 import CompanyProfileTab from './CompanyProfileTab';
 
-const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, updateCandidateStatus, toggleJobStatus }) => {
+const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, rawAppsData, updateCandidateStatus, toggleJobStatus }) => {
   const location = useLocation();
 
   const navItems = [
@@ -20,7 +20,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, updateCandidate
     { name: 'Messages', path: '/employer/messages', icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
     )},
-    { name: 'Company Profile', path: '/employer/company-profile', icon: (
+    { name: 'Account', path: '/employer/company-profile', icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
     )},
     { name: 'Settings', path: '/employer/settings', icon: (
@@ -55,13 +55,16 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, updateCandidate
 
         {/* Sign Out Block */}
         <div className="p-6 border-t border-gray-100 mt-auto">
-          <Link 
-            to="/" 
-            className="flex items-center gap-3 px-5 py-3 rounded-lg font-bold text-sm text-red-500 hover:bg-red-50 transition-all duration-200"
+          <button 
+            onClick={() => {
+              localStorage.removeItem('employerToken');
+              window.location.href = '/';
+            }}
+            className="w-full flex items-center gap-3 px-5 py-3 rounded-lg font-bold text-sm text-red-500 hover:bg-red-50 transition-all duration-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             Sign Out
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -70,7 +73,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, updateCandidate
         <div className="flex-1 overflow-y-auto p-10 relative">
           <div className="max-w-[1200px] mx-auto w-full">
             <Routes>
-              <Route path="/" element={<DashboardOverview jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
+              <Route index element={<DashboardOverview jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
               <Route path="/post-job" element={<PostJob addJob={addJob} />} />
               <Route path="/manage-jobs" element={<ManageJobs jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
               <Route path="/candidates" element={<CandidatesTab candidates={candidates} jobs={jobs} updateCandidateStatus={updateCandidateStatus} />} />
