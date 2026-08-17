@@ -135,7 +135,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
             try {
               const token = localStorage.getItem('employeeToken');
               if (token) {
-                await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
+                await fetch('http://localhost:5000/api/employee/profile', {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
@@ -420,7 +420,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number <span className="text-red-500">*</span></label>
           <div className="flex">
             <span className="px-4 py-3 border border-r-0 border-gray-200 rounded-l-xl bg-gray-50 text-gray-500 font-semibold">+91</span>
-            <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder="9876543210" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
+            <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder="9876543210" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})} />
           </div>
         </div>
         <div>
@@ -531,7 +531,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
-                                <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="% marks of 100 maximum" value={q.percentage || ''} onChange={e => updateArray('qualifications', idx, 'percentage', e.target.value)} />
+                                <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="% marks of 100 maximum" value={q.percentage || ''} onChange={e => updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, ''))} />
                               </div>
                             </>
                           )}
@@ -586,7 +586,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                               {q.gradingSystem && (
                                 <div>
                                   <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
-                                  <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => updateArray('qualifications', idx, 'percentage', e.target.value)} />
+                                  <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, ''))} />
                                 </div>
                               )}
                               {q.educationType === 'Graduation/Diploma' && (
@@ -829,11 +829,11 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Salary <span className="text-red-500">*</span></label>
-            <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder="e.g. 5 LPA" value={p.currentSalary || ''} onChange={e => setP('currentSalary', e.target.value)} />
+            <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder="e.g. 500000" value={p.currentSalary || ''} onChange={e => setP('currentSalary', e.target.value.replace(/\D/g, ''))} />
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-1.5">Expected Salary <span className="text-red-500">*</span></label>
-            <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder="e.g. 8 LPA" value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', e.target.value)} />
+            <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder="e.g. 800000" value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', e.target.value.replace(/\D/g, ''))} />
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-1.5">Skills <span className="text-red-500">*</span></label>

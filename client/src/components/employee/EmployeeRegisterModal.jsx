@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useGoogleLogin } from '@react-oauth/google';
 import LocationAutocomplete from '../common/LocationAutocomplete';
 
 const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }) => {
@@ -16,6 +17,34 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const handleGoogleSignUp = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      setErrors({});
+      try {
+        const res = await fetch('http://localhost:5000/api/employee/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: tokenResponse.access_token })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('employeeToken', data.token);
+          onLoginSuccess?.();
+        } else {
+          setErrors({ google: data.message || 'Google signup failed' });
+        }
+      } catch (err) {
+        setErrors({ google: 'Server error during Google signup' });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    onError: () => {
+      setErrors({ google: 'Google signup failed' });
+    }
+  });
 
   // Reset form when modal opens
   useEffect(() => {
@@ -81,7 +110,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     
     setIsLoading(true);
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/auth/register', {
+      const response = await fetch('http://localhost:5000/api/employee/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, mobile, location: location?.label || location }),
@@ -359,7 +388,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 <input 
                   type="tel" 
                   value={mobile}
-                  onChange={(e) => { setMobile(e.target.value); setErrors({...errors, mobile: ''}); }}
+                  onChange={(e) => { setMobile(e.target.value.replace(/\D/g, '').slice(0, 10)); setErrors({...errors, mobile: ''}); }}
                   placeholder="Enter your mobile number"
                   className="w-full bg-transparent border-none outline-none placeholder-gray-400 text-gray-900 min-w-0"
                 />
@@ -415,7 +444,12 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
               </div>
 
               {/* Google Sign Up */}
-              <button onClick={() => onLoginSuccess?.()} className="w-full py-3 flex items-center justify-center gap-3 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors font-semibold text-gray-700">
+              {errors.google && (
+                <div className="text-center text-red-600 text-sm font-semibold mb-3">
+                  {errors.google}
+                </div>
+              )}
+              <button type="button" onClick={() => handleGoogleSignUp()} disabled={isLoading} className="w-full py-3 flex items-center justify-center gap-3 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors font-semibold text-gray-700 disabled:opacity-70 disabled:cursor-not-allowed">
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -443,6 +477,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                       maxLength="1"
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
+                      autoFocus={index === 0}
                       className="w-14 h-14 text-center text-2xl font-bold rounded-xl border border-gray-300 focus:border-palette-400 focus:ring-2 focus:ring-palette-400 outline-none transition-all"
                     />
                   ))}

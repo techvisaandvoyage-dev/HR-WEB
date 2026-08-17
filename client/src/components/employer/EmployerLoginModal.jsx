@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useGoogleLogin } from '@react-oauth/google';
 
 const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }) => {
-  const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'forgot'
+  const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'otp' | 'forgot'
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,6 +25,8 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     if (isOpen) {
       setEmail('');
       setPassword('');
+      setMobile('');
+      setOtpSent(false);
       setError('');
       setErrors({});
       setLoginMethod('email');
@@ -35,6 +40,15 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       setShowResetPassword(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (otpSent || forgotStep === 2) {
+      setTimeout(() => {
+        const firstOtp = document.getElementById('otp-0');
+        if (firstOtp) firstOtp.focus();
+      }, 100);
+    }
+  }, [otpSent, forgotStep]);
 
   const handleOtpChange = (element, index) => {
     if (isNaN(element.value)) return false;
@@ -52,6 +66,61 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
   };
 
+  const handleGetOtp = async () => {
+    setErrors({});
+    if (mobile.length !== 10) {
+      setErrors({ mobile: 'Please enter a valid 10-digit mobile number' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/employer/auth/check-mobile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrors({ mobile: data.message || 'Error checking mobile number' });
+      } else {
+        setOtpSent(true);
+      }
+    } catch (err) {
+      setErrors({ mobile: 'Server error, please try again later' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      setErrors({});
+      try {
+        const res = await fetch('http://localhost:5000/api/employer/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: tokenResponse.access_token })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('employerToken', data.token);
+          onLoginSuccess?.(data);
+        } else {
+          setErrors({ google: data.message || 'Google login failed' });
+        }
+      } catch (err) {
+        setErrors({ google: 'Server error during Google login' });
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      setErrors({ google: 'Google login failed' });
+    }
+  });
+
   if (!isOpen) return null;
 
   const handleLogin = async (e) => {
@@ -61,7 +130,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setSuccessMessage('');
 
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employer/auth/login', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +162,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employer/auth/forgot-password/otp', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/forgot-password/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier }),
@@ -142,7 +211,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employer/auth/reset-password', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier, password: newPassword }),
@@ -237,6 +306,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                       {otp.map((data, index) => (
                         <input
                           key={index}
+                          id={`otp-${index}`}
                           type="text"
                           maxLength="1"
                           value={data}
@@ -387,7 +457,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                 </form>
               )}
             </>
-          ) : (
+          ) : loginMethod === 'email' ? (
             <>
               {/* Form */}
               <form className="space-y-5" onSubmit={handleLogin}>
@@ -459,19 +529,155 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   {loading ? 'Logging in...' : 'Login'}
                 </button>
               </form>
+
+              {/* OTP Login Link */}
+              <div className="mt-6 text-center">
+                <button 
+                  onClick={() => setLoginMethod('otp')}
+                  className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                >
+                  Use OTP to Login
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* OTP Form */}
+              <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); onLoginSuccess?.(); }}>
+                
+                {/* Mobile Input */}
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-bold text-gray-900">Mobile Number</label>
+                  <div className="flex items-center px-5 py-3.5 rounded-full border border-gray-300 focus-within:border-palette-400 focus-within:ring-1 focus-within:ring-palette-400 transition-all bg-white">
+                    <span className="text-gray-900 font-semibold mr-1.5 whitespace-nowrap shrink-0">+91 -</span>
+                    <input 
+                      type="tel" 
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="Enter your 10 digit mobile number"
+                      className="w-full bg-transparent border-none outline-none placeholder-gray-400 text-gray-900 min-w-0"
+                      disabled={otpSent}
+                    />
+                  </div>
+                  {errors.mobile && (
+                    <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.mobile}
+                    </div>
+                  )}
+                  {!otpSent && !errors.mobile && <p className="text-xs text-gray-500 mt-1">You will receive an OTP on this number</p>}
+                </div>
+
+                {/* OTP Input */}
+                {otpSent && (
+                  <div className="space-y-3 animate-fade-in pb-2">
+                    <div className="text-center mb-4">
+                      <p className="text-sm text-gray-500">Code sent to <span className="font-bold text-gray-900">+91 {mobile}</span></p>
+                    </div>
+                    <label className="block text-sm font-bold text-gray-900 text-center">Enter 4-digit OTP</label>
+                    <div className="flex justify-center gap-3">
+                      {otp.map((data, index) => (
+                        <input
+                          key={index}
+                          id={`otp-${index}`}
+                          type="text"
+                          maxLength="1"
+                          value={data}
+                          onChange={(e) => handleOtpChange(e.target, index)}
+                          onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                          onFocus={(e) => e.target.select()}
+                          className="w-14 h-14 text-center text-2xl font-bold rounded-xl border border-gray-300 focus:border-palette-400 focus:ring-2 focus:ring-palette-400 transition-all bg-white outline-none"
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-center pt-2">
+                      <button type="button" onClick={() => { setOtpSent(false); setOtp(['', '', '', '']); }} className="text-xs font-bold text-palette-400 hover:text-palette-900 transition-colors">Change Number?</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Button */}
+                {!otpSent ? (
+                  <button 
+                    type="button"
+                    onClick={handleGetOtp}
+                    disabled={mobile.length < 10 || loading}
+                    className={`w-full py-3.5 text-white font-bold rounded-full transition-all duration-300 ${
+                      mobile.length >= 10 && !loading
+                        ? 'bg-palette-900 hover:bg-palette-400 shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transform hover:-translate-y-0.5' 
+                        : 'bg-palette-200 cursor-not-allowed'
+                    }`}
+                  >
+                    {loading ? 'Checking...' : 'Get OTP'}
+                  </button>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={() => onLoginSuccess?.()}
+                    className={`w-full py-3.5 text-white font-bold rounded-full transition-all duration-300 ${
+                      otp.join('').length === 4
+                        ? 'bg-palette-900 hover:bg-palette-400 shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transform hover:-translate-y-0.5' 
+                        : 'bg-palette-200 cursor-not-allowed'
+                    }`}
+                    disabled={otp.join('').length !== 4}
+                  >
+                    Verify & Login
+                  </button>
+                )}
+              </form>
+
+              {/* Email Login Link */}
+              <div className="mt-6 text-center">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                  <span className="text-sm text-gray-400 font-medium">Or</span>
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                </div>
+                <button 
+                  onClick={() => setLoginMethod('email')}
+                  className="w-full py-3 border border-palette-400 text-palette-400 font-semibold rounded-full hover:bg-palette-50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
+                >
+                  Use Email to Login
+                </button>
+              </div>
             </>
           )}
 
+          {/* Divider */}
+          <div className="flex items-center gap-4 my-6">
+            <div className="h-px bg-gray-200 flex-1"></div>
+            <span className="text-sm text-gray-400 font-medium">Or</span>
+            <div className="h-px bg-gray-200 flex-1"></div>
+          </div>
+
+          {/* Google Sign In */}
+          {errors.google && (
+            <div className="text-center text-red-600 text-sm font-semibold mb-3">
+              {errors.google}
+            </div>
+          )}
+          <button type="button" onClick={() => handleGoogleLogin()} disabled={loading} className="w-full py-3 flex items-center justify-center gap-3 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors font-semibold text-gray-700 disabled:opacity-70 disabled:cursor-not-allowed">
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            Sign in with Google
+          </button>
+
           {/* Create Account Link */}
-          {onRegisterClick && loginMethod === 'email' && (
-            <div className="mt-6 text-center">
+          {onRegisterClick && (
+            <div className="mt-8 text-center">
               <p className="text-gray-600 text-sm">
                 Don't have an account?{' '}
                 <button 
                   onClick={onRegisterClick}
-                  className="text-palette-900 font-bold hover:text-palette-400 transition-colors"
+                  className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
                 >
-                  Create account
+                  Register for free
                 </button>
               </p>
             </div>

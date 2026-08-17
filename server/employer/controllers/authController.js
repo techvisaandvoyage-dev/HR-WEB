@@ -67,7 +67,7 @@ exports.login = async (req, res) => {
     const isMatch = await employer.matchPassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: 'Invalid password' });
     }
 
     res.json({
@@ -194,6 +194,101 @@ exports.resetPassword = async (req, res) => {
     await employer.save();
 
     res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Check if mobile exists and return name
+// @route   POST /api/employer/auth/check-mobile
+// @access  Public
+exports.checkMobile = async (req, res) => {
+  try {
+    const { mobile } = req.body;
+    
+    if (!mobile) {
+      return res.status(400).json({ message: 'Please provide mobile number' });
+    }
+
+    const employer = await Employer.findOne({ mobile });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'Mobile number not registered' });
+    }
+
+    // In a real app, send actual OTP via SMS here
+    res.json({ 
+      success: true, 
+      name: employer.fullName 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Check if email exists
+// @route   POST /api/employer/auth/check-email
+// @access  Public
+exports.checkEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Please provide email' });
+    }
+
+    const employer = await Employer.findOne({ email });
+
+    if (employer) {
+      return res.status(400).json({ message: 'Email is already registered' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Google Auth (Login/Signup)
+// @route   POST /api/employer/auth/google
+// @access  Public
+exports.googleAuth = async (req, res) => {
+  try {
+    const { access_token } = req.body;
+    if (!access_token) {
+      return res.status(400).json({ message: 'Token missing' });
+    }
+
+    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    
+    if (!userInfoRes.ok) {
+      return res.status(400).json({ message: 'Invalid Google token' });
+    }
+
+    const { email, name } = await userInfoRes.json();
+
+    let employer = await Employer.findOne({ email });
+
+    if (!employer) {
+      // Register
+      employer = await Employer.create({
+        fullName: name,
+        email,
+        mobile: '',
+        companyName: '',
+        industry: '',
+      });
+    }
+
+    res.json({
+      success: true,
+      _id: employer._id,
+      fullName: employer.fullName,
+      email: employer.email,
+      token: generateToken(employer._id)
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const EmployerSchema = new mongoose.Schema({
   mobile: {
     type: String,
-    required: [true, 'Please add a mobile number']
+    default: ''
   },
   accountType: {
     type: String,
@@ -26,7 +26,6 @@ const EmployerSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please add a password'],
     minlength: 6,
     select: false
   },
@@ -39,7 +38,7 @@ const EmployerSchema = new mongoose.Schema({
   },
   companyName: {
     type: String,
-    required: [true, 'Please add company name']
+    default: ''
   },
   industry: {
     type: String,
@@ -74,7 +73,7 @@ const EmployerSchema = new mongoose.Schema({
 
 // Encrypt password using bcrypt
 EmployerSchema.pre('save', async function () {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return;
   }
 

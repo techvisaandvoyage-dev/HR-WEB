@@ -22,6 +22,9 @@ const LocationAutocomplete = ({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        if (isOpen && query.trim() !== '') {
+          onChange(query);
+        }
         setIsOpen(false);
       }
     };

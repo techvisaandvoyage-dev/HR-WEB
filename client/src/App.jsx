@@ -56,7 +56,7 @@ function App() {
     const fetchData = async () => {
       try {
         if (userRole === 'employer') {
-          const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/jobs', {
+          const res = await fetch('http://localhost:5000/api/employer/jobs', {
             headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
           });
           const data = await res.json();
@@ -64,7 +64,7 @@ function App() {
             setJobs(data.data.map(job => ({ ...job, id: job._id })));
           }
           
-          const appRes = await fetch('https://hr-website-kzdw.onrender.com/api/employer/jobs/applications', {
+          const appRes = await fetch('http://localhost:5000/api/employer/jobs/applications', {
             headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
           });
           const appData = await appRes.json();
@@ -121,7 +121,7 @@ function App() {
           }
         } else {
           // Employee or Public
-          const res = await fetch('https://hr-website-kzdw.onrender.com/api/employee/jobs');
+          const res = await fetch('http://localhost:5000/api/employee/jobs');
           const data = await res.json();
           if (data.success) {
             setJobs(data.data.map(job => ({ ...job, id: job._id })));
@@ -140,7 +140,7 @@ function App() {
 
   const toggleJobStatus = async (jobId) => {
     try {
-      const res = await fetch(`https://hr-website-kzdw.onrender.com/api/employer/jobs/${jobId}/status`, {
+      const res = await fetch(`http://localhost:5000/api/employer/jobs/${jobId}/status`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
       });
@@ -157,7 +157,7 @@ function App() {
 
   const applyToJob = async (jobId, candidateData) => {
     try {
-      const res = await fetch(`https://hr-website-kzdw.onrender.com/api/employee/jobs/${jobId}/apply`, {
+      const res = await fetch(`http://localhost:5000/api/employee/jobs/${jobId}/apply`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -184,7 +184,7 @@ function App() {
 
   const updateCandidateStatus = async (appId, newStatus) => {
     try {
-      const res = await fetch(`https://hr-website-kzdw.onrender.com/api/employer/jobs/applications/${appId}/status`, {
+      const res = await fetch(`http://localhost:5000/api/employer/jobs/applications/${appId}/status`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',

@@ -1,5 +1,8 @@
 const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Generate JWT
 const generateToken = (id) => {
@@ -72,7 +75,7 @@ const loginEmployee = async (req, res) => {
     const isMatch = await employee.matchPassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid password' });
     }
 
     res.json({
@@ -181,9 +184,56 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// @desc    Google Auth (Login/Signup)
+// @route   POST /api/employee/auth/google
+// @access  Public
+const googleAuth = async (req, res) => {
+  try {
+    const { access_token } = req.body;
+    if (!access_token) {
+      return res.status(400).json({ message: 'Token missing' });
+    }
+
+    // Usually when using useGoogleLogin, it returns an access_token that we must fetch user info with
+    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+    
+    if (!userInfoRes.ok) {
+      return res.status(400).json({ message: 'Invalid Google token' });
+    }
+
+    const { email, name, picture } = await userInfoRes.json();
+
+    let employee = await Employee.findOne({ email });
+
+    if (!employee) {
+      // Register
+      employee = await Employee.create({
+        name,
+        email,
+        avatar: picture || '',
+        mobile: '',
+        location: '',
+      });
+    }
+
+    res.json({
+      success: true,
+      _id: employee._id,
+      name: employee.name,
+      email: employee.email,
+      token: generateToken(employee._id)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   registerEmployee,
   loginEmployee,
+  googleAuth,
   checkMobile,
   forgotPasswordOtp,
   resetPassword

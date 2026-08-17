@@ -19,7 +19,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen, searchTerm, onChange]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {

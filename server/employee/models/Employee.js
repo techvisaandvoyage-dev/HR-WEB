@@ -17,17 +17,16 @@ const EmployeeSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please add a password'],
     minlength: 6,
     select: false
   },
   mobile: {
     type: String,
-    required: [true, 'Please add a mobile number']
+    default: ''
   },
   location: {
     type: String,
-    required: [true, 'Please add a location']
+    default: ''
   },
   // Profile Fields
   brief: {
@@ -70,7 +69,7 @@ const EmployeeSchema = new mongoose.Schema({
 
 // Encrypt password using bcrypt
 EmployeeSchema.pre('save', async function () {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return;
   }
 

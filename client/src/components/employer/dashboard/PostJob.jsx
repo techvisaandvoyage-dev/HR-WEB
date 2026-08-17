@@ -32,7 +32,7 @@ const PostJob = ({ addJob }) => {
       try {
         const token = localStorage.getItem('employerToken');
         if (!token) return;
-        const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/auth/me', {
+        const res = await fetch('http://localhost:5000/api/employer/auth/me', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -191,7 +191,7 @@ const PostJob = ({ addJob }) => {
                     type="number" 
                     placeholder="Number of openings" 
                     value={jobData.openings}
-                    onChange={(e) => setJobData({...jobData, openings: e.target.value})}
+                    onChange={(e) => setJobData({...jobData, openings: e.target.value.replace(/\D/g, '')})}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] transition-colors"
                   />
                 </div>
@@ -514,7 +514,7 @@ const PostJob = ({ addJob }) => {
                   };
                   
                   try {
-                    const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/jobs', {
+                    const res = await fetch('http://localhost:5000/api/employer/jobs', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useGoogleLogin } from '@react-oauth/google';
 
 const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }) => {
   const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'otp' | 'forgot'
@@ -11,6 +12,34 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      setErrors({});
+      try {
+        const res = await fetch('http://localhost:5000/api/employee/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ access_token: tokenResponse.access_token })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('employeeToken', data.token);
+          onLoginSuccess?.();
+        } else {
+          setErrors({ google: data.message || 'Google login failed' });
+        }
+      } catch (err) {
+        setErrors({ google: 'Server error during Google login' });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    onError: () => {
+      setErrors({ google: 'Google login failed' });
+    }
+  });
 
   // Forgot password states
   const [forgotStep, setForgotStep] = useState(1);
@@ -55,6 +84,15 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (otpSent || forgotStep === 2) {
+      setTimeout(() => {
+        const firstOtp = document.getElementById('employee-otp-0');
+        if (firstOtp) firstOtp.focus();
+      }, 100);
+    }
+  }, [otpSent, forgotStep]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     
@@ -73,7 +111,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/auth/login', {
+      const response = await fetch('http://localhost:5000/api/employee/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -81,13 +119,16 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       const data = await response.json();
 
       if (!response.ok) {
+        const errorState = { isApiError: true };
         if (data.message && data.message.toLowerCase().includes('email')) {
-          setErrors({ email: data.message });
+          errorState.email = data.message;
+          errorState.password = 'Invalid password';
         } else if (data.message && (data.message.toLowerCase().includes('password') || data.message.toLowerCase().includes('credential'))) {
-          setErrors({ password: data.message });
+          errorState.password = data.message;
         } else {
-          setErrors({ general: data.message || 'Login failed' });
+          errorState.general = data.message || 'Login failed';
         }
+        setErrors(errorState);
       } else {
         localStorage.setItem('employeeToken', data.token);
         
@@ -140,7 +181,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setErrors({});
     setIsLoading(true);
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/auth/check-mobile', {
+      const response = await fetch('http://localhost:5000/api/employee/auth/check-mobile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile }),
@@ -168,7 +209,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setIsLoading(true);
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/auth/forgot-password/otp', {
+      const response = await fetch('http://localhost:5000/api/employee/auth/forgot-password/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier }),
@@ -217,7 +258,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setIsLoading(true);
     try {
-      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/auth/reset-password', {
+      const response = await fetch('http://localhost:5000/api/employee/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier, password: newPassword }),
@@ -266,16 +307,8 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
 
         <div className="p-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="mb-8">
             <h2 className="text-2xl font-bold text-palette-900">Employee Login</h2>
-            {onRegisterClick && (
-              <button 
-                onClick={onRegisterClick}
-                className="text-palette-400 font-semibold hover:text-palette-900 transition-colors"
-              >
-                Register for free
-              </button>
-            )}
           </div>
 
           {loginMethod === 'forgot' ? (
@@ -328,6 +361,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                       {otp.map((data, index) => (
                         <input
                           key={index}
+                          id={`employee-otp-${index}`}
                           type="text"
                           maxLength="1"
                           value={data}
@@ -505,9 +539,9 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   <input 
                     type="text" 
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: '', general: ''}); }}
+                    onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: '', general: '', isApiError: false}); }}
                     placeholder="Enter your active Email ID"
-                    className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
+                    className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${(errors.email || errors.isApiError) ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                   />
                   {errors.email && (
                     <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -526,9 +560,9 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                     <input 
                       type={showPassword ? "text" : "password"} 
                       value={password}
-                      onChange={(e) => { setPassword(e.target.value); setErrors({...errors, password: '', general: ''}); }}
+                      onChange={(e) => { setPassword(e.target.value); setErrors({...errors, password: '', general: '', isApiError: false}); }}
                       placeholder="•••••••••"
-                      className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all tracking-widest placeholder-gray-400 pr-16 ${errors.password ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 bg-gray-50 focus:bg-white focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
+                      className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all tracking-widest placeholder-gray-400 pr-16 ${(errors.password || errors.isApiError) ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 bg-gray-50 focus:bg-white focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                     />
                     <button 
                       type="button"
@@ -595,7 +629,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                     <input 
                       type="tel" 
                       value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
+                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       placeholder="Enter your 10 digit mobile number"
                       className="w-full bg-transparent border-none outline-none placeholder-gray-400 text-gray-900 min-w-0"
                       disabled={otpSent}
@@ -629,6 +663,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                           onChange={(e) => handleOtpChange(e.target, index)}
                           onKeyDown={(e) => handleOtpKeyDown(e, index)}
                           onFocus={(e) => e.target.select()}
+                          autoFocus={index === 0}
                           className="w-14 h-14 text-center text-2xl font-bold rounded-xl border border-gray-300 focus:border-palette-400 focus:ring-2 focus:ring-palette-400 transition-all bg-white outline-none"
                         />
                       ))}
@@ -694,7 +729,12 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
           </div>
 
           {/* Google Sign In */}
-          <button onClick={() => onLoginSuccess?.()} className="w-full py-3 flex items-center justify-center gap-3 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors font-semibold text-gray-700">
+          {errors.google && (
+            <div className="text-center text-red-600 text-sm font-semibold mb-3">
+              {errors.google}
+            </div>
+          )}
+          <button type="button" onClick={() => handleGoogleLogin()} disabled={isLoading} className="w-full py-3 flex items-center justify-center gap-3 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors font-semibold text-gray-700 disabled:opacity-70 disabled:cursor-not-allowed">
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -703,6 +743,21 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
             </svg>
             Sign in with Google
           </button>
+
+          {/* Register Link */}
+          {onRegisterClick && (
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <button 
+                  onClick={onRegisterClick}
+                  className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                >
+                  Register for free
+                </button>
+              </p>
+            </div>
+          )}
 
         </div>
       </div>
