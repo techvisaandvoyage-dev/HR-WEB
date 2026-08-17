@@ -7,6 +7,31 @@ import CustomDropdown from '../common/CustomDropdown';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 
+const formatMonthYear = (dateStr) => {
+  if (!dateStr) return 'MM/YYYY';
+  const [year, month] = dateStr.split('-');
+  if (!year || !month) return 'MM/YYYY';
+  const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${monthsList[parseInt(month, 10) - 1]} ${year}`;
+};
+
+const getCurrencySymbol = (currencyCode) => {
+  const symbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$', SGD: '$', AED: 'د.إ' };
+  return symbols[currencyCode || 'INR'] || '₹';
+};
+
+const formatIndianNumber = (val) => {
+  if (!val) return '';
+  const numStr = val.toString().replace(/\D/g, '');
+  if (!numStr) return '';
+  let lastThree = numStr.substring(numStr.length - 3);
+  const otherNumbers = numStr.substring(0, numStr.length - 3);
+  if (otherNumbers !== '') {
+    lastThree = ',' + lastThree;
+  }
+  return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+};
+
 const boardOptions = [
   { label: '-----All India-----', isGroupLabel: true },
   { value: 'CBSE', label: 'CBSE (Central Board of Secondary Education)' },
@@ -278,6 +303,7 @@ const EmployeeProfile = () => {
   const [skillInput, setSkillInput] = useState('');
   const [isMissingDetailsModalOpen, setIsMissingDetailsModalOpen] = useState(false);
   const [modalMissingItems, setModalMissingItems] = useState([]);
+  const [expError, setExpError] = useState('');
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [cropFile, setCropFile] = useState(null);
   const [isEditingBasicOnMobile, setIsEditingBasicOnMobile] = useState(false);
@@ -745,7 +771,7 @@ const EmployeeProfile = () => {
         </div>
         
         {isEditingSummaryOnMobile ? (
-          <div className="fixed inset-0 z-[120] bg-gray-50 overflow-y-auto md:relative md:inset-auto md:z-auto md:bg-transparent md:flex md:flex-col md:space-y-4">
+          <div className="fixed inset-0 z-[120] bg-gray-50 overflow-y-auto md:overflow-visible md:relative md:inset-auto md:z-auto md:bg-transparent md:flex md:flex-col md:space-y-4">
             
             {/* Mobile Header */}
             <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-[130] shadow-sm">
@@ -958,9 +984,9 @@ const EmployeeProfile = () => {
                           </div>
                           <div className="flex gap-3">
                             {!formData.isFresher && (
-                              <input type="text" placeholder="Current Salary" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.currentSalary || ''} onChange={e => setP('currentSalary', e.target.value)} />
+                              <input type="text" placeholder={`Current Salary (${getCurrencySymbol(p.currency)})`} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.currentSalary || ''} onChange={e => setP('currentSalary', formatIndianNumber(e.target.value))} />
                             )}
-                            <input type="text" placeholder="Expected Salary" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', e.target.value)} />
+                            <input type="text" placeholder={`Expected Salary (${getCurrencySymbol(p.currency)})`} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', formatIndianNumber(e.target.value))} />
                           </div>
                         </div>
                       )}
@@ -976,7 +1002,10 @@ const EmployeeProfile = () => {
                       )}
 
                       {item.label === 'Upload Resume' && (
-                        <input type="file" accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
+                        <>
+                          <input type="file" accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
+                          <p className="text-[11px] text-black mt-1 font-medium">Supported Formats: doc, docx, pdf, upto 300kb</p>
+                        </>
                       )}
 
                       {item.label === 'Add Profile Picture' && (
@@ -1091,7 +1120,7 @@ const EmployeeProfile = () => {
                 <div className="space-y-6">
                   {(formData.qualifications || []).map((q, idx) => {
                     const isSchool = q.educationType === '10th' || q.educationType === '12th';
-                    const isHigher = q.educationType === 'Graduation/Diploma' || q.educationType === 'Masters/Post-Graduation';
+                    const isHigher = q.educationType && !isSchool;
                     
                     if (expandedEduIndex !== idx) {
                       return (
@@ -1119,7 +1148,7 @@ const EmployeeProfile = () => {
                     }
                     
                     return (
-                      <div key={idx} className="fixed inset-0 z-[120] bg-white overflow-y-auto md:relative md:inset-auto md:z-auto md:p-6 md:border md:border-gray-200 md:rounded-xl md:shadow-sm md:flex md:flex-col">
+                      <div key={idx} className="fixed inset-0 z-[120] bg-white overflow-y-auto md:overflow-visible md:relative md:inset-auto md:z-auto md:p-6 md:border md:border-gray-200 md:rounded-xl md:shadow-sm md:flex md:flex-col">
                         
                         {/* Mobile Header */}
                         <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-[130] shadow-sm">
@@ -1195,11 +1224,28 @@ const EmployeeProfile = () => {
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
                                 <CustomDropdown
-                                  options={q.educationType === 'Graduation/Diploma' ? [...undergradCourses, ...doctoralAndOtherCourses] : [...postgradCourses, ...doctoralAndOtherCourses]}
+                                  options={q.educationType === 'Masters/Post-Graduation' ? [...postgradCourses, ...doctoralAndOtherCourses] : [...undergradCourses, ...doctoralAndOtherCourses]}
                                   value={q.course || ''}
                                   onChange={val => updateArray('qualifications', idx, 'course', val)}
                                   placeholder="Select course"
                                 />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-bold text-gray-900 mb-3">Course type <span className="text-red-500">*</span></label>
+                                <div className="flex flex-wrap items-center gap-6">
+                                  <label className="flex items-center cursor-pointer group">
+                                    <input type="radio" name={`courseType-${idx}`} value="Full time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Full time'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Full time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Full time</span>
+                                  </label>
+                                  <label className="flex items-center cursor-pointer group">
+                                    <input type="radio" name={`courseType-${idx}`} value="Part time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Part time'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Part time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Part time</span>
+                                  </label>
+                                  <label className="flex items-center cursor-pointer group">
+                                    <input type="radio" name={`courseType-${idx}`} value="Correspondence/Distance learning" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Correspondence/Distance learning'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Correspondence/Distance learning' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Correspondence/Distance learning</span>
+                                  </label>
+                                </div>
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration <span className="text-red-500">*</span></label>
@@ -1238,7 +1284,7 @@ const EmployeeProfile = () => {
                                   <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => updateArray('qualifications', idx, 'percentage', e.target.value)} />
                                 </div>
                               )}
-                              {q.educationType === 'Graduation/Diploma' && (
+                              {q.educationType !== 'Masters/Post-Graduation' && (
                                 <div className="flex items-center pt-2">
                                   <input type="checkbox" id={`primary-grad-${idx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
                                   <label htmlFor={`primary-grad-${idx}`} className="ml-3 text-gray-700 font-medium">Make this as my primary graduation/diploma</label>
@@ -1285,19 +1331,44 @@ const EmployeeProfile = () => {
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Work Experience</h3>
                 </div>
-                <button onClick={() => { setExpandedExpIndex(formData.experience?.length || 0); setExpandedRoleIndex(0); addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] }); }} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                  Add +
-                </button>
+                {formData.isFresher !== true && (
+                  <div className="flex items-center gap-3">
+                    {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
+                    <button type="button" onClick={(e) => {
+                      e.preventDefault();
+                      const experiences = formData.experience || [];
+                      if (experiences.length > 0) {
+                        const lastExp = experiences[experiences.length - 1];
+                        const lastRole = lastExp.roles && lastExp.roles.length > 0 ? lastExp.roles[lastExp.roles.length - 1] : {};
+                        if (!lastExp.companyName || !lastRole.jobTitle) {
+                          setExpError('Fill details');
+                          return;
+                        }
+                      }
+                      setExpError('');
+                      setExpandedExpIndex(experiences.length); setExpandedRoleIndex(0); addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] });
+                    }} className="text-green-500 font-semibold hover:text-green-600 text-sm whitespace-nowrap">
+                      Add +
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="space-y-6">
-                      <div className="flex justify-between items-center mb-2">
+                      <div className="flex flex-col items-start gap-3 mb-6">
                         <label className="text-sm font-medium text-gray-700">Are you a Fresher?</label>
-                        <button type="button" onClick={() => setFormData({...formData, isFresher: !formData.isFresher})} className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${formData.isFresher ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                          {formData.isFresher ? '✓ Yes, I am a Fresher' : 'No, I have experience'}
-                        </button>
+                        <div className="flex items-center gap-6">
+                          <label className="flex items-center cursor-pointer group">
+                            <input type="radio" name="isFresher_profile" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Yes, I am a Fresher</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer group">
+                            <input type="radio" name="isFresher_profile" value="no" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === false} onChange={() => setFormData({...formData, isFresher: false})} />
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>No, I have experience</span>
+                          </label>
+                        </div>
                       </div>
                       
-                      {!formData.isFresher && (
+                      {formData.isFresher === false && (
                         <div className="space-y-6">
                           {(formData.experience || []).map((exp, cIdx) => {
                             const hasCurrentRole = (exp.roles || []).some(r => r.currentCompany);
@@ -1320,7 +1391,7 @@ const EmployeeProfile = () => {
                                         <div className="absolute w-3 h-3 bg-green-500 rounded-full -left-[23px] top-1.5 ring-4 ring-white"></div>
                                         <p className="font-semibold text-gray-800">{role.jobTitle || 'Job Title'}</p>
                                         <p className="text-gray-500 text-sm mt-0.5">
-                                          {role.joiningDate || 'YYYY-MM'} - {role.currentCompany ? 'Present' : (role.leavingDate || 'YYYY-MM')} | {role.employmentType || 'Employment Type'}
+                                          {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}
                                         </p>
                                         {role.roleDescription && (
                                           <p className="text-gray-600 text-sm mt-2">{role.roleDescription}</p>
@@ -1333,7 +1404,7 @@ const EmployeeProfile = () => {
                             }
                             
                             return (
-                              <div key={cIdx} className="fixed inset-0 z-[120] bg-gray-50 overflow-y-auto md:relative md:inset-auto md:z-auto md:p-4 md:border md:border-gray-200 md:rounded-xl md:space-y-4 md:bg-gray-50 md:flex md:flex-col">
+                              <div key={cIdx} className="fixed inset-0 z-[120] bg-gray-50 overflow-y-auto md:overflow-visible md:relative md:inset-auto md:z-auto md:p-4 md:border md:border-gray-200 md:rounded-xl md:space-y-4 md:bg-gray-50 md:flex md:flex-col">
                                 
                                 {/* Mobile Header */}
                                 <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-[130] shadow-sm">
@@ -1366,7 +1437,7 @@ const EmployeeProfile = () => {
                                     <div key={rIdx} className="relative pl-6">
                                       <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-green-500 border-4 border-gray-50 shadow-sm"></div>
                                       
-                                      <div className="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden relative group">
+                                      <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative group">
                                         
                                         {/* Header Row (Always visible) */}
                                         <div 
@@ -1382,7 +1453,7 @@ const EmployeeProfile = () => {
 
                                         {/* Animated Body */}
                                         <div className={`grid transition-all duration-300 ease-in-out ${isRoleExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                                          <div className="overflow-hidden">
+                                          <div>
                                             <div className="p-6 border-t border-gray-100 space-y-6 relative bg-white">
                                               <button onClick={(e) => {
                                                 e.stopPropagation();
@@ -1605,9 +1676,9 @@ const EmployeeProfile = () => {
                         <div>
                           <input 
                             type="text" 
-                            placeholder={p.salaryType === 'Monthly' ? '₹40,000' : '₹5,00,000'}
+                            placeholder={p.salaryType === 'Monthly' ? `${getCurrencySymbol(p.currency)}40,000` : `${getCurrencySymbol(p.currency)}5,00,000`}
                             value={p.currentSalary || ''}
-                            onChange={(e) => setP('currentSalary', e.target.value)}
+                            onChange={(e) => setP('currentSalary', formatIndianNumber(e.target.value))}
                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                           />
                           <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">Current</p>
@@ -1615,9 +1686,9 @@ const EmployeeProfile = () => {
                         <div>
                           <input 
                             type="text" 
-                            placeholder={p.salaryType === 'Monthly' ? '₹60,000' : '₹8,00,000'}
+                            placeholder={p.salaryType === 'Monthly' ? `${getCurrencySymbol(p.currency)}60,000` : `${getCurrencySymbol(p.currency)}8,00,000`}
                             value={p.expectedSalary || ''}
-                            onChange={(e) => setP('expectedSalary', e.target.value)}
+                            onChange={(e) => setP('expectedSalary', formatIndianNumber(e.target.value))}
                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                           />
                           <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">Expected</p>
@@ -1717,6 +1788,7 @@ const EmployeeProfile = () => {
                       <div className="p-4 border border-gray-200 rounded-xl">
                         <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume <span className="text-red-500">*</span></label>
                         <input key={docs.resume ? 'resume-has' : 'resume-empty'} type="file" accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
+                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300kb</p>
                         {docs.resume && (
                           <div className="flex items-center justify-between mt-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
                             <p className="text-sm text-gray-700 flex items-center gap-2 truncate">
@@ -1735,6 +1807,7 @@ const EmployeeProfile = () => {
                           <span className="text-gray-400 font-medium text-xs">(Optional)</span>
                         </label>
                         <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer" onChange={e => setDoc('coverLetter', e.target.files[0]?.name || '')} />
+                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300kb</p>
                         {docs.coverLetter && (
                           <div className="flex items-center justify-between mt-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
                             <p className="text-sm text-gray-700 flex items-center gap-2 truncate">

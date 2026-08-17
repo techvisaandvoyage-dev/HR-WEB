@@ -1,5 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import CustomMonthPicker from '../common/CustomMonthPicker';
+
+const formatMonthYear = (dateStr) => {
+  if (!dateStr) return 'MM/YYYY';
+  const [year, month] = dateStr.split('-');
+  if (!year || !month) return 'MM/YYYY';
+  const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${monthsList[parseInt(month, 10) - 1]} ${year}`;
+};
+
+const getCurrencySymbol = (currencyCode) => {
+  const symbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$', SGD: '$', AED: 'د.إ' };
+  return symbols[currencyCode || 'INR'] || '₹';
+};
+
+const formatIndianNumber = (val) => {
+  if (!val) return '';
+  const numStr = val.toString().replace(/\D/g, '');
+  if (!numStr) return '';
+  let lastThree = numStr.substring(numStr.length - 3);
+  const otherNumbers = numStr.substring(0, numStr.length - 3);
+  if (otherNumbers !== '') {
+    lastThree = ',' + lastThree;
+  }
+  return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+};
 
 const EmployeeOnboarding = () => {
   const navigate = useNavigate();
@@ -8,6 +34,7 @@ const EmployeeOnboarding = () => {
   const [expandedEduIndex, setExpandedEduIndex] = useState(0);
   const [expandedExpIndex, setExpandedExpIndex] = useState(0);
   const [skillInput, setSkillInput] = useState('');
+  const [expError, setExpError] = useState('');
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('userProfile');
@@ -353,6 +380,23 @@ const EmployeeOnboarding = () => {
                                 </select>
                               </div>
                               <div>
+                                <label className="block text-sm font-bold text-gray-900 mb-3">Course type <span className="text-red-500">*</span></label>
+                                <div className="flex flex-wrap items-center gap-6">
+                                  <label className="flex items-center cursor-pointer group">
+                                    <input type="radio" name={`courseType-${idx}`} value="Full time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Full time'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Full time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Full time</span>
+                                  </label>
+                                  <label className="flex items-center cursor-pointer group">
+                                    <input type="radio" name={`courseType-${idx}`} value="Part time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Part time'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Part time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Part time</span>
+                                  </label>
+                                  <label className="flex items-center cursor-pointer group">
+                                    <input type="radio" name={`courseType-${idx}`} value="Correspondence/Distance learning" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Correspondence/Distance learning'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Correspondence/Distance learning' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Correspondence/Distance learning</span>
+                                  </label>
+                                </div>
+                              </div>
+                              <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration <span className="text-red-500">*</span></label>
                                 <div className="flex items-center gap-4">
                                   <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.startYear || ''} onChange={e => updateArray('qualifications', idx, 'startYear', e.target.value)}>
@@ -455,7 +499,7 @@ const EmployeeOnboarding = () => {
                                           )}
                                         </div>
                                         <p className="text-gray-500 text-sm mt-0.5">
-                                          {role.joiningDate || 'YYYY-MM'} - {role.currentCompany ? 'Present' : (role.leavingDate || 'YYYY-MM')} | {role.employmentType || 'Employment Type'}
+                                          {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}
                                         </p>
                                         {role.roleDescription && (
                                           <p className="text-gray-600 text-sm mt-2">{role.roleDescription}</p>
@@ -531,20 +575,28 @@ const EmployeeOnboarding = () => {
                                       <div className="space-y-6">
                                         <div>
                                           <label className="block text-sm font-bold text-gray-900 mb-1.5">Joining <span className="text-red-500">*</span></label>
-                                          <input type="month" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.joiningDate || ''} onChange={e => {
-                                            const newExp = [...(formData.experience || [])];
-                                            newExp[cIdx].roles[rIdx].joiningDate = e.target.value;
-                                            setFormData({...formData, experience: newExp});
-                                          }} />
+                                          <CustomMonthPicker
+                                            value={role.joiningDate || ''}
+                                            onChange={val => {
+                                              const newExp = [...(formData.experience || [])];
+                                              newExp[cIdx].roles[rIdx].joiningDate = val;
+                                              setFormData({...formData, experience: newExp});
+                                            }}
+                                            placeholder="Select joining date"
+                                          />
                                         </div>
                                         {!role.currentCompany && (
                                           <div>
                                             <label className="block text-sm font-bold text-gray-900 mb-1.5">Leaving <span className="text-red-500">*</span></label>
-                                            <input type="month" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.leavingDate || ''} onChange={e => {
-                                              const newExp = [...(formData.experience || [])];
-                                              newExp[cIdx].roles[rIdx].leavingDate = e.target.value;
-                                              setFormData({...formData, experience: newExp});
-                                            }} />
+                                            <CustomMonthPicker
+                                              value={role.leavingDate || ''}
+                                              onChange={val => {
+                                                const newExp = [...(formData.experience || [])];
+                                                newExp[cIdx].roles[rIdx].leavingDate = val;
+                                                setFormData({...formData, experience: newExp});
+                                              }}
+                                              placeholder="Select leaving date"
+                                            />
                                           </div>
                                         )}
                                       </div>
@@ -598,10 +650,27 @@ const EmployeeOnboarding = () => {
                           })}
                           
                           <div className="pt-4">
-                            <button type="button" onClick={() => { setExpandedExpIndex(formData.experience?.length || 0); addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] }); }} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                              Add +
-                            </button>
-                          </div>
+                        {formData.isFresher !== true && (
+                    <div className="flex items-center gap-3">
+                      {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
+                      <button type="button" onClick={(e) => {
+                        e.preventDefault();
+                        const experiences = formData.experience || [];
+                        if (experiences.length > 0) {
+                          const lastExp = experiences[experiences.length - 1];
+                          const lastRole = lastExp.roles && lastExp.roles.length > 0 ? lastExp.roles[lastExp.roles.length - 1] : {};
+                          if (!lastExp.companyName || !lastRole.jobTitle || !lastRole.roleDescription) {
+                            setExpError('Fill details');
+                            return;
+                          }
+                        }
+                        setExpError('');
+                        setExpandedExpIndex(experiences.length); addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] });
+                      }} className="text-green-500 font-semibold hover:text-green-600 text-sm whitespace-nowrap">
+                        Add +
+                      </button>
+                    </div>
+                  )}          </div>
                         </div>
                       )}
                     </div>
@@ -649,11 +718,11 @@ const EmployeeOnboarding = () => {
           <div className="col-span-2 grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Salary</label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder={p.salaryType === 'Monthly' ? 'e.g. 40000' : 'e.g. 500000'} value={p.currentSalary || ''} onChange={e => setP('currentSalary', e.target.value.replace(/\D/g, ''))} />
+              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder={p.salaryType === 'Monthly' ? `e.g. ${getCurrencySymbol(p.currency)}40,000` : `e.g. ${getCurrencySymbol(p.currency)}5,00,000`} value={p.currentSalary || ''} onChange={e => setP('currentSalary', formatIndianNumber(e.target.value))} />
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-900 mb-1.5">Expected Salary <span className="text-red-500">*</span></label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder={p.salaryType === 'Monthly' ? 'e.g. 60000' : 'e.g. 800000'} value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', e.target.value.replace(/\D/g, ''))} />
+              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder={p.salaryType === 'Monthly' ? `e.g. ${getCurrencySymbol(p.currency)}60,000` : `e.g. ${getCurrencySymbol(p.currency)}8,00,000`} value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', formatIndianNumber(e.target.value))} />
             </div>
           </div>
 
@@ -689,14 +758,17 @@ const EmployeeOnboarding = () => {
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume <span className="text-red-500">*</span></label>
             <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group">
-              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
+              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
               <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-green-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <div className="mt-4 text-sm text-gray-600">
-                <span className="font-bold text-green-600">Click to upload</span> or drag and drop
+              <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
+                <span className="relative cursor-pointer bg-white rounded-md font-semibold text-green-600 hover:text-green-500">
+                  <span>Upload a file</span>
+                </span>
+                <p className="pl-1">or drag and drop</p>
               </div>
-              <p className="text-xs text-gray-500 mt-2">PDF, DOC, DOCX (Max. 5MB)</p>
+              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300kb</p>
             </div>
             {docs.resume && <p className="text-sm text-gray-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> {docs.resume}</p>}
           </div>
@@ -704,14 +776,17 @@ const EmployeeOnboarding = () => {
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-3">Upload Cover Letter (Optional)</label>
             <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group">
-              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx" onChange={e => setDoc('coverLetter', e.target.files[0]?.name || '')} />
+              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => setDoc('coverLetter', e.target.files[0]?.name || '')} />
               <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-green-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <div className="mt-4 text-sm text-gray-600">
-                <span className="font-bold text-green-600">Click to upload</span> or drag and drop
+              <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
+                <span className="relative cursor-pointer bg-white rounded-md font-semibold text-green-600 hover:text-green-500">
+                  <span>Upload a file</span>
+                </span>
+                <p className="pl-1">or drag and drop</p>
               </div>
-              <p className="text-xs text-gray-500 mt-2">PDF, DOC, DOCX (Max. 5MB)</p>
+              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300kb</p>
             </div>
             {docs.coverLetter && <p className="text-sm text-gray-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> {docs.coverLetter}</p>}
           </div>
@@ -761,7 +836,7 @@ const EmployeeOnboarding = () => {
                   {e.roles && e.roles.length > 0 ? e.roles.map((r, rIdx) => (
                     <div key={rIdx}>
                       <p className="font-semibold text-gray-700">• {r.jobTitle || 'N/A'}</p>
-                      <p className="text-gray-500 text-xs pl-3">({r.joiningDate || 'N/A'} to {r.currentCompany ? 'Present' : (r.leavingDate || 'N/A')})</p>
+                      <p className="text-gray-500 text-xs pl-3">({formatMonthYear(r.joiningDate)} to {r.currentCompany ? 'Present' : formatMonthYear(r.leavingDate)})</p>
                     </div>
                   )) : (
                     <p className="text-gray-500 italic text-xs">Roles: N/A</p>
