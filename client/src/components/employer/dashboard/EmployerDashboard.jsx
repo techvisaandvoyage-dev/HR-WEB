@@ -112,7 +112,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, rawAppsData, up
               <Route path="/all-employees" element={<AllEmployeesTab />} />
               <Route path="/company-profile" element={<CompanyProfileTab />} />
               {/* Placeholders for Messages and Settings */}
-              <Route path="/messages" element={<EmployerMessages candidates={candidates} triggerNavRefresh={() => setRefreshNav(prev => !prev)} />} />
+              <Route path="/messages" element={<EmployerMessages candidates={candidates} triggerNavRefresh={() => setRefreshNav(prev => !prev)} updateCandidateStatus={updateCandidateStatus} />} />
               <Route path="/settings" element={<div className="p-8 text-center text-gray-500 font-bold">Settings - Coming Soon</div>} />
             </Routes>
           </div>

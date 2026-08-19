@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const EmployerMessages = ({ candidates = [], triggerNavRefresh }) => {
+const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateStatus }) => {
   const location = useLocation();
   const initialEmployeeData = location.state?.initialEmployee;
 
@@ -14,6 +14,27 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh }) => {
   const [isEmployeeDetailsOpen, setIsEmployeeDetailsOpen] = useState(false);
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
+
+  const getStatusBadgeStyles = (status) => {
+    const map = {
+      'new': 'bg-blue-50 text-blue-600 border-blue-100',
+      'applied': 'bg-blue-50 text-blue-600 border-blue-100',
+      'viewed': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+      'under review': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+      'shortlisted': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      'interview scheduled': 'bg-purple-50 text-purple-700 border-purple-200',
+      'technical round': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      'hr round': 'bg-pink-50 text-pink-700 border-pink-200',
+      'offer sent': 'bg-teal-50 text-teal-700 border-teal-200',
+      'hired': 'bg-green-100 text-green-800 border-green-300',
+      'rejected': 'bg-red-50 text-red-600 border-red-100',
+      'withdrawn': 'bg-stone-100 text-stone-600 border-stone-200',
+    };
+    const key = status?.toLowerCase() || 'new';
+    return map[key] || map['new'];
+  };
+
+  const statusOptions = ['Shortlisted', 'Hired', 'Rejected'];
 
   // 1. Fetch conversations (unread counts and last messages grouped by applicationId)
   useEffect(() => {
@@ -435,15 +456,26 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh }) => {
 
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                  <div className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold border ${selectedApplication.color || 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                    {selectedApplication.status || 'Under Review'}
-                  </div>
+                  <select 
+                    className={`appearance-none cursor-pointer outline-none transition-all inline-flex px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
+                    value={selectedApplication?.status || 'Under Review'}
+                    onChange={(e) => {
+                      const newStatus = e.target.value;
+                      setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
+                      if (updateCandidateStatus) {
+                        updateCandidateStatus(selectedApplication.appId, newStatus);
+                      }
+                    }}
+                  >
+                    {!statusOptions.includes(selectedApplication?.status || 'Under Review') && (
+                      <option value={selectedApplication?.status || 'Under Review'} disabled>
+                        {selectedApplication?.status || 'Under Review'}
+                      </option>
+                    )}
+                    {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
+                  </select>
                 </div>
 
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Experience</p>
-                  <p className="text-sm font-bold text-gray-900">{selectedEmployee.experience?.length > 0 ? `${selectedEmployee.experience.length} Years` : 'Not specified'}</p>
-                </div>
 
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -452,13 +484,6 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh }) => {
                   </p>
                   <p className="text-sm font-bold text-gray-900 leading-snug">{selectedEmployee.location || 'Not specified'}</p>
                 </div>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-gray-100">
-                <button className="w-full py-2.5 bg-green-50 hover:bg-green-100 text-[#166534] font-bold rounded-xl text-sm transition-colors border border-[#bbf7d0] flex items-center justify-center gap-1.5">
-                  View Application
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                </button>
               </div>
             </div>
           ) : (
@@ -514,15 +539,26 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh }) => {
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                    <div className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold border ${selectedApplication?.color || 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                      {selectedApplication?.status || 'Under Review'}
-                    </div>
+                    <select 
+                      className={`appearance-none cursor-pointer outline-none transition-all inline-flex px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
+                      value={selectedApplication?.status || 'Under Review'}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
+                        if (updateCandidateStatus) {
+                          updateCandidateStatus(selectedApplication.appId, newStatus);
+                        }
+                      }}
+                    >
+                      {!statusOptions.includes(selectedApplication?.status || 'Under Review') && (
+                        <option value={selectedApplication?.status || 'Under Review'} disabled>
+                          {selectedApplication?.status || 'Under Review'}
+                        </option>
+                      )}
+                      {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
+                    </select>
                   </div>
 
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Experience</p>
-                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.experience?.length > 0 ? `${selectedEmployee.experience.length} Years` : 'Not specified'}</p>
-                  </div>
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
@@ -628,15 +664,27 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh }) => {
                         selectedEmployee.experience.map((exp, i) => (
                           <div key={i} className="mb-4">
                             <h5 className="font-bold text-gray-900 text-sm mb-2">{exp.companyName || 'Company'}</h5>
-                            <div className="border-l-2 border-gray-100 ml-1.5 space-y-4 py-1">
-                              {(exp.roles && exp.roles.length > 0 ? exp.roles : [{}]).map((role, rIndex) => (
-                                <div key={rIndex} className="relative pl-4">
-                                  <div className="absolute w-2 h-2 bg-[#29953f] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                                  <h5 className="font-bold text-gray-900 text-sm">{role.jobTitle || 'Role'}</h5>
-                                  <p className="text-xs text-[#29953f] font-semibold mb-1">{role.joiningDate || 'Date'}</p>
-                                  <p className="text-xs text-gray-500 leading-relaxed">{role.roleDescription || 'No description provided.'}</p>
-                                </div>
-                              ))}
+                            <div className="border-l-2 border-[#29953f] ml-1.5 space-y-4 py-1">
+                              {(exp.roles && exp.roles.length > 0 ? exp.roles : [{}]).map((role, rIndex) => {
+                                const formatDate = (dateStr) => {
+                                  if (!dateStr) return '';
+                                  const d = new Date(dateStr);
+                                  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                };
+                                const startDate = role.joiningDate ? formatDate(role.joiningDate) : 'Start';
+                                const endDate = role.leavingDate ? formatDate(role.leavingDate) : 'Present';
+                                
+                                return (
+                                  <div key={rIndex} className="relative pl-4">
+                                    <div className="absolute w-2 h-2 bg-[#29953f] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
+                                    <h5 className="font-bold text-gray-900 text-sm">{role.jobTitle || 'Role'}</h5>
+                                    <p className="text-[13px] text-gray-500 font-medium mb-1">
+                                      {startDate} - {endDate} <span className="text-gray-300 mx-1">|</span> {role.employmentType || 'Full-time'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 leading-relaxed">{role.roleDescription || 'No description provided.'}</p>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         ))

@@ -527,15 +527,27 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                       selectedCandidate.experience.map((exp, i) => (
                         <div key={i} className="mb-4">
                           <h5 className="font-bold text-gray-900 text-sm mb-2">{exp.companyName || 'Company'}</h5>
-                          <div className="border-l-2 border-gray-100 ml-1.5 space-y-4 py-1">
-                            {(exp.roles && exp.roles.length > 0 ? exp.roles : [{}]).map((role, rIndex) => (
-                              <div key={rIndex} className="relative pl-4">
-                                <div className="absolute w-2 h-2 bg-[#29953f] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                                <h5 className="font-bold text-gray-900 text-sm">{role.jobTitle || 'Role'}</h5>
-                                <p className="text-xs text-[#29953f] font-semibold mb-1">{role.joiningDate || 'Date'}</p>
-                                <p className="text-xs text-gray-500 leading-relaxed">{role.roleDescription || 'No description provided.'}</p>
-                              </div>
-                            ))}
+                          <div className="border-l-2 border-[#29953f] ml-1.5 space-y-4 py-1">
+                            {(exp.roles && exp.roles.length > 0 ? exp.roles : [{}]).map((role, rIndex) => {
+                                const formatDate = (dateStr) => {
+                                  if (!dateStr) return '';
+                                  const d = new Date(dateStr);
+                                  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                };
+                                const startDate = role.joiningDate ? formatDate(role.joiningDate) : 'Start';
+                                const endDate = role.leavingDate ? formatDate(role.leavingDate) : 'Present';
+                                
+                                return (
+                                  <div key={rIndex} className="relative pl-4">
+                                    <div className="absolute w-2 h-2 bg-[#29953f] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
+                                    <h5 className="font-bold text-gray-900 text-sm">{role.jobTitle || 'Role'}</h5>
+                                    <p className="text-[13px] text-gray-500 font-medium mb-1">
+                                      {startDate} - {endDate} <span className="text-gray-300 mx-1">|</span> {role.employmentType || 'Full-time'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 leading-relaxed">{role.roleDescription || 'No description provided.'}</p>
+                                  </div>
+                                );
+                              })}
                           </div>
                         </div>
                       ))
