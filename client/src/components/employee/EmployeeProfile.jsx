@@ -355,7 +355,7 @@ const EmployeeProfile = () => {
         try {
           const token = localStorage.getItem('employeeToken');
           if (token) {
-            await fetch('http://localhost:5000/api/employee/profile', {
+            await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',

@@ -23,7 +23,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       setIsLoading(true);
       setErrors({});
       try {
-        const res = await fetch('http://localhost:5000/api/employee/auth/google', {
+        const res = await fetch('https://hr-website-kzdw.onrender.com/api/employee/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: tokenResponse.access_token })
@@ -110,7 +110,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/employee/auth/register', {
+      const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, mobile, location: location?.label || location }),

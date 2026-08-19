@@ -104,7 +104,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch('http://localhost:5000/api/employee/profile', {
+        const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -157,7 +157,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch('http://localhost:5000/api/employee/profile', {
+        const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

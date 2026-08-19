@@ -16,7 +16,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
     const fetchUnreadCount = async () => {
       if (!localStorage.getItem('employeeToken')) return;
       try {
-        const res = await fetch('http://localhost:5000/api/employee/messages/unread-count', {
+        const res = await fetch('https://hr-website-kzdw.onrender.com/api/employee/messages/unread-count', {
           headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
         });
         const data = await res.json();
