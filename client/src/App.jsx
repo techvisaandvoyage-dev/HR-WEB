@@ -8,6 +8,7 @@ import EmployeeOnboarding from './components/employee/EmployeeOnboarding';
 import EmployerLoginModal from './components/employer/EmployerLoginModal';
 import EmployerRegisterModal from './components/employer/EmployerRegisterModal';
 import MyJobs from './components/employee/myjobs/MyJobs';
+import EmployeeMessages from './components/employee/messages/EmployeeMessages';
 import EmployerDashboard from './components/employer/dashboard/EmployerDashboard';
 import LocationAutocomplete from './components/common/LocationAutocomplete';
 import { dummyJobs } from './data/dummyJobs';
@@ -530,6 +531,11 @@ function App() {
         <Route 
           path="/my-jobs" 
           element={isLoggedIn && userRole === 'employee' ? <MyJobs jobs={jobs} /> : <Navigate to="/" />} 
+        />
+
+        <Route 
+          path="/employee/messages" 
+          element={isLoggedIn && userRole === 'employee' ? <EmployeeMessages /> : <Navigate to="/" />} 
         />
 
         {/* Employer Routes */}

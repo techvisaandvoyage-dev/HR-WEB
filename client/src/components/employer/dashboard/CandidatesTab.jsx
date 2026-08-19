@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DateRangePicker from '../../common/DateRangePicker';
 
 const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const initialJob = location.state?.jobTitle || 'All Jobs';
   const [selectedJob, setSelectedJob] = useState(initialJob);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
@@ -119,12 +120,12 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            {selectedJob === 'All Jobs' ? 'Candidates' : selectedJob}
+            {selectedJob === 'All Jobs' ? 'Applications' : selectedJob}
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             {selectedJob !== 'All Jobs' 
-              ? `Showing candidates for ${selectedJob}` 
-              : 'Browse and manage all candidates who have applied.'}
+              ? `Showing applications for ${selectedJob}` 
+              : 'Browse and manage all applications.'}
           </p>
         </div>
       </div>
@@ -144,7 +145,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                   type="text" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search candidates by name or email..." 
+                  placeholder="Search applications by name or email..." 
                   className="w-full pl-9 pr-4 py-2 border border-[#ECECEC] rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all placeholder-gray-400"
                 />
               </div>
@@ -371,9 +372,12 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                       </button>
                                       <button 
-                                        onClick={(e) => { e.stopPropagation(); console.log("Open notes"); }}
+                                        onClick={(e) => { 
+                                          e.stopPropagation(); 
+                                          navigate('/employer/messages', { state: { initialEmployee: cand } });
+                                        }}
                                         className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md transition-colors" 
-                                        title="Notes"
+                                        title="Message"
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                                       </button>

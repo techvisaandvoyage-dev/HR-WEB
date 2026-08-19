@@ -105,7 +105,7 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
 
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-1 w-1/4 shrink-0">
-                    <Link to="/employer/candidates" state={{ jobTitle: job.title }} className="p-2 text-gray-400 hover:text-[#29953f] hover:bg-green-50 rounded-lg transition-colors flex" title="View Candidates">
+                    <Link to="/employer/applications" state={{ jobTitle: job.title }} className="p-2 text-gray-400 hover:text-[#29953f] hover:bg-green-50 rounded-lg transition-colors flex" title="View Applications">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     </Link>
                     <button onClick={() => setSelectedJob(job)} className="hidden lg:flex p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors" title="Job Info">
@@ -277,11 +277,11 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
             {/* Sidebar Footer Actions (Fixed) */}
             <div className="mt-6 pt-6 border-t border-gray-100 flex gap-3 shrink-0">
               <Link 
-                to="/employer/candidates" 
+                to="/employer/applications" 
                 state={{ jobTitle: selectedJob.title }}
                 className="w-full py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm text-center"
               >
-                View Candidates
+                View Applications
               </Link>
             </div>
 

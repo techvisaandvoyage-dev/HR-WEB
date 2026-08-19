@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const EmployeeNavbar = ({ jobs = [] }) => {
+const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -9,6 +9,30 @@ const EmployeeNavbar = ({ jobs = [] }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
+  
+  const [totalUnread, setTotalUnread] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!localStorage.getItem('employeeToken')) return;
+      try {
+        const res = await fetch('http://localhost:5000/api/employee/messages/unread-count', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setTotalUnread(data.count);
+        }
+      } catch (err) {
+        console.error("Error fetching unread count:", err);
+      }
+    };
+    fetchUnreadCount();
+    
+    // Optional: could poll every minute, or rely on socket/refresh. Just fetching once on mount for now.
+    // const interval = setInterval(fetchUnreadCount, 60000);
+    // return () => clearInterval(interval);
+  }, [refreshUnread]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -104,6 +128,18 @@ const EmployeeNavbar = ({ jobs = [] }) => {
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
             </svg>
+          </button>
+
+          {/* Messages (Chat) */}
+          <button onClick={() => navigate('/employee/messages')} className="hidden md:block text-gray-700 hover:text-black transition-colors relative" title="Messages">
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+            {totalUnread > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
+                {totalUnread > 9 ? '9+' : totalUnread}
+              </span>
+            )}
           </button>
 
           {/* Notifications (Bell) */}
@@ -202,11 +238,18 @@ const EmployeeNavbar = ({ jobs = [] }) => {
         </button>
 
         {/* Messages */}
-        <button onClick={() => navigate('/messages')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/messages' ? 'text-green-600' : 'text-gray-500'}`}>
-          {currentPath === '/messages' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
-          <svg className="w-6 h-6 mb-1" fill={currentPath === '/messages' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/messages' ? '0' : '2'}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
+        <button onClick={() => navigate('/employee/messages')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/employee/messages' ? 'text-green-600' : 'text-gray-500'}`}>
+          {currentPath === '/employee/messages' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
+          <div className="relative">
+            <svg className="w-6 h-6 mb-1" fill={currentPath === '/employee/messages' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/employee/messages' ? '0' : '2'}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            {totalUnread > 0 && (
+              <span className="absolute -top-1 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {totalUnread > 9 ? '9+' : totalUnread}
+              </span>
+            )}
+          </div>
           <span className="text-[11px] font-medium">Messages</span>
         </button>
 
