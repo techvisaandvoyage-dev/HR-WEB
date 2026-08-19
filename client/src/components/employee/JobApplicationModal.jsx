@@ -163,7 +163,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
             try {
               const token = localStorage.getItem('employeeToken');
               if (token) {
-                await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
+                await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/profile', {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',

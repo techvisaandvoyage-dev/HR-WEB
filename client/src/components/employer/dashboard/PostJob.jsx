@@ -32,7 +32,7 @@ const PostJob = ({ addJob }) => {
       try {
         const token = localStorage.getItem('employerToken');
         if (!token) return;
-        const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/auth/me', {
+        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/me', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -514,7 +514,7 @@ const PostJob = ({ addJob }) => {
                   };
                   
                   try {
-                    const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/jobs', {
+                    const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/jobs', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',

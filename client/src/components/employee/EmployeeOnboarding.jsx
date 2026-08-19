@@ -104,7 +104,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
+        const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -157,7 +157,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch('https://hr-website-kzdw.onrender.com/api/employee/profile', {
+        const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

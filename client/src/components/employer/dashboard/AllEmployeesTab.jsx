@@ -15,7 +15,7 @@ const AllEmployeesTab = () => {
         const token = localStorage.getItem('employerToken');
         if (!token) throw new Error('No employer token found');
 
-        const res = await fetch('https://hr-website-kzdw.onrender.com/api/employer/employees', {
+        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/employees', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
