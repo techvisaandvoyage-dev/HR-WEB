@@ -29,6 +29,14 @@ const EmployeeSchema = new mongoose.Schema({
     default: ''
   },
   // Profile Fields
+  designation: {
+    type: String,
+    default: ''
+  },
+  totalExperience: {
+    type: String,
+    default: ''
+  },
   brief: {
     type: String,
     default: ''

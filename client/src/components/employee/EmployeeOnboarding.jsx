@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomMonthPicker from '../common/CustomMonthPicker';
+import CustomDropdown from '../common/CustomDropdown';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -66,6 +67,8 @@ const EmployeeOnboarding = () => {
       phone: '',
       email: '',
       brief: '',
+      designation: '',
+      totalExperience: '',
       
       qualifications: [
         { educationType: '', board: '', startYear: '', endYear: '', percentage: '', schoolMedium: '', university: '', course: '', gradingSystem: '', isPrimary: false }
@@ -123,6 +126,12 @@ const EmployeeOnboarding = () => {
   };
 
   const handleNext = () => {
+    if (currentStep === 1) {
+      if (!formData.designation || !formData.totalExperience) {
+        alert("Designation / Role and Total Experience are required to continue.");
+        return;
+      }
+    }
     if (currentStep === 4) {
       const p = formData.professionalDetails || {};
       if (!formData.isFresher && (!p.currentDesignation || !p.currentSalary)) {
@@ -249,6 +258,37 @@ const EmployeeOnboarding = () => {
         <div>
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Email (Read Only)</label>
           <input type="email" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Designation / Role <span className="text-red-500">*</span></label>
+          <CustomDropdown 
+            options={[
+              "Software Engineer", "Senior Software Engineer", "Frontend Developer", 
+              "Backend Developer", "Full Stack Developer", "Mobile App Developer",
+              "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer",
+              "UI/UX Designer", "Product Manager", "Project Manager", "Business Analyst",
+              "QA Engineer / Tester", "HR Executive", "HR Manager", "Marketing Executive",
+              "Sales Executive", "Accountant", "Operations Manager", "Customer Support",
+              "Other"
+            ].map(role => ({ value: role, label: role }))}
+            value={formData.designation}
+            onChange={(val) => setFormData({...formData, designation: val})}
+            placeholder="Select Designation / Role"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Total Experience <span className="text-red-500">*</span></label>
+          <CustomDropdown 
+            options={[
+              "Fresher",
+              "Less than 1 Year",
+              "1 Year",
+              ...[...Array(29)].map((_, i) => `${i + 2} Years`)
+            ].map(exp => ({ value: exp, label: exp }))}
+            value={formData.totalExperience}
+            onChange={(val) => setFormData({...formData, totalExperience: val})}
+            placeholder="Select Total Experience"
+          />
         </div>
         <div className="col-span-2">
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Brief about yourself</label>
@@ -464,11 +504,18 @@ const EmployeeOnboarding = () => {
                 </button>
               </div>
               <div className="space-y-6">
-                      <div className="flex justify-between items-center mb-2">
+                      <div className="flex flex-col items-start gap-3 mb-6">
                         <label className="text-sm font-medium text-gray-700">Are you a Fresher?</label>
-                        <button type="button" onClick={() => setFormData({...formData, isFresher: !formData.isFresher})} className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${formData.isFresher ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                          {formData.isFresher ? '✓ Yes, I am a Fresher' : 'No, I have experience'}
-                        </button>
+                        <div className="flex items-center gap-6">
+                          <label className="flex items-center cursor-pointer group">
+                            <input type="radio" name="isFresher_onboarding" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Yes, I am a Fresher</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer group">
+                            <input type="radio" name="isFresher_onboarding" value="no" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === false} onChange={() => setFormData({...formData, isFresher: false})} />
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>No, I have experience</span>
+                          </label>
+                        </div>
                       </div>
                       
                       {!formData.isFresher && (

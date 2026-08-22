@@ -92,6 +92,8 @@ const loginEmployee = async (req, res) => {
         phone: employee.mobile,
         brief: employee.brief || '',
         avatar: employee.avatar || '',
+        designation: employee.designation || '',
+        totalExperience: employee.totalExperience || '',
         isFresher: employee.isFresher,
         qualifications: employee.qualifications || [],
         experience: employee.experience || [],

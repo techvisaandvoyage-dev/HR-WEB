@@ -37,8 +37,8 @@ const AllEmployeesTab = () => {
     fetchEmployees();
   }, []);
 
-  const allDesignations = [...new Set(employees.map(emp => emp.professionalDetails?.currentDesignation).filter(Boolean))].sort();
-
+  const allDesignations = [...new Set(employees.map(emp => emp.designation).filter(Boolean))].sort();
+  const allExperiences = [...new Set(employees.map(emp => emp.totalExperience).filter(Boolean))].sort();
   const clearFilters = () => {
     setSearchQuery('');
     setExperienceFilter('All');
@@ -58,13 +58,12 @@ const AllEmployeesTab = () => {
 
     // Experience Filter
     if (experienceFilter !== 'All') {
-      if (experienceFilter === 'Fresher' && !emp.isFresher) return false;
-      if (experienceFilter === 'Experienced' && emp.isFresher) return false;
+      if (emp.totalExperience !== experienceFilter) return false;
     }
 
     // Designation Filter
     if (designationFilter !== 'All') {
-      if (emp.professionalDetails?.currentDesignation !== designationFilter) return false;
+      if (emp.designation !== designationFilter) return false;
     }
 
     return true;
@@ -115,9 +114,8 @@ const AllEmployeesTab = () => {
                 value={experienceFilter}
                 onChange={(e) => setExperienceFilter(e.target.value)}
               >
-                <option value="All">All</option>
-                <option value="Fresher">Fresher</option>
-                <option value="Experienced">Experienced</option>
+                <option value="All">All Exp</option>
+                {allExperiences.map(exp => <option key={exp} value={exp}>{exp}</option>)}
               </select>
               <div className="pointer-events-none absolute right-4 text-[#888888]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -155,6 +153,7 @@ const AllEmployeesTab = () => {
               <thead>
                 <tr className="text-xs text-gray-400 border-b border-gray-100">
                   <th className="px-6 py-4 font-semibold pb-4">Employee</th>
+                  <th className="px-6 py-4 font-semibold pb-4">Role & Exp</th>
                   <th className="px-6 py-4 font-semibold pb-4">Phone</th>
                   <th className="px-6 py-4 font-semibold pb-4">Location</th>
                   <th className="px-6 py-4 font-semibold pb-4">Account Created</th>
@@ -173,6 +172,12 @@ const AllEmployeesTab = () => {
                           <h4 className="font-bold text-gray-900 text-sm">{emp.name}</h4>
                           <p className="text-xs text-gray-500 mt-0.5">{emp.email}</p>
                         </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-800 text-sm">{emp.designation || 'Not specified'}</span>
+                        <span className="text-xs text-gray-500 mt-0.5">{emp.totalExperience ? `${emp.totalExperience} Exp.` : 'N/A Exp.'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 font-medium">

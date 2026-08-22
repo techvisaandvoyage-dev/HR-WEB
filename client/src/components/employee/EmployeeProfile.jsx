@@ -200,6 +200,13 @@ const designationOptions = [
   { value: 'Other', label: 'Other Designation' }
 ];
 
+const experienceOptions = [
+  { value: "Fresher", label: "Fresher" },
+  { value: "Less than 1 Year", label: "Less than 1 Year" },
+  { value: "1 Year", label: "1 Year" },
+  ...[...Array(29)].map((_, i) => ({ value: `${i + 2} Years`, label: `${i + 2} Years` }))
+];
+
 const salaryTypeOptions = [
   { value: 'Yearly', label: 'Yearly' },
   { value: 'Monthly', label: 'Monthly' },
@@ -1646,7 +1653,16 @@ const EmployeeProfile = () => {
                     <label className="block text-sm font-bold text-gray-900 mb-1.5">LinkedIn Profile URL <span className="text-red-500">*</span></label>
                     <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={p.linkedinUrl || ''} onChange={e => setP('linkedinUrl', e.target.value)} />
                   </div>
-                  <div className="col-span-1 md:col-span-2 mt-2">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Total Experience <span className="text-red-500">*</span></label>
+                    <CustomDropdown
+                      options={experienceOptions}
+                      value={formData.totalExperience || ''}
+                      onChange={val => setFormData({...formData, totalExperience: val})}
+                      placeholder="Select Total Experience"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-1 mt-2">
                     <div className="mb-6 flex gap-4">
                       <div className="flex-1">
                         <label className="block text-xs font-bold text-gray-700 mb-1.5">Salary Type</label>

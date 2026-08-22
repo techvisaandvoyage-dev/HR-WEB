@@ -670,11 +670,18 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                 </button>
               </div>
               <div className="space-y-6">
-                      <div className="flex justify-between items-center mb-2">
+                      <div className="flex flex-col items-start gap-3 mb-6">
                         <label className="text-sm font-medium text-gray-700">Are you a Fresher?</label>
-                        <button type="button" onClick={() => setFormData({...formData, isFresher: !formData.isFresher})} className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${formData.isFresher ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                          {formData.isFresher ? '✓ Yes, I am a Fresher' : 'No, I have experience'}
-                        </button>
+                        <div className="flex items-center gap-6">
+                          <label className="flex items-center cursor-pointer group">
+                            <input type="radio" name="isFresher_jobapp" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Yes, I am a Fresher</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer group">
+                            <input type="radio" name="isFresher_jobapp" value="no" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === false} onChange={() => setFormData({...formData, isFresher: false})} />
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>No, I have experience</span>
+                          </label>
+                        </div>
                       </div>
                       
                       {!formData.isFresher && (

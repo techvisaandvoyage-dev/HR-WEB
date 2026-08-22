@@ -15,6 +15,8 @@ const getProfile = async (req, res) => {
         phone: employee.mobile,
         brief: employee.brief || '',
         avatar: employee.avatar || '',
+        designation: employee.designation || '',
+        totalExperience: employee.totalExperience || '',
         isFresher: employee.isFresher,
         qualifications: employee.qualifications || [],
         experience: employee.experience || [],
@@ -62,6 +64,8 @@ const updateProfile = async (req, res) => {
 
       employee.brief = req.body.brief !== undefined ? req.body.brief : employee.brief;
       employee.avatar = req.body.avatar !== undefined ? req.body.avatar : employee.avatar;
+      employee.designation = req.body.designation !== undefined ? req.body.designation : employee.designation;
+      employee.totalExperience = req.body.totalExperience !== undefined ? req.body.totalExperience : employee.totalExperience;
       employee.isFresher = req.body.isFresher !== undefined ? req.body.isFresher : employee.isFresher;
       
       if (req.body.qualifications) {
@@ -93,6 +97,8 @@ const updateProfile = async (req, res) => {
           phone: updatedEmployee.mobile,
           brief: updatedEmployee.brief,
           avatar: updatedEmployee.avatar,
+          designation: updatedEmployee.designation,
+          totalExperience: updatedEmployee.totalExperience,
           isFresher: updatedEmployee.isFresher,
           qualifications: updatedEmployee.qualifications,
           experience: updatedEmployee.experience,
