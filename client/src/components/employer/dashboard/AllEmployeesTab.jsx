@@ -37,8 +37,24 @@ const AllEmployeesTab = () => {
     fetchEmployees();
   }, []);
 
-  const allDesignations = [...new Set(employees.map(emp => emp.designation).filter(Boolean))].sort();
-  const allExperiences = [...new Set(employees.map(emp => emp.totalExperience).filter(Boolean))].sort();
+  const allDesignations = [
+    'Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 'Backend Developer', 
+    'Full Stack Developer', 'Mobile App Developer', 'DevOps Engineer', 'QA Engineer', 
+    'System Administrator', 'Database Administrator', 'Cloud Architect', 'Data Scientist', 
+    'Data Analyst', 'Machine Learning Engineer', 'Network Engineer', 'Security Analyst', 
+    'Product Manager', 'Project Manager', 'Scrum Master', 'UI/UX Designer', 'Graphic Designer', 
+    'Product Designer', 'Marketing Executive', 'Digital Marketing Manager', 'Content Writer', 
+    'SEO Specialist', 'Sales Manager', 'Sales Executive', 'Business Development Manager', 
+    'Account Manager', 'Customer Success Manager', 'HR Manager', 'HR Executive', 
+    'Talent Acquisition Specialist', 'Financial Analyst', 'Accountant', 'Operations Manager', 
+    'Business Analyst', 'Consultant', 'Legal Advisor', 'Other'
+  ].sort();
+  const allExperiences = [
+    "Fresher",
+    "Less than 1 Year",
+    "1 Year",
+    ...Array.from({ length: 29 }, (_, i) => `${i + 2} Years`)
+  ];
   const clearFilters = () => {
     setSearchQuery('');
     setExperienceFilter('All');
