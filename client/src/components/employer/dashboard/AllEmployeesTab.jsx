@@ -72,7 +72,7 @@ const AllEmployeesTab = () => {
         const token = localStorage.getItem('employerToken');
         if (!token) throw new Error('No employer token found');
 
-        const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/employees`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/employees`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

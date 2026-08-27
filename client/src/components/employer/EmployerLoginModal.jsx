@@ -74,7 +74,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/check-mobile`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/check-mobile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile }),
@@ -98,7 +98,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       setLoading(true);
       setErrors({});
       try {
-        const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/google`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: tokenResponse.access_token })
@@ -130,7 +130,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setSuccessMessage('');
 
     try {
-      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/forgot-password/otp`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/forgot-password/otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier }),
@@ -211,7 +211,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/reset-password`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier, password: newPassword }),

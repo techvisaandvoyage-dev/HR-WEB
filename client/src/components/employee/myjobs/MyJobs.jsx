@@ -37,7 +37,7 @@ const MyJobs = ({ jobs = [] }) => {
         const token = localStorage.getItem('employeeToken');
         if (!token) return;
         
-        const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();

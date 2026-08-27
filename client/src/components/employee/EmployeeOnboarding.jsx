@@ -247,7 +247,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -306,7 +306,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

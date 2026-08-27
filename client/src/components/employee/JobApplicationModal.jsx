@@ -167,7 +167,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
             try {
               const token = localStorage.getItem('employeeToken');
               if (token) {
-                await fetch(`\${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+                await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
