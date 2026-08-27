@@ -26,7 +26,7 @@ const CompanyProfileTab = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('employerToken');
-      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/me`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -79,7 +79,7 @@ const CompanyProfileTab = () => {
         hiringFor: companyData.hiringFor
       };
       
-      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/update`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/update`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -24,7 +24,7 @@ const EmployeeMessages = () => {
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employee/messages/conversations`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/conversations`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
       });
       const data = await res.json();
@@ -49,7 +49,7 @@ const EmployeeMessages = () => {
 
   const fetchMessages = async (applicationId) => {
     try {
-      const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employee/messages/applications/${applicationId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/applications/${applicationId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
       });
       const data = await res.json();
@@ -70,7 +70,7 @@ const EmployeeMessages = () => {
     if (!newMessage.trim() || !selectedChat) return;
     
     try {
-      const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employee/messages/applications/${selectedChat.applicationId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/applications/${selectedChat.applicationId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
