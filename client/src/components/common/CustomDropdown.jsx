@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const CustomDropdown = ({ options, value, onChange, placeholder = "Select option" }) => {
+const CustomDropdown = ({ options, value, onChange, placeholder = "Select option", error = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
@@ -9,9 +9,11 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        // If user typed a custom value and clicked outside, save it
         if (isOpen && searchTerm.trim() !== '') {
-          onChange(searchTerm);
+          const exactMatch = options.find(opt => opt.label.toLowerCase() === searchTerm.trim().toLowerCase() && !opt.isGroupLabel);
+          if (exactMatch) {
+            onChange(exactMatch.value);
+          }
         }
         setIsOpen(false);
         setSearchTerm('');
@@ -39,7 +41,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
     <div className="relative w-full text-left font-sans" ref={wrapperRef}>
       <div
         onClick={() => setIsOpen(true)}
-        className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200'} rounded-xl text-gray-700 flex justify-between items-center transition-all shadow-sm cursor-text`}
+        className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : (error ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200')} rounded-xl text-gray-700 flex justify-between items-center transition-all shadow-sm cursor-text`}
       >
         <div className="flex-1 overflow-hidden pr-2">
           {isOpen ? (
@@ -52,7 +54,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   if (searchTerm.trim() !== '') {
-                    onChange(searchTerm);
+                    onChange(searchTerm.trim());
                     setIsOpen(false);
                     setSearchTerm('');
                   }
@@ -81,7 +83,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
       </div>
 
       {isOpen && (
-        <div className="absolute z-[150] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-72 overflow-y-auto custom-scrollbar py-2">
+        <div className="absolute z-40 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-72 overflow-y-auto custom-scrollbar py-2">
           {filteredOptions.some(opt => !opt.isGroupLabel) ? filteredOptions.map((opt, idx) => {
             if (opt.isGroupLabel) {
               // Hide group label if it has no children matching the search
@@ -109,9 +111,23 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
               </div>
             );
           }) : (
-            <div className="px-5 py-4 text-sm text-gray-500 text-center font-medium">
-              Press Enter to add "{searchTerm}"
-            </div>
+            searchTerm.trim() !== '' ? (
+              <div
+                onClick={() => {
+                  onChange(searchTerm);
+                  setIsOpen(false);
+                  setSearchTerm('');
+                }}
+                className="px-5 py-3 cursor-pointer text-[14px] text-green-700 hover:bg-green-50 transition-colors font-medium flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                Add "{searchTerm}"
+              </div>
+            ) : (
+              <div className="px-5 py-4 text-sm text-gray-500 text-center font-medium">
+                No options found
+              </div>
+            )
           )}
         </div>
       )}

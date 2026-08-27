@@ -39,7 +39,7 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       setIsLoading(true);
       setErrors({});
       try {
-        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/google', {
+        const res = await fetch('http://localhost:5000/api/employer/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: tokenResponse.access_token })
@@ -133,6 +133,17 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
   const handleBasicDetailsSubmit = async (e) => {
     e.preventDefault();
 
+    const newErrors = {};
+    if (!fullName.trim()) newErrors.fullName = 'Full name is required';
+    if (!email.trim()) newErrors.email = 'Official email ID is required';
+    if (!password) newErrors.password = 'Password is required';
+    if (!confirmPassword) newErrors.confirmPassword = 'Confirm password is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     const isValidPassword = password.length >= 8 && 
                             /[a-z]/.test(password) && 
                             /[A-Z]/.test(password) && 
@@ -140,20 +151,21 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                             /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
     if (!isValidPassword) {
-      setError('Please ensure password meets all requirements');
+      setErrors({ password: 'Please ensure password meets all requirements' });
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
+      setErrors({ confirmPassword: "Passwords don't match" });
       return;
     }
     
     setLoading(true);
+    setErrors({});
     setError('');
 
     try {
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/check-email', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/check-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -175,16 +187,31 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
 
   const handleFinalRegister = async (e) => {
     e.preventDefault();
+    
+    const newErrors = {};
+    if (!companyName.trim()) newErrors.companyName = 'Company name is required';
+    if (!industry) newErrors.industry = 'Industry is required';
+    if (!employees) newErrors.employees = 'Number of employees is required';
+    if (!designation) newErrors.designation = 'Designation is required';
+    if (!location) newErrors.location = 'Location is required';
+    if (!aboutCompany.trim()) newErrors.aboutCompany = 'About company is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords don't match");
       return;
     }
     
     setLoading(true);
+    setErrors({});
     setError('');
 
     try {
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/register', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -268,7 +295,7 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 {/* Mobile Number Input */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">
-                    Mobile number
+                    Mobile number <span className="text-red-500">*</span>
                   </label>
                   <div className="flex items-center px-5 py-3.5 rounded-full border border-gray-300 focus-within:border-palette-400 focus-within:ring-1 focus-within:ring-palette-400 transition-all bg-white">
                     <span className="text-gray-900 font-semibold mr-1.5 whitespace-nowrap shrink-0 flex items-center gap-1">
@@ -452,43 +479,45 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 {/* Full Name Input */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">
-                    Full name
+                    Full name <span className="text-red-500">*</span>
                   </label>
                   <input 
                     type="text" 
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => { setFullName(e.target.value); if(errors.fullName) setErrors({...errors, fullName: ''}); }}
                     placeholder="Name as per PAN"
-                    className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
+                    className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.fullName ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                   />
+                  {errors.fullName && <p className="text-red-500 text-xs ml-2">{errors.fullName}</p>}
                 </div>
 
                 {/* Email Input */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">
-                    Official email ID
+                    Official email ID <span className="text-red-500">*</span>
                   </label>
                   <input 
                     type="email" 
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); if(errors.email) setErrors({...errors, email: ''}); }}
                     placeholder="Enter email ID"
-                    className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
+                    className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                   />
+                  {errors.email && <p className="text-red-500 text-xs ml-2">{errors.email}</p>}
                 </div>
 
                 {/* Password Input */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">
-                    Create password
+                    Create password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => { setPassword(e.target.value); if(errors.password) setErrors({...errors, password: ''}); }}
                       placeholder="Enter new password"
-                      className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
+                      className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                     />
                     <button 
                       type="button"
@@ -507,6 +536,7 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                       )}
                     </button>
                   </div>
+                  {errors.password && <p className="text-red-500 text-xs mt-1 ml-2">{errors.password}</p>}
                   {password && (
                     <div className="mt-3 space-y-2 text-sm font-medium px-1">
                       <div className={`flex items-center gap-2 ${/[a-z]/.test(password) ? 'text-green-500' : 'text-gray-400'}`}>
@@ -556,15 +586,15 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 {/* Re-enter Password Input */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-bold text-gray-900">
-                    Re-enter password
+                    Re-enter password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input 
                       type={showConfirmPassword ? "text" : "password"} 
                       value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); setErrors({...errors, confirmPassword: ''}); }}
+                      onChange={(e) => { setConfirmPassword(e.target.value); if(errors.confirmPassword) setErrors({...errors, confirmPassword: ''}); }}
                       placeholder="Re-enter password"
-                      className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.confirmPassword ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
+                      className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                     />
                     <button 
                       type="button"
@@ -583,6 +613,7 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                       )}
                     </button>
                   </div>
+                  {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 ml-2">{errors.confirmPassword}</p>}
                 </div>
 
                 {error && <div className="text-red-500 text-sm font-semibold text-center">{error}</div>}
@@ -693,52 +724,58 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Enter Company Name</label>
-                  <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company Name" className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400" />
+                  <label className="block text-sm font-bold text-gray-900">Enter Company Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={companyName} onChange={(e) => { setCompanyName(e.target.value); if(errors.companyName) setErrors({...errors, companyName: ''}); }} placeholder="Company Name" className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.companyName ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`} />
+                  {errors.companyName && <p className="text-red-500 text-xs ml-2">{errors.companyName}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Select industry</label>
+                  <label className="block text-sm font-bold text-gray-900">Select industry <span className="text-red-500">*</span></label>
                   <CustomDropdown 
                     options={industryOptions} 
                     value={industry} 
-                    onChange={setIndustry} 
+                    onChange={(val) => { setIndustry(val); if(errors.industry) setErrors({...errors, industry: ''}); }}
                     placeholder="Select industry" 
                   />
+                  {errors.industry && <p className="text-red-500 text-xs ml-2">{errors.industry}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Number of Employees</label>
+                  <label className="block text-sm font-bold text-gray-900">Number of Employees <span className="text-red-500">*</span></label>
                   <CustomDropdown 
                     options={employeeOptions} 
                     value={employees} 
-                    onChange={setEmployees} 
+                    onChange={(val) => { setEmployees(val); if(errors.employees) setErrors({...errors, employees: ''}); }}
                     placeholder="Select range" 
                   />
+                  {errors.employees && <p className="text-red-500 text-xs ml-2">{errors.employees}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Your designation</label>
+                  <label className="block text-sm font-bold text-gray-900">Your designation <span className="text-red-500">*</span></label>
                   <CustomDropdown 
                     options={designationOptions} 
                     value={designation} 
-                    onChange={setDesignation} 
+                    onChange={(val) => { setDesignation(val); if(errors.designation) setErrors({...errors, designation: ''}); }}
                     placeholder="e.g. HR Manager" 
                   />
+                  {errors.designation && <p className="text-red-500 text-xs ml-2">{errors.designation}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Company Location</label>
+                  <label className="block text-sm font-bold text-gray-900">Company Location <span className="text-red-500">*</span></label>
                   <LocationAutocomplete 
                     value={location}
-                    onChange={setLocation}
+                    onChange={(val) => { setLocation(val); if(errors.location) setErrors({...errors, location: ''}); }}
                     placeholder="e.g. Mumbai, Maharashtra"
                   />
+                  {errors.location && <p className="text-red-500 text-xs ml-2">{errors.location}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">About Company</label>
-                  <textarea value={aboutCompany} onChange={(e) => setAboutCompany(e.target.value)} placeholder="Briefly describe your company..." rows="3" className="w-full px-5 py-3.5 rounded-2xl border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400 resize-none"></textarea>
+                  <label className="block text-sm font-bold text-gray-900">About Company <span className="text-red-500">*</span></label>
+                  <textarea value={aboutCompany} onChange={(e) => { setAboutCompany(e.target.value); if(errors.aboutCompany) setErrors({...errors, aboutCompany: ''}); }} placeholder="Briefly describe your company..." rows="3" className={`w-full px-5 py-3.5 rounded-2xl border outline-none transition-all placeholder-gray-400 resize-none ${errors.aboutCompany ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}></textarea>
+                  {errors.aboutCompany && <p className="text-red-500 text-xs ml-2">{errors.aboutCompany}</p>}
                 </div>
 
                 <div className="space-y-1.5">

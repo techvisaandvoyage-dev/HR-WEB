@@ -74,7 +74,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/check-mobile', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/check-mobile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile }),
@@ -98,7 +98,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       setLoading(true);
       setErrors({});
       try {
-        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/google', {
+        const res = await fetch('http://localhost:5000/api/employer/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: tokenResponse.access_token })
@@ -130,7 +130,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setSuccessMessage('');
 
     try {
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/login', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/forgot-password/otp', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/forgot-password/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier }),
@@ -211,7 +211,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     }
     setLoading(true);
     try {
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/reset-password', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: forgotIdentifier, password: newPassword }),
@@ -262,7 +262,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                 <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleForgotGetOtp(); }}>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">Reset Password</h3>
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-900">Mobile Number or Email</label>
+                    <label className="block text-sm font-bold text-gray-900">Mobile Number or Email <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
                       value={forgotIdentifier}
@@ -301,7 +301,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                     <p className="text-sm text-gray-500">Code sent to <span className="font-bold text-gray-900">{forgotIdentifier}</span></p>
                   </div>
                   <div className="space-y-3 animate-fade-in pb-2">
-                    <label className="block text-sm font-bold text-gray-900 text-center">Enter 4-digit OTP</label>
+                    <label className="block text-sm font-bold text-gray-900 text-center">Enter 4-digit OTP <span className="text-red-500">*</span></label>
                     <div className="flex justify-center gap-3">
                       {otp.map((data, index) => (
                         <input
@@ -338,7 +338,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   <h3 className="text-lg font-bold text-gray-900 mb-2">Set New Password</h3>
                   
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-900">New Password</label>
+                    <label className="block text-sm font-bold text-gray-900">New Password <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input 
                         type={showResetPassword ? "text" : "password"} 
@@ -411,7 +411,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-900">Re-enter New Password</label>
+                    <label className="block text-sm font-bold text-gray-900">Re-enter New Password <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <input 
                         type={showResetPassword ? "text" : "password"} 
@@ -472,7 +472,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                 
                 {/* Email Input */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Email ID</label>
+                  <label className="block text-sm font-bold text-gray-900">Email ID <span className="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     value={email}
@@ -484,7 +484,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
 
                 {/* Password Input */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Password</label>
+                  <label className="block text-sm font-bold text-gray-900">Password <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
@@ -547,7 +547,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                 
                 {/* Mobile Input */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Mobile Number</label>
+                  <label className="block text-sm font-bold text-gray-900">Mobile Number <span className="text-red-500">*</span></label>
                   <div className="flex items-center px-5 py-3.5 rounded-full border border-gray-300 focus-within:border-palette-400 focus-within:ring-1 focus-within:ring-palette-400 transition-all bg-white">
                     <span className="text-gray-900 font-semibold mr-1.5 whitespace-nowrap shrink-0">+91 -</span>
                     <input 
@@ -576,7 +576,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                     <div className="text-center mb-4">
                       <p className="text-sm text-gray-500">Code sent to <span className="font-bold text-gray-900">+91 {mobile}</span></p>
                     </div>
-                    <label className="block text-sm font-bold text-gray-900 text-center">Enter 4-digit OTP</label>
+                    <label className="block text-sm font-bold text-gray-900 text-center">Enter 4-digit OTP <span className="text-red-500">*</span></label>
                     <div className="flex justify-center gap-3">
                       {otp.map((data, index) => (
                         <input

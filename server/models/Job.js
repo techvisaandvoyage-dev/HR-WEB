@@ -37,7 +37,12 @@ const JobSchema = new mongoose.Schema({
     qualification: String,
     stream: String,
     jobCategory: String
-  }
+  },
+  screeningQuestions: [{
+    question: String,
+    type: { type: String, enum: ['Yes/No', 'Short Text'] },
+    required: { type: Boolean, default: true }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Job', JobSchema);

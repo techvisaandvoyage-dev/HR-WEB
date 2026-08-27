@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import LocationAutocomplete from '../../common/LocationAutocomplete';
+import CustomDropdown from '../../common/CustomDropdown';
 
 const formatIndianNumber = (numStr) => {
   const digits = String(numStr).replace(/\D/g, '');
@@ -23,7 +24,8 @@ const PostJob = ({ addJob }) => {
   const [jobData, setJobData] = useState({
     title: '', employmentType: '', experience: '', openings: '', location: '', workplaceType: '',
     about: '', responsibilities: '', skills: '',
-    qualification: '', stream: '', category: ''
+    qualification: '', stream: '', category: '',
+    screeningQuestions: []
   });
   const [employerDetails, setEmployerDetails] = useState({ companyName: 'My Company', industry: 'Company' });
 
@@ -32,7 +34,7 @@ const PostJob = ({ addJob }) => {
       try {
         const token = localStorage.getItem('employerToken');
         if (!token) return;
-        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/me', {
+        const res = await fetch('http://localhost:5000/api/employer/auth/me', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -53,10 +55,11 @@ const PostJob = ({ addJob }) => {
     { id: 1, name: 'Job Details' },
     { id: 2, name: 'Job Description' },
     { id: 3, name: 'Salary & Requirements' },
-    { id: 4, name: 'Preview' }
+    { id: 4, name: 'Screening Questions' },
+    { id: 5, name: 'Preview' }
   ];
 
-  const handleNext = () => setActiveStep(prev => Math.min(prev + 1, 4));
+  const handleNext = () => setActiveStep(prev => Math.min(prev + 1, 5));
   const handleBack = () => setActiveStep(prev => Math.max(prev - 1, 1));
 
   const handleSkillKeyDown = (e) => {
@@ -144,46 +147,50 @@ const PostJob = ({ addJob }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Employment Type</label>
-                  <select 
+                  <CustomDropdown
+                    options={[
+                      { value: "Full-time", label: "Full-time" },
+                      { value: "Part-time", label: "Part-time" },
+                      { value: "Contract", label: "Contract" }
+                    ]}
                     value={jobData.employmentType}
-                    onChange={(e) => setJobData({...jobData, employmentType: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors appearance-none bg-white"
-                  >
-                    <option value="">Select employment type</option>
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                  </select>
+                    onChange={(val) => setJobData({...jobData, employmentType: val})}
+                    placeholder="Select employment type"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Experience</label>
-                  <select 
+                  <CustomDropdown
+                    options={[
+                      { value: '0 - 1 Yrs', label: '0 - 1 Yrs (Fresher)' },
+                      { value: '2 - 3 Yrs', label: '2 - 3 Yrs' },
+                      { value: '4 - 6 Yrs', label: '4 - 6 Yrs' },
+                      { value: '7 - 10 Yrs', label: '7 - 10 Yrs' },
+                      { value: '11 - 15 Yrs', label: '11 - 15 Yrs' },
+                      { value: '16 - 20 Yrs', label: '16 - 20 Yrs' },
+                      { value: '21 - 25 Yrs', label: '21 - 25 Yrs' },
+                      { value: '25+ yrs', label: '25+ yrs' }
+                    ]}
                     value={jobData.experience}
-                    onChange={(e) => setJobData({...jobData, experience: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors appearance-none bg-white"
-                  >
-                    <option value="">Select experience</option>
-                    <option value="0-1 Years (Fresher)">0-1 Years (Fresher)</option>
-                    <option value="1-3 Years">1-3 Years</option>
-                    <option value="3-5 Years">3-5 Years</option>
-                    <option value="5+ Years">5+ Years</option>
-                  </select>
+                    onChange={(val) => setJobData({...jobData, experience: val})}
+                    placeholder="Select experience"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Workplace Type</label>
-                  <select 
+                  <CustomDropdown
+                    options={[
+                      { value: "On-site", label: "On-site" },
+                      { value: "Hybrid", label: "Hybrid" },
+                      { value: "Remote", label: "Remote" }
+                    ]}
                     value={jobData.workplaceType}
-                    onChange={(e) => setJobData({...jobData, workplaceType: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors appearance-none bg-white"
-                  >
-                    <option value="">Select type</option>
-                    <option value="On-site">On-site</option>
-                    <option value="Hybrid">Hybrid</option>
-                    <option value="Remote">Remote</option>
-                  </select>
+                    onChange={(val) => setJobData({...jobData, workplaceType: val})}
+                    placeholder="Select type"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Openings</label>
@@ -413,8 +420,106 @@ const PostJob = ({ addJob }) => {
             </div>
           )}
 
-          {/* Step 4: Preview */}
+          {/* Step 4: Screening Questions */}
           {activeStep === 4 && (
+            <div className="flex-1 space-y-6 animate-in fade-in">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Applicant Screening Questions</h3>
+                  <p className="text-sm text-gray-500 mt-1">Add optional questions for candidates to answer when applying.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setJobData({
+                      ...jobData, 
+                      screeningQuestions: [...jobData.screeningQuestions, { question: '', type: 'Yes/No', required: true }]
+                    });
+                  }}
+                  className="px-4 py-2 bg-green-50 text-[#29953f] hover:bg-green-100 rounded-lg text-sm font-bold transition-colors"
+                >
+                  + Add Question
+                </button>
+              </div>
+
+              {jobData.screeningQuestions.length === 0 ? (
+                <div className="text-center p-10 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                  <p className="text-gray-500 font-medium">No screening questions added yet.</p>
+                  <p className="text-xs text-gray-400 mt-1">Add questions to pre-screen applicants (e.g., "Do you have a Bachelor's degree?").</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {jobData.screeningQuestions.map((q, index) => (
+                    <div key={index} className="p-5 border border-gray-200 rounded-xl bg-white space-y-4 relative group">
+                      <button 
+                        onClick={() => {
+                          const newQs = [...jobData.screeningQuestions];
+                          newQs.splice(index, 1);
+                          setJobData({...jobData, screeningQuestions: newQs});
+                        }}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Remove Question"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Question {index + 1}</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g., How many years of React experience do you have?" 
+                          value={q.question}
+                          onChange={(e) => {
+                            const newQs = [...jobData.screeningQuestions];
+                            newQs[index].question = e.target.value;
+                            setJobData({...jobData, screeningQuestions: newQs});
+                          }}
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] transition-colors pr-10"
+                        />
+                      </div>
+
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="block text-xs font-bold text-gray-700 mb-1.5">Response Type</label>
+                          <select
+                            value={q.type}
+                            onChange={(e) => {
+                              const newQs = [...jobData.screeningQuestions];
+                              newQs[index].type = e.target.value;
+                              setJobData({...jobData, screeningQuestions: newQs});
+                            }}
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors bg-white"
+                          >
+                            <option value="Yes/No">Yes/No</option>
+                            <option value="Short Text">Short Text</option>
+                          </select>
+                        </div>
+                        <div className="flex items-end pb-1">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={q.required}
+                              onChange={(e) => {
+                                const newQs = [...jobData.screeningQuestions];
+                                newQs[index].required = e.target.checked;
+                                setJobData({...jobData, screeningQuestions: newQs});
+                              }}
+                              className="w-4 h-4 text-[#29953f] rounded border-gray-300 focus:ring-[#29953f]"
+                            />
+                            <span className="text-sm font-bold text-gray-700">Required</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 5: Preview */}
+          {activeStep === 5 && (
             <div className="flex-1 space-y-6 animate-in fade-in">
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 h-full flex flex-col">
                 <h3 className="text-xl font-bold text-gray-900 border-b border-gray-200 pb-4 mb-4">Job Preview</h3>
@@ -469,6 +574,21 @@ const PostJob = ({ addJob }) => {
                       <span className="text-sm text-gray-500">No specific skills requested.</span>
                     )}
                   </div>
+
+                  {/* Screening Questions Preview */}
+                  {jobData.screeningQuestions && jobData.screeningQuestions.length > 0 && (
+                    <div className="pt-4 border-t border-gray-100">
+                      <h5 className="text-sm font-bold text-gray-900 mb-3">Screening Questions ({jobData.screeningQuestions.length})</h5>
+                      <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                        {jobData.screeningQuestions.map((q, idx) => (
+                          <li key={idx}>
+                            <span className="font-medium">{q.question || 'Empty Question'}</span> 
+                            <span className="text-xs text-gray-400 ml-2">({q.type}{q.required ? ', Required' : ', Optional'})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -483,13 +603,13 @@ const PostJob = ({ addJob }) => {
             ) : <div></div>}
             
             <div className="flex gap-4">
-              {activeStep === 4 && (
+              {activeStep === 5 && (
                 <button onClick={() => setActiveStep(1)} className="px-6 py-2.5 text-sm font-bold text-[#29953f] bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
                   Edit
                 </button>
               )}
               <button 
-                onClick={activeStep === 4 ? async () => {
+                onClick={activeStep === 5 ? async () => {
                   const newJob = {
                     company: employerDetails.companyName,
                     companyInitial: employerDetails.companyName.charAt(0).toUpperCase() || "C",
@@ -499,6 +619,7 @@ const PostJob = ({ addJob }) => {
                     employerProvided: true,
                     easyApply: true,
                     qualifications: skillsList.map(s => ({ name: s, met: true })),
+                    screeningQuestions: jobData.screeningQuestions,
                     details: {
                       workLocation: jobData.workplaceType || "On-site",
                       jobTitle: jobData.title || 'Untitled Job',
@@ -514,7 +635,7 @@ const PostJob = ({ addJob }) => {
                   };
                   
                   try {
-                    const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/jobs', {
+                    const res = await fetch('http://localhost:5000/api/employer/jobs', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
@@ -538,7 +659,7 @@ const PostJob = ({ addJob }) => {
                 } : handleNext}
                 className="px-8 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm"
               >
-                {activeStep === 4 ? 'Publish Job' : 'Continue'}
+                {activeStep === 5 ? 'Publish Job' : 'Continue'}
               </button>
             </div>
           </div>

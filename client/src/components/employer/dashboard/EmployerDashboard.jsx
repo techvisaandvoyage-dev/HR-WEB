@@ -18,7 +18,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, rawAppsData, up
     const fetchUnreadCount = async () => {
       if (!localStorage.getItem('employerToken')) return;
       try {
-        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/messages/unread-count', {
+        const res = await fetch('http://localhost:5000/api/employer/messages/unread-count', {
           headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
         });
         const data = await res.json();

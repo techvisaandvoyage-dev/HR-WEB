@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import CustomDropdown from '../common/CustomDropdown';
+import LocationAutocomplete from '../common/LocationAutocomplete';
+import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -28,14 +30,152 @@ const formatIndianNumber = (val) => {
   return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
 };
 
+const educationTypeOptions = [
+  { value: '10th', label: '10th' },
+  { value: '12th', label: '12th' },
+  { value: 'Graduation/Diploma', label: 'Graduation/Diploma' },
+  { value: 'Masters/Post-Graduation', label: 'Masters/Post-Graduation' },
+  { value: 'Accounting Degree', label: 'Accounting Degree' },
+  { value: 'Post Graduate Accounting & Finance', label: 'Post Graduate Accounting & Finance' },
+  { value: 'Professional Qualification', label: 'Professional Qualification' },
+  { value: 'Accounting Certification', label: 'Accounting Certification' },
+  { value: 'Diploma', label: 'Diploma' },
+  { value: 'Accounting Software', label: 'Accounting Software' },
+  { value: 'Taxation', label: 'Taxation' },
+  { value: 'Audit', label: 'Audit' },
+  { value: 'Finance', label: 'Finance' },
+  { value: 'International Accounting', label: 'International Accounting' },
+  { value: 'Other', label: 'Other' },
+];
+
+const diplomaCourses = [
+  { value: 'Diploma in Accounting', label: 'Diploma in Accounting' },
+  { value: 'Diploma in Financial Accounting', label: 'Diploma in Financial Accounting' },
+  { value: 'Diploma in Taxation', label: 'Diploma in Taxation' },
+  { value: 'Diploma in Computerized Accounting', label: 'Diploma in Computerized Accounting' },
+  { value: 'Polytechnic / Technical Diploma', label: 'Polytechnic / Technical Diploma' },
+  { value: 'ITI', label: 'ITI' }
+];
+
+const accountingDegrees = [
+  { value: 'B.Com', label: 'B.Com' },
+  { value: 'B.Com (Hons.)', label: 'B.Com (Hons.)' },
+  { value: 'BBA in Finance', label: 'BBA in Finance' },
+  { value: 'BBA in Accounting', label: 'BBA in Accounting' },
+  { value: 'B.Sc. in Accounting', label: 'B.Sc. in Accounting' },
+  { value: 'Bachelor of Accounting / B.Acc.', label: 'Bachelor of Accounting / B.Acc.' },
+  { value: 'BMS in Finance / Accounting', label: 'BMS in Finance / Accounting' }
+];
+
+const postGradAccountingDegrees = [
+  { value: 'M.Com', label: 'M.Com' },
+  { value: 'M.Com in Accounting', label: 'M.Com in Accounting' },
+  { value: 'M.Com in Finance', label: 'M.Com in Finance' },
+  { value: 'MBA in Finance', label: 'MBA in Finance' },
+  { value: 'MBA in Accounting', label: 'MBA in Accounting' },
+  { value: 'M.Sc. in Accounting / Finance', label: 'M.Sc. in Accounting / Finance' },
+  { value: 'Master of Accounting / M.Acc.', label: 'Master of Accounting / M.Acc.' },
+  { value: 'PG Diploma in Accounting', label: 'PG Diploma in Accounting' },
+  { value: 'PG Diploma in Finance', label: 'PG Diploma in Finance' }
+];
+
+const professionalQualifications = [
+  { value: 'CA', label: 'CA – Chartered Accountant' },
+  { value: 'CMA', label: 'CMA – Cost and Management Accountant' },
+  { value: 'CS', label: 'CS – Company Secretary' },
+  { value: 'ACCA', label: 'ACCA' },
+  { value: 'CPA', label: 'CPA – Certified Public Accountant' },
+  { value: 'CFA', label: 'CFA – Chartered Financial Analyst' },
+  { value: 'CIMA', label: 'CIMA' },
+  { value: 'CIA', label: 'CIA – Certified Internal Auditor' },
+  { value: 'CGMA', label: 'CGMA' }
+];
+
+const accountingSoftwareCourses = [
+  { value: 'Tally / TallyPrime', label: 'Tally / TallyPrime' },
+  { value: 'Tally + GST', label: 'Tally + GST' },
+  { value: 'SAP FI', label: 'SAP FI' },
+  { value: 'SAP FICO', label: 'SAP FICO' },
+  { value: 'QuickBooks', label: 'QuickBooks' },
+  { value: 'Zoho Books', label: 'Zoho Books' },
+  { value: 'BUSY Accounting Software', label: 'BUSY Accounting Software' },
+  { value: 'Oracle Financials', label: 'Oracle Financials' },
+  { value: 'Sage Accounting', label: 'Sage Accounting' },
+  { value: 'Advanced Excel for Accounting', label: 'Advanced Excel for Accounting' },
+  { value: 'MS Excel for Accounting', label: 'MS Excel for Accounting' }
+];
+
+const taxationCourses = [
+  { value: 'GST', label: 'GST' },
+  { value: 'GST Certification', label: 'GST Certification' },
+  { value: 'Income Tax', label: 'Income Tax' },
+  { value: 'Corporate Taxation', label: 'Corporate Taxation' },
+  { value: 'Tax Planning', label: 'Tax Planning' },
+  { value: 'Indirect Taxation', label: 'Indirect Taxation' },
+  { value: 'Transfer Pricing', label: 'Transfer Pricing' }
+];
+
+const auditCourses = [
+  { value: 'Financial Accounting', label: 'Financial Accounting' },
+  { value: 'Advanced Financial Accounting', label: 'Advanced Financial Accounting' },
+  { value: 'Corporate Accounting', label: 'Corporate Accounting' },
+  { value: 'Cost Accounting', label: 'Cost Accounting' },
+  { value: 'Management Accounting', label: 'Management Accounting' },
+  { value: 'Auditing', label: 'Auditing' },
+  { value: 'Internal Audit', label: 'Internal Audit' },
+  { value: 'Forensic Accounting', label: 'Forensic Accounting' },
+  { value: 'Payroll Accounting', label: 'Payroll Accounting' },
+  { value: 'Financial Reporting', label: 'Financial Reporting' },
+  { value: 'Accounts Payable (AP)', label: 'Accounts Payable (AP)' },
+  { value: 'Accounts Receivable (AR)', label: 'Accounts Receivable (AR)' },
+  { value: 'Bank Reconciliation', label: 'Bank Reconciliation' }
+];
+
+const financeCourses = [
+  { value: 'Financial Analysis', label: 'Financial Analysis' },
+  { value: 'Financial Modeling', label: 'Financial Modeling' },
+  { value: 'Corporate Finance', label: 'Corporate Finance' },
+  { value: 'Investment Banking', label: 'Investment Banking' },
+  { value: 'Equity Research', label: 'Equity Research' },
+  { value: 'Treasury Management', label: 'Treasury Management' },
+  { value: 'Risk Management', label: 'Risk Management' },
+  { value: 'Financial Planning', label: 'Financial Planning' }
+];
+
+const internationalAccountingCourses = [
+  { value: 'IFRS', label: 'IFRS' },
+  { value: 'Ind AS', label: 'Ind AS' },
+  { value: 'US GAAP', label: 'US GAAP' },
+  { value: 'International Accounting', label: 'International Accounting' }
+];
+
+const accountingCertifications = [
+  { value: 'Certificate in Accounting', label: 'Certificate in Accounting' },
+  { value: 'Certificate in Financial Accounting', label: 'Certificate in Financial Accounting' },
+  { value: 'Certificate in GST', label: 'Certificate in GST' },
+  { value: 'Certificate in Tally', label: 'Certificate in Tally' },
+  { value: 'Certificate in Income Tax', label: 'Certificate in Income Tax' },
+  { value: 'Certificate in Payroll', label: 'Certificate in Payroll' },
+  { value: 'DCA', label: 'DCA' },
+  { value: 'PGDCA', label: 'PGDCA' },
+  { value: 'Other Accounting Qualification', label: 'Other Accounting Qualification' },
+  { value: 'Other Finance Qualification', label: 'Other Finance Qualification' }
+];
+
+
+
 const EmployeeOnboarding = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 6;
-  const [expandedEduIndex, setExpandedEduIndex] = useState(0);
-  const [expandedExpIndex, setExpandedExpIndex] = useState(0);
-  const [skillInput, setSkillInput] = useState('');
+  const [expandedEduIndex, setExpandedEduIndex] = useState(-1);
+  const [expandedExpIndex, setExpandedExpIndex] = useState(-1);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [expError, setExpError] = useState('');
+  const [expFieldErrors, setExpFieldErrors] = useState({});
+  const [eduError, setEduError] = useState('');
+  const [eduFieldErrors, setEduFieldErrors] = useState({});
+  const [skillInput, setSkillInput] = useState('');
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('userProfile');
@@ -107,7 +247,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/profile', {
+        const response = await fetch('http://localhost:5000/api/employee/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -127,8 +267,8 @@ const EmployeeOnboarding = () => {
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!formData.designation || !formData.totalExperience) {
-        alert("Designation / Role and Total Experience are required to continue.");
+      if (!formData.firstName || !formData.lastName || !formData.phone || !formData.designation || !formData.industry || !formData.totalExperience || !formData.location) {
+        alert("Please fill in all mandatory fields (marked with *) to continue.");
         return;
       }
     }
@@ -166,7 +306,7 @@ const EmployeeOnboarding = () => {
     try {
       const token = localStorage.getItem('employeeToken');
       if (token) {
-        const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/profile', {
+        const response = await fetch('http://localhost:5000/api/employee/profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -218,7 +358,7 @@ const EmployeeOnboarding = () => {
       const val = skillInput.trim();
       if (val) {
         const p = formData.professionalDetails || {};
-        const currentSkills = p.skills ? p.skills.split(',').filter(s => s.trim()) : [];
+        const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : [];
         if (!currentSkills.includes(val)) {
           setFormData({...formData, professionalDetails: {...p, skills: [...currentSkills, val].join(', ')}});
         }
@@ -260,17 +400,38 @@ const EmployeeOnboarding = () => {
           <input type="email" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Designation / Role <span className="text-red-500">*</span></label>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Industry <span className="text-red-500">*</span></label>
           <CustomDropdown 
             options={[
-              "Software Engineer", "Senior Software Engineer", "Frontend Developer", 
-              "Backend Developer", "Full Stack Developer", "Mobile App Developer",
-              "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer",
-              "UI/UX Designer", "Product Manager", "Project Manager", "Business Analyst",
-              "QA Engineer / Tester", "HR Executive", "HR Manager", "Marketing Executive",
-              "Sales Executive", "Accountant", "Operations Manager", "Customer Support",
-              "Other"
-            ].map(role => ({ value: role, label: role }))}
+              'IT & Software', 'BPO/KPO', 'Finance & Accounts', 'Healthcare',
+              'Manufacturing', 'Education', 'Marketing', 'Sales', 'HR', 'Other'
+            ].sort().map(ind => ({ value: ind, label: ind }))}
+            value={formData.industry}
+            onChange={(val) => setFormData({...formData, industry: val, designation: ''})}
+            placeholder="Select Industry"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Designation / Role <span className="text-red-500">*</span></label>
+          <CustomDropdown 
+            options={(() => {
+              const rolesByIndustry = {
+                'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
+                'BPO/KPO': ["Customer Support Executive", "Technical Support Executive", "BPO Executive", "Team Leader", "Quality Analyst", "Process Trainer", "Operations Manager"],
+                'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
+                'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
+                'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
+                'Education': ["Teacher", "Professor", "Assistant Professor", "Principal", "Admin", "Counselor", "Curriculum Developer", "Librarian"],
+                'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
+                'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
+                'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"]
+              };
+              if (formData.industry && rolesByIndustry[formData.industry]) {
+                return [...rolesByIndustry[formData.industry], "Other"].map(role => ({ value: role, label: role }));
+              }
+              const allRoles = [...new Set(Object.values(rolesByIndustry).flat()), "Product Manager", "Project Manager", "Business Analyst", "Operations Manager", "Other"];
+              return allRoles.sort().map(role => ({ value: role, label: role }));
+            })()}
             value={formData.designation}
             onChange={(val) => setFormData({...formData, designation: val})}
             placeholder="Select Designation / Role"
@@ -280,14 +441,34 @@ const EmployeeOnboarding = () => {
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Total Experience <span className="text-red-500">*</span></label>
           <CustomDropdown 
             options={[
-              "Fresher",
-              "Less than 1 Year",
-              "1 Year",
-              ...[...Array(29)].map((_, i) => `${i + 2} Years`)
-            ].map(exp => ({ value: exp, label: exp }))}
+              { value: '0 - 1 Yrs', label: '0 - 1 Yrs' },
+              { value: '2 - 3 Yrs', label: '2 - 3 Yrs' },
+              { value: '4 - 6 Yrs', label: '4 - 6 Yrs' },
+              { value: '7 - 10 Yrs', label: '7 - 10 Yrs' },
+              { value: '11 - 15 Yrs', label: '11 - 15 Yrs' },
+              { value: '16 - 20 Yrs', label: '16 - 20 Yrs' },
+              { value: '21 - 25 Yrs', label: '21 - 25 Yrs' },
+              { value: '25+ yrs', label: '25+ yrs' }
+            ]}
             value={formData.totalExperience}
             onChange={(val) => setFormData({...formData, totalExperience: val})}
             placeholder="Select Total Experience"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location <span className="text-red-500">*</span></label>
+          <LocationAutocomplete 
+            value={formData.location || ''}
+            onChange={(val) => setFormData({...formData, location: val?.label || val})}
+            placeholder="e.g. Pune, Maharashtra"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location</label>
+          <LocationAutocomplete 
+            value={formData.preferredLocation || ''}
+            onChange={(val) => setFormData({...formData, preferredLocation: val?.label || val})}
+            placeholder="e.g. Mumbai, Maharashtra"
           />
         </div>
         <div className="col-span-2">
@@ -304,21 +485,166 @@ const EmployeeOnboarding = () => {
     </div>
   );
 
+  const handleAddEducation = (e) => {
+    e.preventDefault();
+    const qualifications = formData.qualifications || [];
+    if (qualifications.length > 0) {
+      const lastEdu = qualifications[qualifications.length - 1];
+      let isValid = true;
+      const errors = {};
+      if (!lastEdu.educationType) {
+        isValid = false;
+        errors.educationType = true;
+      } else {
+        const isSchool = lastEdu.educationType === '10th' || lastEdu.educationType === '12th';
+        if (isSchool) {
+          if (!lastEdu.board) errors.board = true;
+          if (!lastEdu.endYear) errors.endYear = true;
+          if (!lastEdu.schoolMedium) errors.schoolMedium = true;
+          if (!lastEdu.percentage) errors.percentage = true;
+        } else {
+          if (!lastEdu.university) errors.university = true;
+          if (!lastEdu.course) errors.course = true;
+          if (!lastEdu.courseType) errors.courseType = true;
+          if (!lastEdu.startYear) errors.startYear = true;
+          if (!lastEdu.endYear) errors.endYear = true;
+          if (lastEdu.gradingSystem && lastEdu.gradingSystem !== 'Not Applicable' && !lastEdu.percentage) errors.percentage = true;
+        }
+        if (Object.keys(errors).length > 0) isValid = false;
+      }
+      setEduFieldErrors(errors);
+      if (!isValid) {
+        setEduError('Fill details');
+        return;
+      }
+    }
+    setEduError('');
+    setEduFieldErrors({});
+    setExpandedEduIndex(qualifications.length);
+    addArrayItem('qualifications', { educationType: '', board: '', endYear: '', schoolMedium: '', percentage: '', university: '', course: '', startYear: '', gradingSystem: '', isPrimary: false });
+  };
+
+  const handleSaveEducation = (e) => {
+    if (e) e.preventDefault();
+    const qualifications = formData.qualifications || [];
+    if (qualifications.length > 0 && expandedEduIndex >= 0 && expandedEduIndex < qualifications.length) {
+      const currentEdu = qualifications[expandedEduIndex];
+      let isValid = true;
+      const errors = {};
+      if (!currentEdu.educationType) {
+        isValid = false;
+        errors.educationType = true;
+      } else {
+        const isSchool = currentEdu.educationType === '10th' || currentEdu.educationType === '12th';
+        if (isSchool) {
+          if (!currentEdu.board) errors.board = true;
+          if (!currentEdu.endYear) errors.endYear = true;
+          if (!currentEdu.schoolMedium) errors.schoolMedium = true;
+          if (!currentEdu.percentage) errors.percentage = true;
+        } else {
+          if (!currentEdu.university) errors.university = true;
+          if (!currentEdu.course) errors.course = true;
+          if (!currentEdu.courseType) errors.courseType = true;
+          if (!currentEdu.startYear) errors.startYear = true;
+          if (!currentEdu.endYear) errors.endYear = true;
+          if (currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable' && !currentEdu.percentage) errors.percentage = true;
+        }
+        if (Object.keys(errors).length > 0) isValid = false;
+      }
+      setEduFieldErrors(errors);
+      if (!isValid) {
+        setEduError('Fill details');
+        return;
+      }
+    }
+    setEduError('');
+    setEduFieldErrors({});
+    setExpandedEduIndex(-1);
+  };
+
+  const handleAddExperience = (e) => {
+    if (e) e.preventDefault();
+    const experience = formData.experience || [];
+    if (experience.length > 0) {
+      const lastExp = experience[experience.length - 1];
+      let isValid = true;
+      const errors = { roles: [] };
+      if (!lastExp.companyName) {
+        isValid = false;
+        errors.companyName = true;
+      }
+      if (lastExp.roles) {
+        lastExp.roles.forEach((role, idx) => {
+          const roleErrors = {};
+          if (!role.jobTitle) { isValid = false; roleErrors.jobTitle = true; }
+          if (!role.employmentType) { isValid = false; roleErrors.employmentType = true; }
+          if (!role.joiningDate) { isValid = false; roleErrors.joiningDate = true; }
+          if (!role.currentCompany && !role.leavingDate) { isValid = false; roleErrors.leavingDate = true; }
+          errors.roles[idx] = roleErrors;
+        });
+      }
+      setExpFieldErrors(errors);
+      if (!isValid) {
+        setExpError('Fill details');
+        return;
+      }
+    }
+    setExpError('');
+    setExpFieldErrors({});
+    setExpandedExpIndex(experience.length);
+    addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] });
+  };
+
+  const handleSaveExperience = (e) => {
+    if (e) e.preventDefault();
+    const experience = formData.experience || [];
+    if (experience.length > 0 && expandedExpIndex >= 0 && expandedExpIndex < experience.length) {
+      const currentExp = experience[expandedExpIndex];
+      let isValid = true;
+      const errors = { roles: [] };
+      if (!currentExp.companyName) {
+        isValid = false;
+        errors.companyName = true;
+      }
+      if (currentExp.roles) {
+        currentExp.roles.forEach((role, idx) => {
+          const roleErrors = {};
+          if (!role.jobTitle) { isValid = false; roleErrors.jobTitle = true; }
+          if (!role.employmentType) { isValid = false; roleErrors.employmentType = true; }
+          if (!role.joiningDate) { isValid = false; roleErrors.joiningDate = true; }
+          if (!role.currentCompany && !role.leavingDate) { isValid = false; roleErrors.leavingDate = true; }
+          errors.roles[idx] = roleErrors;
+        });
+      }
+      setExpFieldErrors(errors);
+      if (!isValid) {
+        setExpError('Fill details');
+        return;
+      }
+    }
+    setExpError('');
+    setExpFieldErrors({});
+    setExpandedExpIndex(-1);
+  };
+
   const Step2Education = () => { return (<div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
                 <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
                   <div>
                     <h3 className="text-xl font-bold text-gray-800">Education</h3>
                     <p className="text-sm text-gray-500 mt-1">Details like course, university, and more, help recruiters identify your educational background</p>
                   </div>
-                  <button type="button" onClick={() => { setExpandedEduIndex(formData.qualifications?.length || 0); addArrayItem('qualifications', { educationType: '', board: '', endYear: '', schoolMedium: '', percentage: '', university: '', course: '', startYear: '', gradingSystem: '', isPrimary: false }); }} className="text-green-500 hover:text-green-600 font-semibold text-sm">
-                    Add +
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {eduError && <span className="text-red-500 text-xs font-medium">{eduError}</span>}
+                    <button type="button" onClick={handleAddEducation} className="text-green-500 hover:text-green-600 font-semibold text-sm">
+                      Add +
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="space-y-6">
                   {(formData.qualifications || []).map((q, idx) => {
                     const isSchool = q.educationType === '10th' || q.educationType === '12th';
-                    const isHigher = q.educationType === 'Graduation/Diploma' || q.educationType === 'Masters/Post-Graduation';
+                    const isHigher = q.educationType && !isSchool;
                     
                     if (expandedEduIndex !== idx) {
                       return (
@@ -329,6 +655,9 @@ const EmployeeOnboarding = () => {
                                isSchool ? (q.educationType === '12th' ? 'Class XII' : 'Class X') : 
                                (q.educationType || 'Education')}
                             </h4>
+                            {q.isPrimary && (
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase tracking-wider">Primary</span>
+                            )}
                             <button type="button" onClick={() => setExpandedEduIndex(idx)} className="text-gray-400 hover:text-blue-600 transition-colors">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                             </button>
@@ -354,12 +683,19 @@ const EmployeeOnboarding = () => {
                         <div className="space-y-6 pt-2">
                           <div>
                             <label className="block text-sm font-bold text-gray-900 mb-1.5">Education <span className="text-red-500">*</span></label>
-                            <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.educationType || ''} onChange={e => updateArray('qualifications', idx, 'educationType', e.target.value)}>
+                            <select 
+                              className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.educationType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                              value={q.educationType || ''} 
+                              onChange={e => {
+                                updateArray('qualifications', idx, 'educationType', e.target.value);
+                                setEduFieldErrors({...eduFieldErrors, educationType: false});
+                                if (e.target.value) setEduError('');
+                              }}
+                            >
                               <option value="">Select education type</option>
-                              <option value="10th">10th</option>
-                              <option value="12th">12th</option>
-                              <option value="Graduation/Diploma">Graduation/Diploma</option>
-                              <option value="Masters/Post-Graduation">Masters/Post-Graduation</option>
+                              {educationTypeOptions.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
                             </select>
                           </div>
 
@@ -367,7 +703,7 @@ const EmployeeOnboarding = () => {
                             <>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Board <span className="text-red-500">*</span></label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.board || ''} onChange={e => updateArray('qualifications', idx, 'board', e.target.value)}>
+                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.board ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.board || ''} onChange={e => { updateArray('qualifications', idx, 'board', e.target.value); setEduFieldErrors({...eduFieldErrors, board: false}); }}>
                                   <option value="">Select board</option>
                                   <option value="CBSE">CBSE</option>
                                   <option value="ICSE">ICSE</option>
@@ -376,7 +712,7 @@ const EmployeeOnboarding = () => {
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Passing out year <span className="text-red-500">*</span></label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.endYear || ''} onChange={e => updateArray('qualifications', idx, 'endYear', e.target.value)}>
+                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
                                   <option value="">Select passing out year</option>
                                   {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
                                     <option key={year} value={year}>{year}</option>
@@ -385,7 +721,7 @@ const EmployeeOnboarding = () => {
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">School medium <span className="text-red-500">*</span></label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.schoolMedium || ''} onChange={e => updateArray('qualifications', idx, 'schoolMedium', e.target.value)}>
+                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.schoolMedium ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.schoolMedium || ''} onChange={e => { updateArray('qualifications', idx, 'schoolMedium', e.target.value); setEduFieldErrors({...eduFieldErrors, schoolMedium: false}); }}>
                                   <option value="">Select medium</option>
                                   <option value="English">English</option>
                                   <option value="Hindi">Hindi</option>
@@ -394,7 +730,7 @@ const EmployeeOnboarding = () => {
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
-                                <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="% marks of 100 maximum" value={q.percentage || ''} onChange={e => updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, ''))} />
+                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="% marks of 100 maximum" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
                               </div>
                             </>
                           )}
@@ -403,35 +739,57 @@ const EmployeeOnboarding = () => {
                             <>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute <span className="text-red-500">*</span></label>
-                                <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Select university/institute" value={q.university || ''} onChange={e => updateArray('qualifications', idx, 'university', e.target.value)} />
+                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="Select university/institute" value={q.university || ''} onChange={e => { updateArray('qualifications', idx, 'university', e.target.value); setEduFieldErrors({...eduFieldErrors, university: false}); }} />
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.course || ''} onChange={e => updateArray('qualifications', idx, 'course', e.target.value)}>
+                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.course ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.course || ''} onChange={e => { updateArray('qualifications', idx, 'course', e.target.value); setEduFieldErrors({...eduFieldErrors, course: false}); }}>
                                   <option value="">Select course</option>
-                                  <option value="B.Tech/B.E.">B.Tech/B.E.</option>
-                                  <option value="B.Sc">B.Sc</option>
-                                  <option value="B.Com">B.Com</option>
-                                  <option value="B.A">B.A</option>
-                                  <option value="BBA">BBA</option>
-                                  <option value="M.Tech/M.E.">M.Tech/M.E.</option>
-                                  <option value="MBA/PGDM">MBA/PGDM</option>
-                                  <option value="MCA">MCA</option>
+                                  {(() => {
+                                    const opts = q.educationType === 'Accounting Degree' ? accountingDegrees :
+                                      q.educationType === 'Post Graduate Accounting & Finance' ? postGradAccountingDegrees :
+                                      q.educationType === 'Professional Qualification' ? professionalQualifications :
+                                      q.educationType === 'Accounting Certification' ? accountingCertifications :
+                                      q.educationType === 'Diploma' ? diplomaCourses :
+                                      q.educationType === 'Accounting Software' ? accountingSoftwareCourses :
+                                      q.educationType === 'Taxation' ? taxationCourses :
+                                      q.educationType === 'Audit' ? auditCourses :
+                                      q.educationType === 'Finance' ? financeCourses :
+                                      q.educationType === 'International Accounting' ? internationalAccountingCourses :
+                                      null;
+                                      
+                                      if (opts) {
+                                        return opts.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>);
+                                      } else {
+                                        return (
+                                          <>
+                                            <option value="B.Tech/B.E.">B.Tech/B.E.</option>
+                                            <option value="B.Sc">B.Sc</option>
+                                            <option value="B.Com">B.Com</option>
+                                            <option value="B.A">B.A</option>
+                                            <option value="BBA">BBA</option>
+                                            <option value="M.Tech/M.E.">M.Tech/M.E.</option>
+                                            <option value="MBA/PGDM">MBA/PGDM</option>
+                                            <option value="MCA">MCA</option>
+                                          </>
+                                        );
+                                      }
+                                  })()}
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-3">Course type <span className="text-red-500">*</span></label>
+                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>Course type <span className="text-red-500">*</span></label>
                                 <div className="flex flex-wrap items-center gap-6">
                                   <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Full time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Full time'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <input type="radio" name={`courseType-${idx}`} value="Full time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Full time'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
                                     <span className={`ml-2.5 text-[15px] ${q.courseType === 'Full time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Full time</span>
                                   </label>
                                   <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Part time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Part time'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <input type="radio" name={`courseType-${idx}`} value="Part time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Part time'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
                                     <span className={`ml-2.5 text-[15px] ${q.courseType === 'Part time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Part time</span>
                                   </label>
                                   <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Correspondence/Distance learning" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Correspondence/Distance learning'} onChange={(e) => updateArray('qualifications', idx, 'courseType', e.target.value)} />
+                                    <input type="radio" name={`courseType-${idx}`} value="Correspondence/Distance learning" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Correspondence/Distance learning'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
                                     <span className={`ml-2.5 text-[15px] ${q.courseType === 'Correspondence/Distance learning' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Correspondence/Distance learning</span>
                                   </label>
                                 </div>
@@ -439,14 +797,14 @@ const EmployeeOnboarding = () => {
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration <span className="text-red-500">*</span></label>
                                 <div className="flex items-center gap-4">
-                                  <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.startYear || ''} onChange={e => updateArray('qualifications', idx, 'startYear', e.target.value)}>
+                                  <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.startYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.startYear || ''} onChange={e => { updateArray('qualifications', idx, 'startYear', e.target.value); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}>
                                     <option value="">Starting year</option>
                                     {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => (
                                       <option key={year} value={year}>{year}</option>
                                     ))}
                                   </select>
                                   <span className="font-bold text-gray-900">To</span>
-                                  <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.endYear || ''} onChange={e => updateArray('qualifications', idx, 'endYear', e.target.value)}>
+                                  <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
                                     <option value="">Ending year</option>
                                     {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
                                       <option key={year} value={year}>{year}</option>
@@ -461,25 +819,27 @@ const EmployeeOnboarding = () => {
                                   <option value="Scale 10 Grading System">Scale 10 Grading System</option>
                                   <option value="Scale 4 Grading System">Scale 4 Grading System</option>
                                   <option value="% Marks of 100 Maximum">% Marks of 100 Maximum</option>
+                                  <option value="Not Applicable">Not Applicable</option>
                                 </select>
                               </div>
-                              {q.gradingSystem && (
+                              {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
                                 <div>
                                   <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
-                                  <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, ''))} />
-                                </div>
-                              )}
-                              {q.educationType === 'Graduation/Diploma' && (
-                                <div className="flex items-center pt-2">
-                                  <input type="checkbox" id={`primary-grad-${idx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
-                                  <label htmlFor={`primary-grad-${idx}`} className="ml-3 text-gray-700 font-medium">Make this as my primary graduation/diploma</label>
+                                  <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
                                 </div>
                               )}
                             </>
                           )}
                           
+                          {q.educationType && (
+                            <div className="flex items-center pt-2 border-t border-gray-100 mt-4">
+                              <input type="checkbox" id={`primary-edu-${idx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
+                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium">Mark this as my primary education</label>
+                            </div>
+                          )}
+
                           <div className="flex justify-end mt-4">
-                            <button type="button" onClick={() => setExpandedEduIndex(-1)} className="px-6 py-2 rounded-full bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors shadow-sm">Save</button>
+                            <button type="button" onClick={handleSaveEducation} className="px-6 py-2 rounded-full bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors shadow-sm">Save</button>
                           </div>
                         </div>
                       </div>
@@ -487,9 +847,12 @@ const EmployeeOnboarding = () => {
                   })}
                   
                   <div className="pt-4">
-                    <button type="button" onClick={() => { setExpandedEduIndex(formData.qualifications?.length || 0); addArrayItem('qualifications', { educationType: '', board: '', endYear: '', schoolMedium: '', percentage: '', university: '', course: '', startYear: '', gradingSystem: '', isPrimary: false }); }} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                      Add +
-                    </button>
+                    <div className="flex items-center gap-3 mt-4 md:mt-0">
+                      {eduError && <span className="text-red-500 text-xs font-medium">{eduError}</span>}
+                      <button type="button" onClick={handleAddEducation} className="text-green-500 font-semibold hover:text-green-600 text-sm">
+                        Add +
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>); };
@@ -499,9 +862,12 @@ const EmployeeOnboarding = () => {
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">Work Experience</h3>
                 </div>
-                <button type="button" onClick={() => { setExpandedExpIndex(formData.experience?.length || 0); addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] }); }} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                  Add +
-                </button>
+                <div className="flex items-center gap-3">
+                  {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
+                  <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm">
+                    Add +
+                  </button>
+                </div>
               </div>
               <div className="space-y-6">
                       <div className="flex flex-col items-start gap-3 mb-6">
@@ -566,10 +932,11 @@ const EmployeeOnboarding = () => {
                                 <h4 className="font-semibold text-gray-700 pr-8">Company {cIdx + 1}</h4>
                                 <div>
                                   <label className="block text-sm font-bold text-gray-900 mb-1.5">Company Name <span className="text-red-500">*</span></label>
-                                  <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={exp.companyName || ''} onChange={e => {
+                                  <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={exp.companyName || ''} onChange={e => {
                                     const newExp = [...(formData.experience || [])];
                                     newExp[cIdx].companyName = e.target.value;
                                     setFormData({...formData, experience: newExp});
+                                    setExpFieldErrors({...expFieldErrors, companyName: false});
                                   }} />
                                 </div>
                                 <div className="relative border-l-2 border-green-500 ml-3 mt-8 space-y-8 pb-4">
@@ -591,18 +958,28 @@ const EmployeeOnboarding = () => {
                                         <div className="space-y-6 pt-2">
                                       <div>
                                         <label className="block text-sm font-bold text-gray-900 mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                                        <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.jobTitle || ''} onChange={e => {
+                                        <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.jobTitle || ''} onChange={e => {
                                           const newExp = [...(formData.experience || [])];
                                           newExp[cIdx].roles[rIdx].jobTitle = e.target.value;
                                           setFormData({...formData, experience: newExp});
+                                          if (expFieldErrors.roles?.[rIdx]?.jobTitle) {
+                                            const newErrors = {...expFieldErrors};
+                                            newErrors.roles[rIdx].jobTitle = false;
+                                            setExpFieldErrors(newErrors);
+                                          }
                                         }} />
                                       </div>
                                       <div>
                                         <label className="block text-sm font-bold text-gray-900 mb-1.5">Employment Type <span className="text-red-500">*</span></label>
-                                        <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.employmentType || ''} onChange={e => {
+                                        <select className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.employmentType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.employmentType || ''} onChange={e => {
                                           const newExp = [...(formData.experience || [])];
                                           newExp[cIdx].roles[rIdx].employmentType = e.target.value;
                                           setFormData({...formData, experience: newExp});
+                                          if (expFieldErrors.roles?.[rIdx]?.employmentType) {
+                                            const newErrors = {...expFieldErrors};
+                                            newErrors.roles[rIdx].employmentType = false;
+                                            setExpFieldErrors(newErrors);
+                                          }
                                         }}>
                                           <option value="">Select</option>
                                           <option value="Full-time">Full-time</option>
@@ -622,32 +999,46 @@ const EmployeeOnboarding = () => {
                                       <div className="space-y-6">
                                         <div>
                                           <label className="block text-sm font-bold text-gray-900 mb-1.5">Joining <span className="text-red-500">*</span></label>
-                                          <CustomMonthPicker
-                                            value={role.joiningDate || ''}
-                                            onChange={val => {
-                                              const newExp = [...(formData.experience || [])];
-                                              newExp[cIdx].roles[rIdx].joiningDate = val;
-                                              setFormData({...formData, experience: newExp});
-                                            }}
-                                            placeholder="Select joining date"
-                                          />
+                                          <div className={`${expFieldErrors.roles?.[rIdx]?.joiningDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
+                                            <CustomMonthPicker
+                                              value={role.joiningDate || ''}
+                                              onChange={val => {
+                                                const newExp = [...(formData.experience || [])];
+                                                newExp[cIdx].roles[rIdx].joiningDate = val;
+                                                setFormData({...formData, experience: newExp});
+                                                if (expFieldErrors.roles?.[rIdx]?.joiningDate) {
+                                                  const newErrors = {...expFieldErrors};
+                                                  newErrors.roles[rIdx].joiningDate = false;
+                                                  setExpFieldErrors(newErrors);
+                                                }
+                                              }}
+                                              placeholder="Select joining date"
+                                            />
+                                          </div>
                                         </div>
                                         {!role.currentCompany && (
                                           <div>
                                             <label className="block text-sm font-bold text-gray-900 mb-1.5">Leaving <span className="text-red-500">*</span></label>
-                                            <CustomMonthPicker
-                                              value={role.leavingDate || ''}
-                                              onChange={val => {
-                                                const newExp = [...(formData.experience || [])];
-                                                newExp[cIdx].roles[rIdx].leavingDate = val;
-                                                setFormData({...formData, experience: newExp});
-                                              }}
-                                              placeholder="Select leaving date"
-                                            />
+                                            <div className={`${expFieldErrors.roles?.[rIdx]?.leavingDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
+                                              <CustomMonthPicker
+                                                value={role.leavingDate || ''}
+                                                onChange={val => {
+                                                  const newExp = [...(formData.experience || [])];
+                                                  newExp[cIdx].roles[rIdx].leavingDate = val;
+                                                  setFormData({...formData, experience: newExp});
+                                                  if (expFieldErrors.roles?.[rIdx]?.leavingDate) {
+                                                    const newErrors = {...expFieldErrors};
+                                                    newErrors.roles[rIdx].leavingDate = false;
+                                                    setExpFieldErrors(newErrors);
+                                                  }
+                                                }}
+                                                placeholder="Select leaving date"
+                                              />
+                                            </div>
                                           </div>
                                         )}
                                       </div>
-                                      <div className="col-span-2">
+                                      <div className="col-span-2 mt-6">
                                         <label className="block text-sm font-bold text-gray-900 mb-1.5">Role Description</label>
                                         <textarea className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 h-24 resize-none outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.roleDescription || ''} onChange={e => {
                                           const newExp = [...(formData.experience || [])];
@@ -655,12 +1046,12 @@ const EmployeeOnboarding = () => {
                                           setFormData({...formData, experience: newExp});
                                         }} />
                                       </div>
-                                        </div>
-                                      </div>
                                     </div>
-                                  ))}
+                                  </div>
+                                </div>
+                              ))}
 
-                                  <div className="relative pl-6">
+                                <div className="relative pl-6">
                                     <div className="absolute -left-[7px] top-2 w-3 h-3 rounded-full bg-gray-300 border-2 border-gray-50"></div>
                                     <button type="button" onClick={() => {
                                       const newExp = [...(formData.experience || [])];
@@ -684,13 +1075,15 @@ const EmployeeOnboarding = () => {
                                       <option value="">Select</option>
                                       <option value="15 Days">15 Days</option>
                                       <option value="30 Days">30 Days</option>
+                                      <option value="45 Days">45 Days</option>
                                       <option value="60 Days">60 Days</option>
-                                      <option value="90+ Days">90+ Days</option>
+                                      <option value="90 Days">90 Days</option>
                                     </select>
                                   </div>
                                 )}
-                                <div className="flex justify-end mt-4">
-                                  <button type="button" onClick={() => setExpandedExpIndex(-1)} className="px-6 py-2 rounded-full bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors shadow-sm">Save</button>
+                                
+                                <div className="flex justify-end pt-4 mt-2">
+                                  <button type="button" onClick={handleSaveExperience} className="px-6 py-2 rounded-full bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors shadow-sm">Save</button>
                                 </div>
                               </div>
                             );
@@ -776,13 +1169,53 @@ const EmployeeOnboarding = () => {
           <div className="col-span-2">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">Skills <span className="text-red-500">*</span></label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {(p.skills ? p.skills.split(',').filter(s => s.trim()) : []).map(skill => (
+              {(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []).map(skill => (
                 <span key={skill} className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors" onClick={() => removeSkill(skill)} title="Click to remove">
                   {skill} <span className="text-[10px]">✕</span>
                 </span>
               ))}
             </div>
-            <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder="Type a skill and hit Enter" value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={handleSkillKeyDown} />
+            <CustomDropdown
+              options={allSkillsOptions}
+              value=""
+              onChange={val => {
+                if (val) {
+                  const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()).filter(s=>s) : [];
+                  if (!currentSkills.includes(val)) {
+                    currentSkills.push(val);
+                    setFormData({...formData, professionalDetails: {...p, skills: currentSkills.join(', ')}});
+                  }
+                }
+              }}
+              placeholder="Search or select a skill to add..."
+            />
+            {(() => {
+              const suggested = getSuggestedSkills(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []);
+              if (suggested.length === 0) return null;
+              return (
+                <div className="mt-5">
+                  <p className="text-[13px] text-gray-500 font-medium mb-3">Based on your current selection</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggested.map(suggestion => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => {
+                          const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()).filter(s=>s) : [];
+                          if (!currentSkills.includes(suggestion)) {
+                            currentSkills.push(suggestion);
+                            setFormData({...formData, professionalDetails: {...p, skills: currentSkills.join(', ')}});
+                          }
+                        }}
+                        className="px-4 py-2 bg-white text-[#64748B] rounded-full text-[13px] font-medium border border-gray-200 hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all flex items-center gap-1 shadow-sm"
+                      >
+                        {suggestion} <span className="text-lg leading-none font-normal">+</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">Major Achievements</label>
@@ -917,9 +1350,11 @@ const EmployeeOnboarding = () => {
         <div className="pt-6 pb-4 px-8 border-b border-gray-100 flex-shrink-0 bg-white z-10 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-black text-palette-900">Create your Profile</h2>
-            <button type="button" onClick={() => navigate('/profile')} className="text-sm font-semibold text-gray-400 hover:text-gray-600 transition-colors">
-              Skip for now
-            </button>
+            {currentStep !== 1 && (
+              <button type="button" onClick={() => navigate('/profile')} className="text-sm font-semibold text-gray-400 hover:text-gray-600 transition-colors">
+                Skip for now
+              </button>
+            )}
           </div>
           
           <div className="relative pt-1">
