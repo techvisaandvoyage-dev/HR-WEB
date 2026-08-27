@@ -1,10 +1,52 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import LocationAutocomplete from './LocationAutocomplete';
+
+const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative font-sans h-full flex items-center border-r border-gray-300" ref={ref}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-4 py-1.5 h-full flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 bg-transparent"
+      >
+        <span className="truncate max-w-[90px] text-left">{value === 'All' || value === 'Any time' ? placeholder : value}</span>
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {isOpen && (
+        <div className="absolute top-[120%] left-0 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-[110]">
+          {options.map(opt => (
+            <div 
+              key={opt.value} 
+              onClick={() => { onChange(opt.value); setIsOpen(false); }}
+              className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [experience, setExperience] = useState('All');
+  const [postingDate, setPostingDate] = useState('Any time');
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,7 +58,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
     const fetchUnreadCount = async () => {
       if (!localStorage.getItem('employeeToken')) return;
       try {
-        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/messages/unread-count', {
+        const res = await fetch('http://localhost:5000/api/employee/messages/unread-count', {
           headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
         });
         const data = await res.json();
@@ -74,8 +116,38 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
         </div>
 
         {/* Search Bar */}
-        <div className="flex-1 max-w-2xl flex items-center bg-gray-100 rounded-full px-2 py-1.5 focus-within:ring-2 focus-within:ring-palette-400 focus-within:bg-white transition-all hidden md:flex relative" ref={searchRef}>
-          <div className="flex-1 flex items-center px-3 border-r border-gray-300 relative">
+        <div className="flex-1 max-w-4xl flex items-center bg-gray-100 rounded-full focus-within:ring-2 focus-within:ring-palette-400 focus-within:bg-white transition-all hidden lg:flex relative h-[44px]" ref={searchRef}>
+          
+          <NavbarDropdown 
+            placeholder="Experience"
+            value={experience}
+            onChange={setExperience}
+            options={[
+              { label: 'Any Experience', value: 'All' },
+              { label: '0 - 1 Yrs', value: '0 - 1 Yrs' },
+              { label: '2 - 3 Yrs', value: '2 - 3 Yrs' },
+              { label: '4 - 6 Yrs', value: '4 - 6 Yrs' },
+              { label: '7 - 10 Yrs', value: '7 - 10 Yrs' },
+              { label: '11 - 15 Yrs', value: '11 - 15 Yrs' },
+              { label: '16 - 20 Yrs', value: '16 - 20 Yrs' },
+              { label: '21 - 25 Yrs', value: '21 - 25 Yrs' },
+              { label: '25+ yrs', value: '25+ yrs' }
+            ]}
+          />
+          
+          <NavbarDropdown 
+            placeholder="Date Posted"
+            value={postingDate}
+            onChange={setPostingDate}
+            options={[
+              { label: 'Any time', value: 'Any time' },
+              { label: 'Past 24 hours', value: 'Past 24 hours' },
+              { label: 'Past week', value: 'Past week' },
+              { label: 'Past month', value: 'Past month' }
+            ]}
+          />
+
+          <div className="flex-1 flex items-center px-3 border-r border-gray-300 relative h-full">
             <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -108,14 +180,15 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
               </div>
             )}
           </div>
-          <div className="flex-1 flex items-center px-3">
+          <div className="flex-1 flex items-center px-3 h-full">
             <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <input 
-              type="text" 
-              placeholder="City, county, region or remote" 
+            <LocationAutocomplete 
+              value={searchLocation}
+              onChange={(val) => setSearchLocation(val?.label || val)}
+              placeholder="City, state, region or remote" 
               className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
             />
           </div>

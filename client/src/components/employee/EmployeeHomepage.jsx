@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import JobApplicationModal from './JobApplicationModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
+import CustomDropdown from '../common/CustomDropdown';
 
 const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const location = useLocation();
@@ -29,6 +30,48 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   }, []);
 
   const activeJobs = jobs.filter(job => job.status !== 'Closed');
+
+  const [filters, setFilters] = useState({
+    keyword: '',
+    location: '',
+    experience: 'All',
+    postingDate: 'Any time'
+  });
+
+  let displayedJobs = activeJobs;
+
+  if (filters.keyword) {
+    const kw = filters.keyword.toLowerCase();
+    displayedJobs = displayedJobs.filter(job => 
+      job.title.toLowerCase().includes(kw) || 
+      job.company.toLowerCase().includes(kw) ||
+      (job.details?.skillsRequired || '').toLowerCase().includes(kw)
+    );
+  }
+
+  if (filters.location) {
+    const loc = filters.location.toLowerCase();
+    displayedJobs = displayedJobs.filter(job => 
+      job.location.toLowerCase().includes(loc) || 
+      (job.details?.workLocation || '').toLowerCase().includes(loc)
+    );
+  }
+
+  if (filters.experience !== 'All') {
+    displayedJobs = displayedJobs.filter(job => 
+      job.details?.experience && job.details.experience.includes(filters.experience)
+    );
+  }
+
+  if (filters.postingDate !== 'Any time') {
+    const now = new Date();
+    let timeLimit = new Date();
+    if (filters.postingDate === 'Past 24 hours') timeLimit.setDate(now.getDate() - 1);
+    if (filters.postingDate === 'Past week') timeLimit.setDate(now.getDate() - 7);
+    if (filters.postingDate === 'Past month') timeLimit.setMonth(now.getMonth() - 1);
+    
+    displayedJobs = displayedJobs.filter(job => job.createdAt && new Date(job.createdAt) >= timeLimit);
+  }
 
   const filteredMobileJobs = mobileSearchTerm 
     ? activeJobs.filter(job => job.title.toLowerCase().includes(mobileSearchTerm.toLowerCase()) || job.company.toLowerCase().includes(mobileSearchTerm.toLowerCase()))
@@ -155,11 +198,71 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
             </div>
             <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
               <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              <input type="text" placeholder="City, state, or country..." className="w-full bg-transparent border-none outline-none text-sm text-gray-900" />
+              <input 
+                type="text" 
+                placeholder="City, state, or country..." 
+                value={filters.location}
+                onChange={(e) => setFilters({...filters, location: e.target.value})}
+                className="w-full bg-transparent border-none outline-none text-sm text-gray-900" 
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-4 shadow-sm">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                Filters
+              </h3>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Keyword</label>
+                <input 
+                  type="text" 
+                  value={filters.keyword}
+                  onChange={(e) => setFilters({...filters, keyword: e.target.value})}
+                  placeholder="Job title, company, skill"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Experience</label>
+                <CustomDropdown
+                  value={filters.experience}
+                  onChange={(val) => setFilters({...filters, experience: val})}
+                  options={[
+                    { label: 'Any Experience', value: 'All' },
+                    { label: '0 - 1 Yrs', value: '0 - 1 Yrs' },
+                    { label: '2 - 3 Yrs', value: '2 - 3 Yrs' },
+                    { label: '4 - 6 Yrs', value: '4 - 6 Yrs' },
+                    { label: '7 - 10 Yrs', value: '7 - 10 Yrs' },
+                    { label: '11 - 15 Yrs', value: '11 - 15 Yrs' },
+                    { label: '16 - 20 Yrs', value: '16 - 20 Yrs' },
+                    { label: '21 - 25 Yrs', value: '21 - 25 Yrs' },
+                    { label: '25+ yrs', value: '25+ yrs' }
+                  ]}
+                  placeholder="Select experience"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Date Posted</label>
+                <CustomDropdown
+                  value={filters.postingDate}
+                  onChange={(val) => setFilters({...filters, postingDate: val})}
+                  options={[
+                    { label: 'Any time', value: 'Any time' },
+                    { label: 'Past 24 hours', value: 'Past 24 hours' },
+                    { label: 'Past week', value: 'Past week' },
+                    { label: 'Past month', value: 'Past month' }
+                  ]}
+                  placeholder="Select posting date"
+                />
+              </div>
             </div>
           </div>
 
-          {activeJobs.map(job => (
+          {displayedJobs.map(job => (
             <div 
               key={job.id} 
               onClick={() => { setSelectedJobId(job.id); setIsMobileDetailsOpen(true); }}

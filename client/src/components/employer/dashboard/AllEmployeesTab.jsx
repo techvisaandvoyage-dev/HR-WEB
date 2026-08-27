@@ -1,5 +1,60 @@
 import React, { useState, useEffect } from 'react';
 
+// Mapping algorithm to categorize employee designations into broader industries
+const designationToIndustryMap = {
+  // IT & Software
+  'Software Engineer': 'IT & Software',
+  'Senior Software Engineer': 'IT & Software',
+  'Frontend Developer': 'IT & Software',
+  'Backend Developer': 'IT & Software',
+  'Full Stack Developer': 'IT & Software',
+  'Mobile App Developer': 'IT & Software',
+  'DevOps Engineer': 'IT & Software',
+  'QA Engineer': 'IT & Software',
+  'System Administrator': 'IT & Software',
+  'Database Administrator': 'IT & Software',
+  'Cloud Architect': 'IT & Software',
+  'Data Scientist': 'IT & Software',
+  'Data Analyst': 'IT & Software',
+  'Machine Learning Engineer': 'IT & Software',
+  'Network Engineer': 'IT & Software',
+  'Security Analyst': 'IT & Software',
+  'UI/UX Designer': 'IT & Software',
+  'Product Designer': 'IT & Software',
+  
+  // Marketing
+  'Marketing Executive': 'Marketing',
+  'Digital Marketing Manager': 'Marketing',
+  'Content Writer': 'Marketing',
+  'SEO Specialist': 'Marketing',
+  
+  // Sales
+  'Sales Manager': 'Sales',
+  'Sales Executive': 'Sales',
+  'Business Development Manager': 'Sales',
+  'Account Manager': 'Sales',
+  'Customer Success Manager': 'Sales',
+  
+  // HR
+  'HR Manager': 'HR',
+  'HR Executive': 'HR',
+  'Talent Acquisition Specialist': 'HR',
+  
+  // Finance & Accounts
+  'Financial Analyst': 'Finance & Accounts',
+  'Accountant': 'Finance & Accounts',
+  
+  // Other Corporate Roles
+  'Operations Manager': 'Other',
+  'Business Analyst': 'Other',
+  'Consultant': 'Other',
+  'Legal Advisor': 'Other',
+  'Product Manager': 'IT & Software',
+  'Project Manager': 'IT & Software',
+  'Scrum Master': 'IT & Software',
+  'Graphic Designer': 'Other',
+};
+
 const AllEmployeesTab = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -7,7 +62,9 @@ const AllEmployeesTab = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [experienceFilter, setExperienceFilter] = useState('All');
-  const [designationFilter, setDesignationFilter] = useState('All');
+  const [industryFilter, setIndustryFilter] = useState('All');
+  const [locationFilter, setLocationFilter] = useState('All');
+  const [lastUpdateFilter, setLastUpdateFilter] = useState('All');
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -15,7 +72,7 @@ const AllEmployeesTab = () => {
         const token = localStorage.getItem('employerToken');
         if (!token) throw new Error('No employer token found');
 
-        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/employees', {
+        const res = await fetch('http://localhost:5000/api/employer/employees', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -37,31 +94,28 @@ const AllEmployeesTab = () => {
     fetchEmployees();
   }, []);
 
-  const allDesignations = [
-    'Software Engineer', 'Senior Software Engineer', 'Frontend Developer', 'Backend Developer', 
-    'Full Stack Developer', 'Mobile App Developer', 'DevOps Engineer', 'QA Engineer', 
-    'System Administrator', 'Database Administrator', 'Cloud Architect', 'Data Scientist', 
-    'Data Analyst', 'Machine Learning Engineer', 'Network Engineer', 'Security Analyst', 
-    'Product Manager', 'Project Manager', 'Scrum Master', 'UI/UX Designer', 'Graphic Designer', 
-    'Product Designer', 'Marketing Executive', 'Digital Marketing Manager', 'Content Writer', 
-    'SEO Specialist', 'Sales Manager', 'Sales Executive', 'Business Development Manager', 
-    'Account Manager', 'Customer Success Manager', 'HR Manager', 'HR Executive', 
-    'Talent Acquisition Specialist', 'Financial Analyst', 'Accountant', 'Operations Manager', 
-    'Business Analyst', 'Consultant', 'Legal Advisor', 'Other'
+  const industryOptions = [
+    'IT & Software', 'BPO/KPO', 'Finance & Accounts', 'Healthcare',
+    'Manufacturing', 'Education', 'Marketing', 'Sales', 'HR', 'Other'
   ].sort();
-  const allExperiences = [
-    "Fresher",
-    "Less than 1 Year",
-    "1 Year",
-    ...Array.from({ length: 29 }, (_, i) => `${i + 2} Years`)
+  
+  const locationOptions = [
+    'Delhi NCR', 'Mumbai', 'Bangalore', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Remote'
+  ].sort();
+
+  const experienceOptions = [
+    '0 - 1 Yrs', '2 - 3 Yrs', '4 - 6 Yrs', '7 - 10 Yrs', '11 - 15 Yrs', '16 - 20 Yrs', '21 - 25 Yrs', '25+ yrs'
   ];
+
   const clearFilters = () => {
     setSearchQuery('');
     setExperienceFilter('All');
-    setDesignationFilter('All');
+    setIndustryFilter('All');
+    setLocationFilter('All');
+    setLastUpdateFilter('All');
   };
 
-  const hasActiveFilters = searchQuery || experienceFilter !== 'All' || designationFilter !== 'All';
+  const hasActiveFilters = searchQuery || experienceFilter !== 'All' || industryFilter !== 'All' || locationFilter !== 'All' || lastUpdateFilter !== 'All';
 
   const filteredEmployees = employees.filter(emp => {
     // Search Filter
@@ -77,9 +131,30 @@ const AllEmployeesTab = () => {
       if (emp.totalExperience !== experienceFilter) return false;
     }
 
-    // Designation Filter
-    if (designationFilter !== 'All') {
-      if (emp.designation !== designationFilter) return false;
+    // Industry Filter
+    if (industryFilter !== 'All') {
+      // Get the explicit industry, or derive it using our algorithm, defaulting to 'Other'
+      const derivedIndustry = emp.industry || designationToIndustryMap[emp.designation] || 'Other';
+      if (!derivedIndustry.toLowerCase().includes(industryFilter.toLowerCase())) return false;
+    }
+
+    // Location Filter
+    if (locationFilter !== 'All') {
+      const empLoc = emp.location || emp.preferredLocation || '';
+      if (!empLoc.toLowerCase().includes(locationFilter.toLowerCase())) return false;
+    }
+
+    // Last Update Filter
+    if (lastUpdateFilter !== 'All') {
+      const updatedDate = new Date(emp.updatedAt || emp.createdAt);
+      const now = new Date();
+      const diffTime = Math.abs(now - updatedDate);
+      const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (lastUpdateFilter === 'Past 24 hours' && diffHours > 24) return false;
+      if (lastUpdateFilter === 'Past week' && diffDays > 7) return false;
+      if (lastUpdateFilter === 'Past month' && diffDays > 30) return false;
     }
 
     return true;
@@ -122,6 +197,38 @@ const AllEmployeesTab = () => {
           </div>
           
           <div className="flex gap-3 flex-wrap items-center">
+            {/* Industry Filter */}
+            <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
+              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Industry</span>
+              <select 
+                className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
+                value={industryFilter}
+                onChange={(e) => setIndustryFilter(e.target.value)}
+              >
+                <option value="All">All Industries</option>
+                {industryOptions.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+              </select>
+              <div className="pointer-events-none absolute right-4 text-[#888888]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
+
+            {/* Location Filter */}
+            <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
+              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Location</span>
+              <select 
+                className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+              >
+                <option value="All">All Locations</option>
+                {locationOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+              </select>
+              <div className="pointer-events-none absolute right-4 text-[#888888]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
+
             {/* Experience Filter */}
             <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
               <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Exp</span>
@@ -131,23 +238,25 @@ const AllEmployeesTab = () => {
                 onChange={(e) => setExperienceFilter(e.target.value)}
               >
                 <option value="All">All Exp</option>
-                {allExperiences.map(exp => <option key={exp} value={exp}>{exp}</option>)}
+                {experienceOptions.map(exp => <option key={exp} value={exp}>{exp}</option>)}
               </select>
               <div className="pointer-events-none absolute right-4 text-[#888888]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
               </div>
             </div>
 
-            {/* Designation Filter */}
+            {/* Last Update Filter */}
             <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Role</span>
+              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Update</span>
               <select 
                 className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
-                value={designationFilter}
-                onChange={(e) => setDesignationFilter(e.target.value)}
+                value={lastUpdateFilter}
+                onChange={(e) => setLastUpdateFilter(e.target.value)}
               >
-                <option value="All">All Roles</option>
-                {allDesignations.map(desig => <option key={desig} value={desig}>{desig}</option>)}
+                <option value="All">Any time</option>
+                <option value="Past 24 hours">Past 24 hours</option>
+                <option value="Past week">Past week</option>
+                <option value="Past month">Past month</option>
               </select>
               <div className="pointer-events-none absolute right-4 text-[#888888]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>

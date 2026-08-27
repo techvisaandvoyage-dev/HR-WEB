@@ -40,7 +40,8 @@ exports.applyForJob = async (req, res) => {
     const application = await Application.create({
       jobId,
       employeeId,
-      employerId: job.employerId
+      employerId: job.employerId,
+      screeningAnswers: req.body.screeningAnswers || []
     });
 
     // Increment applications count

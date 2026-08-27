@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import CustomMonthPicker from '../common/CustomMonthPicker';
+import CustomDropdown from '../common/CustomDropdown';
 
 
 const formatMonthYear = (dateStr) => {
@@ -29,8 +30,10 @@ const formatIndianNumber = (val) => {
 
 const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 6;
-  const [expandedEduIndex, setExpandedEduIndex] = useState(0);
+  const hasQuestions = job?.screeningQuestions && job.screeningQuestions.length > 0;
+  const totalSteps = hasQuestions ? 7 : 6;
+  const totalFastSteps = hasQuestions ? 4 : 3;
+  const [expandedEduIndex, setExpandedEduIndex] = useState(-1);
   const [expandedExpIndex, setExpandedExpIndex] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [skillInput, setSkillInput] = useState('');
@@ -103,6 +106,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const [fastStep, setFastStep] = useState(1);
   const [isOldUser, setIsOldUser] = useState(false);
   const [fastFormData, setFastFormData] = useState({ relevantJobTitle: '', relevantCompany: '' });
+  const [screeningAnswers, setScreeningAnswers] = useState({});
   const [isLoadingReview, setIsLoadingReview] = useState(false);
 
   React.useEffect(() => {
@@ -118,13 +122,13 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
 
   const handleNext = () => {
     if (isOldUser) {
-      if (fastStep === 2) {
+      if (fastStep === totalFastSteps - 1) {
         setIsLoadingReview(true);
         setTimeout(() => {
           setIsLoadingReview(false);
-          setFastStep(3);
+          setFastStep(totalFastSteps);
         }, 2500);
-      } else if (fastStep < 3) {
+      } else if (fastStep < totalFastSteps) {
         setFastStep(fastStep + 1);
       }
     } else {
@@ -163,7 +167,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
             try {
               const token = localStorage.getItem('employeeToken');
               if (token) {
-                await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/profile', {
+                await fetch('http://localhost:5000/api/employee/profile', {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
@@ -199,7 +203,8 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
               education: formData.qualifications,
               history: [
                 { title: job.title, status: 'Applied', color: 'bg-blue-50 text-blue-600 border border-blue-100' }
-              ]
+              ],
+              screeningAnswers: Object.keys(screeningAnswers).map(q => ({ question: q, answer: screeningAnswers[q] }))
             });
             if (!success) {
               return; // Application failed on backend
@@ -246,26 +251,90 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   };
 
   const removeSkill = (skillToRemove) => {
-    const p = formData.professionalDetails || {};
+const p = formData.professionalDetails || {};
     const currentSkills = p.skills ? p.skills.split(',').map(s=>s.trim()).filter(s => s) : [];
     setFormData({...formData, professionalDetails: {...p, skills: currentSkills.filter(s => s !== skillToRemove).join(', ')}});
   };
 
-  // --- Fast Apply Components (Old Users) ---
-
-  const FastStep1Experience = () => (
+  // --- New Questions Step ---
+  const StepQuestions = () => (
     <div className="space-y-6 animate-fade-in max-w-md mx-auto py-8">
-      <h3 className="text-2xl font-bold text-gray-900 mb-2">Enter a job that shows relevant experience</h3>
-      <p className="text-gray-500 mb-6">We share your designation with the employer to introduce you as a candidate.</p>
-      
-      <div className="space-y-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Your Designation</label>
-          <input type="text" className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" value={fastFormData.relevantJobTitle || ''} onChange={e => setFastFormData({...fastFormData, relevantJobTitle: e.target.value})} />
-        </div>
+      <h3 className="text-2xl font-bold text-gray-900 mb-6">Employer Questions</h3>
+      <div className="space-y-4">
+        {job.screeningQuestions && job.screeningQuestions.map((sq, i) => (
+          <div key={i} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+            <label className="block text-sm font-bold text-gray-900 mb-3">
+              {sq.question}
+              {sq.required && <span className="text-red-500 ml-1">*</span>}
+            </label>
+            {sq.type === 'Yes/No' ? (
+              <CustomDropdown 
+                options={[
+                  { value: 'Yes', label: 'Yes' },
+                  { value: 'No', label: 'No' }
+                ]}
+                value={screeningAnswers[sq.question] || ''}
+                onChange={(val) => setScreeningAnswers({...screeningAnswers, [sq.question]: val})}
+                placeholder="Select an answer"
+              />
+            ) : (
+              <textarea 
+                rows="3"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 outline-none focus:bg-white focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all resize-none"
+                placeholder="Type your answer here..."
+                value={screeningAnswers[sq.question] || ''}
+                onChange={(e) => setScreeningAnswers({...screeningAnswers, [sq.question]: e.target.value})}
+              />
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
+
+  // --- Fast Apply Components (Old Users) ---
+
+  const FastStep1Experience = () => {
+    const fastDesignations = [
+      { value: "Software Engineer", label: "Software Engineer" },
+      { value: "Senior Software Engineer", label: "Senior Software Engineer" },
+      { value: "Frontend Developer", label: "Frontend Developer" },
+      { value: "Backend Developer", label: "Backend Developer" },
+      { value: "Full Stack Developer", label: "Full Stack Developer" },
+      { value: "Product Manager", label: "Product Manager" },
+      { value: "Project Manager", label: "Project Manager" },
+      { value: "Data Scientist", label: "Data Scientist" },
+      { value: "Data Analyst", label: "Data Analyst" },
+      { value: "UI/UX Designer", label: "UI/UX Designer" },
+      { value: "Marketing Manager", label: "Marketing Manager" },
+      { value: "Sales Manager", label: "Sales Manager" },
+      { value: "HR Manager", label: "HR Manager" },
+      { value: "Accountant", label: "Accountant" },
+      { value: "Financial Analyst", label: "Financial Analyst" },
+      { value: "Business Analyst", label: "Business Analyst" },
+      { value: "Customer Support Executive", label: "Customer Support Executive" },
+      { value: "Operations Manager", label: "Operations Manager" }
+    ];
+
+    return (
+      <div className="space-y-6 animate-fade-in max-w-md mx-auto py-8">
+        <h3 className="text-2xl font-bold text-gray-900 mb-2">Enter a job that shows relevant experience</h3>
+        <p className="text-gray-500 mb-6">We share your designation with the employer to introduce you as a candidate.</p>
+        
+        <div className="space-y-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">Your Designation</label>
+            <CustomDropdown 
+              options={fastDesignations}
+              value={fastFormData.relevantJobTitle || ''}
+              onChange={(val) => setFastFormData({...fastFormData, relevantJobTitle: val})}
+              placeholder="Select or type your designation"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const FastStep2Resume = () => {
     const handleFileChange = (e) => {
@@ -1086,12 +1155,12 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                 <div className="flex mb-2 items-center justify-between">
                   <div>
                     <span className="text-xs font-bold inline-block py-1 px-3 uppercase rounded-full text-green-700 bg-green-50">
-                      {isOldUser ? Math.round((fastStep / 3) * 100) : Math.round((currentStep / totalSteps) * 100)}% Completed
+                      {isOldUser ? Math.round((fastStep / totalFastSteps) * 100) : Math.round((currentStep / totalSteps) * 100)}% Completed
                     </span>
                   </div>
                 </div>
                 <div className="overflow-hidden h-2 text-xs flex rounded-full bg-gray-100">
-                  <div style={{ width: `${isOldUser ? (fastStep / 3) * 100 : (currentStep / totalSteps) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 transition-all duration-500"></div>
+                  <div style={{ width: `${isOldUser ? (fastStep / totalFastSteps) * 100 : (currentStep / totalSteps) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 transition-all duration-500"></div>
                 </div>
               </div>
             </div>
@@ -1109,7 +1178,8 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                 <>
                   {fastStep === 1 && FastStep1Experience()}
                   {fastStep === 2 && FastStep2Resume()}
-                  {fastStep === 3 && FastStep3Review()}
+                  {hasQuestions && fastStep === 3 && StepQuestions()}
+                  {fastStep === totalFastSteps && FastStep3Review()}
                 </>
               ) : (
                 <>
@@ -1118,14 +1188,15 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                   {currentStep === 3 && Step3Experience()}
                   {currentStep === 4 && Step4Professional()}
                   {currentStep === 5 && Step5Documents()}
-                  {currentStep === 6 && Step6Review()}
+                  {hasQuestions && currentStep === 6 && StepQuestions()}
+                  {currentStep === totalSteps && Step6Review()}
                 </>
               )}
 
               {/* Footer Actions */}
               {!isLoadingReview && (
                 <div className="mt-5 flex flex-col gap-3">
-                  {(isOldUser ? fastStep < 3 : currentStep < totalSteps) ? (
+                  {(isOldUser ? fastStep < totalFastSteps : currentStep < totalSteps) ? (
                     <button 
                       type="button" 
                       onClick={handleNext}

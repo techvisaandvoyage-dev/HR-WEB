@@ -26,7 +26,7 @@ const CompanyProfileTab = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('employerToken');
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/me', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -79,7 +79,7 @@ const CompanyProfileTab = () => {
         hiringFor: companyData.hiringFor
       };
       
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employer/auth/update', {
+      const response = await fetch('http://localhost:5000/api/employer/auth/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

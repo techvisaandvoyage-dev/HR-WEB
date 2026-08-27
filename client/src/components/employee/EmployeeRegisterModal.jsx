@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
-import LocationAutocomplete from '../common/LocationAutocomplete';
 
 const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }) => {
   const [name, setName] = useState('');
@@ -8,7 +7,6 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mobile, setMobile] = useState('');
-  const [location, setLocation] = useState('');
   
   // Registration flow states
   const [step, setStep] = useState(1);
@@ -23,7 +21,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       setIsLoading(true);
       setErrors({});
       try {
-        const res = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/auth/google', {
+        const res = await fetch('http://localhost:5000/api/employee/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: tokenResponse.access_token })
@@ -54,7 +52,6 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       setPassword('');
       setConfirmPassword('');
       setMobile('');
-      setLocation('');
       setStep(1);
       setOtp(['', '', '', '']);
       setErrors({});
@@ -79,7 +76,6 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     if (!password) newErrors.password = 'Please create a password.';
     if (!confirmPassword) newErrors.confirmPassword = 'Please confirm your password.';
     if (!mobile) newErrors.mobile = 'Please enter a phone number.';
-    if (!location) newErrors.location = 'Please select your current location.';
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -110,10 +106,10 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     
     setIsLoading(true);
     try {
-      const response = await fetch('https://chocolate-trout-143776.hostingersite.com/api/employee/auth/register', {
+      const response = await fetch('http://localhost:5000/api/employee/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, mobile, location: location?.label || location }),
+        body: JSON.stringify({ name, email, password, mobile }),
       });
       const data = await response.json();
 
@@ -267,6 +263,33 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
               )}
             </div>
 
+            {/* Mobile Number Input */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-bold text-gray-900">
+                Mobile number<span className="text-red-500">*</span>
+              </label>
+              <div className={`flex items-center px-5 py-3.5 rounded-full border transition-all bg-white ${errors.mobile ? 'border-red-600 focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600 bg-red-50/30' : 'border-gray-300 focus-within:border-palette-400 focus-within:ring-1 focus-within:ring-palette-400'}`}>
+                <span className="text-gray-900 font-semibold mr-1.5 whitespace-nowrap shrink-0">+91</span>
+                <input 
+                  type="tel" 
+                  value={mobile}
+                  onChange={(e) => { setMobile(e.target.value.replace(/\D/g, '').slice(0, 10)); setErrors({...errors, mobile: ''}); }}
+                  placeholder="Enter your mobile number"
+                  className="w-full bg-transparent border-none outline-none placeholder-gray-400 text-gray-900 min-w-0"
+                />
+              </div>
+              {errors.mobile ? (
+                <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.mobile}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 mt-1 pl-2">Recruiters will contact you on this number</p>
+              )}
+            </div>
+
             {/* Password Input */}
             <div className="space-y-1.5">
               <label className="block text-sm font-bold text-gray-900">
@@ -378,52 +401,9 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
               ) : null}
             </div>
 
-            {/* Mobile Number Input */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-gray-900">
-                Mobile number<span className="text-red-500">*</span>
-              </label>
-              <div className={`flex items-center px-5 py-3.5 rounded-full border transition-all bg-white ${errors.mobile ? 'border-red-600 focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600 bg-red-50/30' : 'border-gray-300 focus-within:border-palette-400 focus-within:ring-1 focus-within:ring-palette-400'}`}>
-                <span className="text-gray-900 font-semibold mr-1.5 whitespace-nowrap shrink-0">+91</span>
-                <input 
-                  type="tel" 
-                  value={mobile}
-                  onChange={(e) => { setMobile(e.target.value.replace(/\D/g, '').slice(0, 10)); setErrors({...errors, mobile: ''}); }}
-                  placeholder="Enter your mobile number"
-                  className="w-full bg-transparent border-none outline-none placeholder-gray-400 text-gray-900 min-w-0"
-                />
-              </div>
-              {errors.mobile ? (
-                <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.mobile}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-500 mt-1 pl-2">Recruiters will contact you on this number</p>
-              )}
-            </div>
 
-            {/* Location Input */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-gray-900">Current Location<span className="text-red-500">*</span></label>
-              <div className={`${errors.location ? 'ring-1 ring-red-600 rounded-lg' : ''}`}>
-                <LocationAutocomplete 
-                  value={location}
-                  onChange={(val) => { setLocation(val); setErrors({...errors, location: ''}); }}
-                  placeholder="e.g. Pune, Maharashtra"
-                />
-              </div>
-              {errors.location && (
-                <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.location}
-                </div>
-              )}
-            </div>
+
+
 
             {/* Register Button */}
             <div className="pt-4">

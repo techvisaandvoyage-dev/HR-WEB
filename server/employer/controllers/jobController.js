@@ -9,7 +9,7 @@ exports.createJob = async (req, res) => {
     const employerId = req.user.id;
     const {
       company, companyInitial, title, location, salary, employerProvided,
-      easyApply, qualifications, details
+      easyApply, qualifications, details, screeningQuestions
     } = req.body;
 
     const job = await Job.create({
@@ -22,7 +22,8 @@ exports.createJob = async (req, res) => {
       employerProvided,
       easyApply,
       qualifications,
-      details
+      details,
+      screeningQuestions
     });
 
     res.status(201).json({ success: true, data: job });

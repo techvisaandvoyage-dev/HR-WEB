@@ -28,8 +28,16 @@ const EmployeeSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  preferredLocation: {
+    type: String,
+    default: ''
+  },
   // Profile Fields
   designation: {
+    type: String,
+    default: ''
+  },
+  industry: {
     type: String,
     default: ''
   },

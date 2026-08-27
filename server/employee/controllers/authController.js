@@ -19,7 +19,7 @@ const registerEmployee = async (req, res) => {
     const { name, email, password, mobile, location } = req.body;
 
     // Check for empty fields
-    if (!name || !email || !password || !mobile || !location) {
+    if (!name || !email || !password || !mobile) {
       return res.status(400).json({ message: 'Please add all fields' });
     }
 
