@@ -39,7 +39,7 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       setIsLoading(true);
       setErrors({});
       try {
-        const res = await fetch('http://localhost:5000/api/employer/auth/google', {
+        const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ access_token: tokenResponse.access_token })
@@ -165,7 +165,7 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/employer/auth/check-email', {
+      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -211,7 +211,7 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/employer/auth/register', {
+      const response = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

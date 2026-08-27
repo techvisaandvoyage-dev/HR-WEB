@@ -43,7 +43,7 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/employer/messages/conversations', {
+      const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/messages/conversations`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
       });
       const data = await res.json();
@@ -87,7 +87,7 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
 
   const fetchMessages = async (appId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/employer/messages/applications/${appId}`, {
+      const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${appId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
       });
       const data = await res.json();
@@ -108,7 +108,7 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
     if (!newMessage.trim() || !selectedApplication) return;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/employer/messages/applications/${selectedApplication.appId}`, {
+      const res = await fetch(`\${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedApplication.appId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
