@@ -36,6 +36,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const [expandedEduIndex, setExpandedEduIndex] = useState(-1);
   const [expandedExpIndex, setExpandedExpIndex] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [skillInput, setSkillInput] = useState('');
   const [expError, setExpError] = useState('');
 
@@ -107,7 +108,23 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const [isOldUser, setIsOldUser] = useState(false);
   const [fastFormData, setFastFormData] = useState({ relevantJobTitle: '', relevantCompany: '' });
   const [screeningAnswers, setScreeningAnswers] = useState({});
+  const [questionErrors, setQuestionErrors] = useState({});
   const [isLoadingReview, setIsLoadingReview] = useState(false);
+
+  const validateQuestions = () => {
+    let isValid = true;
+    const errors = {};
+    if (job?.screeningQuestions) {
+      job.screeningQuestions.forEach(sq => {
+        if (sq.required && (!screeningAnswers[sq.question] || screeningAnswers[sq.question].trim() === '')) {
+          errors[sq.question] = true;
+          isValid = false;
+        }
+      });
+    }
+    setQuestionErrors(errors);
+    return isValid;
+  };
 
   React.useEffect(() => {
     if (isOpen) {
@@ -122,6 +139,10 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
 
   const handleNext = () => {
     if (isOldUser) {
+      if (hasQuestions && fastStep === 3) {
+        if (!validateQuestions()) return;
+      }
+      
       if (fastStep === totalFastSteps - 1) {
         setIsLoadingReview(true);
         setTimeout(() => {
@@ -132,6 +153,9 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
         setFastStep(fastStep + 1);
       }
     } else {
+      if (hasQuestions && currentStep === 6) {
+        if (!validateQuestions()) return;
+      }
       if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
     }
   };
@@ -146,6 +170,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError('');
     localStorage.setItem('userProfile', JSON.stringify(formData));
     localStorage.setItem('hasProfile', 'true');
     
@@ -182,7 +207,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
             
             // Send candidate data to global state
             if (applyToJob) {
-            const success = await applyToJob(job.id, {
+            const result = await applyToJob(job.id, {
               name: (formData.firstName || formData.lastName) ? `${formData.firstName || ''} ${formData.lastName || ''}`.trim() : 'Applicant',
               email: formData.email,
               phone: formData.phone,
@@ -206,7 +231,8 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
               ],
               screeningAnswers: Object.keys(screeningAnswers).map(q => ({ question: q, answer: screeningAnswers[q] }))
             });
-            if (!success) {
+            if (!result.success) {
+              setSubmitError(result.message);
               return; // Application failed on backend
             }
           }
@@ -268,23 +294,40 @@ const p = formData.professionalDetails || {};
               {sq.required && <span className="text-red-500 ml-1">*</span>}
             </label>
             {sq.type === 'Yes/No' ? (
-              <CustomDropdown 
-                options={[
-                  { value: 'Yes', label: 'Yes' },
-                  { value: 'No', label: 'No' }
-                ]}
-                value={screeningAnswers[sq.question] || ''}
-                onChange={(val) => setScreeningAnswers({...screeningAnswers, [sq.question]: val})}
-                placeholder="Select an answer"
-              />
+              <div>
+                <CustomDropdown 
+                  options={[
+                    { value: 'Yes', label: 'Yes' },
+                    { value: 'No', label: 'No' }
+                  ]}
+                  value={screeningAnswers[sq.question] || ''}
+                  onChange={(val) => {
+                    setScreeningAnswers({...screeningAnswers, [sq.question]: val});
+                    if (questionErrors[sq.question]) {
+                      setQuestionErrors({...questionErrors, [sq.question]: false});
+                    }
+                  }}
+                  placeholder="Select an answer"
+                  error={questionErrors[sq.question]}
+                />
+                {questionErrors[sq.question] && <p className="text-red-500 text-xs mt-1.5">Please select an answer to continue.</p>}
+              </div>
             ) : (
-              <textarea 
-                rows="3"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 outline-none focus:bg-white focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all resize-none"
-                placeholder="Type your answer here..."
-                value={screeningAnswers[sq.question] || ''}
-                onChange={(e) => setScreeningAnswers({...screeningAnswers, [sq.question]: e.target.value})}
-              />
+              <div>
+                <textarea 
+                  rows="3"
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-gray-700 outline-none focus:bg-white focus:ring-1 transition-all resize-none ${questionErrors[sq.question] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-green-500 focus:ring-green-500'}`}
+                  placeholder="Type your answer here..."
+                  value={screeningAnswers[sq.question] || ''}
+                  onChange={(e) => {
+                    setScreeningAnswers({...screeningAnswers, [sq.question]: e.target.value});
+                    if (questionErrors[sq.question]) {
+                      setQuestionErrors({...questionErrors, [sq.question]: false});
+                    }
+                  }}
+                />
+                {questionErrors[sq.question] && <p className="text-red-500 text-xs mt-1.5">Please type an answer to continue.</p>}
+              </div>
             )}
           </div>
         ))}
@@ -1196,6 +1239,11 @@ const p = formData.professionalDetails || {};
               {/* Footer Actions */}
               {!isLoadingReview && (
                 <div className="mt-5 flex flex-col gap-3">
+                  {submitError && (
+                    <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm font-semibold border border-red-100 text-center mb-2">
+                      {submitError}
+                    </div>
+                  )}
                   {(isOldUser ? fastStep < totalFastSteps : currentStep < totalSteps) ? (
                     <button 
                       type="button" 

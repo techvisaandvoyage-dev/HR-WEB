@@ -6,8 +6,43 @@ const Application = require('../../models/Application');
 // @access  Public or Private (Let's make it private if needed, but usually jobs can be public)
 exports.getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find({ status: 'Active' }).sort({ createdAt: -1 });
+    const jobs = await Job.find({ status: 'Active' })
+      .populate('employerId', 'fullName designation companyName')
+      .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: jobs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Increment job views
+// @route   POST /api/employee/jobs/:id/view
+// @access  Public
+exports.incrementJobViews = async (req, res) => {
+  try {
+    const { viewerId } = req.body;
+    if (!viewerId) {
+      return res.status(400).json({ success: false, message: 'viewerId is required' });
+    }
+
+    // Use $addToSet to guarantee uniqueness at the DB level
+    const updatedJob = await Job.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { viewedBy: viewerId } },
+      { new: true }
+    );
+
+    if (!updatedJob) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    // Sync the views count with the array length
+    if (updatedJob.views !== updatedJob.viewedBy.length) {
+      updatedJob.views = updatedJob.viewedBy.length;
+      await updatedJob.save();
+    }
+
+    res.status(200).json({ success: true, data: { views: updatedJob.views } });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

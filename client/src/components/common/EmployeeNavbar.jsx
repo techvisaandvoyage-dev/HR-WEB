@@ -80,6 +80,14 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
   
   const [totalUnread, setTotalUnread] = useState(0);
 
+  let userEmail = 'Employee';
+  try {
+    const profileStr = localStorage.getItem('userProfile');
+    if (profileStr) {
+      userEmail = JSON.parse(profileStr).email || 'Employee';
+    }
+  } catch (e) {}
+
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (!localStorage.getItem('employeeToken')) return;
@@ -264,7 +272,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
             {isDropdownOpen && (
               <div className="absolute right-0 mt-3 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                 <div className="p-5 border-b border-gray-200">
-                  <p className="text-base font-bold text-gray-900 truncate">yashrajsingh28359@gmail.com</p>
+                  <p className="text-base font-bold text-gray-900 truncate">{userEmail}</p>
                 </div>
                 
                 <div className="py-2 border-b border-gray-200">

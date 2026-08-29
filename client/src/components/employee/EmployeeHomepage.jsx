@@ -19,6 +19,28 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const [showMobileSuggestions, setShowMobileSuggestions] = useState(false);
   const mobileSearchRef = React.useRef(null);
   
+  const [viewedJobs, setViewedJobs] = useState(new Set());
+
+  useEffect(() => {
+    let viewerEmail = null;
+    try {
+      const profileStr = localStorage.getItem('userProfile');
+      if (profileStr) {
+        viewerEmail = JSON.parse(profileStr).email;
+      }
+    } catch (e) {}
+
+    // Only count the view if the user is logged in (has an email)
+    if (viewerEmail && selectedJobId && !viewedJobs.has(selectedJobId)) {
+      setViewedJobs(prev => new Set(prev).add(selectedJobId));
+      fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/${selectedJobId}/view`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ viewerId: viewerEmail })
+      }).catch(err => console.error("Failed to increment view:", err));
+    }
+  }, [selectedJobId, viewedJobs]);
+  
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (mobileSearchRef.current && !mobileSearchRef.current.contains(event.target)) {
@@ -389,6 +411,44 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       )}
                     </button>
                   </div>
+
+                  {/* Analytics Card (Desktop) */}
+                  <div className="mt-8 pt-6 border-t border-gray-100">
+                    <div className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                      <div className="mb-4">
+                        <h3 className="text-sm text-gray-500 font-medium mb-3">Posted by</h3>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0">
+                            {selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')}
+                          </div>
+                          <div>
+                            <h4 className="text-base font-bold text-gray-900">{selectedJob.employerId?.fullName || 'Recruiter'}</h4>
+                            <p className="text-sm text-gray-700">
+                              {selectedJob.employerId?.designation || 'HR Professional'} {selectedJob.employerId?.companyName ? `at ${selectedJob.employerId.companyName}` : ''}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">Last Active: Today</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 rounded-xl p-4 mt-4">
+                        <div className="flex justify-around items-center text-center mb-4">
+                          <div>
+                            <div className="text-2xl font-bold font-serif text-gray-900">{selectedJob.views || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mt-1">Job Views</div>
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold font-serif text-gray-900">{selectedJob.applications || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mt-1">Applications</div>
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold font-serif text-gray-900">{selectedJob.recruiterActions || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mt-1">Recruiter<br/>Actions</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* MOBILE HEADER */}
@@ -423,9 +483,48 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       {selectedJob.employerProvided && <span className="text-gray-500 font-normal text-xs mt-0.5">(Employer provided)</span>}
                     </div>
                   </div>
+
+                  {/* Analytics Card (Mobile) */}
+                  <div className="mt-6 pt-6 border-t border-gray-100">
+                    <div className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+                      <div className="mb-4">
+                        <h3 className="text-sm text-gray-500 font-medium mb-3">Posted by</h3>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0">
+                            {selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')}
+                          </div>
+                          <div>
+                            <h4 className="text-base font-bold text-gray-900">{selectedJob.employerId?.fullName || 'Recruiter'}</h4>
+                            <p className="text-sm text-gray-700">
+                              {selectedJob.employerId?.designation || 'HR Professional'} {selectedJob.employerId?.companyName ? `at ${selectedJob.employerId.companyName}` : ''}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">Last Active: Today</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 rounded-xl p-4 mt-4">
+                        <div className="flex justify-around items-center text-center mb-4">
+                          <div>
+                            <div className="text-xl font-bold font-serif text-gray-900">{selectedJob.views || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mt-1">Job Views</div>
+                          </div>
+                          <div>
+                            <div className="text-xl font-bold font-serif text-gray-900">{selectedJob.applications || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mt-1">Applications</div>
+                          </div>
+                          <div>
+                            <div className="text-xl font-bold font-serif text-gray-900">{selectedJob.recruiterActions || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mt-1">Recruiter<br/>Actions</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Removed old wrapper */}
               <div className="p-6 border-b border-gray-200">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-bold text-gray-900">Your qualifications for this job</h3>
