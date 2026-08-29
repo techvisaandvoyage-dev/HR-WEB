@@ -177,15 +177,12 @@ function App() {
         setJobs(prevJobs => prevJobs.map(job => 
           job.id === jobId ? { ...job, applications: (job.applications || 0) + 1 } : job
         ));
-        return true;
-      } else {
-        alert(data.message);
-        return false;
+        return { success: true };
       }
+      return { success: false, message: data.message || 'Failed to apply' };
     } catch (e) {
       console.error(e);
-      alert("Failed to apply for job.");
-      return false;
+      return { success: false, message: 'Network error occurred' };
     }
   };
 

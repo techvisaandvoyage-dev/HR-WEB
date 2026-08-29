@@ -21,6 +21,9 @@ const JobSchema = new mongoose.Schema({
   },
   statusColor: { type: String, default: 'bg-green-100 text-green-700' },
   applications: { type: Number, default: 0 },
+  views: { type: Number, default: 0 },
+  viewedBy: [{ type: String }],
+  recruiterActions: { type: Number, default: 0 },
   qualifications: [{
     name: String,
     met: { type: Boolean, default: false }

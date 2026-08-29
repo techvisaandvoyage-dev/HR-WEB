@@ -102,6 +102,11 @@ exports.updateApplicationStatus = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
+    // Increment recruiterActions on the Job if this is the first time the recruiter is taking action
+    if (application.status === 'New' && status !== 'New') {
+      await Job.findByIdAndUpdate(application.jobId, { $inc: { recruiterActions: 1 } });
+    }
+
     application.status = status;
     
     // Set status color based on status
