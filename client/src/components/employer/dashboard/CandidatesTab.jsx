@@ -8,6 +8,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
   const initialJob = location.state?.jobTitle || 'All Jobs';
   const [selectedJob, setSelectedJob] = useState(initialJob);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
   const [previewResume, setPreviewResume] = useState(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState('All');
@@ -349,7 +350,8 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                                             cand.history = cand.history.map(h => h.appId === hist.appId ? { ...h, status: 'Viewed', color: getStatusBadgeStyles('Viewed') } : h);
                                             setExpandedCandidates(new Set(expandedCandidates));
                                           }
-                                          setSelectedCandidate(cand); 
+                                          setSelectedCandidate(cand);
+                                          setSelectedApplication(hist);
                                         }}
                                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" 
                                         title="View Profile"
@@ -423,13 +425,15 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
           <>
             <div 
               className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 animate-in fade-in duration-300"
-              onClick={() => setSelectedCandidate(null)}
+              onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
             ></div>
             <div className="fixed inset-y-0 right-0 w-full sm:w-[500px] bg-white shadow-2xl z-50 p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-[#ECECEC] font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
               <div className="flex justify-between items-start mb-6 shrink-0">
-                <h3 className="font-bold text-gray-900 text-lg">Candidate Profile</h3>
+                <h3 className="font-bold text-gray-900 text-lg">
+                  {selectedApplication ? `Candidate Profile - ${selectedApplication.title}` : 'Candidate Profile'}
+                </h3>
                 <button 
-                  onClick={() => setSelectedCandidate(null)}
+                  onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
                   className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -449,6 +453,29 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                 <div className="flex flex-col gap-4 border-b border-[#ECECEC] pb-6">
                   <div className="grid grid-cols-2 gap-6">
                     <div>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Function</h4>
+                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.industry || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Designation</h4>
+                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.designation || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Experience</h4>
+                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.totalExperience || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Preferred Location</h4>
+                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.preferredLocation || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  <hr className="border-gray-100" />
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                         Current {selectedCandidate.salaryType === 'Monthly' ? 'Monthly Salary' : 'Annual Salary'}
                       </h4>
@@ -464,10 +491,12 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                   
                   <hr className="border-gray-100" />
                   
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-2 gap-6 mb-8">
                     <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Applied On</h4>
-                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.date || 'Recently'}</p>
+                      <p className="text-sm font-bold text-gray-900">
+                        {selectedApplication ? selectedApplication.date : selectedCandidate.date}
+                      </p>
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Resume</h4>
@@ -499,6 +528,25 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                   </div>
                 </div>
                 
+                {/* Screening Questions Section */}
+                {selectedApplication && selectedApplication.screeningAnswers && selectedApplication.screeningAnswers.length > 0 && (
+                  <div className="bg-[#f8fbfa] p-5 rounded-xl border border-[#e8f3ec] mb-2">
+                    <h4 className="text-xs font-bold text-[#29953f] uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Screening Questions
+                    </h4>
+                    <div className="space-y-4">
+                      {selectedApplication.screeningAnswers.map((item, idx) => (
+                        <div key={idx} className="relative">
+                          {idx !== 0 && <hr className="border-gray-200/60 mb-4" />}
+                          <p className="text-sm font-semibold text-gray-900 mb-1.5">{item.question}</p>
+                          <p className="text-[13px] text-gray-600 leading-relaxed bg-white p-3 rounded-lg border border-gray-100 shadow-sm">{item.answer || <span className="italic text-gray-400">No answer provided</span>}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Standard sidebar content follows */}
                 <div>
                   <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Professional Summary</h4>

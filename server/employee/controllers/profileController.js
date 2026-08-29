@@ -16,13 +16,14 @@ const getProfile = async (req, res) => {
         brief: employee.brief || '',
         avatar: employee.avatar || '',
         designation: employee.designation || '',
+        industry: employee.industry || '',
         totalExperience: employee.totalExperience || '',
+        location: employee.location || '',
+        preferredLocation: employee.preferredLocation || '',
         isFresher: employee.isFresher,
         qualifications: employee.qualifications || [],
         experience: employee.experience || [],
-        professionalDetails: employee.professionalDetails || {
-          currentLocation: employee.location
-        },
+        professionalDetails: employee.professionalDetails || {},
         resume: employee.resume || '',
         coverLetter: employee.coverLetter || ''
       });
@@ -56,11 +57,9 @@ const updateProfile = async (req, res) => {
       employee.mobile = req.body.phone !== undefined && req.body.phone !== '' ? req.body.phone : (employee.mobile || 'N/A');
       
       // Handle location update and default
-      if (req.body.professionalDetails && req.body.professionalDetails.currentLocation) {
-        employee.location = req.body.professionalDetails.currentLocation;
-      } else if (!employee.location) {
-        employee.location = 'N/A'; // Fallback for old documents
-      }
+      employee.location = req.body.location !== undefined ? req.body.location : employee.location;
+      employee.preferredLocation = req.body.preferredLocation !== undefined ? req.body.preferredLocation : employee.preferredLocation;
+      employee.industry = req.body.industry !== undefined ? req.body.industry : employee.industry;
 
       employee.brief = req.body.brief !== undefined ? req.body.brief : employee.brief;
       employee.avatar = req.body.avatar !== undefined ? req.body.avatar : employee.avatar;
@@ -98,7 +97,10 @@ const updateProfile = async (req, res) => {
           brief: updatedEmployee.brief,
           avatar: updatedEmployee.avatar,
           designation: updatedEmployee.designation,
+          industry: updatedEmployee.industry,
           totalExperience: updatedEmployee.totalExperience,
+          location: updatedEmployee.location,
+          preferredLocation: updatedEmployee.preferredLocation,
           isFresher: updatedEmployee.isFresher,
           qualifications: updatedEmployee.qualifications,
           experience: updatedEmployee.experience,
