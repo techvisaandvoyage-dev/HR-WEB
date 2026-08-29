@@ -98,6 +98,10 @@ function App() {
                     })),
                     currentCTC: (emp.professionalDetails && emp.professionalDetails.currentSalary) || 'N/A',
                     expectedCTC: (emp.professionalDetails && emp.professionalDetails.expectedSalary) || 'N/A',
+                    industry: emp.industry || 'N/A',
+                    designation: emp.designation || 'N/A',
+                    totalExperience: emp.totalExperience || 'N/A',
+                    preferredLocation: emp.preferredLocation || 'N/A',
                   };
                 }
                 
@@ -106,7 +110,8 @@ function App() {
                   title: app.jobId?.title || 'Unknown Job',
                   status: app.status,
                   color: app.statusColor,
-                  date: new Date(app.createdAt).toLocaleDateString()
+                  date: new Date(app.createdAt).toLocaleDateString(),
+                  screeningAnswers: app.screeningAnswers || []
                 });
                 
                 // Update last active date to most recent application

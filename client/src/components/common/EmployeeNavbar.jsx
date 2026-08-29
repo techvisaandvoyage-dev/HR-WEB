@@ -40,13 +40,39 @@ const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
   );
 };
 
-const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
+const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchLocation, setSearchLocation] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [experience, setExperience] = useState('All');
-  const [postingDate, setPostingDate] = useState('Any time');
+  
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [localSearchLocation, setLocalSearchLocation] = useState('');
+  const [localExperience, setLocalExperience] = useState('All');
+  const [localPostingDate, setLocalPostingDate] = useState('Any time');
+
+  const searchTerm = filters ? filters.keyword : localSearchTerm;
+  const searchLocation = filters ? filters.location : localSearchLocation;
+  const experience = filters ? filters.experience : localExperience;
+  const postingDate = filters ? filters.postingDate : localPostingDate;
+
+  const handleSetSearchTerm = (val) => {
+    if (setFilters) setFilters(prev => ({ ...prev, keyword: val }));
+    else setLocalSearchTerm(val);
+  };
+
+  const handleSetSearchLocation = (val) => {
+    if (setFilters) setFilters(prev => ({ ...prev, location: val }));
+    else setLocalSearchLocation(val);
+  };
+
+  const handleSetExperience = (val) => {
+    if (setFilters) setFilters(prev => ({ ...prev, experience: val }));
+    else setLocalExperience(val);
+  };
+
+  const handleSetPostingDate = (val) => {
+    if (setFilters) setFilters(prev => ({ ...prev, postingDate: val }));
+    else setLocalPostingDate(val);
+  };
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -121,7 +147,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
           <NavbarDropdown 
             placeholder="Experience"
             value={experience}
-            onChange={setExperience}
+            onChange={handleSetExperience}
             options={[
               { label: 'Any Experience', value: 'All' },
               { label: '0 - 1 Yrs', value: '0 - 1 Yrs' },
@@ -138,7 +164,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
           <NavbarDropdown 
             placeholder="Date Posted"
             value={postingDate}
-            onChange={setPostingDate}
+            onChange={handleSetPostingDate}
             options={[
               { label: 'Any time', value: 'Any time' },
               { label: 'Past 24 hours', value: 'Past 24 hours' },
@@ -156,7 +182,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
               placeholder="Find your perfect job" 
               value={searchTerm}
               onChange={(e) => {
-                setSearchTerm(e.target.value);
+                handleSetSearchTerm(e.target.value);
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
@@ -165,7 +191,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
             {showSuggestions && searchTerm && (
               <div className="absolute top-[200%] left-0 w-[120%] bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[100] max-h-64 overflow-y-auto">
                 {filteredJobs.length > 0 ? filteredJobs.slice(0, 5).map(job => (
-                  <div key={job.id} onClick={() => { setSearchTerm(job.title); setShowSuggestions(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
+                  <div key={job.id} onClick={() => { handleSetSearchTerm(job.title); setShowSuggestions(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
                     <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600 text-xs shrink-0">
                       {job.companyInitial}
                     </div>
@@ -187,7 +213,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false }) => {
             </svg>
             <LocationAutocomplete 
               value={searchLocation}
-              onChange={(val) => setSearchLocation(val?.label || val)}
+              onChange={(val) => handleSetSearchLocation(val?.label || val)}
               placeholder="City, state, region or remote" 
               className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
             />

@@ -420,12 +420,14 @@ const EmployeeProfile = () => {
     qualifications: [],
     isFresher: false,
     experience: [],
+    location: '',
+    preferredLocation: '',
+    industry: '',
+    designation: '',
+    totalExperience: '',
     professionalDetails: {
-      currentDesignation: '',
       currentSalary: '',
       expectedSalary: '',
-      currentLocation: 'Pune, INDIA',
-      preferredLocations: '',
       linkedinUrl: '',
       majorAchievements: '',
       skills: ''
@@ -550,7 +552,7 @@ const EmployeeProfile = () => {
     else missing.push({ label: 'Add Phone Number', points: 10, target: 'basic' });
 
     if (!formData.isFresher) {
-      if (formData.professionalDetails?.currentDesignation && formData.professionalDetails?.currentSalary) {
+      if (formData.designation && formData.professionalDetails?.currentSalary) {
         score += 10;
       } else {
         missing.push({ label: 'Professional Overview', points: 10, target: 'professional' });
@@ -644,7 +646,7 @@ const EmployeeProfile = () => {
           <div className="space-y-3">
             <p className="flex items-center gap-3">
               <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              {formData.professionalDetails?.currentLocation || 'Location not set'}
+              {formData.location || 'Location not set'}
             </p>
             <p className="flex items-center gap-3">
               <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
@@ -756,7 +758,7 @@ const EmployeeProfile = () => {
               else eduStr = highestEdu.course || highestEdu.educationType;
             }
             
-            const locStr = formData.professionalDetails?.currentLocation;
+            const locStr = formData.location;
             
             const parts = [];
             if (eduStr) parts.push(eduStr);
@@ -792,15 +794,15 @@ const EmployeeProfile = () => {
         {isEditingBasicOnMobile ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">First Name <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">First Name</label>
               <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.firstName || ''} onChange={e => setFormData({...formData, firstName: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name</label>
               <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.lastName || ''} onChange={e => setFormData({...formData, lastName: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number</label>
               <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
             </div>
             <div>
@@ -808,10 +810,10 @@ const EmployeeProfile = () => {
               <input type="text" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location</label>
               <LocationAutocomplete 
-                value={formData.professionalDetails?.currentLocation || ''}
-                onChange={(val) => setP('currentLocation', val)}
+                value={formData.location || ''}
+                onChange={(val) => setFormData({...formData, location: val?.label || val})}
                 placeholder="e.g. Pune, Maharashtra"
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
               />
@@ -830,7 +832,7 @@ const EmployeeProfile = () => {
           <div className="space-y-4.5">
             <div className="flex items-center gap-4 mb-4">
               <svg className="w-[20px] h-[20px] text-[#6B7280] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              <span className="text-[16px] text-[#374151]">{formData.professionalDetails?.currentLocation || 'Pune, INDIA'}</span>
+              <span className="text-[16px] text-[#374151]">{formData.location || 'Location not set'}</span>
             </div>
             
             <div className="flex items-center gap-4 mb-4">
@@ -1211,9 +1213,7 @@ const EmployeeProfile = () => {
 
                       {item.label === 'Professional Overview' && (
                         <div className="flex flex-col gap-3">
-                          {!formData.isFresher && (
-                            <input type="text" placeholder="Current Designation" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.currentDesignation || ''} onChange={e => setP('currentDesignation', e.target.value)} />
-                          )}
+                          <input type="text" placeholder="Current Designation" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={formData.designation || ''} onChange={e => setFormData({...formData, designation: e.target.value})} />
                           <input type="url" placeholder="LinkedIn Profile URL" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={p.linkedinUrl || ''} onChange={e => setP('linkedinUrl', e.target.value)} />
                           <div className="flex gap-3">
                             <select value={p.salaryType || 'Yearly'} onChange={e => setP('salaryType', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500 bg-white">
@@ -1312,15 +1312,15 @@ const EmployeeProfile = () => {
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">First Name <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">First Name</label>
                   <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.firstName || ''} onChange={e => setFormData({...formData, firstName: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name</label>
                   <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.lastName || ''} onChange={e => setFormData({...formData, lastName: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number</label>
                   <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
                 </div>
                 <div>
@@ -1328,7 +1328,7 @@ const EmployeeProfile = () => {
                   <input type="text" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location</label>
                   <LocationAutocomplete 
                     value={formData.location || ''}
                     onChange={(val) => setFormData({...formData, location: val?.label || val})}
@@ -1414,7 +1414,7 @@ const EmployeeProfile = () => {
                         
                         <div className="space-y-6 pt-6 px-4 pb-[140px] md:pt-2 md:px-0 md:pb-0 flex-1">
                           <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-1.5">Education <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-bold text-gray-900 mb-1.5">Education</label>
                             <CustomDropdown
                               options={educationTypeOptions}
                               value={q.educationType || ''}
@@ -1431,7 +1431,7 @@ const EmployeeProfile = () => {
                           {isSchool && (
                             <>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Board <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Board</label>
                                 <CustomDropdown 
                                   options={boardOptions}
                                   value={q.board || ''}
@@ -1441,7 +1441,7 @@ const EmployeeProfile = () => {
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Passing out year <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Passing out year</label>
                                 <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
                                   <option value="">Select passing out year</option>
                                   {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
@@ -1450,7 +1450,7 @@ const EmployeeProfile = () => {
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">School medium <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">School medium</label>
                                 <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.schoolMedium ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.schoolMedium || ''} onChange={e => { updateArray('qualifications', idx, 'schoolMedium', e.target.value); setEduFieldErrors({...eduFieldErrors, schoolMedium: false}); }}>
                                   <option value="">Select medium</option>
                                   <option value="English">English</option>
@@ -1459,7 +1459,7 @@ const EmployeeProfile = () => {
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks</label>
                                 <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="% marks of 100 maximum" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
                               </div>
                             </>
@@ -1468,7 +1468,7 @@ const EmployeeProfile = () => {
                           {isHigher && (
                             <>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute</label>
                                 <InstituteAutocomplete 
                                   value={q.university || ''}
                                   onChange={val => { updateArray('qualifications', idx, 'university', val); setEduFieldErrors({...eduFieldErrors, university: false}); }}
@@ -1477,7 +1477,7 @@ const EmployeeProfile = () => {
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course</label>
                                 <CustomDropdown
                                   options={
                                     q.educationType === 'Masters/Post-Graduation' ? [...postgradCourses, ...doctoralAndOtherCourses] :
@@ -1500,7 +1500,7 @@ const EmployeeProfile = () => {
                                 />
                               </div>
                               <div>
-                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>Course type <span className="text-red-500">*</span></label>
+                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>Course type</label>
                                 <div className="flex flex-wrap items-center gap-6">
                                   <label className="flex items-center cursor-pointer group">
                                     <input type="radio" name={`courseType-${idx}`} value="Full time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Full time'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
@@ -1517,7 +1517,7 @@ const EmployeeProfile = () => {
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration</label>
                                 <div className="flex items-center gap-4">
                                   <div className="flex-1">
                                     <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.startYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.startYear || ''} onChange={e => { updateArray('qualifications', idx, 'startYear', e.target.value); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}>
@@ -1549,7 +1549,7 @@ const EmployeeProfile = () => {
                               </div>
                               {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
                                 <div>
-                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
+                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks</label>
                                   <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
                                 </div>
                               )}
@@ -1683,7 +1683,7 @@ const EmployeeProfile = () => {
                                 <div className="space-y-4 pt-6 px-4 pb-[140px] md:pt-0 md:px-0 md:pb-0 flex-1">
                                   <h4 className="hidden md:block font-semibold text-gray-700 pr-8">Company {cIdx + 1}</h4>
                                 <div>
-                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Company Name <span className="text-red-500">*</span></label>
+                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Company Name</label>
                                   <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={exp.companyName || ''} onChange={e => {
                                     const newExp = [...(formData.experience || [])];
                                     newExp[cIdx].companyName = e.target.value;
@@ -1727,7 +1727,7 @@ const EmployeeProfile = () => {
                                               </button>
                                               
                                               <div>
-                                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Job Title <span className="text-red-500">*</span></label>
+                                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Job Title</label>
                                                 <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.jobTitle || ''} onChange={e => {
                                                   const newExp = [...(formData.experience || [])];
                                                   newExp[cIdx].roles[rIdx].jobTitle = e.target.value;
@@ -1740,7 +1740,7 @@ const EmployeeProfile = () => {
                                                 }} />
                                               </div>
                                               <div>
-                                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Employment Type <span className="text-red-500">*</span></label>
+                                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Employment Type</label>
                                                 <CustomDropdown
                                                   options={employmentTypeOptions}
                                                   value={role.employmentType || ''}
@@ -1769,7 +1769,7 @@ const EmployeeProfile = () => {
                                               </div>
                                               <div className="space-y-6">
                                                 <div>
-                                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Joining <span className="text-red-500">*</span></label>
+                                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Joining</label>
                                                   <div className={`${expFieldErrors.roles?.[rIdx]?.joiningDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
                                                     <CustomMonthPicker
                                                       value={role.joiningDate || ''}
@@ -1789,7 +1789,7 @@ const EmployeeProfile = () => {
                                                 </div>
                                                 {!role.currentCompany && (
                                                   <div>
-                                                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Leaving <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Leaving</label>
                                                     <div className={`${expFieldErrors.roles?.[rIdx]?.leavingDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
                                                       <CustomMonthPicker
                                                         value={role.leavingDate || ''}
@@ -1921,7 +1921,7 @@ const EmployeeProfile = () => {
                 
                 <div className={`grid-cols-1 md:grid-cols-2 gap-6 ${isEditingProfOverviewMobile ? 'grid p-4 pb-24 md:p-0' : 'hidden md:grid'}`}>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Industry <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Function</label>
                     <CustomDropdown
                       options={[
                         'IT & Software', 'BPO/KPO', 'Finance & Accounts', 'Healthcare',
@@ -1929,14 +1929,13 @@ const EmployeeProfile = () => {
                       ].sort().map(ind => ({ value: ind, label: ind }))}
                       value={formData.industry || ''}
                       onChange={val => {
-                        setFormData({...formData, industry: val});
-                        setP('currentDesignation', '');
+                        setFormData({...formData, industry: val, designation: ''});
                       }}
-                      placeholder="Select Industry"
+                      placeholder="Select Function"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Designation <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Designation</label>
                     <CustomDropdown
                       options={(() => {
                         const rolesByIndustry = {
@@ -1956,8 +1955,8 @@ const EmployeeProfile = () => {
                         const allRoles = [...new Set(Object.values(rolesByIndustry).flat()), "Product Manager", "Project Manager", "Business Analyst", "Operations Manager", "Other"];
                         return allRoles.sort().map(role => ({ value: role, label: role }));
                       })()}
-                      value={p.currentDesignation || ''}
-                      onChange={val => setP('currentDesignation', val)}
+                      value={formData.designation || ''}
+                      onChange={val => setFormData({...formData, designation: val})}
                       placeholder="Search or type designation"
                     />
                   </div>
@@ -1971,11 +1970,11 @@ const EmployeeProfile = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">LinkedIn Profile URL <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">LinkedIn Profile URL</label>
                     <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={p.linkedinUrl || ''} onChange={e => setP('linkedinUrl', e.target.value)} />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Total Experience <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Total Experience</label>
                     <CustomDropdown
                       options={experienceOptions}
                       value={formData.totalExperience || ''}
@@ -2078,7 +2077,7 @@ const EmployeeProfile = () => {
                 
                 <div className={`${isEditingSkillsMobile ? 'block p-4 pb-24 md:p-0' : 'hidden md:block'}`}>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Add Skills <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Add Skills</label>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []).map(skill => (
                         <span key={skill} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-[13px] font-bold border border-green-100 flex items-center gap-1.5 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-sm" onClick={() => removeSkill(skill)} title="Click to remove">
@@ -2150,7 +2149,7 @@ const EmployeeProfile = () => {
               <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="p-4 border border-gray-200 rounded-xl">
-                        <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume</label>
                         <input key={docs.resume ? 'resume-has' : 'resume-empty'} type="file" accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
                         <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300kb</p>
                         {docs.resume && (

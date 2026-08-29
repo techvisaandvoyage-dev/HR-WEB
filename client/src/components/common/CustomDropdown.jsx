@@ -41,7 +41,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
     <div className="relative w-full text-left font-sans" ref={wrapperRef}>
       <div
         onClick={() => setIsOpen(true)}
-        className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : (error ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200')} rounded-xl text-gray-700 flex justify-between items-center transition-all shadow-sm cursor-text`}
+        className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : (error ? 'border-red-500' : 'border-gray-200')} rounded-xl text-gray-700 flex justify-between items-center transition-all shadow-sm cursor-text`}
       >
         <div className="flex-1 overflow-hidden pr-2">
           {isOpen ? (

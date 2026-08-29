@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 // Mapping algorithm to categorize employee designations into broader industries
 const designationToIndustryMap = {
@@ -199,13 +200,13 @@ const AllEmployeesTab = () => {
           <div className="flex gap-3 flex-wrap items-center">
             {/* Industry Filter */}
             <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Industry</span>
+              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Function</span>
               <select 
                 className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
                 value={industryFilter}
                 onChange={(e) => setIndustryFilter(e.target.value)}
               >
-                <option value="All">All Industries</option>
+                <option value="All">All Functions</option>
                 {industryOptions.map(ind => <option key={ind} value={ind}>{ind}</option>)}
               </select>
               <div className="pointer-events-none absolute right-4 text-[#888888]">
@@ -279,6 +280,7 @@ const AllEmployeesTab = () => {
                 <tr className="text-xs text-gray-400 border-b border-gray-100">
                   <th className="px-6 py-4 font-semibold pb-4">Employee</th>
                   <th className="px-6 py-4 font-semibold pb-4">Role & Exp</th>
+                  <th className="px-6 py-4 font-semibold pb-4">Function</th>
                   <th className="px-6 py-4 font-semibold pb-4">Phone</th>
                   <th className="px-6 py-4 font-semibold pb-4">Location</th>
                   <th className="px-6 py-4 font-semibold pb-4">Account Created</th>
@@ -304,6 +306,9 @@ const AllEmployeesTab = () => {
                         <span className="font-bold text-gray-800 text-sm">{emp.designation || 'Not specified'}</span>
                         <span className="text-xs text-gray-500 mt-0.5">{emp.totalExperience ? `${emp.totalExperience} Exp.` : 'N/A Exp.'}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                      {emp.industry || 'Not specified'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 font-medium">
                       {emp.mobile || 'N/A'}
@@ -333,7 +338,7 @@ const AllEmployeesTab = () => {
       </div>
 
       {/* Slide-over Profile Details Sidebar */}
-      {selectedEmployee && (
+      {selectedEmployee && createPortal(
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedEmployee(null)}></div>
           <div className="fixed inset-y-0 right-0 max-w-full flex">
@@ -366,6 +371,30 @@ const AllEmployeesTab = () => {
                 
                 <hr className="border-gray-100 mb-6" />
 
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Function</h4>
+                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.industry || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Designation</h4>
+                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.designation || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Experience</h4>
+                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.totalExperience || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Preferred Location</h4>
+                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.preferredLocation || 'N/A'}</p>
+                  </div>
+                </div>
+                
+                <hr className="border-gray-100 mb-6" />
+
                 {/* Grid stats */}
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div>
@@ -382,25 +411,16 @@ const AllEmployeesTab = () => {
 
                 <div className="grid grid-cols-2 gap-6 mb-8">
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Applied On</h4>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Joined On</h4>
                     <p className="text-sm font-bold text-gray-900">{new Date(selectedEmployee.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Resume</h4>
-                    {selectedEmployee.resume ? (
-                      <div className="flex items-center gap-3">
-                        <a href={selectedEmployee.resume} target="_blank" rel="noreferrer" className="text-sm font-bold text-[#18a058] flex items-center gap-1 hover:underline">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                          Preview
-                        </a>
-                        <a href={selectedEmployee.resume} download className="text-sm font-bold text-gray-500 flex items-center gap-1 hover:text-gray-700">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                          Download
-                        </a>
-                      </div>
-                    ) : (
-                      <p className="text-sm font-bold text-gray-900">N/A</p>
-                    )}
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Last Updated</h4>
+                    <p className="text-sm font-bold text-gray-900">
+                      {selectedEmployee.updatedAt 
+                        ? new Date(selectedEmployee.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+                        : 'N/A'}
+                    </p>
                   </div>
                 </div>
 
@@ -487,6 +507,57 @@ const AllEmployeesTab = () => {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Documents Section */}
+                  {(selectedEmployee.resume || selectedEmployee.coverLetter) && (
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents</h4>
+                      <div className="space-y-3">
+                        {selectedEmployee.resume && (
+                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-gray-900">Resume</p>
+                                <p className="text-xs text-gray-500">Document</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a href={selectedEmployee.resume} target="_blank" rel="noreferrer" className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                              </a>
+                              <a href={selectedEmployee.resume} download className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                        {selectedEmployee.coverLetter && (
+                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-gray-900">Cover Letter</p>
+                                <p className="text-xs text-gray-500">Document</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a href={selectedEmployee.coverLetter} target="_blank" rel="noreferrer" className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                              </a>
+                              <a href={selectedEmployee.coverLetter} download className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                 </div>
               </div>
@@ -499,10 +570,10 @@ const AllEmployeesTab = () => {
                   Message Candidate
                 </button>
               </div>
-
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

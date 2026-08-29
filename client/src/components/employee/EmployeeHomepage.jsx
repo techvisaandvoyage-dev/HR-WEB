@@ -119,7 +119,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       
       {/* Navbar */}
-      <EmployeeNavbar jobs={jobs} />
+      <EmployeeNavbar jobs={jobs} filters={filters} setFilters={setFilters} />
 
       {/* Toast Notification */}
       {showToast && (
@@ -431,16 +431,31 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                   <h3 className="text-lg font-bold text-gray-900">Your qualifications for this job</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-y-3 gap-x-8">
-                  {selectedJob.qualifications.map((q, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                      {q.met ? (
-                        <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                      ) : (
-                        <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
-                      )}
-                      {q.name}
-                    </div>
-                  ))}
+                  {(() => {
+                    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+                    const mySkills = (profile.professionalDetails?.skills || '')
+                      .split(',')
+                      .map(s => s.trim().toLowerCase())
+                      .filter(s => s);
+                    
+                    const requiredSkills = selectedJob.qualifications && selectedJob.qualifications.length > 0
+                      ? selectedJob.qualifications.map(q => q.name)
+                      : (selectedJob.details?.skillsRequired ? selectedJob.details.skillsRequired.split(',').map(s => s.trim()).filter(s => s) : []);
+
+                    return requiredSkills.map((skillName, idx) => {
+                      const isMet = mySkills.includes(skillName.toLowerCase());
+                      return (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                          {isMet ? (
+                            <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                          ) : (
+                            <svg className="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" strokeWidth="2" /></svg>
+                          )}
+                          {skillName}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 

@@ -97,7 +97,12 @@ const DateRangePicker = ({ dateRange, onRangeChange }) => {
   };
 
   const handleCancel = () => {
+    setStartDate(null);
+    setEndDate(null);
     setIsOpen(false);
+    if (onRangeChange) {
+      onRangeChange({ start: '', end: '' });
+    }
   };
 
   const formatDate = (date) => date ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
