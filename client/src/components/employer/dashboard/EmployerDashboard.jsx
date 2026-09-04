@@ -9,7 +9,7 @@ import CompanyProfileTab from './CompanyProfileTab';
 import AllEmployeesTab from './AllEmployeesTab';
 import EmployerMessages from '../messages/EmployerMessages';
 
-const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, rawAppsData, updateCandidateStatus, toggleJobStatus }) => {
+const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawAppsData, updateCandidateStatus, toggleJobStatus }) => {
   const location = useLocation();
   const [totalUnread, setTotalUnread] = React.useState(0);
   const [refreshNav, setRefreshNav] = React.useState(false);
@@ -106,7 +106,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, candidates, rawAppsData, up
           <div className="max-w-[1200px] mx-auto w-full">
             <Routes>
               <Route index element={<DashboardOverview jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
-              <Route path="/post-job" element={<PostJob addJob={addJob} />} />
+              <Route path="/post-job" element={<PostJob addJob={addJob} updateJob={updateJob} />} />
               <Route path="/manage-jobs" element={<ManageJobs jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
               <Route path="/applications" element={<CandidatesTab candidates={candidates} jobs={jobs} updateCandidateStatus={updateCandidateStatus} />} />
               <Route path="/all-employees" element={<AllEmployeesTab />} />

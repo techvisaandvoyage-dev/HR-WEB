@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import LocationAutocomplete from '../common/LocationAutocomplete';
 import ImageCropperModal from '../common/ImageCropperModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
 import CustomDropdown from '../common/CustomDropdown';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import CustomMonthPicker from '../common/CustomMonthPicker';
+import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
+import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -811,10 +812,12 @@ const EmployeeProfile = () => {
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location</label>
-              <LocationAutocomplete 
+              <MultiSelectLocationDropdown
+                options={currentLocationOptions}
                 value={formData.location || ''}
-                onChange={(val) => setFormData({...formData, location: val?.label || val})}
-                placeholder="e.g. Pune, Maharashtra"
+                onChange={(val) => setFormData({...formData, location: val})}
+                multiple={false}
+                placeholder="Select Current Location"
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
               />
             </div>
@@ -1329,10 +1332,12 @@ const EmployeeProfile = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location</label>
-                  <LocationAutocomplete 
+                  <MultiSelectLocationDropdown
+                    options={currentLocationOptions}
                     value={formData.location || ''}
-                    onChange={(val) => setFormData({...formData, location: val?.label || val})}
-                    placeholder="e.g. Pune, Maharashtra"
+                    onChange={(val) => setFormData({...formData, location: val})}
+                    multiple={false}
+                    placeholder="Select Current Location"
                     className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
                   />
                 </div>
@@ -1924,7 +1929,7 @@ const EmployeeProfile = () => {
                     <label className="block text-sm font-bold text-gray-900 mb-1.5">Function</label>
                     <CustomDropdown
                       options={[
-                        'IT & Software', 'BPO/KPO', 'Finance & Accounts', 'Healthcare',
+                        'IT & Software', 'Finance & Accounts', 'Healthcare',
                         'Manufacturing', 'Education', 'Marketing', 'Sales', 'HR', 'Other'
                       ].sort().map(ind => ({ value: ind, label: ind }))}
                       value={formData.industry || ''}
@@ -1940,7 +1945,6 @@ const EmployeeProfile = () => {
                       options={(() => {
                         const rolesByIndustry = {
                           'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
-                          'BPO/KPO': ["Customer Support Executive", "Technical Support Executive", "BPO Executive", "Team Leader", "Quality Analyst", "Process Trainer", "Operations Manager"],
                           'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
                           'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
                           'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
@@ -1962,10 +1966,11 @@ const EmployeeProfile = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location</label>
-                    <LocationAutocomplete 
+                    <MultiSelectLocationDropdown
+                      options={preferredLocationOptions}
                       value={formData.preferredLocation || ''}
-                      onChange={(val) => setFormData({...formData, preferredLocation: val?.label || val})}
-                      placeholder="e.g. Mumbai, Maharashtra"
+                      onChange={(val) => setFormData({...formData, preferredLocation: val})}
+                      placeholder="Search Locations"
                       className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
                     />
                   </div>

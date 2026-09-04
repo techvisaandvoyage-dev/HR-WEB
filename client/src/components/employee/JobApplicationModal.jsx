@@ -28,6 +28,20 @@ const formatIndianNumber = (val) => {
   return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
 };
 
+const getProfileDesignation = (profile) => {
+  if (!profile) return '';
+
+  return profile.designation
+    || profile.professionalDetails?.currentDesignation
+    || profile.experience?.find((experience) => experience.roles?.some((role) => role.currentCompany))?.roles?.find((role) => role.currentCompany)?.jobTitle
+    || profile.experience?.[0]?.roles?.[0]?.jobTitle
+    || '';
+};
+
+const isScreeningQuestionRequired = (question) => (
+  question?.required === true || question?.required === 'true'
+);
+
 const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const hasQuestions = job?.screeningQuestions && job.screeningQuestions.length > 0;
@@ -106,7 +120,12 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
 
   const [fastStep, setFastStep] = useState(1);
   const [isOldUser, setIsOldUser] = useState(false);
-  const [fastFormData, setFastFormData] = useState({ relevantJobTitle: '', relevantCompany: '' });
+
+
+  const [fastFormData, setFastFormData] = useState(() => ({
+    relevantJobTitle: getProfileDesignation(formData),
+    relevantCompany: ''
+  }));
   const [screeningAnswers, setScreeningAnswers] = useState({});
   const [questionErrors, setQuestionErrors] = useState({});
   const [isLoadingReview, setIsLoadingReview] = useState(false);
@@ -115,9 +134,9 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
     let isValid = true;
     const errors = {};
     if (job?.screeningQuestions) {
-      job.screeningQuestions.forEach(sq => {
-        if (sq.required && (!screeningAnswers[sq.question] || screeningAnswers[sq.question].trim() === '')) {
-          errors[sq.question] = true;
+      job.screeningQuestions.forEach((sq, i) => {
+        if (isScreeningQuestionRequired(sq) && (!screeningAnswers[i] || screeningAnswers[i].trim() === '')) {
+          errors[i] = true;
           isValid = false;
         }
       });
@@ -128,6 +147,19 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
 
   React.useEffect(() => {
     if (isOpen) {
+      try {
+        const savedProfile = localStorage.getItem('userProfile');
+        if (savedProfile) {
+          const latestProfile = JSON.parse(savedProfile);
+          setFormData(latestProfile);
+          setFastFormData({
+            relevantJobTitle: getProfileDesignation(latestProfile),
+            relevantCompany: ''
+          });
+        }
+      } catch (error) {
+        console.error('Unable to load the latest profile for this application:', error);
+      }
       setCurrentStep(1);
       setFastStep(1);
       setIsOldUser(localStorage.getItem('hasProfile') === 'true');
@@ -229,7 +261,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
               history: [
                 { title: job.title, status: 'Applied', color: 'bg-blue-50 text-blue-600 border border-blue-100' }
               ],
-              screeningAnswers: Object.keys(screeningAnswers).map(q => ({ question: q, answer: screeningAnswers[q] }))
+              screeningAnswers: job.screeningQuestions ? job.screeningQuestions.map((sq, i) => ({ question: sq.question, answer: screeningAnswers[i] })).filter(item => item.answer && item.answer.trim() !== '') : []
             });
             if (!result.success) {
               setSubmitError(result.message);
@@ -291,7 +323,7 @@ const p = formData.professionalDetails || {};
           <div key={i} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
             <label className="block text-sm font-bold text-gray-900 mb-3">
               {sq.question}
-              {sq.required && <span className="text-red-500 ml-1">*</span>}
+              {isScreeningQuestionRequired(sq) && <span className="text-red-500 ml-1">*</span>}
             </label>
             {sq.type === 'Yes/No' ? (
               <div>
@@ -300,33 +332,33 @@ const p = formData.professionalDetails || {};
                     { value: 'Yes', label: 'Yes' },
                     { value: 'No', label: 'No' }
                   ]}
-                  value={screeningAnswers[sq.question] || ''}
+                  value={screeningAnswers[i] || ''}
                   onChange={(val) => {
-                    setScreeningAnswers({...screeningAnswers, [sq.question]: val});
-                    if (questionErrors[sq.question]) {
-                      setQuestionErrors({...questionErrors, [sq.question]: false});
+                    setScreeningAnswers({...screeningAnswers, [i]: val});
+                    if (questionErrors[i]) {
+                      setQuestionErrors({...questionErrors, [i]: false});
                     }
                   }}
                   placeholder="Select an answer"
-                  error={questionErrors[sq.question]}
+                  error={questionErrors[i]}
                 />
-                {questionErrors[sq.question] && <p className="text-red-500 text-xs mt-1.5">Please select an answer to continue.</p>}
+                {questionErrors[i] && <p className="text-red-500 text-xs mt-1.5">Please select an answer to continue.</p>}
               </div>
             ) : (
               <div>
                 <textarea 
                   rows="3"
-                  className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-gray-700 outline-none focus:bg-white focus:ring-1 transition-all resize-none ${questionErrors[sq.question] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-green-500 focus:ring-green-500'}`}
+                  className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-gray-700 outline-none focus:bg-white focus:ring-1 transition-all resize-none ${questionErrors[i] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-green-500 focus:ring-green-500'}`}
                   placeholder="Type your answer here..."
-                  value={screeningAnswers[sq.question] || ''}
+                  value={screeningAnswers[i] || ''}
                   onChange={(e) => {
-                    setScreeningAnswers({...screeningAnswers, [sq.question]: e.target.value});
-                    if (questionErrors[sq.question]) {
-                      setQuestionErrors({...questionErrors, [sq.question]: false});
+                    setScreeningAnswers({...screeningAnswers, [i]: e.target.value});
+                    if (questionErrors[i]) {
+                      setQuestionErrors({...questionErrors, [i]: false});
                     }
                   }}
                 />
-                {questionErrors[sq.question] && <p className="text-red-500 text-xs mt-1.5">Please type an answer to continue.</p>}
+                {questionErrors[i] && <p className="text-red-500 text-xs mt-1.5">Please type an answer to continue.</p>}
               </div>
             )}
           </div>
@@ -335,7 +367,6 @@ const p = formData.professionalDetails || {};
     </div>
   );
 
-  // --- Fast Apply Components (Old Users) ---
 
   const FastStep1Experience = () => {
     const fastDesignations = [

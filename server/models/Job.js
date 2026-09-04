@@ -37,9 +37,15 @@ const JobSchema = new mongoose.Schema({
     responsibilities: String,
     skillsRequired: String,
     salary: String,
+    salaryType: String,
+    currency: String,
+    salaryMin: String,
+    salaryMax: String,
+    openings: String,
     qualification: String,
     stream: String,
-    jobCategory: String
+    jobCategory: String,
+    industry: String
   },
   screeningQuestions: [{
     question: String,

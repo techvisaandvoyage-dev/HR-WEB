@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { currentLocationOptions, preferredLocationOptions } from '../../../data/preferredLocations';
+import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 
 // Mapping algorithm to categorize employee designations into broader industries
 const designationToIndustryMap = {
@@ -65,6 +67,7 @@ const AllEmployeesTab = () => {
   const [experienceFilter, setExperienceFilter] = useState('All');
   const [industryFilter, setIndustryFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
+  const [preferredLocationFilter, setPreferredLocationFilter] = useState('');
   const [lastUpdateFilter, setLastUpdateFilter] = useState('All');
 
   useEffect(() => {
@@ -96,13 +99,11 @@ const AllEmployeesTab = () => {
   }, []);
 
   const industryOptions = [
-    'IT & Software', 'BPO/KPO', 'Finance & Accounts', 'Healthcare',
-    'Manufacturing', 'Education', 'Marketing', 'Sales', 'HR', 'Other'
+    'IT & Software', 'Finance & Accounts', 'Healthcare',
+    'Manufacturing', 'Marketing', 'Sales', 'HR', 'Other'
   ].sort();
   
-  const locationOptions = [
-    'Delhi NCR', 'Mumbai', 'Bangalore', 'Hyderabad', 'Pune', 'Chennai', 'Kolkata', 'Remote'
-  ].sort();
+  const locationOptions = currentLocationOptions.map(opt => opt.value);
 
   const experienceOptions = [
     '0 - 1 Yrs', '2 - 3 Yrs', '4 - 6 Yrs', '7 - 10 Yrs', '11 - 15 Yrs', '16 - 20 Yrs', '21 - 25 Yrs', '25+ yrs'
@@ -113,10 +114,11 @@ const AllEmployeesTab = () => {
     setExperienceFilter('All');
     setIndustryFilter('All');
     setLocationFilter('All');
+    setPreferredLocationFilter('');
     setLastUpdateFilter('All');
   };
 
-  const hasActiveFilters = searchQuery || experienceFilter !== 'All' || industryFilter !== 'All' || locationFilter !== 'All' || lastUpdateFilter !== 'All';
+  const hasActiveFilters = searchQuery || experienceFilter !== 'All' || industryFilter !== 'All' || locationFilter !== 'All' || preferredLocationFilter || lastUpdateFilter !== 'All';
 
   const filteredEmployees = employees.filter(emp => {
     // Search Filter
@@ -156,6 +158,17 @@ const AllEmployeesTab = () => {
       if (lastUpdateFilter === 'Past 24 hours' && diffHours > 24) return false;
       if (lastUpdateFilter === 'Past week' && diffDays > 7) return false;
       if (lastUpdateFilter === 'Past month' && diffDays > 30) return false;
+    }
+
+    // Preferred Location Filter (multi-select)
+    if (preferredLocationFilter) {
+      const selectedLocs = preferredLocationFilter.split(',').map(v => v.trim().toLowerCase()).filter(v => v);
+      if (selectedLocs.length > 0) {
+        const empPrefLoc = (emp.preferredLocation || '').toLowerCase();
+        const empLoc = (emp.location || '').toLowerCase();
+        const matchesAny = selectedLocs.some(loc => empPrefLoc.includes(loc) || empLoc.includes(loc));
+        if (!matchesAny) return false;
+      }
     }
 
     return true;
@@ -199,69 +212,73 @@ const AllEmployeesTab = () => {
           
           <div className="flex gap-3 flex-wrap items-center">
             {/* Industry Filter */}
-            <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Function</span>
-              <select 
-                className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
+            <div className="relative" style={{ minWidth: '220px' }}>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Function</span>
+              <MultiSelectLocationDropdown
+                options={[{ value: 'All', label: 'All Functions' }, ...industryOptions.map(ind => ({ value: ind, label: ind }))]}
                 value={industryFilter}
-                onChange={(e) => setIndustryFilter(e.target.value)}
-              >
-                <option value="All">All Functions</option>
-                {industryOptions.map(ind => <option key={ind} value={ind}>{ind}</option>)}
-              </select>
-              <div className="pointer-events-none absolute right-4 text-[#888888]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-              </div>
+                onChange={(val) => setIndustryFilter(val)}
+                multiple={false}
+                placeholder="All Functions"
+                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+              />
             </div>
 
             {/* Location Filter */}
-            <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Location</span>
-              <select 
-                className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
+            <div className="relative" style={{ minWidth: '280px' }}>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Location</span>
+              <MultiSelectLocationDropdown
+                options={[{ value: 'All', label: 'All Locations' }, ...preferredLocationOptions]}
                 value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-              >
-                <option value="All">All Locations</option>
-                {locationOptions.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-              </select>
-              <div className="pointer-events-none absolute right-4 text-[#888888]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-              </div>
+                onChange={(val) => setLocationFilter(val)}
+                multiple={false}
+                placeholder="All Locations"
+                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+              />
             </div>
 
             {/* Experience Filter */}
-            <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Exp</span>
-              <select 
-                className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
+            <div className="relative" style={{ minWidth: '180px' }}>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Experience</span>
+              <MultiSelectLocationDropdown
+                options={[{ value: 'All', label: 'All Exp' }, ...experienceOptions.map(exp => ({ value: exp, label: exp }))]}
                 value={experienceFilter}
-                onChange={(e) => setExperienceFilter(e.target.value)}
-              >
-                <option value="All">All Exp</option>
-                {experienceOptions.map(exp => <option key={exp} value={exp}>{exp}</option>)}
-              </select>
-              <div className="pointer-events-none absolute right-4 text-[#888888]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-              </div>
+                onChange={(val) => setExperienceFilter(val)}
+                multiple={false}
+                placeholder="All Exp"
+                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+              />
             </div>
 
             {/* Last Update Filter */}
-            <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-              <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Update</span>
-              <select 
-                className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
+            <div className="relative" style={{ minWidth: '180px' }}>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Last Update</span>
+              <MultiSelectLocationDropdown
+                options={[
+                  { value: 'All', label: 'Any time' },
+                  { value: 'Past 24 hours', label: 'Past 24 hours' },
+                  { value: 'Past week', label: 'Past week' },
+                  { value: 'Past month', label: 'Past month' },
+                ]}
                 value={lastUpdateFilter}
-                onChange={(e) => setLastUpdateFilter(e.target.value)}
-              >
-                <option value="All">Any time</option>
-                <option value="Past 24 hours">Past 24 hours</option>
-                <option value="Past week">Past week</option>
-                <option value="Past month">Past month</option>
-              </select>
-              <div className="pointer-events-none absolute right-4 text-[#888888]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-              </div>
+                onChange={(val) => setLastUpdateFilter(val)}
+                multiple={false}
+                placeholder="Any time"
+                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+              />
+            </div>
+
+            {/* Preferred Location Filter (Multi-select) */}
+            <div className="relative" style={{ minWidth: '280px' }}>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Preferred Location</span>
+              <MultiSelectLocationDropdown
+                options={preferredLocationOptions}
+                value={preferredLocationFilter}
+                onChange={(val) => setPreferredLocationFilter(val)}
+                multiple={true}
+                placeholder="Any Preferred Location"
+                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+              />
             </div>
           </div>
         </div>

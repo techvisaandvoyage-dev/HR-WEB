@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LocationAutocomplete from '../../common/LocationAutocomplete';
 import CustomDropdown from '../../common/CustomDropdown';
 
@@ -9,8 +9,12 @@ const formatIndianNumber = (numStr) => {
   return new Intl.NumberFormat('en-IN').format(Number(digits));
 };
 
-const PostJob = ({ addJob }) => {
+const PostJob = ({ addJob, updateJob }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editingJob = location.state?.jobToEdit;
+  const editingJobId = editingJob?._id || editingJob?.id;
+  const isEditing = Boolean(editingJobId);
   const [activeStep, setActiveStep] = useState(1);
   const [skillInput, setSkillInput] = useState('');
   const [skillsList, setSkillsList] = useState([]);
@@ -50,6 +54,48 @@ const PostJob = ({ addJob }) => {
     };
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (!editingJob) return;
+
+    const details = editingJob.details || {};
+    const storedSalary = editingJob.salary || '';
+    const detectedSalaryType = details.salaryType
+      || (storedSalary.includes('per month') ? 'Monthly' : storedSalary.includes('per hour') ? 'Hourly' : 'Yearly');
+    const detectedCurrency = details.currency
+      || (storedSalary.includes('$') ? 'USD' : storedSalary.includes('€') ? 'EUR' : storedSalary.includes('£') ? 'GBP' : 'INR');
+    const salaryNumbers = storedSalary.match(/[\d,]+/g) || [];
+    const min = details.salaryMin || salaryNumbers[0] || '';
+    const max = details.salaryMax || salaryNumbers[1] || '';
+    const qualifications = editingJob.qualifications || [];
+
+    setJobData({
+      title: editingJob.title || '',
+      employmentType: details.employmentType || '',
+      experience: details.experience || '',
+      openings: details.openings || '',
+      location: editingJob.location || '',
+      workplaceType: details.workLocation || '',
+      about: details.aboutRole || '',
+      responsibilities: details.responsibilities || '',
+      skills: details.skillsRequired || '',
+      qualification: details.qualification || '',
+      stream: details.stream || '',
+      category: details.jobCategory || details.category || '',
+      screeningQuestions: editingJob.screeningQuestions || []
+    });
+    setSkillsList(qualifications.length > 0
+      ? qualifications.map((qualification) => qualification.name).filter(Boolean)
+      : (details.skillsRequired || '').split(',').map((skill) => skill.trim()).filter(Boolean));
+    setSalaryType(detectedSalaryType);
+    setCurrency(detectedCurrency);
+    setSalaryValues({
+      Yearly: { min: detectedSalaryType === 'Yearly' ? min : '', max: detectedSalaryType === 'Yearly' ? max : '' },
+      Monthly: { min: detectedSalaryType === 'Monthly' ? min : '', max: detectedSalaryType === 'Monthly' ? max : '' },
+      Hourly: { min: detectedSalaryType === 'Hourly' ? min : '', max: detectedSalaryType === 'Hourly' ? max : '' }
+    });
+    setActiveStep(1);
+  }, [editingJob]);
   
   const steps = [
     { id: 1, name: 'Job Details' },
@@ -92,8 +138,8 @@ const PostJob = ({ addJob }) => {
       {/* Top Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">Post a New Job</h1>
-          <p className="text-gray-500 text-sm mt-1">Fill in the details to create a new job posting.</p>
+          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">{isEditing ? 'Edit Job' : 'Post a New Job'}</h1>
+          <p className="text-gray-500 text-sm mt-1">{isEditing ? 'Update the details of your job posting.' : 'Fill in the details to create a new job posting.'}</p>
         </div>
       </div>
 
@@ -610,7 +656,7 @@ const PostJob = ({ addJob }) => {
               )}
               <button 
                 onClick={activeStep === 5 ? async () => {
-                  const newJob = {
+                  const jobPayload = {
                     company: employerDetails.companyName,
                     companyInitial: employerDetails.companyName.charAt(0).toUpperCase() || "C",
                     title: jobData.title || 'Untitled Job',
@@ -630,36 +676,49 @@ const PostJob = ({ addJob }) => {
                       qualification: jobData.qualification || "",
                       stream: jobData.stream || "",
                       category: jobData.category || "General",
-                      industry: employerDetails.industry
+                      jobCategory: jobData.category || "General",
+                      industry: employerDetails.industry,
+                      skillsRequired: skillsList.join(', '),
+                      salaryType,
+                      currency,
+                      salaryMin: salaryValues[salaryType].min,
+                      salaryMax: salaryValues[salaryType].max,
+                      openings: jobData.openings || ''
                     }
                   };
                   
                   try {
-                    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/jobs`, {
-                      method: 'POST',
+                    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/jobs${isEditing ? `/${editingJobId}` : ''}`, {
+                      method: isEditing ? 'PUT' : 'POST',
                       headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('employerToken')}`
                       },
-                      body: JSON.stringify(newJob)
+                      body: JSON.stringify(jobPayload)
                     });
                     const data = await res.json();
                     
                     if (data.success) {
-                      if (addJob) addJob(data.data);
-                      alert("Job Published Successfully!");
-                      navigate('/employer');
+                      if (isEditing) {
+                        if (updateJob) updateJob(data.data);
+                        alert("Job Updated Successfully!");
+                        navigate('/employer/manage-jobs');
+                      } else {
+                        if (addJob) addJob(data.data);
+                        alert("Job Published Successfully!");
+                        navigate('/employer');
+                      }
                     } else {
                       alert("Error: " + data.message);
                     }
                   } catch (e) {
                     console.error(e);
-                    alert("Error publishing job");
+                    alert(isEditing ? "Error updating job" : "Error publishing job");
                   }
                 } : handleNext}
                 className="px-8 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm"
               >
-                {activeStep === 5 ? 'Publish Job' : 'Continue'}
+                {activeStep === 5 ? (isEditing ? 'Update Job' : 'Publish Job') : 'Continue'}
               </button>
             </div>
           </div>

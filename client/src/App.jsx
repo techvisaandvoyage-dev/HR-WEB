@@ -144,6 +144,14 @@ function App() {
     setJobs(prev => [newJob, ...prev]);
   };
 
+  const updateJob = (updatedJob) => {
+    setJobs(prev => prev.map(job =>
+      job.id === updatedJob._id || job.id === updatedJob.id
+        ? { ...updatedJob, id: updatedJob._id || updatedJob.id }
+        : job
+    ));
+  };
+
   const toggleJobStatus = async (jobId) => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/jobs/${jobId}/status`, {
@@ -549,6 +557,7 @@ function App() {
               <EmployerDashboard 
                 jobs={jobs} 
                 addJob={addJob}
+                updateJob={updateJob}
                 candidates={candidates}
                 updateCandidateStatus={updateCandidateStatus}
                 toggleJobStatus={toggleJobStatus}

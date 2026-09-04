@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Employer = require('../models/Employer');
+const { verifyIdToken } = require('../../config/firebaseAdmin');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -254,27 +255,24 @@ exports.checkEmail = async (req, res) => {
 // @access  Public
 exports.googleAuth = async (req, res) => {
   try {
-    const { access_token } = req.body;
-    if (!access_token) {
+    const { id_token } = req.body;
+    if (!id_token) {
       return res.status(400).json({ message: 'Token missing' });
     }
 
-    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
-    
-    if (!userInfoRes.ok) {
-      return res.status(400).json({ message: 'Invalid Google token' });
-    }
+    const decodedToken = await verifyIdToken(id_token);
+    const { email, name } = decodedToken;
 
-    const { email, name } = await userInfoRes.json();
+    if (!email) {
+      return res.status(400).json({ message: 'Email not found in Google account' });
+    }
 
     let employer = await Employer.findOne({ email });
 
     if (!employer) {
       // Register
       employer = await Employer.create({
-        fullName: name,
+        fullName: name || email.split('@')[0],
         email,
         mobile: '',
         companyName: '',

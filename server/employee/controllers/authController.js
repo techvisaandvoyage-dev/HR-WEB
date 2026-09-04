@@ -1,8 +1,6 @@
 const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const { verifyIdToken } = require('../../config/firebaseAdmin');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -191,28 +189,26 @@ const resetPassword = async (req, res) => {
 // @access  Public
 const googleAuth = async (req, res) => {
   try {
-    const { access_token } = req.body;
-    if (!access_token) {
+    const { id_token } = req.body;
+    if (!id_token) {
       return res.status(400).json({ message: 'Token missing' });
     }
 
-    // Usually when using useGoogleLogin, it returns an access_token that we must fetch user info with
-    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
-    
-    if (!userInfoRes.ok) {
-      return res.status(400).json({ message: 'Invalid Google token' });
+    const decodedToken = await verifyIdToken(id_token);
+    const { email, name, picture } = decodedToken;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email not found in Google account' });
     }
 
-    const { email, name, picture } = await userInfoRes.json();
-
+    let isNewUser = false;
     let employee = await Employee.findOne({ email });
 
     if (!employee) {
       // Register
+      isNewUser = true;
       employee = await Employee.create({
-        name,
+        name: name || email.split('@')[0],
         email,
         avatar: picture || '',
         mobile: '',
@@ -222,6 +218,7 @@ const googleAuth = async (req, res) => {
 
     res.json({
       success: true,
+      isNewUser,
       _id: employee._id,
       name: employee.name,
       email: employee.email,

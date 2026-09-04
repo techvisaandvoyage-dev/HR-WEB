@@ -241,6 +241,36 @@ const EmployeeOnboarding = () => {
     };
   });
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('employeeToken');
+        if (!token) return;
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        
+        // Profile controller directly returns the object, or a message on error
+        if (res.ok && data && !data.message) {
+          setFormData(prev => ({
+            ...prev,
+            firstName: data.firstName || prev.firstName,
+            lastName: data.lastName || prev.lastName,
+            email: data.email || prev.email,
+            phone: data.phone || prev.phone,
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial profile", err);
+      }
+    };
+    
+    fetchProfile();
+  }, []);
+
   const saveToBackend = async () => {
     try {
       const token = localStorage.getItem('employeeToken');
@@ -391,7 +421,7 @@ const EmployeeOnboarding = () => {
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Function <span className="text-red-500">*</span></label>
           <CustomDropdown 
             options={[
-              'IT & Software', 'BPO/KPO', 'Finance & Accounts', 'Healthcare',
+              'IT & Software', 'Finance & Accounts', 'Healthcare',
               'Manufacturing', 'Education', 'Marketing', 'Sales', 'HR', 'Other'
             ].sort().map(ind => ({ value: ind, label: ind }))}
             value={formData.industry}
@@ -406,7 +436,6 @@ const EmployeeOnboarding = () => {
             options={(() => {
               const rolesByIndustry = {
                 'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
-                'BPO/KPO': ["Customer Support Executive", "Technical Support Executive", "BPO Executive", "Team Leader", "Quality Analyst", "Process Trainer", "Operations Manager"],
                 'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
                 'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
                 'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
