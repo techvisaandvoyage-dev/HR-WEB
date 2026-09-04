@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
+import { getEmployeeStoredValue } from '../../../utils/employeeStorage';
 
 const MyJobs = ({ jobs = [] }) => {
   const navigate = useNavigate();
@@ -13,14 +14,7 @@ const MyJobs = ({ jobs = [] }) => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
-  const [savedJobs, setSavedJobs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('savedJobs');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [savedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
 
   const [appliedJobs, setAppliedJobs] = useState(() => {
     try {

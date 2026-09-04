@@ -105,6 +105,14 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
 
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-1 w-1/4 shrink-0">
+                    <Link
+                      to="/employer/post-job"
+                      state={{ jobToEdit: job }}
+                      className="p-2 text-gray-400 hover:text-[#29953f] hover:bg-green-50 rounded-lg transition-colors flex"
+                      title="Edit Job"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4H5a2 2 0 00-2 2v13a1 1 0 001 1h13a2 2 0 001-1v-6M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                    </Link>
                     <Link to="/employer/applications" state={{ jobTitle: job.title }} className="p-2 text-gray-400 hover:text-[#29953f] hover:bg-green-50 rounded-lg transition-colors flex" title="View Applications">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     </Link>

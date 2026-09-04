@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import JobApplicationModal from './JobApplicationModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
 import CustomDropdown from '../common/CustomDropdown';
+import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 
 const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const location = useLocation();
@@ -113,14 +114,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     }
   }, [showToast, navigate, location.pathname]);
   
-  const [savedJobs, setSavedJobs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('savedJobs');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [savedJobs, setSavedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
 
   const toggleSaveJob = (jobId, e) => {
     if (e) e.stopPropagation();
@@ -128,7 +122,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
       const newSaved = prev.includes(jobId) 
         ? prev.filter(id => id !== jobId) 
         : [...prev, jobId];
-      localStorage.setItem('savedJobs', JSON.stringify(newSaved));
+      setEmployeeStoredValue('savedJobs', newSaved);
       return newSaved;
     });
   };

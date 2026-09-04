@@ -44,6 +44,44 @@ exports.getEmployerJobs = async (req, res) => {
   }
 };
 
+// @desc    Update a job owned by the logged-in employer
+// @route   PUT /api/employer/jobs/:id
+// @access  Private
+exports.updateJob = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+    if (job.employerId.toString() !== req.user.id) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    const {
+      company, companyInitial, title, location, salary, employerProvided,
+      easyApply, qualifications, details, screeningQuestions
+    } = req.body;
+
+    Object.assign(job, {
+      company,
+      companyInitial,
+      title,
+      location,
+      salary,
+      employerProvided,
+      easyApply,
+      qualifications,
+      details,
+      screeningQuestions
+    });
+
+    const updatedJob = await job.save();
+    res.status(200).json({ success: true, data: updatedJob });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Toggle Job Status (Active/Closed)
 // @route   PUT /api/employer/jobs/:id/status
 // @access  Private

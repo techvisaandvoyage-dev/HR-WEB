@@ -1,14 +1,14 @@
 const express = require('express');
 const dotenv = require('dotenv');
+
+// Load env vars before requiring local modules that might depend on them
+dotenv.config();
+
 const cors = require('cors');
 const connectDB = require('./config/db');
 const employeeAuthRoutes = require('./employee/routes/authRoutes');
 const employeeProfileRoutes = require('./employee/routes/profileRoutes');
 const employerAuthRoutes = require('./employer/routes/authRoutes');
-
-// Load env vars
-dotenv.config();
-
 // Connect to database
 connectDB();
 
