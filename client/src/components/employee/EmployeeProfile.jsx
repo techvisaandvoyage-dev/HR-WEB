@@ -2011,7 +2011,7 @@ const EmployeeProfile = () => {
 
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                        {p.salaryType === 'Monthly' ? 'Monthly Salary' : 'Annual Salary'}
+                        {p.salaryType === 'Monthly' ? 'Monthly Salary' : p.salaryType === 'Hourly' ? 'Hourly Salary' : 'Annual Salary'}
                       </label>
                       <div className="grid grid-cols-2 gap-4">
                         <div>

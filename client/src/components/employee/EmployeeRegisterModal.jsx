@@ -67,12 +67,12 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
   const hasMinLength = password.length >= 8;
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-  const handleStep1Submit = (e) => {
+  const handleStep1Submit = async (e) => {
     e.preventDefault();
     
     const newErrors = {};
-    if (!name) newErrors.name = 'Please enter your full name.';
-    if (!email) newErrors.email = 'Please enter a valid email address.';
+    if (!email) newErrors.email = 'Please enter your email.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Please enter a valid email address.';
     if (!password) newErrors.password = 'Please create a password.';
     if (!confirmPassword) newErrors.confirmPassword = 'Please confirm your password.';
     if (!mobile) newErrors.mobile = 'Please enter a phone number.';
@@ -91,8 +91,30 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       return;
     }
     
+    setIsLoading(true);
     setErrors({});
-    setStep(2); // Move to OTP verification
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/check-existence`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, mobile }),
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.field === 'email') setErrors({ email: data.message });
+        else if (data.field === 'mobile') setErrors({ mobile: data.message });
+        else setErrors({ general: data.message });
+        setIsLoading(false);
+        return;
+      }
+      
+      setStep(2); // Move to OTP verification
+    } catch (err) {
+      setErrors({ general: 'Failed to verify details. Please try again.' });
+    }
+    setIsLoading(false);
   };
 
   const handleRegisterSubmit = async (e) => {
@@ -117,6 +139,9 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
         if (data.message && data.message.toLowerCase().includes('email')) {
           setErrors({ email: data.message });
           setStep(1); // Go back if email exists
+        } else if (data.message && data.message.toLowerCase().includes('phone')) {
+          setErrors({ mobile: data.message });
+          setStep(1); // Go back if phone exists
         } else {
           setErrors({ general: (data.message + (data.error ? `: ${data.error}` : '')) || 'Registration failed' });
         }
@@ -217,28 +242,6 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
               {/* Form */}
               <form className="space-y-6" onSubmit={handleStep1Submit}>
             
-            {/* Full Name Input */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-gray-900">
-                Full name<span className="text-red-500">*</span>
-              </label>
-              <input 
-                type="text" 
-                value={name}
-                onChange={(e) => { setName(e.target.value); setErrors({...errors, name: ''}); }}
-                placeholder="What is your name?"
-                className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.name ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
-              />
-              {errors.name && (
-                <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.name}
-                </div>
-              )}
-            </div>
-
             {/* Email Input */}
             <div className="space-y-1.5">
               <label className="block text-sm font-bold text-gray-900">

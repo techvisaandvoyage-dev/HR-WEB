@@ -477,15 +477,15 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                        Current {selectedCandidate.salaryType === 'Monthly' ? 'Monthly Salary' : 'Annual Salary'}
+                        Current {selectedCandidate.salaryType === 'Monthly' ? 'Monthly Salary' : selectedCandidate.salaryType === 'Hourly' ? 'Hourly Salary' : 'Annual Salary'}
                       </h4>
-                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.currentCTC || 'Not specified'}</p>
+                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.currentCTC ? `₹ ${selectedCandidate.currentCTC}` : 'Not specified'}</p>
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                        Expected {selectedCandidate.salaryType === 'Monthly' ? 'Monthly Salary' : 'Annual Salary'}
+                        Expected {selectedCandidate.salaryType === 'Monthly' ? 'Monthly Salary' : selectedCandidate.salaryType === 'Hourly' ? 'Hourly Salary' : 'Annual Salary'}
                       </h4>
-                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.expectedCTC || 'Not specified'}</p>
+                      <p className="text-sm font-bold text-gray-900">{selectedCandidate.expectedCTC ? `₹ ${selectedCandidate.expectedCTC}` : 'Not specified'}</p>
                     </div>
                   </div>
                   

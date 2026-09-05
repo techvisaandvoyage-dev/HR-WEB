@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import CustomDropdown from '../common/CustomDropdown';
-import LocationAutocomplete from '../common/LocationAutocomplete';
+import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
+import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 
 const formatMonthYear = (dateStr) => {
@@ -295,7 +296,7 @@ const EmployeeOnboarding = () => {
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!formData.firstName || !formData.lastName || !formData.phone || !formData.designation || !formData.industry || !formData.totalExperience || !formData.location || !formData.preferredLocation) {
+      if (!formData.firstName || !formData.phone || !formData.designation || !formData.industry || !formData.totalExperience || !formData.location) {
         setShowStep1Errors(true);
         // alert("Please fill in all mandatory fields (marked with *) to continue.");
         return;
@@ -403,8 +404,8 @@ const EmployeeOnboarding = () => {
           <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.firstName ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder="John" value={formData.firstName || ''} onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name <span className="text-red-500">*</span></label>
-          <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.lastName ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder="Doe" value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name</label>
+          <input type="text" className={`w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder="Doe" value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
         </div>
         <div>
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number <span className="text-red-500">*</span></label>
@@ -477,20 +478,24 @@ const EmployeeOnboarding = () => {
         </div>
         <div>
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location <span className="text-red-500">*</span></label>
-          <LocationAutocomplete 
+          <MultiSelectLocationDropdown 
+            options={currentLocationOptions}
             value={formData.location || ''}
-            onChange={(val) => { setFormData({...formData, location: val?.label || val}); setShowStep1Errors(false); }}
-            placeholder="e.g. Pune, Maharashtra"
+            onChange={(val) => { setFormData({...formData, location: val}); setShowStep1Errors(false); }}
+            multiple={false}
+            placeholder="Select Current Location"
             className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.location ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location <span className="text-red-500">*</span></label>
-          <LocationAutocomplete 
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location</label>
+          <MultiSelectLocationDropdown 
+            options={preferredLocationOptions}
             value={formData.preferredLocation || ''}
-            onChange={(val) => { setFormData({...formData, preferredLocation: val?.label || val}); setShowStep1Errors(false); }}
-            placeholder="e.g. Mumbai, Maharashtra"
-            className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.preferredLocation ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
+            onChange={(val) => { setFormData({...formData, preferredLocation: val}); setShowStep1Errors(false); }}
+            multiple={true}
+            placeholder="Select Preferred Locations"
+            className={`w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
           />
         </div>
         <div className="col-span-2">

@@ -415,12 +415,20 @@ const AllEmployeesTab = () => {
                 {/* Grid stats */}
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Current Annual Salary</h4>
-                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.professionalDetails?.currentSalary || 'N/A'}</p>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Current {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
+                    </h4>
+                    <p className="text-sm font-bold text-gray-900">
+                      {selectedEmployee.professionalDetails?.currentSalary ? `₹ ${selectedEmployee.professionalDetails.currentSalary}` : 'N/A'}
+                    </p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Expected Annual Salary</h4>
-                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.professionalDetails?.expectedSalary || 'N/A'}</p>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                      Expected {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
+                    </h4>
+                    <p className="text-sm font-bold text-gray-900">
+                      {selectedEmployee.professionalDetails?.expectedSalary ? `₹ ${selectedEmployee.professionalDetails.expectedSalary}` : 'N/A'}
+                    </p>
                   </div>
                 </div>
 
