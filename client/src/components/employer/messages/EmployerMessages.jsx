@@ -596,15 +596,15 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                          Current {selectedEmployee.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} Salary
+                          Current {selectedEmployee.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
                         </h4>
-                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.currentCTC || 'Not specified'}</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.currentCTC ? `₹ ${selectedEmployee.currentCTC}` : 'Not specified'}</p>
                       </div>
                       <div>
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                          Expected {selectedEmployee.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} Salary
+                          Expected {selectedEmployee.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
                         </h4>
-                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.expectedCTC || 'Not specified'}</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.expectedCTC ? `₹ ${selectedEmployee.expectedCTC}` : 'Not specified'}</p>
                       </div>
                     </div>
                     

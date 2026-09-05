@@ -15,7 +15,9 @@ const MultiSelectLocationDropdown = ({
   const wrapperRef = useRef(null);
 
   // Multi-select values are comma-separated; single-select values remain one location.
-  const selectedValues = value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
+  const selectedValues = Array.isArray(value) 
+    ? value 
+    : (typeof value === 'string' && value ? value.split(',').map(v => v.trim()).filter(v => v) : []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

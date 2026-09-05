@@ -98,6 +98,7 @@ function App() {
                     })),
                     currentCTC: (emp.professionalDetails && emp.professionalDetails.currentSalary) || 'N/A',
                     expectedCTC: (emp.professionalDetails && emp.professionalDetails.expectedSalary) || 'N/A',
+                    salaryType: (emp.professionalDetails && emp.professionalDetails.salaryType) || 'Yearly',
                     industry: emp.industry || 'N/A',
                     designation: emp.designation || 'N/A',
                     totalExperience: emp.totalExperience || 'N/A',

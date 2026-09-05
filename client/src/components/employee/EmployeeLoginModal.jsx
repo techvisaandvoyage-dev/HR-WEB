@@ -120,7 +120,9 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
 
       if (!response.ok) {
         const errorState = { isApiError: true };
-        if (data.message && data.message.toLowerCase().includes('email')) {
+        if (data.message && data.message.toLowerCase().includes('google')) {
+          errorState.general = data.message;
+        } else if (data.message && data.message.toLowerCase().includes('email')) {
           errorState.email = data.message;
           errorState.password = 'Invalid password';
         } else if (data.message && (data.message.toLowerCase().includes('password') || data.message.toLowerCase().includes('credential'))) {

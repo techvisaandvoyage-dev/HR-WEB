@@ -17,7 +17,7 @@ const registerEmployee = async (req, res) => {
     const { name, email, password, mobile, location } = req.body;
 
     // Check for empty fields
-    if (!name || !email || !password || !mobile) {
+    if (!email || !password || !mobile) {
       return res.status(400).json({ message: 'Please add all fields' });
     }
 
@@ -28,9 +28,15 @@ const registerEmployee = async (req, res) => {
       return res.status(400).json({ message: 'Employee already exists with this email' });
     }
 
+    const mobileExists = await Employee.findOne({ mobile });
+
+    if (mobileExists) {
+      return res.status(400).json({ message: 'Phone number already exists' });
+    }
+
     // Create employee
     const employee = await Employee.create({
-      name,
+      name: name || 'Anonymous User',
       email,
       password,
       mobile,
@@ -67,6 +73,10 @@ const loginEmployee = async (req, res) => {
 
     if (!employee) {
       return res.status(404).json({ message: 'We couldn\'t find an account with this email. Please register first to continue.' });
+    }
+
+    if (!employee.password) {
+      return res.status(401).json({ message: 'This email is linked to a Google account. Please log in with Google.' });
     }
 
     // Check if password matches
@@ -107,24 +117,24 @@ const loginEmployee = async (req, res) => {
   }
 };
 
-// @desc    Check if mobile exists for OTP login
-// @route   POST /api/employee/auth/check-mobile
+// @desc    Check if email or mobile exists for registration/login
+// @route   POST /api/employee/auth/check-existence
 // @access  Public
-const checkMobile = async (req, res) => {
+const checkExistence = async (req, res) => {
   try {
-    const { mobile } = req.body;
+    const { email, mobile } = req.body;
     
-    if (!mobile) {
-      return res.status(400).json({ message: 'Please provide a mobile number' });
+    if (email) {
+      const emailExists = await Employee.findOne({ email });
+      if (emailExists) return res.status(400).json({ message: 'Employee already exists with this email', field: 'email' });
+    }
+    
+    if (mobile) {
+      const mobileExists = await Employee.findOne({ mobile });
+      if (mobileExists) return res.status(400).json({ message: 'Phone number already exists', field: 'mobile' });
     }
 
-    const employee = await Employee.findOne({ mobile });
-
-    if (!employee) {
-      return res.status(404).json({ message: 'This no. is not exist' });
-    }
-
-    res.json({ message: 'Mobile exists' });
+    res.json({ message: 'No conflicts' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -143,10 +153,14 @@ const forgotPasswordOtp = async (req, res) => {
 
     const employee = await Employee.findOne({
       $or: [{ email: identifier }, { mobile: identifier }]
-    });
+    }).select('+password');
 
     if (!employee) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!employee.password) {
+      return res.status(400).json({ message: 'This account was created with Google. Please log in with Google instead.' });
     }
 
     // In a real app, send actual OTP via email/SMS here
@@ -233,7 +247,7 @@ module.exports = {
   registerEmployee,
   loginEmployee,
   googleAuth,
-  checkMobile,
+  checkExistence,
   forgotPasswordOtp,
   resetPassword
 };
