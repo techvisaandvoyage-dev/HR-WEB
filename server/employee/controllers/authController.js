@@ -1,6 +1,7 @@
 const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
+const { sendOtp, verifyOtp, resendOtp } = require('../../utils/email');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -9,16 +10,84 @@ const generateToken = (id) => {
   });
 };
 
-// @desc    Register a new employee
+// @desc    Send registration OTP to email via MSG91
+// @route   POST /api/employee/auth/send-otp
+// @access  Public
+const sendRegistrationOtp = async (req, res) => {
+  try {
+    const { email, mobile } = req.body;
+
+    if (!email || !mobile) {
+      return res.status(400).json({ message: 'Email and mobile are required' });
+    }
+
+    const emailExists = await Employee.findOne({ email });
+    if (emailExists) {
+      return res.status(400).json({ message: 'Employee already exists with this email', field: 'email' });
+    }
+
+    const mobileExists = await Employee.findOne({ mobile });
+    if (mobileExists) {
+      return res.status(400).json({ message: 'Phone number already exists', field: 'mobile' });
+    }
+
+    await sendOtp({ email, name: email.split('@')[0] });
+    res.json({ message: 'OTP sent successfully to your email' });
+  } catch (error) {
+    console.error('Send OTP Error:', error.msg91 || error.message);
+    res.status(400).json({
+      message: error.message || 'Failed to send OTP',
+      details: error.msg91 || undefined
+    });
+  }
+};
+
+// @desc    Resend registration OTP
+// @route   POST /api/employee/auth/resend-otp
+// @access  Public
+const resendRegistrationOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required to resend OTP' });
+    }
+
+    await resendOtp({ email, name: email.split('@')[0] });
+    return res.json({ message: 'OTP resent successfully to your email' });
+  } catch (error) {
+    console.error('Resend OTP Error:', error.msg91 || error.message);
+    res.status(400).json({
+      message: error.message || 'Failed to resend OTP',
+      details: error.msg91 || undefined
+    });
+  }
+};
+
+// @desc    Register a new employee (after OTP verification)
 // @route   POST /api/employee/auth/register
 // @access  Public
 const registerEmployee = async (req, res) => {
   try {
-    const { name, email, password, mobile, location } = req.body;
+    const { name, email, password, mobile, location, otp } = req.body;
 
     // Check for empty fields
     if (!email || !password || !mobile) {
       return res.status(400).json({ message: 'Please add all fields' });
+    }
+
+    if (!otp || String(otp).length < 4) {
+      return res.status(400).json({ message: 'Please enter the 4-digit OTP sent to your email' });
+    }
+
+    // Verify email OTP before creating account
+    try {
+      await verifyOtp({ email, otp });
+    } catch (otpError) {
+      return res.status(400).json({
+        message: otpError.message || 'Invalid or expired OTP',
+        details: otpError.msg91 || undefined
+      });
     }
 
     // Check if employee exists
@@ -248,6 +317,8 @@ module.exports = {
   loginEmployee,
   googleAuth,
   checkExistence,
+  sendRegistrationOtp,
+  resendRegistrationOtp,
   forgotPasswordOtp,
   resetPassword
 };
