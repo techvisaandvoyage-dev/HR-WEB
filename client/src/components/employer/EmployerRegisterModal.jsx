@@ -179,7 +179,8 @@ const EmployerRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       
       setStep(3);
     } catch (err) {
-      setError('Email is already exist');
+      console.error("Email check failed:", err);
+      setError('Server error while checking email. Please try again.');
     } finally {
       setLoading(false);
     }

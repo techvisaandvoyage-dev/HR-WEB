@@ -1,3 +1,9 @@
+# Env / secrets
+.env
+server/.env
+client/.env
+*.env.local
+
 # Logs
 logs
 *.log

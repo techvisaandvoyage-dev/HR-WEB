@@ -76,6 +76,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     if (!password) newErrors.password = 'Please create a password.';
     if (!confirmPassword) newErrors.confirmPassword = 'Please confirm your password.';
     if (!mobile) newErrors.mobile = 'Please enter a phone number.';
+    if (mobile && mobile.length !== 10) newErrors.mobile = 'Please enter a valid 10-digit mobile number.';
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -95,7 +96,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     setErrors({});
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/check-existence`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, mobile }),
@@ -105,14 +106,37 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       if (!response.ok) {
         if (data.field === 'email') setErrors({ email: data.message });
         else if (data.field === 'mobile') setErrors({ mobile: data.message });
-        else setErrors({ general: data.message });
+        else setErrors({ general: data.message || 'Failed to send OTP' });
         setIsLoading(false);
         return;
       }
       
-      setStep(2); // Move to OTP verification
+      setOtp(['', '', '', '']);
+      setStep(2);
     } catch (err) {
-      setErrors({ general: 'Failed to verify details. Please try again.' });
+      setErrors({ general: 'Failed to send OTP. Please try again.' });
+    }
+    setIsLoading(false);
+  };
+
+  const handleResendOtp = async () => {
+    setIsLoading(true);
+    setErrors({});
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, mobile }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setErrors({ general: data.message || 'Failed to resend OTP' });
+      } else {
+        setOtp(['', '', '', '']);
+        setErrors({ general: '' });
+      }
+    } catch (err) {
+      setErrors({ general: 'Failed to resend OTP. Please try again.' });
     }
     setIsLoading(false);
   };
@@ -131,19 +155,19 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, mobile }),
+        body: JSON.stringify({ name, email, password, mobile, otp: enteredOtp }),
       });
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.message && data.message.toLowerCase().includes('email')) {
+        if (data.message && data.message.toLowerCase().includes('email') && data.message.toLowerCase().includes('exists')) {
           setErrors({ email: data.message });
-          setStep(1); // Go back if email exists
+          setStep(1);
         } else if (data.message && data.message.toLowerCase().includes('phone')) {
           setErrors({ mobile: data.message });
-          setStep(1); // Go back if phone exists
+          setStep(1);
         } else {
-          setErrors({ general: (data.message + (data.error ? `: ${data.error}` : '')) || 'Registration failed' });
+          setErrors({ general: data.message || 'Registration failed' });
         }
       } else {
         localStorage.setItem('employeeToken', data.token);
@@ -219,7 +243,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-palette-900">
-              {step === 1 ? 'Register' : 'Verify Mobile'}
+              {step === 1 ? 'Register' : 'Verify Email'}
             </h2>
             {onLoginClick && (
               <button onClick={onLoginClick} className="text-palette-400 font-semibold hover:text-palette-900 transition-colors">
@@ -412,9 +436,10 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
             <div className="pt-4">
               <button 
                 type="submit"
-                className="w-full py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-palette-400 hover:bg-palette-900 text-white font-bold rounded-full shadow-lg shadow-palette-400/40 hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Register now
+                {isLoading ? 'Sending OTP...' : 'Register now'}
               </button>
             </div>
           </form>
@@ -446,7 +471,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
             <div className="space-y-6">
               <div className="text-center">
                 <p className="text-gray-600 mb-2">We have sent a verification code to</p>
-                <p className="font-bold text-gray-900 text-lg">+91 {mobile}</p>
+                <p className="font-bold text-gray-900 text-lg break-all">{email}</p>
               </div>
 
               <form onSubmit={handleRegisterSubmit} className="space-y-6 mt-8">
@@ -474,9 +499,17 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                   >
                     {isLoading ? 'Verifying & Creating Profile...' : 'Verify & Continue'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={isLoading}
+                    className="w-full py-2 text-sm font-semibold text-palette-400 hover:text-palette-900 transition-colors disabled:opacity-70"
+                  >
+                    Resend OTP
+                  </button>
                   <button 
                     type="button"
-                    onClick={() => { setStep(1); setError(''); }}
+                    onClick={() => { setStep(1); setErrors({}); setOtp(['', '', '', '']); }}
                     className="w-full py-3 text-palette-400 font-semibold hover:text-palette-900 transition-colors"
                   >
                     Back to Edit Details

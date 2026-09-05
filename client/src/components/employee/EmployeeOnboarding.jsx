@@ -5,6 +5,7 @@ import CustomDropdown from '../common/CustomDropdown';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
+import { uploadFileToStorage } from '../../utils/firebaseStorage';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -178,6 +179,8 @@ const EmployeeOnboarding = () => {
   const [eduFieldErrors, setEduFieldErrors] = useState({});
   const [skillInput, setSkillInput] = useState('');
   const [showStep1Errors, setShowStep1Errors] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [docError, setDocError] = useState({ resume: '', coverLetter: '' });
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('userProfile');
@@ -1256,6 +1259,37 @@ const EmployeeOnboarding = () => {
   const Step5Documents = () => {
     const docs = formData.documents || {};
     const setDoc = (field, val) => setFormData({...formData, documents: {...docs, [field]: val}});
+
+    const handleFileUpload = async (e, type) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      setDocError(prev => ({...prev, [type]: ''}));
+
+      if (file.size > 300 * 1024) { // 300KB limit
+        setDocError(prev => ({...prev, [type]: 'File size should not exceed 300KB'}));
+        e.target.value = ''; // Reset input
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        const downloadURL = await uploadFileToStorage(file, `resumes`);
+        setDoc(type, downloadURL);
+      } catch (error) {
+        console.error("Upload error:", error);
+        setDocError(prev => ({...prev, [type]: 'Failed to upload document.'}));
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+    const getFileName = (url) => {
+      if (!url) return '';
+      if (!url.startsWith('http')) return url; // fallback if they already have non-url text
+      return "Uploaded Document (Click to view)";
+    };
+
     return (
       <div className="space-y-6 animate-fade-in pb-2">
         <div className="mb-6 pb-2 border-b border-gray-100">
@@ -1264,38 +1298,40 @@ const EmployeeOnboarding = () => {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume <span className="text-red-500">*</span></label>
-            <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group">
-              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
+            <div className={`p-8 border-2 border-dashed ${isUploading ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group`}>
+              <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'resume')} />
               <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-green-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
                 <span className="relative cursor-pointer bg-white rounded-md font-semibold text-green-600 hover:text-green-500">
-                  <span>Upload a file</span>
+                  <span>{isUploading ? 'Uploading...' : 'Upload a file'}</span>
                 </span>
                 <p className="pl-1">or drag and drop</p>
               </div>
-              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300kb</p>
+              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300KB</p>
             </div>
-            {docs.resume && <p className="text-sm text-gray-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> {docs.resume}</p>}
+            {docError.resume && <p className="text-sm text-red-500 mt-2 font-medium">{docError.resume}</p>}
+            {docs.resume && <p className="text-sm text-green-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> <a href={docs.resume.startsWith('http') ? docs.resume : '#'} target="_blank" rel="noreferrer" className="underline">{getFileName(docs.resume)}</a></p>}
           </div>
 
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-3">Upload Cover Letter (Optional)</label>
-            <div className="p-8 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group">
-              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => setDoc('coverLetter', e.target.files[0]?.name || '')} />
+            <div className={`p-8 border-2 border-dashed ${isUploading ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group`}>
+              <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'coverLetter')} />
               <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-green-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
                 <span className="relative cursor-pointer bg-white rounded-md font-semibold text-green-600 hover:text-green-500">
-                  <span>Upload a file</span>
+                  <span>{isUploading ? 'Uploading...' : 'Upload a file'}</span>
                 </span>
                 <p className="pl-1">or drag and drop</p>
               </div>
-              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300kb</p>
+              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300KB</p>
             </div>
-            {docs.coverLetter && <p className="text-sm text-gray-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> {docs.coverLetter}</p>}
+            {docError.coverLetter && <p className="text-sm text-red-500 mt-2 font-medium">{docError.coverLetter}</p>}
+            {docs.coverLetter && <p className="text-sm text-green-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> <a href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} target="_blank" rel="noreferrer" className="underline">{getFileName(docs.coverLetter)}</a></p>}
           </div>
         </div>
       </div>

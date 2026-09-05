@@ -8,6 +8,7 @@ import CustomMonthPicker from '../common/CustomMonthPicker';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
+import { uploadFileToStorage } from '../../utils/firebaseStorage';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -411,6 +412,8 @@ const EmployeeProfile = () => {
   const [isEditingSummaryOnMobile, setIsEditingSummaryOnMobile] = useState(false);
   const [isEditingProfOverviewMobile, setIsEditingProfOverviewMobile] = useState(false);
   const [isEditingSkillsMobile, setIsEditingSkillsMobile] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [docError, setDocError] = useState({ resume: '', coverLetter: '' });
   const [formData, setFormData] = useState({
     firstName: 'Yash Raj',
     lastName: 'Singh',
@@ -481,6 +484,35 @@ const EmployeeProfile = () => {
   const docs = formData.documents || {};
   const setDoc = (field, val) => setFormData({...formData, documents: {...docs, [field]: val}});
 
+  const handleFileUpload = async (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setDocError(prev => ({...prev, [type]: ''}));
+
+    if (file.size > 300 * 1024) { // 300KB limit
+      setDocError(prev => ({...prev, [type]: 'File size should not exceed 300KB'}));
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const downloadURL = await uploadFileToStorage(file, `resumes`);
+      setDoc(type, downloadURL);
+    } catch (error) {
+      console.error("Upload error:", error);
+      setDocError(prev => ({...prev, [type]: 'Failed to upload document.'}));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const getFileName = (url) => {
+    if (!url) return '';
+    if (!url.startsWith('http')) return url;
+    return "Uploaded Document (Click to view)";
+  };
   const updateArray = (field, index, key, value) => {
     const newArr = [...(formData[field] || [])];
     newArr[index] = { ...newArr[index], [key]: value };
@@ -1078,9 +1110,22 @@ const EmployeeProfile = () => {
         isOpen={!!cropFile} 
         onClose={() => setCropFile(null)} 
         imageFile={cropFile} 
-        onSave={(croppedUrl) => {
-          setFormData({...formData, avatar: croppedUrl});
-          setCropFile(null);
+        onSave={async (croppedUrl) => {
+          try {
+            setIsUploading(true);
+            const res = await fetch(croppedUrl);
+            const blob = await res.blob();
+            const file = new File([blob], `avatar_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            const downloadURL = await uploadFileToStorage(file, 'avatars');
+            setFormData({...formData, avatar: downloadURL});
+          } catch (error) {
+            console.error("Avatar upload error:", error);
+            alert("Failed to upload profile picture. Please try again.");
+          } finally {
+            setIsUploading(false);
+            setCropFile(null);
+            setIsAvatarModalOpen(true);
+          }
         }}
         onChangePhoto={() => {
           setCropFile(null);
@@ -2155,13 +2200,14 @@ const EmployeeProfile = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="p-4 border border-gray-200 rounded-xl">
                         <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume</label>
-                        <input key={docs.resume ? 'resume-has' : 'resume-empty'} type="file" accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer" onChange={e => setDoc('resume', e.target.files[0]?.name || '')} />
-                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300kb</p>
+                        <input key={docs.resume ? 'resume-has' : 'resume-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
+                        {docError.resume && <p className="text-xs text-red-500 mt-2 font-medium">{docError.resume}</p>}
+                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
                         {docs.resume && (
                           <div className="flex items-center justify-between mt-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
                             <p className="text-sm text-gray-700 flex items-center gap-2 truncate">
                               <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> 
-                              <span className="truncate">{docs.resume}</span>
+                              <a href={docs.resume.startsWith('http') ? docs.resume : '#'} target="_blank" rel="noreferrer" className="truncate hover:underline text-green-600 font-medium">{getFileName(docs.resume)}</a>
                             </p>
                             <button onClick={() => setDoc('resume', '')} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors flex-shrink-0" title="Remove Resume">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -2174,13 +2220,14 @@ const EmployeeProfile = () => {
                           <span>Upload Cover Letter</span>
                           <span className="text-gray-400 font-medium text-xs">(Optional)</span>
                         </label>
-                        <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer" onChange={e => setDoc('coverLetter', e.target.files[0]?.name || '')} />
-                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300kb</p>
+                        <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'coverLetter')} />
+                        {docError.coverLetter && <p className="text-xs text-red-500 mt-2 font-medium">{docError.coverLetter}</p>}
+                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
                         {docs.coverLetter && (
                           <div className="flex items-center justify-between mt-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
                             <p className="text-sm text-gray-700 flex items-center gap-2 truncate">
                               <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> 
-                              <span className="truncate">{docs.coverLetter}</span>
+                              <a href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} target="_blank" rel="noreferrer" className="truncate hover:underline text-green-600 font-medium">{getFileName(docs.coverLetter)}</a>
                             </p>
                             <button onClick={() => setDoc('coverLetter', '')} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors flex-shrink-0" title="Remove Cover Letter">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

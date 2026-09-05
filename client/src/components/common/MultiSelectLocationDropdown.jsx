@@ -37,10 +37,16 @@ const MultiSelectLocationDropdown = ({
     }
 
     let newSelected;
+    const INDIA_ANYWHERE = 'Anywhere in India/Multiple Locations';
+
     if (selectedValues.includes(optValue)) {
       newSelected = selectedValues.filter(v => v !== optValue);
     } else {
-      newSelected = [...selectedValues, optValue];
+      if (optValue === INDIA_ANYWHERE) {
+        newSelected = [INDIA_ANYWHERE];
+      } else {
+        newSelected = [...selectedValues.filter(v => v !== INDIA_ANYWHERE), optValue];
+      }
     }
     onChange(newSelected.join(', '));
   };
