@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Footer from './Footer';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+
 const StaticPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -21,7 +24,7 @@ const StaticPage = () => {
     const fetchPage = async () => {
       try {
         setLoadingState();
-        const response = await fetch('http://localhost:5000/api/pages?status=Published');
+        const response = await fetch(`${API_URL}/api/pages?status=Published`);
         if (!response.ok) throw new Error('Failed to load page');
 
         const pages = await response.json();

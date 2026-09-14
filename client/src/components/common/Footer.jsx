@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // SVG icons for various social media networks
 const getSocialIcon = (platform) => {
   const p = (platform || '').toLowerCase();
@@ -71,12 +73,12 @@ const Footer = () => {
     const fetchFooterData = async () => {
       try {
         // Fetch Footer Configuration
-        const configPromise = fetch('http://localhost:5000/api/footer')
+        const configPromise = fetch(`${API_URL}/api/footer`)
           .then(res => res.ok ? res.json() : null)
           .catch(() => null);
 
         // Fetch Published Static Pages
-        const pagesPromise = fetch('http://localhost:5000/api/pages?status=Published')
+        const pagesPromise = fetch(`${API_URL}/api/pages?status=Published`)
           .then(res => res.ok ? res.json() : [])
           .catch(() => []);
 
