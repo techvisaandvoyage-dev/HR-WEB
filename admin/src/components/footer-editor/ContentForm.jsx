@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export default function ContentForm() {
   const [formData, setFormData] = useState({
     companyName: '',
@@ -17,7 +19,7 @@ export default function ContentForm() {
     const fetchFooterConfig = async () => {
       try {
         setLoading(true);
-        const res = await fetch('http://localhost:5000/api/footer');
+        const res = await fetch(`${API_URL}/api/footer`);
         if (res.ok) {
           const data = await res.json();
           setFormData({
@@ -48,7 +50,7 @@ export default function ContentForm() {
     try {
       setSaving(true);
       setMessage(null);
-      const res = await fetch('http://localhost:5000/api/footer', {
+      const res = await fetch(`${API_URL}/api/footer`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

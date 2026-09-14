@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const DEFAULT_PLATFORMS = [
   { platform: 'Facebook', url: 'https://facebook.com', isActive: true },
   { platform: 'Twitter', url: 'https://twitter.com', isActive: true },
@@ -22,7 +24,7 @@ export default function SocialLinksForm() {
     const fetchLinks = async () => {
       try {
         setLoading(true);
-        const res = await fetch('http://localhost:5000/api/footer');
+        const res = await fetch(`${API_URL}/api/footer`);
         if (res.ok) {
           const data = await res.json();
           if (data.socialLinks && data.socialLinks.length > 0) {
@@ -72,7 +74,7 @@ export default function SocialLinksForm() {
     try {
       setSaving(true);
       setMessage(null);
-      const res = await fetch('http://localhost:5000/api/footer', {
+      const res = await fetch(`${API_URL}/api/footer`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ socialLinks: links })

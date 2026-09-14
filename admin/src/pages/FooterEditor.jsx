@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 import ContentForm from '../components/footer-editor/ContentForm';
 import SocialLinksForm from '../components/footer-editor/SocialLinksForm';
 import PagesLibrary from '../components/footer-editor/PagesLibrary';
@@ -23,7 +25,7 @@ export default function FooterEditor() {
   const fetchPages = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5000/api/pages');
+      const res = await fetch(`${API_URL}/api/pages`);
       if (res.ok) {
         const data = await res.json();
         setPages(data);
@@ -42,7 +44,7 @@ export default function FooterEditor() {
   const handleSavePage = async (pageData) => {
     try {
       const pageId = pageData._id || pageData.id;
-      const url = pageId ? `http://localhost:5000/api/pages/${pageId}` : 'http://localhost:5000/api/pages';
+      const url = pageId ? `${API_URL}/api/pages/${pageId}` : `${API_URL}/api/pages`;
       const method = pageId ? 'PUT' : 'POST';
       
       const payload = { ...pageData };
@@ -92,7 +94,7 @@ export default function FooterEditor() {
   const handleDeletePage = async (id) => {
     if (window.confirm("Are you sure you want to delete this page?")) {
       try {
-        const res = await fetch(`http://localhost:5000/api/pages/${id}`, {
+        const res = await fetch(`${API_URL}/api/pages/${id}`, {
           method: 'DELETE',
         });
         if (res.ok) {
@@ -111,7 +113,7 @@ export default function FooterEditor() {
     const newStatus = page.status === 'Published' ? 'Draft' : 'Published';
     
     try {
-      const res = await fetch(`http://localhost:5000/api/pages/${id}`, {
+      const res = await fetch(`${API_URL}/api/pages/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
