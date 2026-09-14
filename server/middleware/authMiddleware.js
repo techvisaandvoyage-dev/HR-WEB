@@ -20,13 +20,13 @@ const protectEmployee = async (req, res, next) => {
 
       next();
     } catch (error) {
-      console.error("Auth Middleware Error:", error);
-      res.status(401).json({ message: 'Not authorized' });
+      console.warn("Auth Middleware warning (invalid or expired token):", error.message);
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
+    return res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
 
@@ -41,18 +41,21 @@ const protectEmployer = async (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(' ')[1];
+      if (!token || token === 'undefined' || token === 'null') {
+        return res.status(401).json({ message: 'Not authorized, invalid token' });
+      }
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
 
       req.user = await Employer.findById(decoded.id).select('-password');
-      next();
+      return next();
     } catch (error) {
-      console.error("Auth Middleware Error:", error);
-      res.status(401).json({ message: 'Not authorized' });
+      console.warn("Auth Middleware warning (invalid or expired token):", error.message);
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
+    return res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
 

@@ -20,6 +20,14 @@ const EmployeeSchema = new mongoose.Schema({
     minlength: 6,
     select: false
   },
+  googleId: {
+    type: String,
+    default: ''
+  },
+  authProvider: {
+    type: String,
+    default: 'local' // 'local', 'google'
+  },
   mobile: {
     type: String,
     default: ''
@@ -60,6 +68,15 @@ const EmployeeSchema = new mongoose.Schema({
   coverLetter: {
     type: String,
     default: ''
+  },
+  introVideo: {
+    type: String,
+    default: ''
+  },
+  videoVisibility: {
+    type: String,
+    enum: ['everyone', 'applied'],
+    default: 'everyone'
   },
   isFresher: {
     type: Boolean,

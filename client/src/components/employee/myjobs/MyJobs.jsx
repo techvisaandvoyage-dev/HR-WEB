@@ -200,7 +200,7 @@ const MyJobs = ({ jobs = [] }) => {
                       <h2 className="text-[17px] font-bold text-gray-900 group-hover:underline">{job.title}</h2>
                       <p className="text-[15px] text-gray-800 mt-1">{job.company}</p>
                       <p className="text-[15px] text-gray-800 mt-0.5">{job.location}, {job.details.workLocation}</p>
-                      <p className="text-[13px] text-gray-500 mt-1">Applied on DreamJob on {applied.date}</p>
+                      <p className="text-[13px] text-gray-500 mt-1">Applied on sahijobs.com on {applied.date}</p>
                     </div>
                     
                     <div className="flex flex-col items-end gap-3 mt-4 md:mt-0 w-full md:w-auto">

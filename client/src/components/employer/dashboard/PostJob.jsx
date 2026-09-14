@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import LocationAutocomplete from '../../common/LocationAutocomplete';
+import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
+import { currentLocationOptions } from '../../../data/preferredLocations';
 import CustomDropdown from '../../common/CustomDropdown';
 
 const formatIndianNumber = (numStr) => {
@@ -76,8 +77,8 @@ const PostJob = ({ addJob, updateJob }) => {
       openings: details.openings || '',
       location: editingJob.location || '',
       workplaceType: details.workLocation || '',
-      about: details.aboutRole || '',
-      responsibilities: details.responsibilities || '',
+      about: editingJob.aboutRole || '',
+      responsibilities: editingJob.responsibilities || '',
       skills: details.skillsRequired || '',
       qualification: details.qualification || '',
       stream: details.stream || '',
@@ -250,10 +251,12 @@ const PostJob = ({ addJob, updateJob }) => {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Job Location</label>
-                  <LocationAutocomplete 
+                  <MultiSelectLocationDropdown 
+                    options={currentLocationOptions}
                     value={jobData.location}
                     onChange={(val) => setJobData({...jobData, location: val})}
-                    placeholder="e.g. Bangalore, Karnataka"
+                    multiple={false}
+                    placeholder="Select Job Location"
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] transition-colors"
                   />
                 </div>

@@ -7,8 +7,11 @@ import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
-import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
+import { uploadVideoToMux } from '../../utils/muxUpload';
+import VideoPlayer from '../common/VideoPlayer';
+import AccountSecuritySection from './AccountSecuritySection';
+import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -413,7 +416,6 @@ const EmployeeProfile = () => {
   const [isEditingProfOverviewMobile, setIsEditingProfOverviewMobile] = useState(false);
   const [isEditingSkillsMobile, setIsEditingSkillsMobile] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [docError, setDocError] = useState({ resume: '', coverLetter: '' });
   const [formData, setFormData] = useState({
     firstName: 'Yash Raj',
     lastName: 'Singh',
@@ -441,15 +443,44 @@ const EmployeeProfile = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('userProfile');
-    if (saved) {
-      try {
-        setFormData(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse profile data");
+    const fetchLatestProfile = async () => {
+      const saved = localStorage.getItem('userProfile');
+      if (saved) {
+        try {
+          setFormData(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to parse profile data");
+        }
       }
-    }
-    setIsLoaded(true);
+      try {
+        const token = localStorage.getItem('employeeToken');
+        if (token) {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (data && data.email) {
+            setFormData(prev => ({
+              ...prev,
+              ...data,
+              documents: {
+                ...(prev.documents || {}),
+                resume: data.resume || prev.documents?.resume || '',
+                coverLetter: data.coverLetter || prev.documents?.coverLetter || '',
+                introVideo: data.introVideo || prev.documents?.introVideo || '',
+                videoVisibility: data.videoVisibility || 'everyone'
+              },
+              videoVisibility: data.videoVisibility || 'everyone'
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch latest profile:", err);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+    fetchLatestProfile();
   }, []);
 
   useEffect(() => {
@@ -479,10 +510,74 @@ const EmployeeProfile = () => {
     }
   }, [formData, isLoaded]);
 
+  const [uploadingType, setUploadingType] = useState(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoProfileMode, setVideoProfileMode] = useState('upload');
+  const [videoProfileLink, setVideoProfileLink] = useState('');
+  const [docError, setDocError] = useState({ resume: '', coverLetter: '', introVideo: '' });
+
+  const formatFileSize = (bytes) => {
+    if (!bytes && bytes !== 0) return '';
+    if (typeof bytes === 'string' && (bytes.includes('KB') || bytes.includes('MB') || bytes.includes('B'))) return bytes;
+    const numBytes = Number(bytes);
+    if (isNaN(numBytes) || numBytes <= 0) return '';
+    if (numBytes < 1024) return `${numBytes} B`;
+    if (numBytes < 1024 * 1024) return `${Math.round(numBytes / 1024)} KB`;
+    return `${(numBytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   const p = formData.professionalDetails || {};
   const setP = (field, val) => setFormData({...formData, professionalDetails: {...p, [field]: val}});
   const docs = formData.documents || {};
-  const setDoc = (field, val) => setFormData({...formData, documents: {...docs, [field]: val}});
+  const docsMeta = formData.documentsMeta || {};
+  const setDoc = (field, val, file = null) => {
+    const updatedDocs = { ...docs, [field]: val };
+    const updatedMeta = { ...docsMeta };
+    if (val && file) {
+      updatedMeta[field] = {
+        name: file.name,
+        size: formatFileSize(file.size)
+      };
+    } else if (!val) {
+      delete updatedMeta[field];
+    }
+    setFormData({
+      ...formData,
+      documents: updatedDocs,
+      documentsMeta: updatedMeta
+    });
+  };
+
+  const handleVisibilityChange = async (visibility) => {
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        videoVisibility: visibility,
+        documents: { ...(prev.documents || {}), videoVisibility: visibility }
+      };
+      localStorage.setItem('userProfile', JSON.stringify(updated));
+      return updated;
+    });
+
+    try {
+      const token = localStorage.getItem('employeeToken');
+      if (token) {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            videoVisibility: visibility,
+            documents: { videoVisibility: visibility }
+          })
+        });
+      }
+    } catch (err) {
+      console.error("Direct visibility save error:", err);
+    }
+  };
 
   const handleFileUpload = async (e, type) => {
     const file = e.target.files[0];
@@ -490,22 +585,70 @@ const EmployeeProfile = () => {
 
     setDocError(prev => ({...prev, [type]: ''}));
 
-    if (file.size > 300 * 1024) { // 300KB limit
-      setDocError(prev => ({...prev, [type]: 'File size should not exceed 300KB'}));
-      e.target.value = ''; // Reset input
-      return;
+    // Size limits: 100MB for video, 300KB for docs
+    if (type === 'introVideo') {
+      const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+      if (file.size > MAX_VIDEO_SIZE) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setDocError(prev => ({
+          ...prev,
+          introVideo: `Video file size (${fileSizeMB}MB) exceeds the 100MB limit. Videos over 100MB are not supported. Please choose a smaller video.`
+        }));
+        e.target.value = '';
+        return;
+      }
+    } else {
+      const MAX_DOC_SIZE = 300 * 1024; // 300KB
+      if (file.size > MAX_DOC_SIZE) {
+        const fileSizeKB = (file.size / 1024).toFixed(1);
+        setDocError(prev => ({
+          ...prev,
+          [type]: `File size (${fileSizeKB}KB) exceeds the 300KB limit. Please upload a smaller document.`
+        }));
+        e.target.value = '';
+        return;
+      }
     }
 
     setIsUploading(true);
+    setUploadingType(type);
+    if (type === 'introVideo') setVideoUploadProgress(0);
+
     try {
-      const downloadURL = await uploadFileToStorage(file, `resumes`);
-      setDoc(type, downloadURL);
+      if (type === 'introVideo') {
+        const muxResult = await uploadVideoToMux(file, (p) => setVideoUploadProgress(p));
+        if (muxResult.isMux && muxResult.streamUrl) {
+          setDoc('introVideo', muxResult.streamUrl, file);
+          return;
+        }
+        const downloadURL = await uploadFileToStorage(file, 'intro-videos', (p) => setVideoUploadProgress(p));
+        setDoc('introVideo', downloadURL, file);
+      } else {
+        const downloadURL = await uploadFileToStorage(file, 'resumes');
+        setDoc(type, downloadURL, file);
+      }
     } catch (error) {
       console.error("Upload error:", error);
       setDocError(prev => ({...prev, [type]: 'Failed to upload document.'}));
     } finally {
       setIsUploading(false);
+      setUploadingType(null);
     }
+  };
+
+  const handleAttachVideoLink = (e) => {
+    e.preventDefault();
+    if (!videoProfileLink.trim()) {
+      setDocError(prev => ({...prev, introVideo: 'Please enter a valid video link (YouTube, Loom, Vimeo, Drive, or video URL)'}));
+      return;
+    }
+    setDocError(prev => ({...prev, introVideo: ''}));
+    setDoc('introVideo', videoProfileLink.trim());
+  };
+
+  const isDirectVideo = (url) => {
+    if (!url) return false;
+    return url.includes('firebasestorage') || /\.(mp4|webm|mov|m4v|mkv)($|\?)/i.test(url);
   };
 
   const getFileName = (url) => {
@@ -546,15 +689,29 @@ const EmployeeProfile = () => {
     setP('skills', currentSkills.filter(s => s !== skillToRemove).join(', '));
   };
 
+  const removePreferredLocation = (locToRemove) => {
+    const currentLocs = (formData.preferredLocation || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    setFormData({
+      ...formData,
+      preferredLocation: currentLocs.filter(s => s !== locToRemove).join(', ')
+    });
+  };
+
   const tabs = [
     { id: 'basic', label: 'Basic Details' },
     { id: 'education', label: 'Education' },
     { id: 'experience', label: 'Work Experience' },
     { id: 'professional', label: 'Professional Overview' },
     { id: 'documents', label: 'Documents' },
+    { id: 'security', label: 'Security & Password' },
   ];
 
   useEffect(() => {
+    if (activeTab === 'security') return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -566,13 +723,13 @@ const EmployeeProfile = () => {
       { rootMargin: '-20% 0px -80% 0px' }
     );
 
-    tabs.forEach(tab => {
+    tabs.filter(tab => tab.id !== 'security').forEach(tab => {
       const el = document.getElementById(tab.id);
       if (el) observer.observe(el);
     });
 
     return () => observer.disconnect();
-  }, [tabs]);
+  }, [activeTab]);
 
   const calculateProfileCompletion = () => {
     let score = 0;
@@ -809,8 +966,40 @@ const EmployeeProfile = () => {
         </div>
         <span className="text-[#F59E0B] font-bold text-[15px]">{score}%</span>
       </div>
-      <p className="text-[13px] text-gray-500 mb-8">Last updated today</p>
+      <p className="text-[13px] text-gray-500 mb-6">Last updated today</p>
 
+      {/* Mobile Tab Switcher */}
+      <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+        <button
+          type="button"
+          onClick={() => setActiveTab('basic')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            activeTab !== 'security'
+              ? 'bg-white text-gray-900 shadow-xs'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Profile Details
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('security')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            activeTab === 'security'
+              ? 'bg-white text-emerald-700 shadow-xs'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Security &amp; Password
+        </button>
+      </div>
+
+      {activeTab === 'security' ? (
+        <div className="mb-6">
+          <AccountSecuritySection userEmail={formData.email} />
+        </div>
+      ) : (
+        <>
       {/* 4. Basic Details Card */}
       <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-6">
@@ -954,6 +1143,8 @@ const EmployeeProfile = () => {
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
     </>
   );
@@ -1349,12 +1540,71 @@ const EmployeeProfile = () => {
 
         <div className="flex flex-col md:flex-row gap-6 items-start">
 
+          {/* Left Sticky Navigation Sidebar */}
+          <div className="hidden md:block w-64 flex-shrink-0 sticky top-24 bg-white rounded-2xl border border-gray-200 p-3 shadow-xs space-y-3">
+            
+            {/* Group 1: Profile Sections */}
+            <div className="space-y-1">
+              <p className="px-3.5 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                Profile
+              </p>
+              {tabs.filter(t => t.id !== 'security').map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setTimeout(() => {
+                      document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 50);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-between transition-all duration-150 ${
+                    activeTab === tab.id
+                      ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/80 shadow-xs'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Group 2: Account Settings (Differentiated) */}
+            <div className="pt-2 border-t border-gray-100 space-y-1">
+              <p className="px-3.5 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                Account Settings
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('security')}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-between transition-all duration-150 ${
+                  activeTab === 'security'
+                    ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/80 shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <svg className={`w-4 h-4 ${activeTab === 'security' ? 'text-emerald-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span>Security &amp; Password</span>
+                </div>
+                {activeTab === 'security' && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                )}
+              </button>
+            </div>
+
+          </div>
 
           {/* Right Content Area */}
-          <div className="flex-1 animate-fade-in space-y-6 min-h-[500px]">
+          <div className="flex-1 w-full animate-fade-in space-y-6 min-h-[500px]">
 
-            {/* Continuous Sections */}
-            <section id="basic" className="hidden md:block scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
+            {activeTab === 'security' ? (
+              <AccountSecuritySection userEmail={formData.email} />
+            ) : (
+              <>
+                {/* Continuous Sections */}
+                <section id="basic" className="hidden md:block scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
               <div className="mb-6 pb-2 border-b border-gray-100">
                 <h3 className="text-xl font-bold text-gray-800">Basic Details</h3>
               </div>
@@ -1975,7 +2225,7 @@ const EmployeeProfile = () => {
                     <CustomDropdown
                       options={[
                         'IT & Software', 'Finance & Accounts', 'Healthcare',
-                        'Manufacturing', 'Education', 'Marketing', 'Sales', 'HR', 'Other'
+                        'Manufacturing', 'Marketing', 'Sales', 'HR', 'Other'
                       ].sort().map(ind => ({ value: ind, label: ind }))}
                       value={formData.industry || ''}
                       onChange={val => {
@@ -1993,7 +2243,6 @@ const EmployeeProfile = () => {
                           'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
                           'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
                           'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
-                          'Education': ["Teacher", "Professor", "Assistant Professor", "Principal", "Admin", "Counselor", "Curriculum Developer", "Librarian"],
                           'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
                           'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
                           'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"]
@@ -2011,6 +2260,20 @@ const EmployeeProfile = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location</label>
+                    {(formData.preferredLocation ? formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean) : []).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean).map(loc => (
+                          <span 
+                            key={loc} 
+                            className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-2xs" 
+                            onClick={() => removePreferredLocation(loc)} 
+                            title="Click to remove"
+                          >
+                            {loc} <span className="text-[10px]">✕</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <MultiSelectLocationDropdown
                       options={preferredLocationOptions}
                       value={formData.preferredLocation || ''}
@@ -2194,27 +2457,54 @@ const EmployeeProfile = () => {
 
               <section id="documents" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
               <div className="mb-6 pb-2 border-b border-gray-100">
-                <h3 className="text-xl font-bold text-gray-800">Documents</h3>
+                <h3 className="text-xl font-bold text-gray-800">Documents & Media</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Manage your introductory video, resume, and cover letter.</p>
               </div>
               <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Resume Upload */}
                       <div className="p-4 border border-gray-200 rounded-xl">
                         <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume</label>
                         <input key={docs.resume ? 'resume-has' : 'resume-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
                         {docError.resume && <p className="text-xs text-red-500 mt-2 font-medium">{docError.resume}</p>}
                         <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
                         {docs.resume && (
-                          <div className="flex items-center justify-between mt-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <p className="text-sm text-gray-700 flex items-center gap-2 truncate">
-                              <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> 
-                              <a href={docs.resume.startsWith('http') ? docs.resume : '#'} target="_blank" rel="noreferrer" className="truncate hover:underline text-green-600 font-medium">{getFileName(docs.resume)}</a>
-                            </p>
-                            <button onClick={() => setDoc('resume', '')} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors flex-shrink-0" title="Remove Resume">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0 truncate">
+                                <a 
+                                  href={docs.resume.startsWith('http') ? docs.resume : '#'} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
+                                >
+                                  {docsMeta?.resume?.name || getFileName(docs.resume, 'Resume Document')}
+                                </a>
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                  {docsMeta?.resume?.size ? `${docsMeta.resume.size} • ` : ''}Uploaded Document
+                                </p>
+                              </div>
+                            </div>
+                            <button 
+                              type="button"
+                              onClick={() => setDoc('resume', '')} 
+                              className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0" 
+                              title="Remove Resume"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
                           </div>
                         )}
                       </div>
+
+                      {/* Cover Letter Upload */}
                       <div className="p-4 border border-gray-200 rounded-xl">
                         <label className="flex items-center justify-between text-sm font-bold text-gray-900 mb-3">
                           <span>Upload Cover Letter</span>
@@ -2224,20 +2514,272 @@ const EmployeeProfile = () => {
                         {docError.coverLetter && <p className="text-xs text-red-500 mt-2 font-medium">{docError.coverLetter}</p>}
                         <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
                         {docs.coverLetter && (
-                          <div className="flex items-center justify-between mt-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                            <p className="text-sm text-gray-700 flex items-center gap-2 truncate">
-                              <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> 
-                              <a href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} target="_blank" rel="noreferrer" className="truncate hover:underline text-green-600 font-medium">{getFileName(docs.coverLetter)}</a>
-                            </p>
-                            <button onClick={() => setDoc('coverLetter', '')} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-50 transition-colors flex-shrink-0" title="Remove Cover Letter">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0 truncate">
+                                <a 
+                                  href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
+                                >
+                                  {docsMeta?.coverLetter?.name || getFileName(docs.coverLetter, 'Cover Letter Document')}
+                                </a>
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                  {docsMeta?.coverLetter?.size ? `${docsMeta.coverLetter.size} • ` : ''}Uploaded Document
+                                </p>
+                              </div>
+                            </div>
+                            <button 
+                              type="button"
+                              onClick={() => setDoc('coverLetter', '')} 
+                              className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0" 
+                              title="Remove Cover Letter"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Introductory Video Card in Profile */}
+                      <div className="col-span-1 md:col-span-2 p-5 border border-emerald-100 rounded-2xl bg-gradient-to-br from-emerald-50/40 via-white to-gray-50 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <label className="block text-sm font-bold text-gray-900 flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                              Introductory Video <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                            </label>
+                            <p className="text-xs text-gray-500 mt-0.5">Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.</p>
+                          </div>
+                          <div className="flex bg-gray-200/80 p-1 rounded-xl text-xs font-semibold self-start">
+                            <button
+                              type="button"
+                              onClick={() => setVideoProfileMode('upload')}
+                              className={`px-3 py-1 rounded-lg transition-all ${videoProfileMode === 'upload' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                            >
+                              Upload File
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setVideoProfileMode('link')}
+                              className={`px-3 py-1 rounded-lg transition-all ${videoProfileMode === 'link' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                            >
+                              Paste Link
+                            </button>
+                          </div>
+                        </div>
+
+                        {videoProfileMode === 'upload' && !docs.introVideo && (
+                          <div className="p-6 border-2 border-dashed border-gray-300 rounded-2xl bg-white text-center hover:border-emerald-400 transition-all relative">
+                            <input
+                              type="file"
+                              disabled={isUploading}
+                              accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.mov,.webm,.mkv,.m4v"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                              onChange={e => handleFileUpload(e, 'introVideo')}
+                            />
+                            <div className="mx-auto w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2">
+                              {isUploading && uploadingType === 'introVideo' ? (
+                                <svg className="animate-spin w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </div>
+
+                            {isUploading && uploadingType === 'introVideo' ? (
+                              <div className="max-w-xs mx-auto space-y-2 mt-1">
+                                <div className="flex items-center justify-between text-xs font-bold text-emerald-700">
+                                  <span>Uploading video...</span>
+                                  <span>{videoUploadProgress}%</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-green-600 rounded-full transition-all duration-300 ease-out" 
+                                    style={{ width: `${Math.max(videoUploadProgress, 5)}%` }}
+                                  />
+                                </div>
+                                <p className="text-[11px] text-gray-400">Processing video stream, please wait...</p>
+                              </div>
+                            ) : (
+                              <>
+                                <span className="text-sm font-semibold text-emerald-600 hover:underline">
+                                  Click or drag video to upload
+                                </span>
+                                <p className="text-xs text-gray-500 mt-1">MP4, MOV, WebM up to 100MB</p>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {videoProfileMode === 'link' && !docs.introVideo && (
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              placeholder="Paste YouTube, Loom, Vimeo, Drive, or Mux stream link"
+                              value={videoProfileLink}
+                              onChange={e => setVideoProfileLink(e.target.value)}
+                              className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAttachVideoLink}
+                              className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700"
+                            >
+                              Attach
+                            </button>
+                          </div>
+                        )}
+
+                        {docError.introVideo && (
+                          <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs shadow-xs animate-shake">
+                            <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <div className="flex-1">
+                              <span className="font-bold block text-red-800">Cannot upload video:</span>
+                              <p className="mt-0.5 leading-relaxed">{docError.introVideo}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setDocError(prev => ({ ...prev, introVideo: '' }))}
+                              className="text-red-400 hover:text-red-700 p-0.5 rounded transition-colors"
+                              title="Dismiss"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </div>
+                        )}
+
+                        {docs.introVideo && (
+                          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                  Video Attached
+                                </span>
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                                  (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}>
+                                  {(formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone' ? (
+                                    <>
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                      Visible to All Employers
+                                    </>
+                                  ) : (
+                                    <>
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                      Applied Jobs Only
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setDoc('introVideo', '')}
+                                className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors"
+                              >
+                                Remove
+                              </button>
+                            </div>
+
+                            <VideoPlayer url={docs.introVideo} />
+
+                            {/* Visibility / Sharing Options */}
+                            <div className="pt-3 border-t border-gray-100 space-y-2">
+                              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Who can see this video?
+                              </label>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                {/* Option 1: Share to everyone */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleVisibilityChange('everyone')}
+                                  className={`w-full text-left p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 ${
+                                    (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
+                                      ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
+                                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                                    (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
+                                      ? 'border-emerald-600 bg-emerald-600'
+                                      : 'border-gray-300 bg-white'
+                                  }`}>
+                                    {(formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone' && (
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-xs font-bold text-gray-900">Share to everyone</p>
+                                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">All Employees List</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                                      All employers can view your introductory video in the all employee list.
+                                    </p>
+                                  </div>
+                                </button>
+
+                                {/* Option 2: Share to applied jobs */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleVisibilityChange('applied')}
+                                  className={`w-full text-left p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 ${
+                                    (formData.videoVisibility || formData.documents?.videoVisibility) === 'applied'
+                                      ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
+                                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                                  }`}
+                                >
+                                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                                    (formData.videoVisibility || formData.documents?.videoVisibility) === 'applied'
+                                      ? 'border-emerald-600 bg-emerald-600'
+                                      : 'border-gray-300 bg-white'
+                                  }`}>
+                                    {(formData.videoVisibility || formData.documents?.videoVisibility) === 'applied' && (
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-xs font-bold text-gray-900">Share to applied jobs</p>
+                                      <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">Applied Only</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                                      Only employers of jobs you specifically apply to can watch your video.
+                                    </p>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
                     </div>
                 </div>
               </section>
+              </>
+            )}
 
               {/* Mobile Sign Out Button */}
               <div className="md:hidden mt-8 pb-24">

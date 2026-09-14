@@ -84,14 +84,40 @@ const MultiSelectLocationDropdown = ({
         const addLocations = (locations) => {
           if (!Array.isArray(locations)) return;
 
+          const cleanTerm = (text) => {
+            if (!text) return '';
+            return text
+              .replace(/\b(tahsil|tehsil|taluk|taluka|sub-district|subdistrict|district|mandal|division|block)\b/gi, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+          };
+
           locations.forEach((location) => {
             const address = location.address || {};
-            const city = address.city || address.town || address.village || address.county || location.name;
-            const state = address.state;
-            const label = [city, state, address.country].filter(Boolean).join(', ');
-            // Commas are the existing multi-select storage separator, so keep
-            // fallback values delimiter-safe while preserving a readable label.
-            const value = [city, state, address.country].filter(Boolean).join(' - ');
+            const city = cleanTerm(
+              address.city || 
+              address.town || 
+              address.village || 
+              address.suburb || 
+              address.municipality || 
+              address.county || 
+              location.name || 
+              ''
+            );
+            const state = cleanTerm(address.state || '');
+
+            if (!city && !state) return;
+
+            let label = '';
+            let value = '';
+
+            if (city && state && city.toLowerCase() !== state.toLowerCase()) {
+              label = `${city}, ${state}`;
+              value = `${city} (${state})`;
+            } else {
+              label = city || state;
+              value = city || state;
+            }
 
             if (label && value) uniqueLocations.set(value, { label, value });
           });

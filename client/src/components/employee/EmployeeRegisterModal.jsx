@@ -13,13 +13,29 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
   const [step, setStep] = useState(1);
   const [otp, setOtp] = useState(['', '', '', '']);
   const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Countdown timer for Resend OTP
+  useEffect(() => {
+    let interval = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resendTimer]);
+
   const handleGoogleSignUp = async () => {
     setIsLoading(true);
     setErrors({});
+    setSuccessMessage('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
@@ -55,38 +71,56 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       setStep(1);
       setOtp(['', '', '', '']);
       setErrors({});
+      setSuccessMessage('');
+      setResendTimer(0);
       setShowPassword(false);
       setShowConfirmPassword(false);
     }
   }, [isOpen]);
 
-  // Password validation logic
-  const hasLowercase = /[a-z]/.test(password);
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasMinLength = password.length >= 8;
-  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  const handleOtpChange = (index, value) => {
+    if (value.length <= 1 && /^\d*$/.test(value)) {
+      const newOtp = [...otp];
+      newOtp[index] = value;
+      setOtp(newOtp);
+      // Auto-focus next input
+      if (value !== '' && index < 3) {
+        const nextInput = document.getElementById(`otp-${index + 1}`);
+        if (nextInput) nextInput.focus();
+      }
+    }
+  };
 
   const handleStep1Submit = async (e) => {
     e.preventDefault();
     
+    // Front-end validation
     const newErrors = {};
-    if (!email) newErrors.email = 'Please enter your email.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Please enter a valid email address.';
+    if (!email.trim()) newErrors.email = 'Please enter your email address.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Please enter a valid email address.';
+    
+    if (!mobile.trim()) newErrors.mobile = 'Please enter your mobile number.';
+    else if (mobile.length !== 10) newErrors.mobile = 'Please enter a valid 10-digit mobile number.';
+    
     if (!password) newErrors.password = 'Please create a password.';
     if (!confirmPassword) newErrors.confirmPassword = 'Please confirm your password.';
-    if (!mobile) newErrors.mobile = 'Please enter a phone number.';
-    if (mobile && mobile.length !== 10) newErrors.mobile = 'Please enter a valid 10-digit mobile number.';
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
-    if (!hasLowercase || !hasUppercase || !hasNumber || !hasMinLength || !hasSpecialChar) {
-      setErrors({ password: 'Please ensure your password meets all requirements.' });
+
+    const isValidPassword = password.length >= 8 && 
+                            /[a-z]/.test(password) && 
+                            /[A-Z]/.test(password) && 
+                            /[0-9]/.test(password) && 
+                            /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    if (!isValidPassword) {
+      setErrors({ password: 'Password must be at least 8 chars long and contain lowercase, uppercase, numeric & special characters.' });
       return;
     }
+
     if (password !== confirmPassword) {
       setErrors({ confirmPassword: 'Passwords do not match.' });
       return;
@@ -94,6 +128,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     
     setIsLoading(true);
     setErrors({});
+    setSuccessMessage('');
     
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/send-otp`, {
@@ -112,6 +147,8 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       }
       
       setOtp(['', '', '', '']);
+      setResendTimer(data.cooldownSeconds || 30);
+      setSuccessMessage('A 4-digit verification code has been sent to your email.');
       setStep(2);
     } catch (err) {
       setErrors({ general: 'Failed to send OTP. Please try again.' });
@@ -120,8 +157,10 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
   };
 
   const handleResendOtp = async () => {
+    if (resendTimer > 0) return;
     setIsLoading(true);
     setErrors({});
+    setSuccessMessage('');
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/resend-otp`, {
         method: 'POST',
@@ -130,10 +169,14 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       });
       const data = await response.json();
       if (!response.ok) {
+        if (data.cooldownRemaining) {
+          setResendTimer(data.cooldownRemaining);
+        }
         setErrors({ general: data.message || 'Failed to resend OTP' });
       } else {
         setOtp(['', '', '', '']);
-        setErrors({ general: '' });
+        setResendTimer(data.cooldownSeconds || 30);
+        setSuccessMessage('OTP resent successfully to your email!');
       }
     } catch (err) {
       setErrors({ general: 'Failed to resend OTP. Please try again.' });
@@ -211,17 +254,11 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     }
   };
 
-  const handleOtpChange = (index, value) => {
-    if (value.length > 1) value = value.slice(-1);
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    
-    // Auto-focus next input
-    if (value && index < 3) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
-  };
+  const hasLowercase = /[a-z]/.test(password);
+  const hasUppercase = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasMinLength = password.length >= 8;
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
   if (!isOpen) return null;
 
@@ -474,7 +511,27 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 <p className="font-bold text-gray-900 text-lg break-all">{email}</p>
               </div>
 
-              <form onSubmit={handleRegisterSubmit} className="space-y-6 mt-8">
+              {/* Success Notification */}
+              {successMessage && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-sm font-medium text-center animate-fade-in flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
+              {/* General Error */}
+              {errors.general && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-semibold text-center animate-shake flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{errors.general}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleRegisterSubmit} className="space-y-6 mt-6">
                 <div className="flex justify-center gap-4">
                   {otp.map((digit, index) => (
                     <input
@@ -491,7 +548,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                   ))}
                 </div>
 
-                <div className="pt-6 space-y-4">
+                <div className="pt-4 space-y-3">
                   <button 
                     type="submit"
                     disabled={isLoading}
@@ -499,18 +556,32 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                   >
                     {isLoading ? 'Verifying & Creating Profile...' : 'Verify & Continue'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={isLoading}
-                    className="w-full py-2 text-sm font-semibold text-palette-400 hover:text-palette-900 transition-colors disabled:opacity-70"
-                  >
-                    Resend OTP
-                  </button>
+                  
+                  <div className="flex items-center justify-center pt-2">
+                    {resendTimer > 0 ? (
+                      <span className="text-sm font-medium text-gray-500 flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Resend OTP in <strong className="text-palette-900 font-bold">{resendTimer}s</strong>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={isLoading}
+                        className="text-sm font-bold text-palette-400 hover:text-palette-900 transition-colors disabled:opacity-70"
+                      >
+                        Resend OTP
+                      </button>
+                    )}
+                  </div>
+
                   <button 
                     type="button"
-                    onClick={() => { setStep(1); setErrors({}); setOtp(['', '', '', '']); }}
-                    className="w-full py-3 text-palette-400 font-semibold hover:text-palette-900 transition-colors"
+                    onClick={() => { setStep(1); setErrors({}); setOtp(['', '', '', '']); setSuccessMessage(''); setResendTimer(0); }}
+                    className="w-full py-2 text-sm text-gray-600 hover:text-palette-900 font-semibold transition-colors"
                   >
                     Back to Edit Details
                   </button>

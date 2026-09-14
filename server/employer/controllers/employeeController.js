@@ -6,10 +6,17 @@ const Employee = require('../../employee/models/Employee');
 exports.getAllEmployees = async (req, res) => {
   try {
     const employees = await Employee.find().select('-password').sort({ createdAt: -1 });
+    const sanitizedEmployees = employees.map(emp => {
+      const e = emp.toObject ? emp.toObject() : { ...emp };
+      if (e.videoVisibility === 'applied') {
+        e.introVideo = '';
+      }
+      return e;
+    });
     res.status(200).json({
       success: true,
-      count: employees.length,
-      data: employees
+      count: sanitizedEmployees.length,
+      data: sanitizedEmployees
     });
   } catch (error) {
     console.error("Error in getAllEmployees:", error);

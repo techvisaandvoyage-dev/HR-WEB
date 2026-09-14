@@ -1,12 +1,109 @@
 const jwt = require('jsonwebtoken');
 const Employer = require('../models/Employer');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
+const { sendOtp, resendOtp, verifyOtp } = require('../../utils/email');
 
 // Generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
     expiresIn: '30d',
   });
+};
+
+// @desc    Send registration OTP to employer email
+// @route   POST /api/employer/auth/send-otp
+// @access  Public
+exports.sendRegistrationOtp = async (req, res) => {
+  try {
+    const { email, mobile, fullName } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const userExists = await Employer.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: 'Employer already exists with this email', field: 'email' });
+    }
+
+    if (mobile) {
+      const mobileExists = await Employer.findOne({ mobile });
+      if (mobileExists) {
+        return res.status(400).json({ message: 'Mobile number already registered', field: 'mobile' });
+      }
+    }
+
+    const result = await sendOtp({
+      email,
+      name: fullName || email.split('@')[0],
+      purpose: 'registration:employer',
+    });
+
+    res.json({
+      message: result.message || 'OTP sent successfully to your email',
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
+  } catch (error) {
+    console.error('Employer Send OTP Error:', error.message);
+    res.status(error.status || 400).json({
+      message: error.message || 'Failed to send OTP',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Resend registration OTP to employer email
+// @route   POST /api/employer/auth/resend-otp
+// @access  Public
+exports.resendRegistrationOtp = async (req, res) => {
+  try {
+    const { email, fullName } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required to resend OTP' });
+    }
+
+    const result = await resendOtp({
+      email,
+      name: fullName || email.split('@')[0],
+      purpose: 'registration:employer',
+    });
+
+    res.json({
+      message: result.message || 'OTP resent successfully to your email',
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
+  } catch (error) {
+    console.error('Employer Resend OTP Error:', error.message);
+    res.status(error.status || 400).json({
+      message: error.message || 'Failed to resend OTP',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Verify registration OTP
+// @route   POST /api/employer/auth/verify-otp
+// @access  Public
+exports.verifyRegistrationOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+
+    await verifyOtp({
+      email,
+      otp,
+      purpose: 'registration:employer',
+      consume: false,
+    });
+
+    res.json({ success: true, message: 'OTP verified successfully' });
+  } catch (error) {
+    res.status(error.status || 400).json({ message: error.message || 'Invalid or expired OTP' });
+  }
 };
 
 // @desc    Register a new employer
@@ -16,21 +113,54 @@ exports.register = async (req, res) => {
   try {
     const { 
       mobile, accountType, fullName, email, password,
-      hiringFor, companyName, industry, employees, designation, location, aboutCompany, website
+      hiringFor, companyName, industry, employees, designation, location, aboutCompany, website,
+      otp
     } = req.body;
 
-    // Check if user exists
-    const userExists = await Employer.findOne({ email });
+    const cleanEmail = String(email || '').trim().toLowerCase();
 
-    if (userExists) {
-      return res.status(400).json({ success: false, message: 'User already exists with this email' });
+    // Check if user exists
+    let employer = await Employer.findOne({ email: cleanEmail });
+
+    if (employer && employer.companyName && employer.companyName.trim() !== '') {
+      return res.status(400).json({ success: false, message: 'Employer account already exists with this email' });
     }
 
-    // Create user
-    const employer = await Employer.create({
-      mobile, accountType, fullName, email, password,
-      hiringFor, companyName, industry, employees, designation, location, aboutCompany, website
-    });
+    // If OTP was provided, verify and consume it
+    if (otp) {
+      try {
+        await verifyOtp({
+          email: cleanEmail,
+          otp,
+          purpose: 'registration:employer',
+          consume: true,
+        });
+      } catch (otpErr) {
+        return res.status(otpErr.status || 400).json({ success: false, message: otpErr.message || 'Invalid OTP' });
+      }
+    }
+
+    if (employer) {
+      // Existing Google user completing Company Details
+      if (fullName) employer.fullName = fullName;
+      if (accountType) employer.accountType = accountType;
+      if (password) employer.password = password;
+      if (hiringFor) employer.hiringFor = hiringFor;
+      employer.companyName = companyName;
+      employer.industry = industry;
+      employer.employees = employees;
+      employer.designation = designation;
+      employer.location = location;
+      employer.aboutCompany = aboutCompany;
+      if (website !== undefined) employer.website = website;
+      await employer.save();
+    } else {
+      // Create new user
+      employer = await Employer.create({
+        mobile, accountType, fullName, email: cleanEmail, password,
+        hiringFor, companyName, industry, employees, designation, location, aboutCompany, website
+      });
+    }
 
     if (employer) {
       res.status(201).json({
@@ -154,21 +284,104 @@ exports.forgotPasswordOtp = async (req, res) => {
     const { identifier } = req.body;
     
     if (!identifier) {
+      return res.status(400).json({ message: 'Please provide your email address' });
+    }
+
+    const employer = await Employer.findOne({
+      $or: [{ email: identifier.toLowerCase().trim() }, { mobile: identifier.trim() }]
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'No employer account found with this email' });
+    }
+
+    const result = await sendOtp({
+      email: employer.email,
+      name: employer.fullName,
+      purpose: 'forgot_password:employer',
+    });
+
+    res.json({
+      message: result.message || 'OTP sent successfully to your registered email',
+      email: employer.email,
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
+  } catch (error) {
+    console.error('Employer Forgot Password OTP error:', error.message);
+    res.status(error.status || 500).json({
+      message: error.message || 'Server error',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Resend OTP for forgot password
+// @route   POST /api/employer/auth/forgot-password/resend-otp
+// @access  Public
+exports.resendForgotPasswordOtp = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    
+    if (!identifier) {
       return res.status(400).json({ message: 'Please provide mobile number or email' });
     }
 
     const employer = await Employer.findOne({
-      $or: [{ email: identifier }, { mobile: identifier }]
+      $or: [{ email: identifier.toLowerCase().trim() }, { mobile: identifier.trim() }]
     });
 
     if (!employer) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // In a real app, send actual OTP via email/SMS here
-    res.json({ message: 'OTP sent successfully' });
+    const result = await resendOtp({
+      email: employer.email,
+      name: employer.fullName,
+      purpose: 'forgot_password:employer',
+    });
+
+    res.json({
+      message: result.message || 'OTP resent successfully to your email',
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Employer Resend Forgot Password OTP error:', error.message);
+    res.status(error.status || 400).json({
+      message: error.message || 'Failed to resend OTP',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Verify OTP for forgot password
+// @route   POST /api/employer/auth/forgot-password/verify-otp
+// @access  Public
+exports.verifyForgotPasswordOtp = async (req, res) => {
+  try {
+    const { identifier, otp } = req.body;
+
+    if (!identifier || !otp) {
+      return res.status(400).json({ message: 'Identifier and OTP are required' });
+    }
+
+    const employer = await Employer.findOne({
+      $or: [{ email: identifier.toLowerCase().trim() }, { mobile: identifier.trim() }]
+    });
+
+    if (!employer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await verifyOtp({
+      email: employer.email,
+      otp,
+      purpose: 'forgot_password:employer',
+      consume: false,
+    });
+
+    res.json({ success: true, message: 'OTP verified successfully' });
+  } catch (error) {
+    res.status(error.status || 400).json({ message: error.message || 'Invalid or expired OTP' });
   }
 };
 
@@ -177,18 +390,28 @@ exports.forgotPasswordOtp = async (req, res) => {
 // @access  Public
 exports.resetPassword = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password, otp } = req.body;
     
     if (!identifier || !password) {
       return res.status(400).json({ message: 'Please provide all fields' });
     }
 
     const employer = await Employer.findOne({
-      $or: [{ email: identifier }, { mobile: identifier }]
+      $or: [{ email: identifier.toLowerCase().trim() }, { mobile: identifier.trim() }]
     });
 
     if (!employer) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify and consume OTP if provided
+    if (otp) {
+      await verifyOtp({
+        email: employer.email,
+        otp,
+        purpose: 'forgot_password:employer',
+        consume: true,
+      });
     }
 
     employer.password = password;
@@ -196,7 +419,7 @@ exports.resetPassword = async (req, res) => {
 
     res.json({ message: 'Password reset successful' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(error.status || 500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -267,27 +490,159 @@ exports.googleAuth = async (req, res) => {
       return res.status(400).json({ message: 'Email not found in Google account' });
     }
 
-    let employer = await Employer.findOne({ email });
+    const cleanEmail = email.toLowerCase().trim();
+    let employer = await Employer.findOne({ email: cleanEmail });
+    let isNewUser = false;
 
     if (!employer) {
-      // Register
+      isNewUser = true;
       employer = await Employer.create({
-        fullName: name || email.split('@')[0],
-        email,
+        fullName: name || cleanEmail.split('@')[0],
+        email: cleanEmail,
         mobile: '',
         companyName: '',
         industry: '',
+      });
+    } else if (!employer.companyName || employer.companyName.trim() === '') {
+      isNewUser = true;
+    }
+
+    res.json({
+      success: true,
+      isNewUser,
+      _id: employer._id,
+      fullName: employer.fullName,
+      email: employer.email,
+      companyName: employer.companyName,
+      token: generateToken(employer._id)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Send OTP to email for employer login
+// @route   POST /api/employer/auth/login/send-otp
+// @access  Public
+exports.sendLoginOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Please enter your email address.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const employer = await Employer.findOne({ email: cleanEmail });
+
+    if (!employer) {
+      return res.status(404).json({ success: false, message: "We couldn't find an employer account with this email. Please register first." });
+    }
+
+    const result = await sendOtp({
+      email: employer.email,
+      name: employer.fullName || 'Employer',
+      purpose: 'login:employer',
+    });
+
+    res.json({
+      success: true,
+      message: result.message || 'OTP sent successfully to your email.',
+      email: employer.email,
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
+  } catch (error) {
+    console.error('Employer sendLoginOtp error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || 'Failed to send OTP.',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Resend OTP for email login
+// @route   POST /api/employer/auth/login/resend-otp
+// @access  Public
+exports.resendLoginOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required to resend OTP.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const employer = await Employer.findOne({ email: cleanEmail });
+
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found with this email.' });
+    }
+
+    const result = await resendOtp({
+      email: employer.email,
+      name: employer.fullName || 'Employer',
+      purpose: 'login:employer',
+    });
+
+    res.json({
+      success: true,
+      message: result.message || 'A new OTP has been sent to your email.',
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
+  } catch (error) {
+    console.error('Employer resendLoginOtp error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || 'Failed to resend OTP.',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Verify OTP and log in employer
+// @route   POST /api/employer/auth/login/verify-otp
+// @access  Public
+exports.verifyLoginOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Please provide both email and OTP.' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const employer = await Employer.findOne({ email: cleanEmail });
+
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Account not found.' });
+    }
+
+    // Verify OTP
+    try {
+      await verifyOtp({
+        email: employer.email,
+        otp: String(otp).trim(),
+        purpose: 'login:employer',
+        consume: true,
+      });
+    } catch (otpErr) {
+      return res.status(otpErr.status || 400).json({
+        success: false,
+        message: otpErr.message || 'Invalid or expired OTP. Please try again.',
       });
     }
 
     res.json({
       success: true,
-      _id: employer._id,
+      _id: employer.id,
       fullName: employer.fullName,
       email: employer.email,
-      token: generateToken(employer._id)
+      companyName: employer.companyName,
+      token: generateToken(employer._id),
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Employer verifyLoginOtp error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };

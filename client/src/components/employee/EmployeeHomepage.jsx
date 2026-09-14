@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import JobApplicationModal from './JobApplicationModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
 import CustomDropdown from '../common/CustomDropdown';
+import Footer from '../common/Footer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 
 const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
@@ -611,6 +612,8 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
         job={selectedJob}
         applyToJob={applyToJob}
       />
+
+      <Footer />
     </div>
   );
 };

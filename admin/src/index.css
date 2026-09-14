@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+.page-content-editor .ql-container {
+	min-height: 420px;
+}
+
+.page-content-editor .ql-editor {
+	min-height: 420px;
+	font-size: 16px;
+	line-height: 1.7;
+}

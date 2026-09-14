@@ -11,6 +11,8 @@ import MyJobs from './components/employee/myjobs/MyJobs';
 import EmployeeMessages from './components/employee/messages/EmployeeMessages';
 import EmployerDashboard from './components/employer/dashboard/EmployerDashboard';
 import LocationAutocomplete from './components/common/LocationAutocomplete';
+import Footer from './components/common/Footer';
+import StaticPage from './components/common/StaticPage';
 import { dummyJobs } from './data/dummyJobs';
 
 function App() {
@@ -45,6 +47,7 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     const isEmployerRoute = location.pathname.startsWith('/employer');
     if (isEmployerRoute && localStorage.getItem('employerToken')) {
       setUserRole('employer');
@@ -103,6 +106,14 @@ function App() {
                     designation: emp.designation || 'N/A',
                     totalExperience: emp.totalExperience || 'N/A',
                     preferredLocation: emp.preferredLocation || 'N/A',
+                    resume: emp.resume || emp.documents?.resume || '',
+                    coverLetter: emp.coverLetter || emp.documents?.coverLetter || '',
+                    introVideo: emp.introVideo || emp.documents?.introVideo || '',
+                    documents: emp.documents || {
+                      resume: emp.resume || '',
+                      coverLetter: emp.coverLetter || '',
+                      introVideo: emp.introVideo || '',
+                    },
                   };
                 }
                 
@@ -112,7 +123,10 @@ function App() {
                   status: app.status,
                   color: app.statusColor,
                   date: new Date(app.createdAt).toLocaleDateString(),
-                  screeningAnswers: app.screeningAnswers || []
+                  screeningAnswers: app.screeningAnswers || [],
+                  resume: app.resume || emp.resume || emp.documents?.resume || '',
+                  coverLetter: app.coverLetter || emp.coverLetter || emp.documents?.coverLetter || '',
+                  introVideo: app.introVideo || emp.introVideo || emp.documents?.introVideo || '',
                 });
                 
                 // Update last active date to most recent application
@@ -229,6 +243,7 @@ function App() {
   const [isEmployeeRegisterOpen, setIsEmployeeRegisterOpen] = useState(false);
   const [isEmployerLoginOpen, setIsEmployerLoginOpen] = useState(false);
   const [isEmployerRegisterOpen, setIsEmployerRegisterOpen] = useState(false);
+  const [employerRegisterInitialData, setEmployerRegisterInitialData] = useState(null);
   const navigate = useNavigate();
 
   const openRegister = () => {
@@ -241,13 +256,15 @@ function App() {
     setIsEmployeeLoginOpen(true);
   };
 
-  const openEmployerRegister = () => {
+  const openEmployerRegister = (initialData = null) => {
     setIsEmployerLoginOpen(false);
+    setEmployerRegisterInitialData(initialData);
     setIsEmployerRegisterOpen(true);
   };
 
   const openEmployerLogin = () => {
     setIsEmployerRegisterOpen(false);
+    setEmployerRegisterInitialData(null);
     setIsEmployerLoginOpen(true);
   };
 
@@ -286,7 +303,7 @@ function App() {
       <nav className="w-full px-6 py-4 md:px-8 md:py-6 flex justify-between md:justify-end items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-palette-100 shadow-sm">
         {/* Mobile Logo */}
         <div className="text-2xl font-black text-palette-900 md:hidden">
-          DreamJob
+          sahijobs.com
         </div>
 
         {/* Desktop Buttons */}
@@ -522,8 +539,15 @@ function App() {
           </div>
         </div>
       </main>
+
+      <Footer />
           </div>
         } />
+        
+        <Route 
+          path="/page/*" 
+          element={<StaticPage />} 
+        />
         
         <Route 
           path="/employee" 
@@ -588,7 +612,8 @@ function App() {
       />
       <EmployerRegisterModal 
         isOpen={isEmployerRegisterOpen}
-        onClose={() => setIsEmployerRegisterOpen(false)}
+        initialData={employerRegisterInitialData}
+        onClose={() => { setIsEmployerRegisterOpen(false); setEmployerRegisterInitialData(null); }}
         onLoginClick={openEmployerLogin}
         onLoginSuccess={handleEmployerLoginSuccess}
       />

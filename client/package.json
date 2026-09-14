@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mux/mux-player-react": "^3.13.3",
+    "@mux/upchunk": "^3.5.0",
     "country-state-city": "^3.2.1",
     "firebase": "^12.18.0",
     "react": "^19.2.8",

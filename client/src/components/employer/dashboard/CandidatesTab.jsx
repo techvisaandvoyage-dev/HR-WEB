@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DateRangePicker from '../../common/DateRangePicker';
+import VideoPlayer from '../../common/VideoPlayer';
 
 const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
   const location = useLocation();
@@ -10,6 +11,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [previewResume, setPreviewResume] = useState(null);
+  const [previewCoverLetter, setPreviewCoverLetter] = useState(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState('All');
   const [appsFilter, setAppsFilter] = useState('All');
@@ -491,39 +493,12 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                   
                   <hr className="border-gray-100" />
                   
-                  <div className="grid grid-cols-2 gap-6 mb-8">
+                  <div className="grid grid-cols-2 gap-6">
                     <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Applied On</h4>
                       <p className="text-sm font-bold text-gray-900">
                         {selectedApplication ? selectedApplication.date : selectedCandidate.date}
                       </p>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Resume</h4>
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewResume(selectedCandidate);
-                          }}
-                          className="text-sm font-bold text-[#29953f] hover:text-green-700 flex items-center gap-1.5 transition-colors"
-                          title="Preview Resume"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                          Preview
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            alert('Downloading Resume...');
-                          }}
-                          className="text-sm font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1.5 transition-colors"
-                          title="Download Resume"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                          Download
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -623,6 +598,150 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                   </div>
                 </div>
 
+                {/* Documents & Media Section */}
+                <div>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents & Media</h4>
+                  <div className="space-y-3">
+                    {/* Introductory Video Card */}
+                    {(selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo) && (
+                      <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900">Introductory Video</p>
+                              <p className="text-xs text-gray-500">Public Video Introduction</p>
+                            </div>
+                          </div>
+                          <a 
+                            href={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="px-3 py-1.5 bg-[#0c7844] hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1 shadow-2xs"
+                          >
+                            Watch Video
+                          </a>
+                        </div>
+                        <VideoPlayer url={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo} maxPlayerHeight="220px" className="mt-2" />
+                      </div>
+                    )}
+
+                    {/* Resume Card */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Resume</p>
+                          <p className="text-xs text-gray-500">Document</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const resUrl = selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume;
+                            if (resUrl && resUrl.startsWith('http')) {
+                              window.open(resUrl, '_blank');
+                            } else {
+                              setPreviewResume(selectedCandidate);
+                            }
+                          }}
+                          className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
+                          title="Preview Resume"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const resUrl = selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume;
+                            if (resUrl && resUrl.startsWith('http')) {
+                              const a = document.createElement('a');
+                              a.href = resUrl;
+                              a.download = `${selectedCandidate.name || 'Candidate'}_Resume`;
+                              a.target = '_blank';
+                              a.click();
+                            } else {
+                              alert('Downloading Resume...');
+                            }
+                          }}
+                          className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
+                          title="Download Resume"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Cover Letter Card */}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">Cover Letter</p>
+                          <p className="text-xs text-gray-500">Document</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const cl = selectedApplication?.coverLetter || selectedCandidate.coverLetter || selectedCandidate.documents?.coverLetter;
+                            if (cl && cl.startsWith('http')) {
+                              window.open(cl, '_blank');
+                            } else if (cl) {
+                              setPreviewCoverLetter({
+                                name: selectedCandidate.name,
+                                coverLetter: cl
+                              });
+                            } else {
+                              alert('No cover letter attached.');
+                            }
+                          }}
+                          className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
+                          title="Preview Cover Letter"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const cl = selectedApplication?.coverLetter || selectedCandidate.coverLetter || selectedCandidate.documents?.coverLetter;
+                            if (cl && cl.startsWith('http')) {
+                              const a = document.createElement('a');
+                              a.href = cl;
+                              a.download = `${selectedCandidate.name || 'Candidate'}_CoverLetter`;
+                              a.target = '_blank';
+                              a.click();
+                            } else if (cl) {
+                              const blob = new Blob([cl], { type: 'text/plain' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `${selectedCandidate.name || 'Candidate'}_CoverLetter.txt`;
+                              a.click();
+                            } else {
+                              alert('No cover letter attached.');
+                            }
+                          }}
+                          className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
+                          title="Download Cover Letter"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
               <div className="mt-6 pt-6 border-t border-[#ECECEC] flex gap-3 shrink-0">
@@ -719,6 +838,37 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cover Letter Preview Modal */}
+        {previewCoverLetter && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
+              <div className="flex justify-between items-center p-4 border-b border-[#ECECEC] bg-gray-50">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-base">{previewCoverLetter.name} - Cover Letter</h3>
+                    <p className="text-xs text-gray-500">Candidate Application Document</p>
+                  </div>
+                </div>
+                <button onClick={() => setPreviewCoverLetter(null)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
+                {previewCoverLetter.coverLetter && previewCoverLetter.coverLetter.startsWith('http') ? (
+                  <iframe src={previewCoverLetter.coverLetter} title="Cover Letter Preview" className="w-full h-96 rounded-xl border border-gray-200 bg-white" />
+                ) : (
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-2xs whitespace-pre-line text-sm text-gray-700 leading-relaxed font-normal">
+                    {previewCoverLetter.coverLetter || "No cover letter content provided."}
+                  </div>
+                )}
               </div>
             </div>
           </div>

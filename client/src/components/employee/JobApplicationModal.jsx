@@ -258,8 +258,18 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
               skills: formData.professionalDetails?.skills ? formData.professionalDetails.skills.split(',').map(s => s.trim()) : null,
               experience: formData.experience,
               education: formData.qualifications,
+              resume: formData.documents?.resume || formData.resume || '',
+              coverLetter: formData.documents?.coverLetter || formData.coverLetter || '',
+              introVideo: formData.documents?.introVideo || formData.introVideo || '',
               history: [
-                { title: job.title, status: 'Applied', color: 'bg-blue-50 text-blue-600 border border-blue-100' }
+                { 
+                  title: job.title, 
+                  status: 'Applied', 
+                  color: 'bg-blue-50 text-blue-600 border border-blue-100',
+                  resume: formData.documents?.resume || formData.resume || '',
+                  coverLetter: formData.documents?.coverLetter || formData.coverLetter || '',
+                  introVideo: formData.documents?.introVideo || formData.introVideo || ''
+                }
               ],
               screeningAnswers: job.screeningQuestions ? job.screeningQuestions.map((sq, i) => ({ question: sq.question, answer: screeningAnswers[i] })).filter(item => item.answer && item.answer.trim() !== '') : []
             });

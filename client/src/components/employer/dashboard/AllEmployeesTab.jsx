@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { currentLocationOptions, preferredLocationOptions } from '../../../data/preferredLocations';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
+import VideoPlayer from '../../common/VideoPlayer';
 
 // Mapping algorithm to categorize employee designations into broader industries
 const designationToIndustryMap = {
@@ -534,10 +535,36 @@ const AllEmployeesTab = () => {
                   </div>
                   
                   {/* Documents Section */}
-                  {(selectedEmployee.resume || selectedEmployee.coverLetter) && (
+                  {(selectedEmployee.resume || selectedEmployee.coverLetter || selectedEmployee.introVideo) && (
                     <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents</h4>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents & Media</h4>
                       <div className="space-y-3">
+                        {selectedEmployee.introVideo && selectedEmployee.videoVisibility !== 'applied' && (
+                          <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-gray-900">Introductory Video</p>
+                                  <p className="text-xs text-gray-500">Public Video Introduction</p>
+                                </div>
+                              </div>
+                              <a 
+                                href={selectedEmployee.introVideo} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="px-3 py-1.5 bg-[#0c7844] hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1 shadow-2xs"
+                              >
+                                Watch Video
+                              </a>
+                            </div>
+                            <VideoPlayer url={selectedEmployee.introVideo} maxPlayerHeight="220px" className="mt-2" />
+                          </div>
+                        )}
                         {selectedEmployee.resume && (
                           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
                             <div className="flex items-center gap-3">

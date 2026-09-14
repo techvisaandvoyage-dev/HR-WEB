@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import LocationAutocomplete from '../../common/LocationAutocomplete';
+import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
+import { currentLocationOptions } from '../../../data/preferredLocations';
 
 const CompanyProfileTab = () => {
   const [activeTab, setActiveTab] = useState('account');
@@ -133,7 +134,14 @@ const CompanyProfileTab = () => {
                 <option>HR Manager</option><option>Recruiter</option><option>Talent Acquisition</option><option>Founder / CEO</option><option>Director</option><option>Other</option>
               </select>
             ) : type === 'location' ? (
-              <LocationAutocomplete value={value} onChange={(val) => handleChange(section, field, val)} className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f]" placeholder="e.g. Mumbai" />
+              <MultiSelectLocationDropdown 
+                options={currentLocationOptions} 
+                value={value} 
+                onChange={(val) => handleChange(section, field, val)} 
+                multiple={false} 
+                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f]" 
+                placeholder="Select Location" 
+              />
             ) : (
               <input 
                 type={type} 

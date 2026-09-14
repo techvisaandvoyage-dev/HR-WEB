@@ -6,6 +6,8 @@ import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
+import { uploadVideoToMux } from '../../utils/muxUpload';
+import VideoPlayer from '../common/VideoPlayer';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -180,7 +182,11 @@ const EmployeeOnboarding = () => {
   const [skillInput, setSkillInput] = useState('');
   const [showStep1Errors, setShowStep1Errors] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [docError, setDocError] = useState({ resume: '', coverLetter: '' });
+  const [uploadingType, setUploadingType] = useState(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoMode, setVideoMode] = useState('upload');
+  const [videoLink, setVideoLink] = useState('');
+  const [docError, setDocError] = useState({ resume: '', coverLetter: '', introVideo: '' });
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('userProfile');
@@ -240,7 +246,8 @@ const EmployeeOnboarding = () => {
 
       documents: {
         resume: null,
-        coverLetter: null
+        coverLetter: null,
+        introVideo: null
       }
     };
   });
@@ -395,6 +402,17 @@ const EmployeeOnboarding = () => {
     setFormData({...formData, professionalDetails: {...p, skills: currentSkills.filter(s => s !== skillToRemove).join(', ')}});
   };
 
+  const removePreferredLocation = (locToRemove) => {
+    const currentLocs = (formData.preferredLocation || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    setFormData({
+      ...formData,
+      preferredLocation: currentLocs.filter(s => s !== locToRemove).join(', ')
+    });
+  };
+
 
   const Step1BasicDetails = () => (
     <div className="space-y-6 animate-fade-in pb-2">
@@ -426,7 +444,7 @@ const EmployeeOnboarding = () => {
           <CustomDropdown 
             options={[
               'IT & Software', 'Finance & Accounts', 'Healthcare',
-              'Manufacturing', 'Education', 'Marketing', 'Sales', 'HR', 'Other'
+              'Manufacturing', 'Marketing', 'Sales', 'HR', 'Other'
             ].sort().map(ind => ({ value: ind, label: ind }))}
             value={formData.industry}
             onChange={(val) => { setFormData({...formData, industry: val, designation: ''}); setShowStep1Errors(false); }}
@@ -443,7 +461,6 @@ const EmployeeOnboarding = () => {
                 'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
                 'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
                 'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
-                'Education': ["Teacher", "Professor", "Assistant Professor", "Principal", "Admin", "Counselor", "Curriculum Developer", "Librarian"],
                 'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
                 'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
                 'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"]
@@ -490,8 +507,22 @@ const EmployeeOnboarding = () => {
             className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.location ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
           />
         </div>
-        <div>
+        <div className="col-span-2 sm:col-span-1">
           <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location</label>
+          {(formData.preferredLocation ? formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean) : []).length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean).map(loc => (
+                <span 
+                  key={loc} 
+                  className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-2xs" 
+                  onClick={() => removePreferredLocation(loc)} 
+                  title="Click to remove"
+                >
+                  {loc} <span className="text-[10px]">✕</span>
+                </span>
+              ))}
+            </div>
+          )}
           <MultiSelectLocationDropdown 
             options={preferredLocationOptions}
             value={formData.preferredLocation || ''}
@@ -1266,72 +1297,279 @@ const EmployeeOnboarding = () => {
 
       setDocError(prev => ({...prev, [type]: ''}));
 
-      if (file.size > 300 * 1024) { // 300KB limit
-        setDocError(prev => ({...prev, [type]: 'File size should not exceed 300KB'}));
-        e.target.value = ''; // Reset input
-        return;
+      // Size limits: 100MB for video, 300KB for docs
+      if (type === 'introVideo') {
+        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+        if (file.size > MAX_VIDEO_SIZE) {
+          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+          setDocError(prev => ({
+            ...prev,
+            introVideo: `Video file size (${fileSizeMB}MB) exceeds the 100MB limit. Videos over 100MB are not supported. Please choose a smaller video.`
+          }));
+          e.target.value = '';
+          return;
+        }
+      } else {
+        const MAX_DOC_SIZE = 300 * 1024; // 300KB
+        if (file.size > MAX_DOC_SIZE) {
+          const fileSizeKB = (file.size / 1024).toFixed(1);
+          setDocError(prev => ({
+            ...prev,
+            [type]: `File size (${fileSizeKB}KB) exceeds the 300KB limit. Please upload a smaller document.`
+          }));
+          e.target.value = '';
+          return;
+        }
       }
 
       setIsUploading(true);
+      setUploadingType(type);
+      if (type === 'introVideo') setVideoUploadProgress(0);
+
       try {
-        const downloadURL = await uploadFileToStorage(file, `resumes`);
-        setDoc(type, downloadURL);
+        if (type === 'introVideo') {
+          // Attempt Mux Video direct upload first
+          const muxResult = await uploadVideoToMux(file, (p) => setVideoUploadProgress(p));
+          if (muxResult.isMux && muxResult.streamUrl) {
+            setDoc('introVideo', muxResult.streamUrl);
+            return;
+          }
+          // Fallback to Firebase Storage if Mux is not configured
+          const downloadURL = await uploadFileToStorage(file, 'intro-videos', (p) => setVideoUploadProgress(p));
+          setDoc('introVideo', downloadURL);
+        } else {
+          const downloadURL = await uploadFileToStorage(file, 'resumes');
+          setDoc(type, downloadURL);
+        }
       } catch (error) {
         console.error("Upload error:", error);
-        setDocError(prev => ({...prev, [type]: 'Failed to upload document.'}));
+        setDocError(prev => ({...prev, [type]: 'Failed to upload file. Please try again.'}));
       } finally {
         setIsUploading(false);
+        setUploadingType(null);
       }
+    };
+
+    const handleAttachVideoLink = (e) => {
+      e.preventDefault();
+      if (!videoLink.trim()) {
+        setDocError(prev => ({...prev, introVideo: 'Please enter a valid video link (YouTube, Loom, Vimeo, Drive, or video URL)'}));
+        return;
+      }
+      setDocError(prev => ({...prev, introVideo: ''}));
+      setDoc('introVideo', videoLink.trim());
     };
 
     const getFileName = (url) => {
       if (!url) return '';
-      if (!url.startsWith('http')) return url; // fallback if they already have non-url text
+      if (!url.startsWith('http')) return url;
       return "Uploaded Document (Click to view)";
     };
 
+    const isDirectVideo = (url) => {
+      if (!url) return false;
+      return url.includes('firebasestorage') || /\.(mp4|webm|mov|m4v|mkv)($|\?)/i.test(url);
+    };
+
     return (
-      <div className="space-y-6 animate-fade-in pb-2">
-        <div className="mb-6 pb-2 border-b border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800">Documents</h3>
+      <div className="space-y-4 animate-fade-in pb-1">
+        <div className="mb-2 pb-2 border-b border-gray-100">
+          <h3 className="text-lg font-bold text-gray-800">Documents & Media</h3>
+          <p className="text-xs text-gray-500">Upload your introductory video and documents to stand out to employers.</p>
         </div>
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume <span className="text-red-500">*</span></label>
-            <div className={`p-8 border-2 border-dashed ${isUploading ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group`}>
-              <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'resume')} />
-              <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-green-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
-                <span className="relative cursor-pointer bg-white rounded-md font-semibold text-green-600 hover:text-green-500">
-                  <span>{isUploading ? 'Uploading...' : 'Upload a file'}</span>
-                </span>
-                <p className="pl-1">or drag and drop</p>
+
+        <div className="space-y-3.5">
+          {/* 1 & 2: Side-by-Side Resume & Cover Letter */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {/* Resume Upload */}
+            <div className="flex flex-col justify-between">
+              <label className="block text-xs font-bold text-gray-900 mb-1.5">
+                Upload Resume <span className="text-red-500">*</span>
+              </label>
+              <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'resume' ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[90px]`}>
+                <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'resume')} />
+                <div className="flex items-center gap-1.5">
+                  <svg className="h-5 w-5 text-gray-400 group-hover:text-green-500 transition-colors flex-shrink-0" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-xs font-semibold text-green-600 hover:text-green-500">
+                    {isUploading && uploadingType === 'resume' ? 'Uploading...' : 'Upload resume'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1 font-medium">PDF, DOC, DOCX, RTF (Max: 300KB)</p>
               </div>
-              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300KB</p>
+              {docError.resume && <p className="text-[11px] text-red-500 mt-1 font-medium">{docError.resume}</p>}
+              {docs.resume && (
+                <div className="flex items-center justify-between mt-2 bg-green-50/70 p-2 rounded-lg border border-green-100">
+                  <p className="text-xs text-green-800 flex items-center gap-1.5 truncate font-medium">
+                    <svg className="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    <a href={docs.resume.startsWith('http') ? docs.resume : '#'} target="_blank" rel="noreferrer" className="underline hover:text-green-900 truncate">{getFileName(docs.resume)}</a>
+                  </p>
+                  <button type="button" onClick={() => setDoc('resume', null)} className="text-[11px] text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded hover:bg-red-50 flex-shrink-0">Remove</button>
+                </div>
+              )}
             </div>
-            {docError.resume && <p className="text-sm text-red-500 mt-2 font-medium">{docError.resume}</p>}
-            {docs.resume && <p className="text-sm text-green-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> <a href={docs.resume.startsWith('http') ? docs.resume : '#'} target="_blank" rel="noreferrer" className="underline">{getFileName(docs.resume)}</a></p>}
+
+            {/* Cover Letter Upload */}
+            <div className="flex flex-col justify-between">
+              <label className="flex items-center justify-between text-xs font-bold text-gray-900 mb-1.5">
+                <span>Upload Cover Letter</span>
+                <span className="text-gray-400 font-normal text-[11px]">(Optional)</span>
+              </label>
+              <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'coverLetter' ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[90px]`}>
+                <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'coverLetter')} />
+                <div className="flex items-center gap-1.5">
+                  <svg className="h-5 w-5 text-gray-400 group-hover:text-green-500 transition-colors flex-shrink-0" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-xs font-semibold text-green-600 hover:text-green-500">
+                    {isUploading && uploadingType === 'coverLetter' ? 'Uploading...' : 'Upload cover letter'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1 font-medium">PDF, DOC, DOCX, RTF (Max: 300KB)</p>
+              </div>
+              {docError.coverLetter && <p className="text-[11px] text-red-500 mt-1 font-medium">{docError.coverLetter}</p>}
+              {docs.coverLetter && (
+                <div className="flex items-center justify-between mt-2 bg-green-50/70 p-2 rounded-lg border border-green-100">
+                  <p className="text-xs text-green-800 flex items-center gap-1.5 truncate font-medium">
+                    <svg className="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    <a href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} target="_blank" rel="noreferrer" className="underline hover:text-green-900 truncate">{getFileName(docs.coverLetter)}</a>
+                  </p>
+                  <button type="button" onClick={() => setDoc('coverLetter', null)} className="text-[11px] text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded hover:bg-red-50 flex-shrink-0">Remove</button>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-3">Upload Cover Letter (Optional)</label>
-            <div className={`p-8 border-2 border-dashed ${isUploading ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group`}>
-              <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'coverLetter')} />
-              <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-green-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <div className="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
-                <span className="relative cursor-pointer bg-white rounded-md font-semibold text-green-600 hover:text-green-500">
-                  <span>{isUploading ? 'Uploading...' : 'Upload a file'}</span>
-                </span>
-                <p className="pl-1">or drag and drop</p>
+          {/* 3. Introductory Video Section (Below Resume & Cover Letter) */}
+          <div className="bg-gradient-to-br from-emerald-50/30 via-white to-gray-50 p-3.5 rounded-xl border border-emerald-100/80 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                  Introductory Video <span className="text-gray-400 font-normal text-[11px]">(Optional)</span>
+                </label>
+                <p className="text-[11px] text-gray-500">1–2 min video introduction. MP4, MOV, WebM (Max: 100MB) or link.</p>
               </div>
-              <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, rtf, pdf, upto 300KB</p>
+              <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-semibold flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setVideoMode('upload')}
+                  className={`px-2.5 py-0.5 rounded-md transition-all ${videoMode === 'upload' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVideoMode('link')}
+                  className={`px-2.5 py-0.5 rounded-md transition-all ${videoMode === 'link' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                  Paste Link
+                </button>
+              </div>
             </div>
-            {docError.coverLetter && <p className="text-sm text-red-500 mt-2 font-medium">{docError.coverLetter}</p>}
-            {docs.coverLetter && <p className="text-sm text-green-600 mt-3 flex items-center gap-2"><svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg> <a href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} target="_blank" rel="noreferrer" className="underline">{getFileName(docs.coverLetter)}</a></p>}
+
+            {/* Mode 1: File Upload */}
+            {videoMode === 'upload' && !docs.introVideo && (
+              <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'introVideo' ? 'border-green-400 bg-green-50/40' : 'border-gray-200'} rounded-xl bg-white text-center hover:bg-emerald-50/20 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center`}>
+                <input 
+                  type="file" 
+                  disabled={isUploading} 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.mov,.webm,.mkv,.m4v" 
+                  onChange={e => handleFileUpload(e, 'introVideo')} 
+                />
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <span className="text-xs font-semibold text-green-600 hover:text-green-500">
+                    {isUploading && uploadingType === 'introVideo' ? `Uploading Video (${videoUploadProgress}%)...` : 'Upload video file'}
+                  </span>
+                  <span className="text-xs text-gray-500">or drag and drop</span>
+                </div>
+                <p className="text-[10.5px] text-gray-400 mt-1 font-medium">MP4, MOV, WebM, M4V (Max: 100MB)</p>
+                
+                {isUploading && uploadingType === 'introVideo' && (
+                  <div className="w-full max-w-xs mx-auto mt-2">
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${videoUploadProgress}%` }}></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mode 2: Link Input */}
+            {videoMode === 'link' && !docs.introVideo && (
+              <div className="bg-white p-2.5 rounded-xl border border-gray-200 space-y-1.5">
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link"
+                    value={videoLink}
+                    onChange={(e) => setVideoLink(e.target.value)}
+                    className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAttachVideoLink}
+                    className="px-3.5 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-xs flex-shrink-0"
+                  >
+                    Attach
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400">YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.</p>
+              </div>
+            )}
+
+            {docError.introVideo && (
+              <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs shadow-xs animate-shake">
+                <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div className="flex-1">
+                  <span className="font-bold block text-red-800">Cannot upload video:</span>
+                  <p className="mt-0.5 leading-relaxed">{docError.introVideo}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDocError(prev => ({ ...prev, introVideo: '' }))}
+                  className="text-red-400 hover:text-red-700 p-0.5 rounded transition-colors"
+                  title="Dismiss"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            )}
+
+            {/* Attached Video Preview */}
+            {docs.introVideo && (
+              <div className="p-2.5 bg-white border border-gray-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Video Ready
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDoc('introVideo', null);
+                      setVideoLink('');
+                    }}
+                    className="text-[11px] font-bold text-red-600 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
+                  >
+                    Remove Video
+                  </button>
+                </div>
+
+                <VideoPlayer url={docs.introVideo} maxPlayerHeight="150px" />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1391,14 +1629,32 @@ const EmployeeOnboarding = () => {
         </div>
 
         <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm space-y-2">
-          <h4 className="font-bold text-gray-800 border-b pb-2 mb-2">Professional Details</h4>
-          <div className="grid grid-cols-2 gap-3">
-            <p><span className="font-semibold text-gray-600 block text-xs uppercase tracking-wider mb-1">Designation</span> {formData.designation || 'N/A'}</p>
-            <p><span className="font-semibold text-gray-600 block text-xs uppercase tracking-wider mb-1">Current Salary</span> {p.currentSalary || 'N/A'}</p>
-            <p><span className="font-semibold text-gray-600 block text-xs uppercase tracking-wider mb-1">Expected Salary</span> {p.expectedSalary || 'N/A'}</p>
-            <p className="col-span-2"><span className="font-semibold text-gray-600 block text-xs uppercase tracking-wider mb-1">Preferred Locations</span> {formData.preferredLocation || 'N/A'}</p>
-            <p className="col-span-2"><span className="font-semibold text-gray-600 block text-xs uppercase tracking-wider mb-1">Skills</span> {p.skills || 'N/A'}</p>
-            <p className="col-span-2"><span className="font-semibold text-gray-600 block text-xs uppercase tracking-wider mb-1">LinkedIn</span> {p.linkedinUrl || 'N/A'}</p>
+          <h4 className="font-bold text-gray-800 border-b pb-2 mb-2">Documents & Media</h4>
+          <div className="space-y-2">
+            <p className="flex items-center gap-2">
+              <span className="font-semibold text-gray-600 w-32">Resume:</span> 
+              {formData.documents?.resume ? (
+                <a href={formData.documents.resume} target="_blank" rel="noreferrer" className="text-emerald-600 font-medium hover:underline flex items-center gap-1">
+                  ✓ Resume Uploaded (Click to view)
+                </a>
+              ) : <span className="text-gray-400 italic">Not uploaded</span>}
+            </p>
+            <p className="flex items-center gap-2">
+              <span className="font-semibold text-gray-600 w-32">Cover Letter:</span> 
+              {formData.documents?.coverLetter ? (
+                <a href={formData.documents.coverLetter} target="_blank" rel="noreferrer" className="text-emerald-600 font-medium hover:underline flex items-center gap-1">
+                  ✓ Cover Letter Uploaded
+                </a>
+              ) : <span className="text-gray-400 italic">None</span>}
+            </p>
+            <p className="flex items-center gap-2">
+              <span className="font-semibold text-gray-600 w-32">Intro Video:</span> 
+              {formData.documents?.introVideo ? (
+                <a href={formData.documents.introVideo} target="_blank" rel="noreferrer" className="text-emerald-600 font-medium hover:underline flex items-center gap-1">
+                  📹 Introductory Video Attached (Click to watch)
+                </a>
+              ) : <span className="text-gray-400 italic">None</span>}
+            </p>
           </div>
         </div>
       </div>

@@ -1,30 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { preferredLocationOptions } from '../../data/preferredLocations';
 
 const LocationAutocomplete = ({ 
   value, 
   onChange, 
-  placeholder = "e.g. Mumbai, Maharashtra", 
-  className = "w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400"
+  placeholder = "City, state, region or remote", 
+  className = "w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
 }) => {
   const [query, setQuery] = useState(value || '');
-  const [suggestions, setSuggestions] = useState([]);
+  const [apiSuggestions, setApiSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
 
-  // Update query if value prop changes externally (except during typing)
+  // Update query if value prop changes externally (except when user is actively interacting)
   useEffect(() => {
     if (value !== query && !isOpen) {
       setQuery(value || '');
     }
-  }, [value]);
+  }, [value, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        if (isOpen && query.trim() !== '') {
-          onChange(query);
-        }
         setIsOpen(false);
       }
     };
@@ -33,107 +31,187 @@ const LocationAutocomplete = ({
   }, []);
 
   useEffect(() => {
-    const fetchLocations = async () => {
-      // Search as soon as there is at least 1 character
-      if (!query || query.trim().length < 1) {
-        setSuggestions([]);
-        return;
-      }
+    if (!query || query.trim().length < 2) {
+      setApiSuggestions([]);
+      setIsLoading(false);
+      return;
+    }
 
-      setIsLoading(true);
+    setIsLoading(true);
+    const fetchLocations = async () => {
       try {
-        // LocationIQ Autocomplete API - Filtered for cities and states in India
-        const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=pk.7314b93604200f3007d3b610030e6f1b&q=${encodeURIComponent(query)}&limit=10&tag=place:city,place:town,place:village,place:state&countrycodes=in`);
+        const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=pk.7314b93604200f3007d3b610030e6f1b&q=${encodeURIComponent(query)}&limit=8&tag=place:city,place:town,place:village,place:state&countrycodes=in`);
         const data = await res.json();
-        setSuggestions(data);
-        setIsOpen(true);
+        if (Array.isArray(data)) {
+          setApiSuggestions(data);
+        } else {
+          setApiSuggestions([]);
+        }
       } catch (err) {
-        console.error("Error fetching locations:", err);
+        setApiSuggestions([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Debounce the API call by 300ms to make it more responsive
-    const debounceTimer = setTimeout(fetchLocations, 300);
+    const debounceTimer = setTimeout(fetchLocations, 250);
     return () => clearTimeout(debounceTimer);
   }, [query]);
 
-  const formatLocationName = (suggestion) => {
-    if (suggestion.address) {
-      const city = suggestion.address.city || suggestion.address.town || suggestion.address.village || suggestion.address.county;
-      const state = suggestion.address.state;
-      const country = suggestion.address.country;
-      
+  const formatApiLocation = (item) => {
+    const cleanTerm = (text) => {
+      if (!text) return '';
+      return text
+        .replace(/\b(tahsil|tehsil|taluk|taluka|sub-district|subdistrict|district|mandal|division|block)\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    if (item.address) {
+      const city = cleanTerm(item.address.city || item.address.town || item.address.village || item.address.county || item.name);
+      const state = cleanTerm(item.address.state);
       const parts = [];
       if (city) parts.push(city);
-      if (state && state !== city) parts.push(state);
-      if (country) parts.push(country);
-      
+      if (state && state.toLowerCase() !== city.toLowerCase()) parts.push(state);
       if (parts.length > 0) return parts.join(', ');
     }
     
-    // Fallback if address object is incomplete
-    let parts = suggestion.display_name.split(',').map(p => p.trim());
-    // Filter out pincodes (numbers)
-    parts = parts.filter(p => isNaN(p));
-    // If too many parts, just keep the most relevant (first, state, country)
-    if (parts.length > 3) {
-      return `${parts[0]}, ${parts[parts.length-2]}, ${parts[parts.length-1]}`;
+    let parts = (item.display_name || '')
+      .split(',')
+      .map(p => cleanTerm(p.trim()))
+      .filter(p => isNaN(p) && p.toLowerCase() !== 'india' && Boolean(p));
+
+    if (parts.length >= 2) {
+      return `${parts[0]}, ${parts[parts.length - 1]}`;
     }
     return parts.join(', ');
   };
 
-  const handleSelect = (suggestion) => {
-    const locationName = formatLocationName(suggestion);
-    setQuery(locationName);
+  const handleSelectValue = (val) => {
+    setQuery(val);
     setIsOpen(false);
     if (onChange) {
-      onChange(locationName);
+      onChange(val);
     }
   };
 
   const handleInputChange = (e) => {
-    setQuery(e.target.value);
+    const val = e.target.value;
+    setQuery(val);
+    setIsOpen(true);
     if (onChange) {
-      onChange(e.target.value);
+      onChange(val);
     }
   };
 
+  const filteredOptions = preferredLocationOptions.filter(loc => 
+    !query || loc.label.toLowerCase().includes(query.toLowerCase())
+  );
+
   return (
     <div className="relative w-full" ref={wrapperRef}>
-      <input
-        type="text"
-        value={query}
-        onChange={handleInputChange}
-        onFocus={() => { if (suggestions.length > 0) setIsOpen(true); }}
-        placeholder={placeholder}
-        className={className}
-      />
-      
-      {isLoading && (
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-        </div>
-      )}
+      <div className="relative flex items-center w-full">
+        <input
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className={className}
+          autoComplete="off"
+        />
+        
+        {query && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuery('');
+              if (onChange) onChange('');
+              setIsOpen(true);
+            }}
+            className="p-1 text-gray-400 hover:text-gray-600 rounded-full transition-colors mr-1"
+            title="Clear location"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
 
-      {isOpen && suggestions.length > 0 && (
-        <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
-          {suggestions.map((suggestion) => (
-            <li 
-              key={suggestion.place_id}
-              onClick={() => handleSelect(suggestion)}
-              className="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 border-b border-gray-100 last:border-0 transition-colors text-left"
-            >
-              <div className="font-semibold text-gray-900 truncate">
-                {suggestion.name || suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || suggestion.display_name.split(',')[0]}
+        {isLoading && (
+          <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-emerald-600 rounded-full animate-spin shrink-0 mr-1"></div>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-[calc(100%+10px)] left-0 min-w-[280px] w-full max-w-[360px] bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[150] max-h-72 overflow-y-auto animate-in fade-in duration-150">
+          {!query && (
+            <div className="px-3.5 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+              Locations ({preferredLocationOptions.length})
+            </div>
+          )}
+
+          {/* Cities from Location Dropdown */}
+          {filteredOptions.length > 0 && (
+            <div>
+              {filteredOptions.map((loc, idx) => (
+                <div
+                  key={`loc-${idx}`}
+                  onClick={() => handleSelectValue(loc.value)}
+                  className="px-3.5 py-2.5 hover:bg-emerald-50/70 cursor-pointer flex items-center gap-2.5 transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100/70 text-emerald-700 flex items-center justify-center shrink-0">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-gray-900 truncate">{loc.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* API Realtime Suggestions if typing something outside curated list */}
+          {apiSuggestions.length > 0 && (
+            <div>
+              <div className="px-3.5 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/70 border-t border-gray-100">
+                Other Matching Places
               </div>
-              <div className="text-xs text-gray-500 truncate mt-0.5">
-                {formatLocationName(suggestion)}
-              </div>
-            </li>
-          ))}
-        </ul>
+              {apiSuggestions.map((item) => {
+                const formatted = formatApiLocation(item);
+                const title = item.name || item.address?.city || item.address?.town || item.address?.village || formatted.split(',')[0];
+                return (
+                  <div
+                    key={item.place_id}
+                    onClick={() => handleSelectValue(formatted)}
+                    className="px-3.5 py-2.5 hover:bg-emerald-50/60 cursor-pointer flex items-center gap-2.5 transition-colors border-b border-gray-50 last:border-0"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-gray-900 truncate">{title}</p>
+                      <p className="text-[11px] text-gray-500 truncate">{formatted}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {query && filteredOptions.length === 0 && apiSuggestions.length === 0 && !isLoading && (
+            <div className="px-4 py-3 text-xs text-gray-500 text-center">
+              Press Enter or type your custom city: <span className="font-semibold text-gray-800">"{query}"</span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

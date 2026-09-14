@@ -146,7 +146,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
           className="text-xl font-black text-palette-900 w-48 cursor-pointer" 
           onClick={() => navigate('/employee')}
         >
-          DreamJob
+          sahijobs.com
         </div>
 
         {/* Search Bar */}
@@ -249,14 +249,6 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
             )}
           </button>
 
-          {/* Notifications (Bell) */}
-          <button className="text-gray-700 hover:text-black transition-colors relative" title="Notifications">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
-            </svg>
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </button>
-
           {/* Profile Dropdown Toggle */}
           <div className="relative hidden md:block" ref={dropdownRef}>
             <button 
@@ -288,11 +280,26 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
                     </svg>
                     <span className="text-[15px] text-gray-800">Profile</span>
                   </button>
+                  <button 
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      navigate('/profile');
+                      setTimeout(() => {
+                        document.getElementById('security')?.scrollIntoView({ behavior: 'smooth' });
+                      }, 200);
+                    }}
+                    className="w-full text-left px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="text-[15px] text-gray-800">Security &amp; Password</span>
+                  </button>
                 </div>
 
                 <div className="p-4 border-b border-gray-200 flex justify-center text-xs text-gray-600">
                   <p>
-                    © 2026 DreamJob - <span className="hover:underline cursor-pointer">Terms</span> - <span className="hover:underline cursor-pointer">Accessibility</span>
+                    © 2026 sahijobs.com - <span className="hover:underline cursor-pointer">Terms</span> - <span className="hover:underline cursor-pointer">Accessibility</span>
                   </p>
                 </div>
 
