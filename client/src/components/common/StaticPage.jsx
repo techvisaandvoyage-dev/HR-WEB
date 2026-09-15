@@ -57,7 +57,7 @@ const StaticPage = () => {
           <Link to="/" onClick={() => window.scrollTo(0, 0)} className="flex items-center gap-2">
             <h1 className="text-2xl font-black text-emerald-600 tracking-tight flex items-center">
               <span className="text-emerald-600 text-xl leading-none mt-0.5 mr-0.5 font-serif">'</span>
-              Jobs
+              Job
               <span className="text-emerald-600 text-xl leading-none mt-0.5 ml-0.5 font-serif">'</span>
             </h1>
           </Link>

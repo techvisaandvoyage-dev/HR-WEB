@@ -7,8 +7,8 @@ const getConfig = () => {
   const templateId = process.env.MSG91_TEMPLATE_ID;
   const domain = process.env.MSG91_DOMAIN;
   const fromEmail = process.env.MSG91_FROM_EMAIL;
-  const fromName = process.env.MSG91_FROM_NAME || 'sahijobs.com';
-  const companyName = process.env.MSG91_COMPANY_NAME || 'sahijobs.com';
+  const fromName = process.env.MSG91_FROM_NAME || 'sahijob.com';
+  const companyName = process.env.MSG91_COMPANY_NAME || 'sahijob.com';
   const otpLength = Number(process.env.MSG91_OTP_LENGTH || 4);
   const otpExpiryMinutes = Number(process.env.MSG91_OTP_EXPIRY || 5);
 

@@ -58,12 +58,12 @@ const getSocialIcon = (platform) => {
 
 const Footer = () => {
   const [footerConfig, setFooterConfig] = useState({
-    companyName: 'sahijobs.com',
-    logoText: 'sahijobs',
+    companyName: 'sahijob.com',
+    logoText: 'sahijob',
     description: 'Discover opportunities that align with your passion and expertise. Connecting top talent with premier companies worldwide.',
     phone: '+1 (555) 234-5678',
-    email: 'contact@sahijobs.com',
-    copyright: '© 2026 sahijobs.com. All rights reserved.',
+    email: 'contact@sahijob.com',
+    copyright: '© 2026 sahijob.com. All rights reserved.',
     socialLinks: []
   });
   const [columns, setColumns] = useState({});

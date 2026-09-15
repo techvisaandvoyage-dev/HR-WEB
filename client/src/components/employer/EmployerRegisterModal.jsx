@@ -445,7 +445,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   <p className="text-sm text-gray-500 mt-1">
                     {showOtpBox
                       ? `We sent a 4-digit code to ${email}`
-                      : 'Register to find qualified talent and post jobs on sahijobs.com'}
+                      : 'Register to find qualified talent and post job on sahijob.com'}
                   </p>
                 </div>
 

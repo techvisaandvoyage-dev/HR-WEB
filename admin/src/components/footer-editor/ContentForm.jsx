@@ -103,7 +103,7 @@ export default function ContentForm() {
             name="companyName" 
             value={formData.companyName} 
             onChange={handleChange} 
-            placeholder="e.g. sahijobs.com"
+            placeholder="e.g. sahijob.com"
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-shadow text-sm" 
           />
         </div>

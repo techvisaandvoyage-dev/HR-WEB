@@ -106,7 +106,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
 
   const otpLength = Number(process.env.MSG91_OTP_LENGTH || 4);
   const otpExpiryMinutes = Number(process.env.MSG91_OTP_EXPIRY || 5);
-  const companyName = process.env.MSG91_COMPANY_NAME || 'sahijobs.com';
+  const companyName = process.env.MSG91_COMPANY_NAME || 'sahijob.com';
 
   const otp = generateOtp(otpLength);
   saveOtp(toEmail, otp, otpExpiryMinutes, purpose);

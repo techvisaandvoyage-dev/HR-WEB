@@ -303,7 +303,7 @@ function App() {
       <nav className="w-full px-6 py-4 md:px-8 md:py-6 flex justify-between md:justify-end items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-palette-100 shadow-sm">
         {/* Mobile Logo */}
         <div className="text-2xl font-black text-palette-900 md:hidden">
-          sahijobs.com
+          sahijob.com
         </div>
 
         {/* Desktop Buttons */}

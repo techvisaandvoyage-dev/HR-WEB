@@ -16,7 +16,7 @@ const ApplicationsTab = () => {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">Applications</h1>
-          <p className="text-gray-500 text-sm mt-1">Track and manage applications for all your jobs.</p>
+          <p className="text-gray-500 text-sm mt-1">Track and manage applications for all your job.</p>
         </div>
       </div>
 
@@ -36,7 +36,7 @@ const ApplicationsTab = () => {
           
           <div className="flex w-full sm:w-auto gap-3">
             <select className="flex-1 sm:w-auto px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 outline-none focus:border-[#29953f] transition-all bg-white cursor-pointer min-w-[150px]">
-              <option>All Jobs</option>
+              <option>All Job</option>
               <option>UI/UX Designer</option>
               <option>Frontend Developer</option>
               <option>Content Writer</option>

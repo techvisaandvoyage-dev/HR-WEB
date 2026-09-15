@@ -58,7 +58,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
       {/* Sidebar */}
       <aside className="w-64 bg-white flex flex-col shrink-0 border-r border-gray-100">
         <div className="h-24 flex items-center px-8">
-          <span className="text-xl font-bold tracking-tight text-[#3ca152]">Jobs</span>
+          <span className="text-xl font-bold tracking-tight text-[#3ca152]">Job</span>
         </div>
         
         <nav className="flex-1 px-4 space-y-1 mt-2 overflow-y-auto">

@@ -146,7 +146,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
           className="text-xl font-black text-palette-900 w-48 cursor-pointer" 
           onClick={() => navigate('/employee')}
         >
-          sahijobs.com
+          sahijob.com
         </div>
 
         {/* Search Bar */}
@@ -299,7 +299,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
 
                 <div className="p-4 border-b border-gray-200 flex justify-center text-xs text-gray-600">
                   <p>
-                    © 2026 sahijobs.com - <span className="hover:underline cursor-pointer">Terms</span> - <span className="hover:underline cursor-pointer">Accessibility</span>
+                    © 2026 sahijob.com - <span className="hover:underline cursor-pointer">Terms</span> - <span className="hover:underline cursor-pointer">Accessibility</span>
                   </p>
                 </div>
 
@@ -348,7 +348,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
             )}
           </svg>
-          <span className="text-[11px] font-medium">My Jobs</span>
+          <span className="text-[11px] font-medium">My Job</span>
         </button>
 
         {/* Messages */}

@@ -99,9 +99,9 @@ const MyJobs = ({ jobs = [] }) => {
           className="flex items-center text-sm font-semibold text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-          Back to Jobs
+          Back to Job
         </button>
-        <h1 className="text-4xl font-bold text-gray-900 mb-8 tracking-tight">My jobs</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-8 tracking-tight">My job</h1>
         
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-8 overflow-x-auto">
@@ -125,7 +125,7 @@ const MyJobs = ({ jobs = [] }) => {
         {activeTab === 'saved' && (
           <div className="space-y-6">
             {savedJobs.length === 0 ? (
-              <p className="text-gray-500 py-4">No saved jobs.</p>
+              <p className="text-gray-500 py-4">No saved job.</p>
             ) : (
               jobs.filter(j => savedJobs.some(id => String(id) === String(j.id))).map(job => {
                 const appliedData = appliedJobs.find(a => String(a.id) === String(job.id));
@@ -176,7 +176,7 @@ const MyJobs = ({ jobs = [] }) => {
         {activeTab === 'applied' && (
           <div className="space-y-6">
             {appliedJobs.length === 0 ? (
-              <p className="text-gray-500 py-4">You haven't applied to any jobs yet.</p>
+              <p className="text-gray-500 py-4">You haven't applied to any job yet.</p>
             ) : (
               appliedJobs.map(applied => {
                 const job = jobs.find(j => String(j.id) === String(applied.id)) || applied.jobDetails;
@@ -200,7 +200,7 @@ const MyJobs = ({ jobs = [] }) => {
                       <h2 className="text-[17px] font-bold text-gray-900 group-hover:underline">{job.title}</h2>
                       <p className="text-[15px] text-gray-800 mt-1">{job.company}</p>
                       <p className="text-[15px] text-gray-800 mt-0.5">{job.location}, {job.details.workLocation}</p>
-                      <p className="text-[13px] text-gray-500 mt-1">Applied on sahijobs.com on {applied.date}</p>
+                      <p className="text-[13px] text-gray-500 mt-1">Applied on sahijob.com on {applied.date}</p>
                     </div>
                     
                     <div className="flex flex-col items-end gap-3 mt-4 md:mt-0 w-full md:w-auto">

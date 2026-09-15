@@ -10,8 +10,8 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
       {!hideHeader && (
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight">MY JOBS</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage and track all your job postings.</p>
+            <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight">MY JOB</h1>
+            <p className="text-gray-500 text-sm mt-1">Manage and track all your job posting.</p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -37,7 +37,7 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input 
               type="text" 
-              placeholder="Search jobs by title..." 
+              placeholder="Search job by title..." 
               className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f] transition-all placeholder-gray-400"
             />
           </div>

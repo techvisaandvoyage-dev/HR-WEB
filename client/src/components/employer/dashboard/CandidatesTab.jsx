@@ -25,7 +25,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
     setExpandedCandidates(newSet);
   };
 
-  const allJobs = ['All Jobs', ...new Set([...jobs.map(j => j.title), ...(initialJob !== 'All Jobs' ? [initialJob] : [])])];
+  const allJobs = ['All Job', ...new Set([...jobs.map(j => j.title), ...(initialJob !== 'All Job' ? [initialJob] : [])])];
 
   const candidates = globalCandidates;
 

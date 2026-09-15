@@ -18,11 +18,11 @@ const socialLinkSchema = new mongoose.Schema({
 const footerConfigSchema = new mongoose.Schema({
   companyName: {
     type: String,
-    default: 'sahijobs.com',
+    default: 'sahijob.com',
   },
   logoText: {
     type: String,
-    default: 'sahijobs',
+    default: 'sahijob',
   },
   description: {
     type: String,
@@ -34,11 +34,11 @@ const footerConfigSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    default: 'contact@sahijobs.com',
+    default: 'contact@sahijob.com',
   },
   copyright: {
     type: String,
-    default: '© 2026 sahijobs.com. All rights reserved.',
+    default: '© 2026 sahijob.com. All rights reserved.',
   },
   socialLinks: {
     type: [socialLinkSchema],
