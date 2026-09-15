@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Forward /api requests to Node.js backend if running on port 5000
+  # (Uncomment below if using localhost port proxying)
+  # RewriteCond %{REQUEST_URI} ^/api
+  # RewriteRule ^api/(.*)$ http://127.0.0.1:5000/api/$1 [P,L]
+
+  # Route all other frontend requests to index.html
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule . /index.html [L]
+</IfModule>
