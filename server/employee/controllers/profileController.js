@@ -62,7 +62,18 @@ const updateProfile = async (req, res) => {
     }
 
     if (req.body.phone !== undefined && req.body.phone !== '') {
-      updateData.mobile = req.body.phone;
+      const cleanPhone = String(req.body.phone).trim();
+      const existingMobile = await Employee.findOne({
+        mobile: cleanPhone,
+        _id: { $ne: req.employee._id }
+      });
+      if (existingMobile) {
+        return res.status(400).json({ 
+          message: 'This phone number is already registered with another account.', 
+          field: 'phone' 
+        });
+      }
+      updateData.mobile = cleanPhone;
     }
     
     if (req.body.location !== undefined) updateData.location = req.body.location;

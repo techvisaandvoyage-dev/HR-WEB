@@ -64,12 +64,32 @@ const EmployerSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  
+  googleId: {
+    type: String,
+    default: ''
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  hidePostedByCard: {
+    type: Boolean,
+    default: false
+  },
+  hideJobAnalytics: {
+    type: Boolean,
+    default: false
+  },
+  lastLogin: {
+    type: Date,
+    default: Date.now
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
-});
+}, { timestamps: true });
 
 // Encrypt password using bcrypt
 EmployerSchema.pre('save', async function () {

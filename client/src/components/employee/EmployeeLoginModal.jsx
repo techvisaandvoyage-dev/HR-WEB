@@ -134,16 +134,15 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       const data = await response.json();
 
       if (!response.ok) {
-        const errorState = { isApiError: true };
-        if (data.message && data.message.toLowerCase().includes('google')) {
-          errorState.general = data.message;
-        } else if (data.message && data.message.toLowerCase().includes('email')) {
-          errorState.email = data.message;
-          errorState.password = 'Invalid password';
-        } else if (data.message && (data.message.toLowerCase().includes('password') || data.message.toLowerCase().includes('credential'))) {
-          errorState.password = data.message;
+        const errorState = {};
+        if (data.field === 'email' || (data.message && (data.message.toLowerCase().includes('account') || data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('find') || data.message.toLowerCase().includes('register') || data.message.toLowerCase().includes('google') || data.message.toLowerCase().includes('credential')))) {
+          errorState.email = (data.message && !data.message.toLowerCase().includes('credential'))
+            ? data.message
+            : "We couldn't find an account with this email. Please register first to continue.";
+        } else if (data.field === 'password' || (data.message && data.message.toLowerCase().includes('password'))) {
+          errorState.password = data.message || "Invalid password. Please check and try again.";
         } else {
-          errorState.general = data.message || 'Login failed';
+          errorState.email = "We couldn't find an account with this email. Please register first to continue.";
         }
         setErrors(errorState);
       } else {
@@ -773,9 +772,9 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   <input 
                     type="text" 
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: '', general: '', isApiError: false}); }}
+                    onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: '', general: ''}); }}
                     placeholder="Enter your active Email ID"
-                    className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${(errors.email || errors.isApiError) ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
+                    className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                   />
                   {errors.email && (
                     <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -794,9 +793,9 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                     <input 
                       type={showPassword ? "text" : "password"} 
                       value={password}
-                      onChange={(e) => { setPassword(e.target.value); setErrors({...errors, password: '', general: '', isApiError: false}); }}
+                      onChange={(e) => { setPassword(e.target.value); setErrors({...errors, password: '', general: ''}); }}
                       placeholder="•••••••••"
-                      className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all tracking-widest placeholder-gray-400 pr-16 ${(errors.password || errors.isApiError) ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 bg-gray-50 focus:bg-white focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
+                      className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all tracking-widest placeholder-gray-400 pr-16 ${errors.password ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 bg-gray-50 focus:bg-white focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                     />
                     <button 
                       type="button"

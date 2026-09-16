@@ -278,15 +278,10 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
 
         <div className="p-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6">
             <h2 className="text-2xl font-bold text-palette-900">
               {step === 1 ? 'Register' : 'Verify Email'}
             </h2>
-            {onLoginClick && (
-              <button onClick={onLoginClick} className="text-palette-400 font-semibold hover:text-palette-900 transition-colors">
-                Login instead
-              </button>
-            )}
           </div>
 
           {errors.general && (
@@ -587,6 +582,22 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* Bottom Login Link */}
+          {onLoginClick && (
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{' '}
+                <button 
+                  type="button"
+                  onClick={onLoginClick}
+                  className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                >
+                  Login
+                </button>
+              </p>
             </div>
           )}
 

@@ -8,6 +8,7 @@ import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
 import VideoPlayer from '../common/VideoPlayer';
+import InstituteAutocomplete from '../common/InstituteAutocomplete';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -329,7 +330,8 @@ const EmployeeOnboarding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     
     try {
@@ -800,7 +802,15 @@ const EmployeeOnboarding = () => {
                             <>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute <span className="text-red-500">*</span></label>
-                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="Select university/institute" value={q.university || ''} onChange={e => { updateArray('qualifications', idx, 'university', e.target.value); setEduFieldErrors({...eduFieldErrors, university: false}); }} />
+                                <InstituteAutocomplete 
+                                  value={q.university || ''} 
+                                  onChange={val => { 
+                                    updateArray('qualifications', idx, 'university', val); 
+                                    setEduFieldErrors(prev => ({...prev, university: false})); 
+                                  }} 
+                                  placeholder="Search or enter university/institute..." 
+                                  className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+                                />
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
@@ -1706,18 +1716,28 @@ const EmployeeOnboarding = () => {
             <div className="mt-8 mb-4 flex flex-col sm:flex-row-reverse gap-4 justify-between max-w-3xl w-full mx-auto">
               {currentStep < totalSteps ? (
                 <button 
+                  key="onboarding-next-btn"
                   type="button" 
-                  onClick={handleNext}
-                  className="sm:w-auto px-10 py-3.5 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/30 hover:bg-green-700 transition-all hover:-translate-y-0.5"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleNext();
+                  }}
+                  className="sm:w-auto px-10 py-3.5 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/30 hover:bg-green-700 transition-all hover:-translate-y-0.5 cursor-pointer"
                 >
                   Save & Continue
                 </button>
               ) : (
                 <button 
-                  type="submit" 
-                  form="onboardingForm"
+                  key="onboarding-submit-btn"
+                  type="button" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSubmit(e);
+                  }}
                   disabled={isSubmitting}
-                  className={`sm:w-auto px-10 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all ${isSubmitting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 shadow-green-600/30 hover:bg-green-700 hover:-translate-y-0.5'}`}
+                  className={`sm:w-auto px-10 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all cursor-pointer ${isSubmitting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 shadow-green-600/30 hover:bg-green-700 hover:-translate-y-0.5'}`}
                 >
                   {isSubmitting ? 'Saving...' : 'Submit Profile'}
                 </button>
@@ -1725,9 +1745,14 @@ const EmployeeOnboarding = () => {
               
               {currentStep > 1 && (
                 <button 
+                  key="onboarding-back-btn"
                   type="button" 
-                  onClick={handleBack} 
-                  className="sm:w-auto px-10 py-3.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleBack();
+                  }} 
+                  className="sm:w-auto px-10 py-3.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 cursor-pointer"
                 >
                   Back
                 </button>

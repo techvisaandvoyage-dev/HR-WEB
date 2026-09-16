@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
-import { currentLocationOptions } from '../../../data/preferredLocations';
+import { currentLocationOptions, preferredLocationOptions } from '../../../data/preferredLocations';
 import CustomDropdown from '../../common/CustomDropdown';
+import RichTextEditor from '../../common/RichTextEditor';
+import { allSkillsOptions, getSuggestedSkills } from '../../../utils/skillsData';
 
 const formatIndianNumber = (numStr) => {
   const digits = String(numStr).replace(/\D/g, '');
@@ -145,10 +147,10 @@ const PostJob = ({ addJob, updateJob }) => {
       </div>
 
       {/* Main Content Area */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row min-h-[600px]">
         
         {/* Left Column - Steps */}
-        <div className="w-full md:w-64 bg-gray-50/50 border-r border-gray-100 p-8 shrink-0">
+        <div className="w-full md:w-64 bg-gray-50/50 border-r border-gray-100 p-8 shrink-0 rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl">
           <div className="space-y-8">
             {steps.map((step) => {
               const isActive = activeStep === step.id;
@@ -252,11 +254,11 @@ const PostJob = ({ addJob, updateJob }) => {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Job Location</label>
                   <MultiSelectLocationDropdown 
-                    options={currentLocationOptions}
+                    options={preferredLocationOptions}
                     value={jobData.location}
                     onChange={(val) => setJobData({...jobData, location: val})}
-                    multiple={false}
-                    placeholder="Select Job Location"
+                    multiple={true}
+                    placeholder="Select Job Locations"
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] transition-colors"
                   />
                 </div>
@@ -269,50 +271,74 @@ const PostJob = ({ addJob, updateJob }) => {
             <div className="flex-1 space-y-6 animate-in fade-in">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">About Role</label>
-                <textarea 
-                  rows="4" 
-                  placeholder="Brief overview of the role..." 
+                <RichTextEditor 
+                  placeholder="Brief overview of the role, team, and expectations..." 
                   value={jobData.about}
-                  onChange={(e) => setJobData({...jobData, about: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] transition-colors resize-none"
-                ></textarea>
+                  onChange={(val) => setJobData({...jobData, about: val})}
+                  minHeight="140px"
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Responsibilities</label>
-                <textarea 
-                  rows="4" 
-                  placeholder="Key responsibilities and day-to-day tasks..." 
+                <RichTextEditor 
+                  placeholder="Key responsibilities, day-to-day tasks, bullet points, deliverables..." 
                   value={jobData.responsibilities}
-                  onChange={(e) => setJobData({...jobData, responsibilities: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] transition-colors resize-none"
-                ></textarea>
+                  onChange={(val) => setJobData({...jobData, responsibilities: val})}
+                  minHeight="200px"
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Skills Required</label>
                 {skillsList.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {skillsList.map((skill, index) => (
-                      <span key={index} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-[#29953f] border border-green-100 rounded-full text-xs font-bold">
+                      <span
+                        key={index}
+                        onClick={() => removeSkill(skill)}
+                        title="Click to remove"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-[#29953f] border border-green-100 rounded-full text-xs font-bold cursor-pointer hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors"
+                      >
                         {skill}
-                        <button 
-                          type="button" 
-                          onClick={() => removeSkill(skill)}
-                          className="hover:bg-green-200 rounded-full p-0.5 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                        </button>
+                        <span className="text-[10px] bg-green-200/50 rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-200 transition-colors">✕</span>
                       </span>
                     ))}
                   </div>
                 )}
-                <input 
-                  type="text" 
-                  placeholder="Type a skill and press Enter" 
-                  value={skillInput}
-                  onChange={(e) => setSkillInput(e.target.value)}
-                  onKeyDown={handleSkillKeyDown}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] transition-colors"
+                <CustomDropdown
+                  options={allSkillsOptions}
+                  value=""
+                  onChange={(val) => {
+                    if (val && !skillsList.includes(val)) {
+                      setSkillsList([...skillsList, val]);
+                    }
+                  }}
+                  placeholder="Search or select a skill to add..."
                 />
+                {(() => {
+                  const suggested = getSuggestedSkills(skillsList);
+                  if (suggested.length === 0) return null;
+                  return (
+                    <div className="mt-4">
+                      <p className="text-[12px] text-gray-400 font-semibold uppercase tracking-wide mb-2">Suggested based on your selection</p>
+                      <div className="flex flex-wrap gap-2">
+                        {suggested.map(suggestion => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => {
+                              if (!skillsList.includes(suggestion)) {
+                                setSkillsList([...skillsList, suggestion]);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-white text-gray-500 rounded-full text-xs font-medium border border-gray-200 hover:border-[#29953f] hover:text-[#29953f] hover:bg-green-50 transition-all flex items-center gap-1 shadow-sm"
+                          >
+                            {suggestion} <span className="text-base leading-none font-normal">+</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -397,73 +423,186 @@ const PostJob = ({ addJob, updateJob }) => {
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Job Category</label>
-                  <input 
-                    list="job-categories"
+                  <CustomDropdown
+                    options={[
+                      { value: 'Accounting & Finance', label: 'Accounting & Finance' },
+                      { value: 'Administration & Office Support', label: 'Administration & Office Support' },
+                      { value: 'Advertising & Media', label: 'Advertising & Media' },
+                      { value: 'Agriculture & Farming', label: 'Agriculture & Farming' },
+                      { value: 'Analytics & Data Science', label: 'Analytics & Data Science' },
+                      { value: 'Architecture & Interior Design', label: 'Architecture & Interior Design' },
+                      { value: 'Artificial Intelligence & ML', label: 'Artificial Intelligence & ML' },
+                      { value: 'Arts & Creative', label: 'Arts & Creative' },
+                      { value: 'Automotive', label: 'Automotive' },
+                      { value: 'Aviation & Aerospace', label: 'Aviation & Aerospace' },
+                      { value: 'Banking & Financial Services', label: 'Banking & Financial Services' },
+                      { value: 'BPO & Call Centre', label: 'BPO & Call Centre' },
+                      { value: 'Civil & Structural Engineering', label: 'Civil & Structural Engineering' },
+                      { value: 'Cloud & DevOps', label: 'Cloud & DevOps' },
+                      { value: 'Community & Social Services', label: 'Community & Social Services' },
+                      { value: 'Construction & Real Estate', label: 'Construction & Real Estate' },
+                      { value: 'Content & Copywriting', label: 'Content & Copywriting' },
+                      { value: 'Customer Service & Support', label: 'Customer Service & Support' },
+                      { value: 'Cybersecurity', label: 'Cybersecurity' },
+                      { value: 'Data Entry & Back Office', label: 'Data Entry & Back Office' },
+                      { value: 'Defence & Government', label: 'Defence & Government' },
+                      { value: 'Design & UI/UX', label: 'Design & UI/UX' },
+                      { value: 'E-commerce & Retail', label: 'E-commerce & Retail' },
+                      { value: 'Education & Training', label: 'Education & Training' },
+                      { value: 'Electrical Engineering', label: 'Electrical Engineering' },
+                      { value: 'Electronics & Embedded Systems', label: 'Electronics & Embedded Systems' },
+                      { value: 'Energy & Utilities', label: 'Energy & Utilities' },
+                      { value: 'Engineering & Manufacturing', label: 'Engineering & Manufacturing' },
+                      { value: 'Entertainment & Events', label: 'Entertainment & Events' },
+                      { value: 'Environmental Science', label: 'Environmental Science' },
+                      { value: 'Fashion & Apparel', label: 'Fashion & Apparel' },
+                      { value: 'Food & Beverage', label: 'Food & Beverage' },
+                      { value: 'Freelance & Consulting', label: 'Freelance & Consulting' },
+                      { value: 'Full Stack Development', label: 'Full Stack Development' },
+                      { value: 'Game Development', label: 'Game Development' },
+                      { value: 'Healthcare & Medical', label: 'Healthcare & Medical' },
+                      { value: 'Hospitality & Tourism', label: 'Hospitality & Tourism' },
+                      { value: 'Human Resources', label: 'Human Resources' },
+                      { value: 'Information Technology', label: 'Information Technology' },
+                      { value: 'Insurance', label: 'Insurance' },
+                      { value: 'Interior Design', label: 'Interior Design' },
+                      { value: 'IT Support & Networking', label: 'IT Support & Networking' },
+                      { value: 'Legal & Compliance', label: 'Legal & Compliance' },
+                      { value: 'Logistics & Supply Chain', label: 'Logistics & Supply Chain' },
+                      { value: 'Management Consulting', label: 'Management Consulting' },
+                      { value: 'Marketing & Digital Marketing', label: 'Marketing & Digital Marketing' },
+                      { value: 'Mechanical Engineering', label: 'Mechanical Engineering' },
+                      { value: 'Media & Journalism', label: 'Media & Journalism' },
+                      { value: 'Mobile App Development', label: 'Mobile App Development' },
+                      { value: 'NGO & Non-profit', label: 'NGO & Non-profit' },
+                      { value: 'Operations & Supply Chain', label: 'Operations & Supply Chain' },
+                      { value: 'Pharmaceutical & Biotech', label: 'Pharmaceutical & Biotech' },
+                      { value: 'Photography & Videography', label: 'Photography & Videography' },
+                      { value: 'Product Management', label: 'Product Management' },
+                      { value: 'Project Management', label: 'Project Management' },
+                      { value: 'Public Relations', label: 'Public Relations' },
+                      { value: 'Quality Assurance & Testing', label: 'Quality Assurance & Testing' },
+                      { value: 'Research & Development', label: 'Research & Development' },
+                      { value: 'Retail & Consumer Goods', label: 'Retail & Consumer Goods' },
+                      { value: 'Sales & Business Development', label: 'Sales & Business Development' },
+                      { value: 'Security & Surveillance', label: 'Security & Surveillance' },
+                      { value: 'Social Media & Content Creation', label: 'Social Media & Content Creation' },
+                      { value: 'Software Development', label: 'Software Development' },
+                      { value: 'Sports & Fitness', label: 'Sports & Fitness' },
+                      { value: 'Telecommunications', label: 'Telecommunications' },
+                      { value: 'Transportation & Driving', label: 'Transportation & Driving' },
+                      { value: 'Travel & Immigration', label: 'Travel & Immigration' },
+                      { value: 'UI/UX & Graphic Design', label: 'UI/UX & Graphic Design' },
+                      { value: 'Other', label: 'Other' },
+                    ]}
                     value={jobData.category}
-                    onChange={(e) => setJobData({...jobData, category: e.target.value})}
-                    placeholder="Select or type a category"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors bg-white"
+                    onChange={(val) => setJobData({...jobData, category: val})}
+                    placeholder="Select a job category..."
                   />
-                  <datalist id="job-categories">
-                    <option value="Engineering" />
-                    <option value="Design" />
-                    <option value="Marketing" />
-                    <option value="Sales" />
-                    <option value="Human Resources" />
-                    <option value="Finance" />
-                    <option value="Customer Support" />
-                    <option value="Operations" />
-                    <option value="Information Technology" />
-                    <option value="Data Science" />
-                  </datalist>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Qualification</label>
-                  <input 
-                    list="qualifications"
+                  <CustomDropdown
+                    options={[
+                      { value: 'Any Graduate', label: 'Any Graduate' },
+                      { value: 'Any Post Graduate', label: 'Any Post Graduate' },
+                      { value: 'High School (10th)', label: 'High School (10th)' },
+                      { value: 'Intermediate (12th)', label: 'Intermediate (12th)' },
+                      { value: 'Diploma', label: 'Diploma' },
+                      { value: 'ITI', label: 'ITI' },
+                      { value: 'Polytechnic', label: 'Polytechnic' },
+                      { value: "Bachelor's Degree (Any)", label: "Bachelor's Degree (Any)" },
+                      { value: 'B.Tech / B.E.', label: 'B.Tech / B.E.' },
+                      { value: 'B.Sc', label: 'B.Sc' },
+                      { value: 'B.Com', label: 'B.Com' },
+                      { value: 'B.A', label: 'B.A' },
+                      { value: 'BBA', label: 'BBA' },
+                      { value: 'BCA', label: 'BCA' },
+                      { value: 'B.Pharma', label: 'B.Pharma' },
+                      { value: 'MBBS', label: 'MBBS' },
+                      { value: 'BDS', label: 'BDS' },
+                      { value: 'LLB', label: 'LLB' },
+                      { value: 'B.Ed', label: 'B.Ed' },
+                      { value: 'B.Arch', label: 'B.Arch' },
+                      { value: "Master's Degree (Any)", label: "Master's Degree (Any)" },
+                      { value: 'M.Tech / M.E.', label: 'M.Tech / M.E.' },
+                      { value: 'MBA / PGDM', label: 'MBA / PGDM' },
+                      { value: 'MCA', label: 'MCA' },
+                      { value: 'M.Sc', label: 'M.Sc' },
+                      { value: 'M.Com', label: 'M.Com' },
+                      { value: 'M.A', label: 'M.A' },
+                      { value: 'M.Pharma', label: 'M.Pharma' },
+                      { value: 'LLM', label: 'LLM' },
+                      { value: 'M.Ed', label: 'M.Ed' },
+                      { value: 'MS (Medical)', label: 'MS (Medical)' },
+                      { value: 'Doctorate (PhD)', label: 'Doctorate (PhD)' },
+                      { value: 'MD (Doctor of Medicine)', label: 'MD (Doctor of Medicine)' },
+                      { value: 'Not Required', label: 'Not Required' },
+                    ]}
                     value={jobData.qualification}
-                    onChange={(e) => setJobData({...jobData, qualification: e.target.value})}
-                    placeholder="Select or type qualification"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all bg-white"
+                    onChange={(val) => setJobData({...jobData, qualification: val})}
+                    placeholder="Select qualification..."
                   />
-                  <datalist id="qualifications">
-                    <option value="High School" />
-                    <option value="Diploma" />
-                    <option value="Bachelor's Degree" />
-                    <option value="Master's Degree" />
-                    <option value="Doctorate (PhD)" />
-                    <option value="B.Tech / B.E." />
-                    <option value="M.Tech / M.E." />
-                    <option value="MBA" />
-                    <option value="BCA" />
-                    <option value="MCA" />
-                    <option value="B.Com" />
-                    <option value="M.Com" />
-                  </datalist>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Stream / Major</label>
-                  <input 
-                    list="streams"
+                  <CustomDropdown
+                    options={[
+                      { value: 'Any Stream', label: 'Any Stream' },
+                      { value: 'Computer Science / IT', label: 'Computer Science / IT' },
+                      { value: 'Information Technology', label: 'Information Technology' },
+                      { value: 'Software Engineering', label: 'Software Engineering' },
+                      { value: 'Data Science / AI / ML', label: 'Data Science / AI / ML' },
+                      { value: 'Cybersecurity', label: 'Cybersecurity' },
+                      { value: 'Electronics & Communication (ECE)', label: 'Electronics & Communication (ECE)' },
+                      { value: 'Electrical Engineering (EEE)', label: 'Electrical Engineering (EEE)' },
+                      { value: 'Mechanical Engineering', label: 'Mechanical Engineering' },
+                      { value: 'Civil Engineering', label: 'Civil Engineering' },
+                      { value: 'Chemical Engineering', label: 'Chemical Engineering' },
+                      { value: 'Aerospace Engineering', label: 'Aerospace Engineering' },
+                      { value: 'Automobile Engineering', label: 'Automobile Engineering' },
+                      { value: 'Production / Industrial Engineering', label: 'Production / Industrial Engineering' },
+                      { value: 'Business Administration / Management', label: 'Business Administration / Management' },
+                      { value: 'Marketing & Sales', label: 'Marketing & Sales' },
+                      { value: 'Finance & Accounting', label: 'Finance & Accounting' },
+                      { value: 'Human Resources', label: 'Human Resources' },
+                      { value: 'Operations Management', label: 'Operations Management' },
+                      { value: 'International Business', label: 'International Business' },
+                      { value: 'Commerce / Finance', label: 'Commerce / Finance' },
+                      { value: 'Economics', label: 'Economics' },
+                      { value: 'Accounting & Taxation', label: 'Accounting & Taxation' },
+                      { value: 'Arts / Humanities', label: 'Arts / Humanities' },
+                      { value: 'English / Literature', label: 'English / Literature' },
+                      { value: 'Journalism & Mass Communication', label: 'Journalism & Mass Communication' },
+                      { value: 'Psychology', label: 'Psychology' },
+                      { value: 'Sociology', label: 'Sociology' },
+                      { value: 'Political Science', label: 'Political Science' },
+                      { value: 'Physics', label: 'Physics' },
+                      { value: 'Chemistry', label: 'Chemistry' },
+                      { value: 'Mathematics / Statistics', label: 'Mathematics / Statistics' },
+                      { value: 'Biotechnology', label: 'Biotechnology' },
+                      { value: 'Life Sciences / Biology', label: 'Life Sciences / Biology' },
+                      { value: 'Medicine (MBBS / MD)', label: 'Medicine (MBBS / MD)' },
+                      { value: 'Pharmacy', label: 'Pharmacy' },
+                      { value: 'Nursing', label: 'Nursing' },
+                      { value: 'Dentistry', label: 'Dentistry' },
+                      { value: 'Law (LLB / LLM)', label: 'Law (LLB / LLM)' },
+                      { value: 'Architecture & Urban Planning', label: 'Architecture & Urban Planning' },
+                      { value: 'Interior Design', label: 'Interior Design' },
+                      { value: 'Fashion Design', label: 'Fashion Design' },
+                      { value: 'Fine Arts / Visual Arts', label: 'Fine Arts / Visual Arts' },
+                      { value: 'Education / Teaching (B.Ed)', label: 'Education / Teaching (B.Ed)' },
+                      { value: 'Hotel Management / Hospitality', label: 'Hotel Management / Hospitality' },
+                      { value: 'Agriculture & Food Science', label: 'Agriculture & Food Science' },
+                      { value: 'Environmental Science', label: 'Environmental Science' },
+                      { value: 'Other', label: 'Other' },
+                    ]}
                     value={jobData.stream}
-                    onChange={(e) => setJobData({...jobData, stream: e.target.value})}
-                    placeholder="Select or type stream"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all bg-white"
+                    onChange={(val) => setJobData({...jobData, stream: val})}
+                    placeholder="Select stream / major..."
                   />
-                  <datalist id="streams">
-                    <option value="Computer Science / IT" />
-                    <option value="Engineering (Mechanical, Civil, etc.)" />
-                    <option value="Business Administration / Management" />
-                    <option value="Commerce / Finance" />
-                    <option value="Arts / Humanities" />
-                    <option value="Electronics & Communication" />
-                    <option value="Electrical Engineering" />
-                    <option value="Marketing" />
-                    <option value="Human Resources" />
-                    <option value="Data Science / AI" />
-                  </datalist>
                 </div>
               </div>
             </div>
@@ -601,13 +740,27 @@ const PostJob = ({ addJob, updateJob }) => {
                   {/* About */}
                   <div>
                     <h5 className="text-sm font-bold text-gray-900 mb-2">About the Role</h5>
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{jobData.about || 'No description provided.'}</p>
+                    {jobData.about ? (
+                      <div 
+                        className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
+                        dangerouslySetInnerHTML={{ __html: jobData.about }}
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-400">No description provided.</p>
+                    )}
                   </div>
 
                   {/* Responsibilities */}
                   <div>
                     <h5 className="text-sm font-bold text-gray-900 mb-2">Key Responsibilities</h5>
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{jobData.responsibilities || 'No responsibilities listed.'}</p>
+                    {jobData.responsibilities ? (
+                      <div 
+                        className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5"
+                        dangerouslySetInnerHTML={{ __html: jobData.responsibilities }}
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-400">No responsibilities listed.</p>
+                    )}
                   </div>
 
                   {/* Skills */}
@@ -660,8 +813,8 @@ const PostJob = ({ addJob, updateJob }) => {
               <button 
                 onClick={activeStep === 5 ? async () => {
                   const jobPayload = {
-                    company: employerDetails.companyName,
-                    companyInitial: employerDetails.companyName.charAt(0).toUpperCase() || "C",
+                    company: employerDetails.companyName || 'Company',
+                    companyInitial: (employerDetails.companyName || 'C').charAt(0).toUpperCase(),
                     title: jobData.title || 'Untitled Job',
                     location: jobData.location || 'Not specified',
                     salary: salaryValues[salaryType].min && salaryValues[salaryType].max ? (salaryType === 'Yearly' ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} Lacs PA` : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'per month' : 'per hour'}`) : 'Not specified',

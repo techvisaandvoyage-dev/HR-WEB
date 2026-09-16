@@ -16,7 +16,12 @@ const {
   resetPassword,
   checkMobile,
   checkEmail,
-  googleAuth
+  googleAuth,
+  getSecurityStatus,
+  setPassword,
+  sendChangePasswordOtp,
+  resendChangePasswordOtp,
+  changePassword
 } = require('../controllers/authController');
 const { protectEmployer } = require('../../middleware/authMiddleware');
 
@@ -40,6 +45,13 @@ router.post('/reset-password', resetPassword);
 
 router.get('/me', protectEmployer, getMe);
 router.put('/update', protectEmployer, updateProfile);
+
+// Security & Password Management (Protected)
+router.get('/security', protectEmployer, getSecurityStatus);
+router.post('/set-password', protectEmployer, setPassword);
+router.post('/change-password/send-otp', protectEmployer, sendChangePasswordOtp);
+router.post('/change-password/resend-otp', protectEmployer, resendChangePasswordOtp);
+router.post('/change-password', protectEmployer, changePassword);
 
 module.exports = router;
 

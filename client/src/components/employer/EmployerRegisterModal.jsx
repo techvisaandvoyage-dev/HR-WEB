@@ -395,21 +395,21 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-      {/* Close Button */}
-      <button
-        onClick={onClose}
-        className="fixed top-6 right-6 text-gray-400 hover:text-gray-700 transition-colors z-20 bg-white rounded-full p-2.5 shadow-md"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-
       <div className="flex min-h-full items-center justify-center p-4 py-10">
         <div className="w-full max-w-lg">
 
         {/* Form Card */}
         <div className="relative w-full bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-gray-100">
+          
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors z-20 p-2 rounded-full hover:bg-gray-100"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
           {/* Stepper Header (Step 1 and 2) - inside card */}
           {step >= 1 && step <= 2 && (
@@ -559,7 +559,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                             : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
                         }`}
                       />
-                      {errors.fullName && <p className="text-red-500 text-xs ml-2">{errors.fullName}</p>}
+                      {errors.fullName && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.fullName}
+                        </div>
+                      )}
                     </div>
 
                     {/* Email Input */}
@@ -581,7 +588,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                             : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
                         }`}
                       />
-                      {errors.email && <p className="text-red-500 text-xs ml-2">{errors.email}</p>}
+                      {errors.email && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.email}
+                        </div>
+                      )}
                     </div>
 
                     {/* Password Input */}
@@ -621,7 +635,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           )}
                         </button>
                       </div>
-                      {errors.password && <p className="text-red-500 text-xs mt-1 ml-2">{errors.password}</p>}
+                      {errors.password && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.password}
+                        </div>
+                      )}
 
                       {password && (
                         <div className="mt-3 space-y-1.5 text-xs font-medium px-1">
@@ -686,7 +707,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           )}
                         </button>
                       </div>
-                      {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 ml-2">{errors.confirmPassword}</p>}
+                      {errors.confirmPassword && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          {errors.confirmPassword}
+                        </div>
+                      )}
                     </div>
 
                     {/* Terms Checkbox */}
@@ -861,7 +889,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           onChange={(e) => setHiringFor(e.target.value)}
                           className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600"
                         />
-                        <span className="text-sm font-medium text-gray-700">Direct Employer / Company</span>
+                        <span className="text-sm font-medium text-gray-700">Company / Business</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -872,7 +900,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           onChange={(e) => setHiringFor(e.target.value)}
                           className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600"
                         />
-                        <span className="text-sm font-medium text-gray-700">Staffing / Recruitment Agency</span>
+                        <span className="text-sm font-medium text-gray-700">Individual / Proprietor</span>
                       </label>
                     </div>
                   </div>
@@ -896,7 +924,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
                       }`}
                     />
-                    {errors.companyName && <p className="text-red-500 text-xs ml-2">{errors.companyName}</p>}
+                    {errors.companyName && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.companyName}
+                      </div>
+                    )}
                   </div>
 
                   {/* Industry */}
@@ -913,7 +948,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                       }}
                       placeholder="Select Industry"
                     />
-                    {errors.industry && <p className="text-red-500 text-xs ml-2">{errors.industry}</p>}
+                    {errors.industry && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.industry}
+                      </div>
+                    )}
                   </div>
 
                   {/* Employees Range */}
@@ -930,7 +972,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                       }}
                       placeholder="Select Number of Employees"
                     />
-                    {errors.employees && <p className="text-red-500 text-xs ml-2">{errors.employees}</p>}
+                    {errors.employees && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.employees}
+                      </div>
+                    )}
                   </div>
 
                   {/* Designation */}
@@ -947,7 +996,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                       }}
                       placeholder="e.g. HR Manager / Talent Head"
                     />
-                    {errors.designation && <p className="text-red-500 text-xs ml-2">{errors.designation}</p>}
+                    {errors.designation && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.designation}
+                      </div>
+                    )}
                   </div>
 
                   {/* Location */}
@@ -970,7 +1026,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
                       } outline-none transition-all placeholder-gray-400 text-sm`}
                     />
-                    {errors.location && <p className="text-red-500 text-xs ml-2">{errors.location}</p>}
+                    {errors.location && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.location}
+                      </div>
+                    )}
                   </div>
 
                   {/* About Company */}
@@ -992,7 +1055,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
                       }`}
                     ></textarea>
-                    {errors.aboutCompany && <p className="text-red-500 text-xs ml-2">{errors.aboutCompany}</p>}
+                    {errors.aboutCompany && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.aboutCompany}
+                      </div>
+                    )}
                   </div>
 
                   {/* Website */}

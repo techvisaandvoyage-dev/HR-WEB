@@ -264,7 +264,7 @@ const CompanyProfileTab = () => {
                       </button>
                     </div>
                   </div>
-                  {renderRow('company', 'hiringFor', 'Hiring for', companyData.hiringFor, 'text', false)}
+                  {renderRow('company', 'hiringFor', 'Hiring for', companyData.hiringFor === 'consultant' ? 'Individual / Proprietor' : 'Company / Business', 'text', false)}
                   {renderRow('company', 'companyName', 'Company Name', companyData.companyName)}
                   {renderRow('company', 'industry', 'Industry', companyData.industry, 'select-industry')}
                   {renderRow('company', 'employees', 'Number of Employees', companyData.employees, 'select-employees')}

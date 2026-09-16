@@ -142,25 +142,52 @@ const loginEmployee = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check for user email
-    const employee = await Employee.findOne({ email }).select('+password');
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ success: false, field: 'email', message: 'Please enter your email address' });
+    }
+
+    if (!password) {
+      return res.status(400).json({ success: false, field: 'password', message: 'Please enter your password' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    // Check for user email (case-insensitive)
+    const employee = await Employee.findOne({ 
+      email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+    }).select('+password');
 
     if (!employee) {
-      return res.status(404).json({ message: 'We couldn\'t find an account with this email. Please register first to continue.' });
+      return res.status(404).json({ 
+        success: false, 
+        field: 'email', 
+        message: "We couldn't find an account with this email. Please register first to continue." 
+      });
     }
 
     if (!employee.password) {
-      return res.status(401).json({ message: 'This email is linked to a Google account. Please log in with Google.' });
+      return res.status(400).json({ 
+        success: false, 
+        field: 'email', 
+        message: 'This email is linked to a Google account. Please log in with Google.' 
+      });
     }
 
     // Check if password matches
     const isMatch = await employee.matchPassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid password' });
+      return res.status(401).json({ 
+        success: false, 
+        field: 'password', 
+        message: 'Invalid password. Please check and try again.' 
+      });
     }
 
+    await Employee.findByIdAndUpdate(employee._id, { lastLogin: new Date() });
+
     res.json({
+      success: true,
       _id: employee.id,
       name: employee.name,
       email: employee.email,
@@ -168,8 +195,8 @@ const loginEmployee = async (req, res) => {
       location: employee.location,
       token: generateToken(employee._id),
       profile: {
-        firstName: employee.name.split(' ')[0],
-        lastName: employee.name.split(' ').slice(1).join(' '),
+        firstName: employee.name ? employee.name.split(' ')[0] : '',
+        lastName: employee.name && employee.name.split(' ').length > 1 ? employee.name.split(' ').slice(1).join(' ') : '',
         email: employee.email,
         phone: employee.mobile,
         brief: employee.brief || '',
@@ -187,7 +214,8 @@ const loginEmployee = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Login Backend Error:", error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 };
 
@@ -300,6 +328,8 @@ const verifyLoginOtp = async (req, res) => {
       });
     }
 
+    await Employee.findByIdAndUpdate(employee._id, { lastLogin: new Date() });
+
     res.json({
       _id: employee.id,
       name: employee.name,
@@ -373,6 +403,39 @@ const checkExistence = async (req, res) => {
     res.json({ message: 'No conflicts' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Check if mobile is available or belongs to current employee
+// @route   POST /api/employee/auth/check-mobile-available
+// @access  Public
+const checkMobileAvailable = async (req, res) => {
+  try {
+    const { mobile, currentEmail, currentUserId } = req.body;
+    if (!mobile || String(mobile).trim().length < 10) {
+      return res.json({ available: true });
+    }
+
+    const cleanMobile = String(mobile).trim();
+    let query = { mobile: cleanMobile };
+
+    if (currentUserId) {
+      query._id = { $ne: currentUserId };
+    } else if (currentEmail) {
+      query.email = { $ne: String(currentEmail).trim().toLowerCase() };
+    }
+
+    const existing = await Employee.findOne(query);
+    if (existing) {
+      return res.json({ 
+        available: false, 
+        message: 'This phone number is already registered with another account.' 
+      });
+    }
+
+    return res.json({ available: true });
+  } catch (error) {
+    res.status(500).json({ available: true, error: error.message });
   }
 };
 
@@ -562,6 +625,10 @@ const googleAuth = async (req, res) => {
     } else if (!employee.googleId) {
       employee.googleId = sub || uid || '';
       if (!employee.authProvider) employee.authProvider = 'google';
+      employee.lastLogin = new Date();
+      await employee.save();
+    } else {
+      employee.lastLogin = new Date();
       await employee.save();
     }
 
@@ -789,6 +856,7 @@ module.exports = {
   googleAuth,
   checkExistence,
   checkMobile,
+  checkMobileAvailable,
   sendRegistrationOtp,
   resendRegistrationOtp,
   forgotPasswordOtp,

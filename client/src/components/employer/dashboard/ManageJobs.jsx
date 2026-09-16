@@ -3,6 +3,22 @@ import { Link } from 'react-router-dom';
 
 const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = false }) => {
   const [selectedJob, setSelectedJob] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+
+  // Filter jobs by search term and status
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch = !searchTerm || 
+      (job.title && job.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (job.details?.jobTitle && job.details.jobTitle.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (job.location && job.location.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const matchesStatus = statusFilter === 'All Status' || 
+      (statusFilter === 'Active' && job.status !== 'Closed') ||
+      (statusFilter === 'Closed' && job.status === 'Closed');
+
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className={`animate-in fade-in duration-300 ${hideHeader ? '' : 'space-y-6 pb-10'}`}>
@@ -11,17 +27,17 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight">MY JOB</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage and track all your job posting.</p>
+            <p className="text-gray-500 text-sm mt-1">Manage and track all your job postings and applicant analytics.</p>
           </div>
           
           <div className="flex items-center gap-4">
             <Link 
               to="/employer/post-job"
-              className="px-5 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-full transition-colors flex items-center gap-1.5 shadow-sm"
+              className="px-5 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-full transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <span className="text-lg leading-none">+</span> Post New Job
             </Link>
-            <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm cursor-pointer">
+            <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm">
               C
             </div>
           </div>
@@ -34,97 +50,156 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
           <div className="relative w-full sm:w-[350px]">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input 
               type="text" 
-              placeholder="Search job by title..." 
-              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f] transition-all placeholder-gray-400"
+              placeholder="Search job by title, location..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f] transition-all placeholder-gray-400"
             />
           </div>
           
-          <select className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 outline-none focus:border-[#29953f] transition-all bg-white cursor-pointer">
-            <option>All Status</option>
-            <option>Active</option>
-            <option>Closed</option>
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 outline-none focus:border-[#29953f] transition-all bg-white cursor-pointer"
+          >
+            <option value="All Status">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Closed">Closed</option>
           </select>
         </div>
 
         {/* Jobs List */}
         <div className="space-y-4">
-          {jobs.map(job => {
-            const isClosed = job.status === 'Closed';
-            const statusColor = job.statusColor || (isClosed ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700');
-            const displayStatus = job.status || 'Active';
-            const iconColor = job.iconColor || 'text-green-500 bg-green-50';
-            const jobType = job.type || `${job.details?.employmentType || 'Full-time'} • ${job.details?.workLocation || 'Remote'} • ${job.salary || 'Not specified'}`;
-            const appsCount = Math.max(job.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === job.title))?.length || 0);
-            const postedDate = job.date || job.postedAt || 'Recently';
+          {filteredJobs.length === 0 ? (
+            <div className="text-center py-14 text-gray-400 text-sm">
+              No jobs found matching your search or filters.
+            </div>
+          ) : (
+            filteredJobs.map(job => {
+              const isClosed = job.status === 'Closed';
+              const statusColor = job.statusColor || (isClosed ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700');
+              const displayStatus = job.status || 'Active';
+              const iconColor = job.iconColor || 'text-green-600 bg-green-50 border-green-200';
+              const appsCount = Math.max(job.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === job.title))?.length || 0);
+              const viewsCount = job.views || 0;
+              const postedDate = job.date || job.postedAt || (job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recently');
+              const openingsCount = job.details?.openings || job.openings || '1';
 
-            return (
-              <div key={job.id} className={`flex flex-col sm:flex-row items-center justify-between p-5 rounded-xl border transition-all gap-4 ${isClosed ? 'border-gray-100 bg-gray-50/50 opacity-75' : 'border-gray-100 hover:border-green-200 hover:shadow-sm'}`}>
-                
-                {/* Job Info */}
-                <div className="flex items-center gap-4 w-full sm:w-[30%]">
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border border-current opacity-80 ${iconColor}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900">{job.title}</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">{jobType}</p>
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="flex flex-row items-center justify-between w-full sm:w-[70%]">
+              return (
+                <div 
+                  key={job.id || job._id} 
+                  className={`flex flex-col lg:flex-row items-stretch lg:items-center justify-between p-5 rounded-2xl border transition-all gap-4 ${
+                    isClosed ? 'border-gray-100 bg-gray-50/50 opacity-80' : 'border-gray-100 hover:border-green-300 hover:shadow-md bg-white'
+                  }`}
+                >
                   
-                  <div className="text-center w-1/4">
-                    <h4 className="font-bold text-gray-900 text-sm">
-                      {appsCount}
-                    </h4>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide font-bold mt-0.5">Applications</p>
+                  {/* Job Info */}
+                  <div className="flex items-start sm:items-center gap-3.5 w-full lg:w-[35%]">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${iconColor}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-bold text-gray-900 text-base leading-tight truncate">{job.title}</h4>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+                          {openingsCount} {Number(openingsCount) === 1 ? 'Opening' : 'Openings'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500 font-medium">
+                        <span>{job.details?.employmentType || 'Part-time'}</span>
+                        <span>•</span>
+                        <span>{job.details?.workLocation || job.location || 'Hybrid'}</span>
+                        {job.salary && (
+                          <>
+                            <span>•</span>
+                            <span className="text-gray-700 font-semibold">{job.salary}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="text-center w-1/4">
-                    <select 
-                      value={isClosed ? 'Closed' : 'Active'}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        if (toggleJobStatus) toggleJobStatus(job.id);
-                      }}
-                      className={`inline-flex items-center pl-2 pr-6 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide cursor-pointer hover:opacity-80 transition-opacity outline-none text-center ${statusColor}`}
-                    >
-                      <option value="Active" className="text-gray-900 bg-white font-bold">ACTIVE</option>
-                      <option value="Closed" className="text-gray-900 bg-white font-bold">CLOSED</option>
-                    </select>
-                  </div>
+                  {/* Analytics & Meta Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 items-center gap-3 w-full lg:w-[65%] pt-3 lg:pt-0 border-t lg:border-t-0 border-gray-100">
+                    
+                    {/* Total Views */}
+                    <div className="bg-blue-50/50 hover:bg-blue-50 rounded-xl p-2.5 border border-blue-100/80 text-center transition-colors">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span className="font-extrabold text-gray-900 text-sm">{viewsCount}</span>
+                      </div>
+                      <p className="text-[10px] text-blue-700 uppercase tracking-wider font-bold mt-0.5">Total Views</p>
+                    </div>
 
-                  <div className="text-center w-1/4">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide font-bold">{isClosed ? 'Closed on' : 'Posted on'}</p>
-                    <p className="font-bold text-gray-900 text-xs mt-0.5">{postedDate}</p>
-                  </div>
+                    {/* Total Applications */}
+                    <div className="bg-emerald-50/50 hover:bg-emerald-50 rounded-xl p-2.5 border border-emerald-100/80 text-center transition-colors">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span className="font-extrabold text-gray-900 text-sm">{appsCount}</span>
+                      </div>
+                      <p className="text-[10px] text-emerald-700 uppercase tracking-wider font-bold mt-0.5">Applications</p>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center justify-end gap-1 w-1/4 shrink-0">
-                    <Link
-                      to="/employer/post-job"
-                      state={{ jobToEdit: job }}
-                      className="p-2 text-gray-400 hover:text-[#29953f] hover:bg-green-50 rounded-lg transition-colors flex"
-                      title="Edit Job"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4H5a2 2 0 00-2 2v13a1 1 0 001 1h13a2 2 0 001-1v-6M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                    </Link>
-                    <Link to="/employer/applications" state={{ jobTitle: job.title }} className="p-2 text-gray-400 hover:text-[#29953f] hover:bg-green-50 rounded-lg transition-colors flex" title="View Applications">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                    </Link>
-                    <button onClick={() => setSelectedJob(job)} className="hidden lg:flex p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors" title="Job Info">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </button>
-                  </div>
+                    {/* Status Toggle / Dropdown */}
+                    <div className="text-center">
+                      <select 
+                        value={isClosed ? 'Closed' : 'Active'}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          if (toggleJobStatus) toggleJobStatus(job.id || job._id);
+                        }}
+                        className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider cursor-pointer hover:opacity-90 transition-all outline-none border ${
+                          isClosed ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}
+                      >
+                        <option value="Active" className="text-gray-900 bg-white font-bold">ACTIVE</option>
+                        <option value="Closed" className="text-gray-900 bg-white font-bold">CLOSED</option>
+                      </select>
+                      <p className="text-[10px] text-gray-400 font-medium mt-1">
+                        {isClosed ? 'Closed' : 'Posted'} {postedDate}
+                      </p>
+                    </div>
 
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-1.5 shrink-0">
+                      <Link
+                        to="/employer/post-job"
+                        state={{ jobToEdit: job }}
+                        className="p-2 text-gray-500 hover:text-[#29953f] hover:bg-green-50 rounded-xl transition-colors border border-gray-200/80 hover:border-green-200"
+                        title="Edit Job"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4H5a2 2 0 00-2 2v13a1 1 0 001 1h13a2 2 0 001-1v-6M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                      </Link>
+                      <Link 
+                        to="/employer/applications" 
+                        state={{ jobTitle: job.title }} 
+                        className="p-2 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-colors border border-gray-200/80 hover:border-emerald-200" 
+                        title="View Applications"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                      </Link>
+                      <button 
+                        onClick={() => setSelectedJob(job)} 
+                        className="p-2 text-gray-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors border border-gray-200/80 hover:border-blue-200 cursor-pointer" 
+                        title="View Full Job Details"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </button>
+                    </div>
+
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* Pagination */}
@@ -167,33 +242,42 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
               
-              {/* Basic Info */}
+              {/* Basic Info & Analytics */}
               <div className="border-b border-gray-100 pb-6">
                 <h2 className="text-2xl font-bold text-gray-900">{selectedJob.title}</h2>
-                <div className="flex flex-wrap items-center gap-3 mt-3">
-                  <span className="inline-flex items-center justify-center px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold">
-                    {selectedJob.type || `${selectedJob.details?.employmentType || 'Full-time'} • ${selectedJob.details?.workLocation || 'Remote'}`}
+                <div className="flex flex-wrap items-center gap-2.5 mt-3">
+                  <span className="inline-flex items-center justify-center px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                    {selectedJob.type || `${selectedJob.details?.employmentType || 'Full-time'} • ${selectedJob.details?.workLocation || selectedJob.location || 'Hybrid'}`}
                   </span>
-                  <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${selectedJob.status === 'Closed' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}`}>
+                  <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${selectedJob.status === 'Closed' ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
                     {selectedJob.status || 'Active'}
+                  </span>
+                  <span className="inline-flex items-center justify-center px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-bold border border-purple-200">
+                    {selectedJob.details?.openings || selectedJob.openings || '1'} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4 mt-6">
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Total Applicants</p>
-                    <p className="text-lg font-bold text-gray-900 mt-1">{Math.max(selectedJob.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === selectedJob.title))?.length || 0)}</p>
+                {/* 4-Stat Analytics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+                  <div className="bg-blue-50/60 rounded-2xl p-3.5 border border-blue-100 text-center">
+                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Total Views</p>
+                    <p className="text-xl font-extrabold text-gray-900 mt-1">{selectedJob.views || 0}</p>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Posted On</p>
-                    <p className="text-sm font-bold text-gray-900 mt-2">{selectedJob.date || selectedJob.postedAt || 'Recently'}</p>
+                  <div className="bg-emerald-50/60 rounded-2xl p-3.5 border border-emerald-100 text-center">
+                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Applications</p>
+                    <p className="text-xl font-extrabold text-gray-900 mt-1">{Math.max(selectedJob.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === selectedJob.title))?.length || 0)}</p>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Salary</p>
-                    <p className="text-sm font-bold text-gray-900 mt-2">{selectedJob.salary || 'Not specified'}</p>
+                  <div className="bg-purple-50/60 rounded-2xl p-3.5 border border-purple-100 text-center">
+                    <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Openings</p>
+                    <p className="text-xl font-extrabold text-gray-900 mt-1">{selectedJob.details?.openings || selectedJob.openings || '1'}</p>
+                  </div>
+                  <div className="bg-amber-50/60 rounded-2xl p-3.5 border border-amber-100 text-center">
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Salary</p>
+                    <p className="text-xs font-bold text-gray-900 mt-2 truncate">{selectedJob.salary || 'Negotiable'}</p>
                   </div>
                 </div>
               </div>
+              
               {/* Job Details Container */}
               <div className="space-y-4 pt-2">
                 {selectedJob.details?.jobTitle && (
@@ -209,11 +293,18 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
                     <span className="text-sm text-gray-600">{selectedJob.details.employmentType}</span>
                   </div>
                 )}
-                
+
                 {selectedJob.details?.experience && (
                   <div>
                     <span className="text-sm font-bold text-gray-900 mr-2">Experience:</span>
                     <span className="text-sm text-gray-600">{selectedJob.details.experience}</span>
+                  </div>
+                )}
+
+                {(selectedJob.details?.openings || selectedJob.openings) && (
+                  <div>
+                    <span className="text-sm font-bold text-gray-900 mr-2">Openings:</span>
+                    <span className="text-sm text-gray-600">{selectedJob.details?.openings || selectedJob.openings}</span>
                   </div>
                 )}
 
@@ -223,7 +314,7 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
                     <span className="text-sm text-gray-600">{selectedJob.details.aboutRole}</span>
                   </div>
                 )}
-                
+
                 {selectedJob.details?.responsibilities && (
                   <div>
                     <span className="text-sm font-bold text-gray-900 mr-2 block mb-1">Responsibilities:</span>

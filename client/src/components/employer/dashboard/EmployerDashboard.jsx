@@ -8,6 +8,7 @@ import ApplicationsTab from './ApplicationsTab';
 import CompanyProfileTab from './CompanyProfileTab';
 import AllEmployeesTab from './AllEmployeesTab';
 import EmployerMessages from '../messages/EmployerMessages';
+import EmployerSettingsTab from './EmployerSettingsTab';
 
 const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawAppsData, updateCandidateStatus, toggleJobStatus }) => {
   const location = useLocation();
@@ -113,7 +114,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               <Route path="/company-profile" element={<CompanyProfileTab />} />
               {/* Placeholders for Messages and Settings */}
               <Route path="/messages" element={<EmployerMessages candidates={candidates} triggerNavRefresh={() => setRefreshNav(prev => !prev)} updateCandidateStatus={updateCandidateStatus} />} />
-              <Route path="/settings" element={<div className="p-8 text-center text-gray-500 font-bold">Settings - Coming Soon</div>} />
+              <Route path="/settings" element={<EmployerSettingsTab />} />
             </Routes>
           </div>
         </div>

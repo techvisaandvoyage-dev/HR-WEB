@@ -37,15 +37,16 @@ const MultiSelectLocationDropdown = ({
     }
 
     let newSelected;
-    const INDIA_ANYWHERE = 'Anywhere in India/Multiple Locations';
+    const INDIA_ANYWHERE = 'Anywhere in India';
+    const isIndiaAnywhere = (v) => v === 'Anywhere in India' || v === 'Anywhere in India/Multiple Locations';
 
     if (selectedValues.includes(optValue)) {
       newSelected = selectedValues.filter(v => v !== optValue);
     } else {
-      if (optValue === INDIA_ANYWHERE) {
-        newSelected = [INDIA_ANYWHERE];
+      if (isIndiaAnywhere(optValue)) {
+        newSelected = [optValue];
       } else {
-        newSelected = [...selectedValues.filter(v => v !== INDIA_ANYWHERE), optValue];
+        newSelected = [...selectedValues.filter(v => !isIndiaAnywhere(v)), optValue];
       }
     }
     onChange(newSelected.join(', '));
@@ -140,7 +141,7 @@ const MultiSelectLocationDropdown = ({
   }, [searchTerm, filteredOptions.length]);
 
   return (
-    <div className="relative w-full text-left font-sans" ref={wrapperRef}>
+    <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={`${className} flex justify-between items-center cursor-pointer ${isOpen ? 'border-green-500 ring-1 ring-green-500' : ''}`}

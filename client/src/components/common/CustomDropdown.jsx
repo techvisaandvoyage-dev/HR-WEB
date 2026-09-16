@@ -38,7 +38,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
   });
 
   return (
-    <div className="relative w-full text-left font-sans" ref={wrapperRef}>
+    <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
         onClick={() => setIsOpen(true)}
         className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : (error ? 'border-red-500' : 'border-gray-200')} rounded-xl text-gray-700 flex justify-between items-center transition-all shadow-sm cursor-text`}
@@ -83,7 +83,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
       </div>
 
       {isOpen && (
-        <div className="absolute z-40 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-72 overflow-y-auto custom-scrollbar py-2">
+        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl max-h-72 overflow-y-auto custom-scrollbar py-2">
           {filteredOptions.some(opt => !opt.isGroupLabel) ? filteredOptions.map((opt, idx) => {
             if (opt.isGroupLabel) {
               // Hide group label if it has no children matching the search

@@ -187,19 +187,49 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check for user email
-    const employer = await Employer.findOne({ email }).select('+password');
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ success: false, field: 'email', message: 'Please enter your email address' });
+    }
+
+    if (!password) {
+      return res.status(400).json({ success: false, field: 'password', message: 'Please enter your password' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    // Check for user email (case-insensitive)
+    const employer = await Employer.findOne({ 
+      email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+    }).select('+password');
 
     if (!employer) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(404).json({ 
+        success: false, 
+        field: 'email', 
+        message: "We couldn't find an employer account with this email. Please register first to continue." 
+      });
+    }
+
+    if (!employer.password) {
+      return res.status(400).json({ 
+        success: false, 
+        field: 'email', 
+        message: 'This email is linked to a Google account. Please log in with Google.' 
+      });
     }
 
     // Check if password matches
     const isMatch = await employer.matchPassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid password' });
+      return res.status(401).json({ 
+        success: false, 
+        field: 'password', 
+        message: 'Invalid password. Please check and try again.' 
+      });
     }
+
+    await Employer.findByIdAndUpdate(employer._id, { lastLogin: new Date() });
 
     res.json({
       success: true,
@@ -502,9 +532,19 @@ exports.googleAuth = async (req, res) => {
         mobile: '',
         companyName: '',
         industry: '',
+        googleId: sub || uid || '',
+        authProvider: 'google',
       });
-    } else if (!employer.companyName || employer.companyName.trim() === '') {
-      isNewUser = true;
+    } else {
+      if (!employer.companyName || employer.companyName.trim() === '') {
+        isNewUser = true;
+      }
+      if (!employer.googleId) {
+        employer.googleId = sub || uid || '';
+        if (!employer.authProvider) employer.authProvider = 'google';
+      }
+      employer.lastLogin = new Date();
+      await employer.save();
     }
 
     res.json({
@@ -644,5 +684,214 @@ exports.verifyLoginOtp = async (req, res) => {
   } catch (error) {
     console.error('Employer verifyLoginOtp error:', error.message);
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Get current employer security & authentication status
+// @route   GET /api/employer/auth/security
+// @access  Private
+exports.getSecurityStatus = async (req, res) => {
+  try {
+    const employerId = req.user?._id || req.employer?._id;
+    const employer = await Employer.findById(employerId).select('+password');
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
+
+    const hasPassword = Boolean(employer.password && employer.password.length > 0);
+    const isGoogleConnected = Boolean(employer.googleId || employer.authProvider === 'google' || !employer.password);
+
+    res.json({
+      success: true,
+      email: employer.email,
+      fullName: employer.fullName,
+      hasPassword,
+      isGoogleConnected,
+      authProvider: employer.authProvider || (hasPassword ? 'local' : 'google'),
+    });
+  } catch (error) {
+    console.error('Employer getSecurityStatus error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Set password for employer accounts without a password (e.g. Google-authenticated users)
+// @route   POST /api/employer/auth/set-password
+// @access  Private
+exports.setPassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long.' });
+    }
+
+    const employerId = req.user?._id || req.employer?._id;
+    const employer = await Employer.findById(employerId).select('+password');
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
+
+    employer.password = newPassword;
+    await employer.save();
+
+    res.json({
+      success: true,
+      message: 'Password set successfully. You can now sign in using your email and password or continue with Google.',
+      hasPassword: true,
+    });
+  } catch (error) {
+    console.error('Employer setPassword error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
+// @desc    Send OTP to change employer account password
+// @route   POST /api/employer/auth/change-password/send-otp
+// @access  Private
+exports.sendChangePasswordOtp = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide your current password.' });
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long.' });
+    }
+
+    const employerId = req.user?._id || req.employer?._id;
+    const employer = await Employer.findById(employerId).select('+password');
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found.' });
+    }
+
+    if (!employer.password) {
+      return res.status(400).json({ success: false, message: 'No password is set on this account. Please use "Set Password" instead.' });
+    }
+
+    const isMatch = await employer.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password. Please try again.' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ success: false, message: 'New password must be different from your current password.' });
+    }
+
+    const result = await sendOtp({
+      email: employer.email,
+      name: employer.fullName || 'Employer',
+      purpose: 'change_password:employer',
+    });
+
+    res.json({
+      success: true,
+      message: result.message || 'OTP sent successfully to your registered email.',
+      email: employer.email,
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
+  } catch (error) {
+    console.error('Employer sendChangePasswordOtp error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || 'Failed to send OTP.',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Resend OTP for change password
+// @route   POST /api/employer/auth/change-password/resend-otp
+// @access  Private
+exports.resendChangePasswordOtp = async (req, res) => {
+  try {
+    const employerId = req.user?._id || req.employer?._id;
+    const employer = await Employer.findById(employerId);
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found.' });
+    }
+
+    const result = await resendOtp({
+      email: employer.email,
+      name: employer.fullName || 'Employer',
+      purpose: 'change_password:employer',
+    });
+
+    res.json({
+      success: true,
+      message: result.message || 'A new OTP has been sent to your registered email.',
+      cooldownSeconds: result.cooldownSeconds || 30,
+    });
+  } catch (error) {
+    console.error('Employer resendChangePasswordOtp error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || 'Failed to resend OTP.',
+      cooldownRemaining: error.cooldownRemaining,
+    });
+  }
+};
+
+// @desc    Change password for employer accounts that already have a password set (requires OTP)
+// @route   POST /api/employer/auth/change-password
+// @access  Private
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, otp } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide both your current and new password.' });
+    }
+
+    if (!otp) {
+      return res.status(400).json({ success: false, message: 'Please provide the OTP code sent to your email.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long.' });
+    }
+
+    const employerId = req.user?._id || req.employer?._id;
+    const employer = await Employer.findById(employerId).select('+password');
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
+
+    if (!employer.password) {
+      return res.status(400).json({ success: false, message: 'No password is set on this account. Please use "Set Password" instead.' });
+    }
+
+    const isMatch = await employer.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect current password. Please try again.' });
+    }
+
+    // Verify OTP
+    try {
+      await verifyOtp({
+        email: employer.email,
+        otp: String(otp).trim(),
+        purpose: 'change_password:employer',
+        consume: true,
+      });
+    } catch (otpErr) {
+      return res.status(otpErr.status || 400).json({
+        success: false,
+        message: otpErr.message || 'Invalid or expired OTP. Please try again.',
+      });
+    }
+
+    employer.password = newPassword;
+    await employer.save();
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully! You can now use your new password to sign in.',
+    });
+  } catch (error) {
+    console.error('Employer changePassword error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };

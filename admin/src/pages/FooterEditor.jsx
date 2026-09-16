@@ -7,7 +7,36 @@ import PagesLibrary from '../components/footer-editor/PagesLibrary';
 import PageEditor from '../components/footer-editor/PageEditor';
 
 export default function FooterEditor() {
-  const [activeTab, setActiveTab] = useState('content'); // 'content', 'social', 'library'
+  const [activeTab, setActiveTabState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sub = params.get('subtab');
+    if (sub && ['content', 'social', 'library'].includes(sub)) return sub;
+    const saved = localStorage.getItem('adminFooterSubtab');
+    if (saved && ['content', 'social', 'library'].includes(saved)) return saved;
+    return 'content';
+  });
+
+  const setActiveTab = (newSubTab) => {
+    setActiveTabState(newSubTab);
+    localStorage.setItem('adminFooterSubtab', newSubTab);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'footer');
+    params.set('subtab', newSubTab);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const sub = params.get('subtab');
+      if (sub && ['content', 'social', 'library'].includes(sub)) {
+        setActiveTabState(sub);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [editingPage, setEditingPage] = useState(null);
 
   const [pages, setPages] = useState([]);

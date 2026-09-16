@@ -7,7 +7,7 @@ const Application = require('../../models/Application');
 exports.getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find({ status: 'Active' })
-      .populate('employerId', 'fullName designation companyName')
+      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics')
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: jobs });
   } catch (error) {

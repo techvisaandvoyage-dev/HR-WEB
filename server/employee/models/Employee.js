@@ -94,6 +94,10 @@ const EmployeeSchema = new mongoose.Schema({
     type: Object,
     default: {}
   },
+  lastLogin: {
+    type: Date,
+    default: Date.now
+  },
   createdAt: {
     type: Date,
     default: Date.now

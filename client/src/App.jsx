@@ -14,6 +14,7 @@ import LocationAutocomplete from './components/common/LocationAutocomplete';
 import Footer from './components/common/Footer';
 import StaticPage from './components/common/StaticPage';
 import { dummyJobs } from './data/dummyJobs';
+import { isLocationMatch } from './data/preferredLocations';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('employeeToken') || !!localStorage.getItem('employerToken'));
@@ -290,7 +291,7 @@ function App() {
 
   const filteredHomepageJobs = jobs.filter(job => {
     const matchTitle = !searchJobTitle || job.title.toLowerCase().includes(searchJobTitle.toLowerCase()) || job.company.toLowerCase().includes(searchJobTitle.toLowerCase());
-    const matchLocation = !searchLocation || job.location.toLowerCase().includes(searchLocation.split(',')[0].trim().toLowerCase());
+    const matchLocation = isLocationMatch(job.location, searchLocation, job.details?.workLocation);
     return matchTitle && matchLocation;
   });
 

@@ -47,6 +47,7 @@ const protectEmployer = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
 
       req.user = await Employer.findById(decoded.id).select('-password');
+      req.employer = req.user;
       return next();
     } catch (error) {
       console.warn("Auth Middleware warning (invalid or expired token):", error.message);

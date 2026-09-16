@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import CustomDropdown from '../common/CustomDropdown';
-
+import InstituteAutocomplete from '../common/InstituteAutocomplete';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -129,6 +129,30 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const [screeningAnswers, setScreeningAnswers] = useState({});
   const [questionErrors, setQuestionErrors] = useState({});
   const [isLoadingReview, setIsLoadingReview] = useState(false);
+  const [isResumePreviewOpen, setIsResumePreviewOpen] = useState(false);
+
+  const getCleanFileName = (urlOrName, fallback = 'Resume.pdf') => {
+    if (!urlOrName) return fallback;
+    if (!urlOrName.startsWith('http')) return urlOrName;
+    try {
+      const decoded = decodeURIComponent(urlOrName.split('?')[0]);
+      const segments = decoded.split('/');
+      const rawFileName = segments[segments.length - 1];
+      const clean = rawFileName.replace(/^\d+[-_]/, '');
+      return clean || fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const handleDownloadResume = () => {
+    const resumeUrl = fastFormData.resume || formData.documents?.resume || formData.resume;
+    if (resumeUrl && resumeUrl.startsWith('http')) {
+      window.open(resumeUrl, '_blank');
+    } else {
+      alert("Resume file ready: " + (resumeUrl || 'Resume.pdf'));
+    }
+  };
 
   const validateQuestions = () => {
     let isValid = true;
@@ -326,53 +350,119 @@ const p = formData.professionalDetails || {};
 
   // --- New Questions Step ---
   const StepQuestions = () => (
-    <div className="space-y-6 animate-fade-in max-w-md mx-auto py-8">
-      <h3 className="text-2xl font-bold text-gray-900 mb-6">Employer Questions</h3>
+    <div className="space-y-6 animate-fade-in max-w-lg mx-auto py-6">
+      <div className="text-center sm:text-left">
+        <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Employer Questions</h3>
+        <p className="text-sm text-gray-500 mt-1">Please answer the questions below to continue with your application.</p>
+      </div>
+
       <div className="space-y-4">
-        {job.screeningQuestions && job.screeningQuestions.map((sq, i) => (
-          <div key={i} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <label className="block text-sm font-bold text-gray-900 mb-3">
-              {sq.question}
-              {isScreeningQuestionRequired(sq) && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            {sq.type === 'Yes/No' ? (
-              <div>
-                <CustomDropdown 
-                  options={[
-                    { value: 'Yes', label: 'Yes' },
-                    { value: 'No', label: 'No' }
-                  ]}
-                  value={screeningAnswers[i] || ''}
-                  onChange={(val) => {
-                    setScreeningAnswers({...screeningAnswers, [i]: val});
-                    if (questionErrors[i]) {
-                      setQuestionErrors({...questionErrors, [i]: false});
-                    }
-                  }}
-                  placeholder="Select an answer"
-                  error={questionErrors[i]}
-                />
-                {questionErrors[i] && <p className="text-red-500 text-xs mt-1.5">Please select an answer to continue.</p>}
+        {job.screeningQuestions && job.screeningQuestions.map((sq, i) => {
+          const isRequired = isScreeningQuestionRequired(sq);
+          const hasError = questionErrors[i];
+          const isYesNo = sq.type === 'Yes/No';
+
+          return (
+            <div 
+              key={i} 
+              className={`bg-white border rounded-2xl p-6 transition-all shadow-sm ${
+                hasError ? 'border-red-300 ring-2 ring-red-50' : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {/* Question Header */}
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-green-700 bg-green-50 border border-green-100 px-2.5 py-0.5 rounded-full">
+                    Question {i + 1}
+                  </span>
+                  {isRequired ? (
+                    <span className="text-[11px] font-semibold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full">
+                      Required *
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                      Optional
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-[15px] font-bold text-gray-900 leading-snug">
+                  {sq.question}
+                </h4>
               </div>
-            ) : (
-              <div>
-                <textarea 
-                  rows="3"
-                  className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-gray-700 outline-none focus:bg-white focus:ring-1 transition-all resize-none ${questionErrors[i] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-200 focus:border-green-500 focus:ring-green-500'}`}
-                  placeholder="Type your answer here..."
-                  value={screeningAnswers[i] || ''}
-                  onChange={(e) => {
-                    setScreeningAnswers({...screeningAnswers, [i]: e.target.value});
-                    if (questionErrors[i]) {
-                      setQuestionErrors({...questionErrors, [i]: false});
-                    }
-                  }}
-                />
-                {questionErrors[i] && <p className="text-red-500 text-xs mt-1.5">Please type an answer to continue.</p>}
-              </div>
-            )}
-          </div>
-        ))}
+
+              {/* Question Input */}
+              {isYesNo ? (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  {['Yes', 'No'].map((choice) => {
+                    const isSelected = screeningAnswers[i] === choice;
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => {
+                          setScreeningAnswers({ ...screeningAnswers, [i]: choice });
+                          if (questionErrors[i]) {
+                            setQuestionErrors({ ...questionErrors, [i]: false });
+                          }
+                        }}
+                        className={`group flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
+                          isSelected
+                            ? 'border-[#29953f] bg-green-50/70 text-[#147a2e] ring-1 ring-[#29953f]/30 shadow-sm'
+                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70 text-gray-700'
+                        }`}
+                      >
+                        {/* Custom Radio Button */}
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                            isSelected
+                              ? 'border-[#29953f] bg-[#29953f]'
+                              : 'border-gray-300 bg-white group-hover:border-gray-400'
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="w-2 h-2 rounded-full bg-white animate-scale-in" />
+                          )}
+                        </div>
+                        <span className={`text-sm font-bold ${isSelected ? 'text-[#147a2e]' : 'text-gray-800'}`}>
+                          {choice}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="pt-1">
+                  <textarea
+                    rows="3"
+                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-all resize-none shadow-sm ${
+                      hasError
+                        ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                        : 'border-gray-200 focus:border-[#29953f] focus:ring-2 focus:ring-green-100'
+                    }`}
+                    placeholder="Type your answer here..."
+                    value={screeningAnswers[i] || ''}
+                    onChange={(e) => {
+                      setScreeningAnswers({ ...screeningAnswers, [i]: e.target.value });
+                      if (questionErrors[i]) {
+                        setQuestionErrors({ ...questionErrors, [i]: false });
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Error Message */}
+              {hasError && (
+                <div className="flex items-center gap-1.5 text-red-500 text-xs font-semibold mt-2.5 animate-in fade-in duration-200">
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Please {isYesNo ? 'select Yes or No' : 'type an answer'} to continue.</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -555,29 +645,68 @@ const p = formData.professionalDetails || {};
       
       <div className="flex justify-between items-center mb-2 mt-8">
         <h4 className="text-lg font-bold text-gray-900">Resume</h4>
-        <div className="flex gap-4">
-          <button type="button" className="text-green-600 font-bold hover:underline">Download</button>
-          <button type="button" onClick={() => setFastStep(2)} className="text-green-600 font-bold hover:underline">Edit</button>
+        <div className="flex items-center gap-4">
+          <button 
+            type="button" 
+            onClick={() => setIsResumePreviewOpen(true)} 
+            className="text-green-600 font-bold hover:underline inline-flex items-center gap-1.5 text-sm cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Preview
+          </button>
+          <button 
+            type="button" 
+            onClick={handleDownloadResume} 
+            className="text-green-600 font-bold hover:underline inline-flex items-center gap-1.5 text-sm cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setFastStep(2)} 
+            className="text-green-600 font-bold hover:underline text-sm cursor-pointer"
+          >
+            Edit
+          </button>
         </div>
       </div>
       
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <svg className="w-6 h-6 text-gray-700 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" /></svg>
-          <p className="font-bold text-green-600 truncate">{fastFormData.resume || formData.documents?.resume || 'Resume.pdf'}</p>
+      <div 
+        onClick={() => setIsResumePreviewOpen(true)}
+        className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:border-green-300 hover:shadow-md transition-all cursor-pointer group flex items-center justify-between"
+      >
+        <div className="flex items-center gap-3.5 overflow-hidden">
+          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="overflow-hidden">
+            <p className="font-bold text-gray-900 group-hover:text-green-700 transition-colors truncate text-sm">
+              {getCleanFileName(fastFormData.resume || formData.documents?.resume || formData.resume)}
+            </p>
+            <p className="text-xs text-gray-400 font-medium mt-0.5">Click to preview document</p>
+          </div>
         </div>
+        
+        <span className="text-xs font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg shrink-0 group-hover:bg-green-100 transition-colors flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Preview
+        </span>
       </div>
 
       <div className="flex justify-between items-center mb-2 mt-8">
         <h4 className="text-lg font-bold text-gray-900">Relevant Experience</h4>
         <button type="button" onClick={() => setFastStep(1)} className="text-green-600 font-bold hover:underline">Edit</button>
-      </div>
-      
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
-        <div>
-          <p className="text-sm text-gray-500 mb-1">Your Designation</p>
-          <p className="font-bold text-gray-900">{fastFormData.relevantJobTitle || 'Not specified'}</p>
-        </div>
       </div>
     </div>
   );
@@ -722,7 +851,12 @@ const p = formData.professionalDetails || {};
                             <>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute <span className="text-red-500">*</span></label>
-                                <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" placeholder="Select university/institute" value={q.university || ''} onChange={e => updateArray('qualifications', idx, 'university', e.target.value)} />
+                                <InstituteAutocomplete 
+                                  value={q.university || ''} 
+                                  onChange={val => updateArray('qualifications', idx, 'university', val)} 
+                                  placeholder="Search or enter university/institute..." 
+                                  className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" 
+                                />
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
@@ -1322,35 +1456,175 @@ const p = formData.professionalDetails || {};
 
         {/* Right Job Preview Section */}
         <div className="hidden md:flex md:w-[40%] bg-gray-50 flex-col h-full border-l border-gray-200 overflow-y-auto custom-scrollbar p-6 lg:p-8">
-          
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm text-sm text-gray-900">
-            <h2 className="text-lg font-bold mb-1">{job.title}</h2>
-            <p className="text-gray-500 mb-4">{job.company} - {job.location}</p>
-            
-            <hr className="border-gray-200 mb-4" />
-            
-            <p className="mb-4 leading-relaxed">
-              {job.details?.description ? (job.details.description.length > 150 ? job.details.description.substring(0, 150) + '...' : job.details.description) : 'No description available for this role.'}
-            </p>
-            
-            <p className="mb-4">Pay: {job.salary} {job.details?.employmentType === 'Full-time' ? 'per month' : ''}</p>
-            
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm text-sm text-gray-900 space-y-5">
+            {/* Header info */}
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200 flex items-center justify-center text-base">
+                  {job.companyInitial || (job.company ? job.company.charAt(0).toUpperCase() : 'J')}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-700 text-sm">{job.company}</h3>
+                  <p className="text-xs text-gray-500">{job.location}</p>
+                </div>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 leading-snug">{job.title}</h2>
+            </div>
+
+            {/* Badges / Key Metadata */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+              <span className="bg-gray-100 text-gray-800 text-xs px-2.5 py-1 rounded-lg font-medium">
+                {job.location}
+              </span>
+              <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-lg font-medium">
+                {job.details?.workLocation || 'On-site'}
+              </span>
+              <span className="bg-purple-50 text-purple-700 text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {(job.details?.openings || job.openings || '1')} {Number(job.details?.openings || job.openings || 1) === 1 ? 'Opening' : 'Openings'}
+              </span>
+              {(job.details?.employmentType || job.employmentType) && (
+                <span className="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-lg font-medium">
+                  {job.details?.employmentType || job.employmentType}
+                </span>
+              )}
+              {(job.details?.experience || job.experience) && (
+                <span className="bg-amber-50 text-amber-700 text-xs px-2.5 py-1 rounded-lg font-medium">
+                  {job.details?.experience || job.experience} Experience
+                </span>
+              )}
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Compensation */}
+            {job.salary && (
+              <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100">
+                <p className="text-xs font-semibold text-gray-500 mb-0.5">Pay / Salary</p>
+                <p className="text-base font-bold text-gray-900">
+                  {job.salary} {job.details?.employmentType === 'Full-time' && !job.salary.toLowerCase().includes('month') && !job.salary.toLowerCase().includes('year') && !job.salary.toLowerCase().includes('hour') ? 'per month' : ''}
+                </p>
+              </div>
+            )}
+
+            {/* Job Description */}
+            <div>
+              <h4 className="font-bold text-gray-900 text-sm mb-2">Job Description</h4>
+              <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">
+                {job.details?.description || 'No detailed description provided.'}
+              </p>
+            </div>
+
+            {/* Qualifications */}
             {job.qualifications && job.qualifications.length > 0 && (
-              <div className="mb-4 space-y-3">
-                <p>Qualifications:</p>
-                <ul className="list-disc pl-5 space-y-1">
+              <div>
+                <h4 className="font-bold text-gray-900 text-sm mb-2">Qualifications</h4>
+                <ul className="list-disc pl-5 space-y-1 text-xs text-gray-600">
                   {job.qualifications.map((q, idx) => (
-                    <li key={idx}>{q.name}</li>
+                    <li key={idx}>{q.name || q}</li>
                   ))}
                 </ul>
               </div>
             )}
-            
-            <p className="mb-8">Work Location: {job.details?.workLocation || 'In person'}</p>
+
+            {/* Benefits */}
+            {job.details?.benefits && job.details.benefits.length > 0 && (
+              <div>
+                <h4 className="font-bold text-gray-900 text-sm mb-2">Benefits & Perks</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {job.details.benefits.map((b, idx) => (
+                    <span key={idx} className="bg-gray-100 text-gray-700 text-[11px] px-2.5 py-1 rounded-md font-medium">
+                      {typeof b === 'object' ? (b.name || b.label) : b}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
       </div>
+
+      {/* Resume Preview Modal Popup */}
+      {isResumePreviewOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div 
+            className="fixed inset-0"
+            onClick={() => setIsResumePreviewOpen(false)}
+          />
+          
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200 z-10">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50/70 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-green-50 text-green-700 border border-green-200 flex items-center justify-center font-bold">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base leading-tight">
+                    {getCleanFileName(fastFormData.resume || formData.documents?.resume || formData.resume)}
+                  </h3>
+                  <p className="text-xs text-gray-500">Resume Preview</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {(fastFormData.resume || formData.documents?.resume || formData.resume)?.startsWith('http') && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadResume}
+                    className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsResumePreviewOpen(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body / PDF Viewer */}
+            <div className="flex-1 bg-gray-100 p-2 sm:p-4 overflow-hidden relative flex flex-col items-center justify-center">
+              {(() => {
+                const currentResume = fastFormData.resume || formData.documents?.resume || formData.resume;
+                if (currentResume && currentResume.startsWith('http')) {
+                  return (
+                    <iframe
+                      src={currentResume.includes('google.com') || currentResume.endsWith('.pdf') ? currentResume : `https://docs.google.com/viewer?url=${encodeURIComponent(currentResume)}&embedded=true`}
+                      title="Resume Preview"
+                      className="w-full h-full rounded-xl border border-gray-200 bg-white shadow-inner"
+                    />
+                  );
+                }
+                return (
+                  <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center max-w-md shadow-sm">
+                    <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <h4 className="font-bold text-gray-900 text-base mb-1">{currentResume || 'Resume Ready'}</h4>
+                    <p className="text-xs text-gray-500 mb-4">This resume is attached and ready to submit with your application.</p>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

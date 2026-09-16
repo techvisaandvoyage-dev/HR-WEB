@@ -7,10 +7,17 @@ const Application = require('../../models/Application');
 exports.createJob = async (req, res) => {
   try {
     const employerId = req.user.id;
-    const {
+    let {
       company, companyInitial, title, location, salary, employerProvided,
       easyApply, qualifications, details, screeningQuestions
     } = req.body;
+
+    if (!company) {
+      company = (req.user && req.user.companyName) || (req.user && req.user.fullName) || 'Company';
+    }
+    if (!companyInitial) {
+      companyInitial = company ? company.charAt(0).toUpperCase() : 'C';
+    }
 
     const job = await Job.create({
       employerId,
@@ -57,10 +64,17 @@ exports.updateJob = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
-    const {
+    let {
       company, companyInitial, title, location, salary, employerProvided,
       easyApply, qualifications, details, screeningQuestions
     } = req.body;
+
+    if (!company) {
+      company = job.company || (req.user && req.user.companyName) || (req.user && req.user.fullName) || 'Company';
+    }
+    if (!companyInitial) {
+      companyInitial = company ? company.charAt(0).toUpperCase() : 'C';
+    }
 
     Object.assign(job, {
       company,

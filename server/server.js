@@ -32,6 +32,7 @@ app.use('/api/employer/messages', require('./employer/routes/messageRoutes'));
 app.use('/api/pages', require('./routes/pageRoutes'));
 app.use('/api/footer', require('./routes/footerRoutes'));
 app.use('/api/mux', require('./routes/muxRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 const PORT = process.env.PORT || 5000;
 

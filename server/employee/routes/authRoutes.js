@@ -10,6 +10,7 @@ const {
   googleAuth,
   checkExistence,
   checkMobile,
+  checkMobileAvailable,
   sendRegistrationOtp,
   resendRegistrationOtp,
   forgotPasswordOtp,
@@ -31,6 +32,7 @@ router.post('/login/verify-otp', verifyLoginOtp);
 router.post('/google', googleAuth);
 router.post('/check-existence', checkExistence);
 router.post('/check-mobile', checkMobile);
+router.post('/check-mobile-available', checkMobileAvailable);
 router.post('/send-otp', sendRegistrationOtp);
 router.post('/resend-otp', resendRegistrationOtp);
 router.post('/forgot-password/otp', forgotPasswordOtp);

@@ -1,6 +1,66 @@
+// Non-India locations present in our location directory or commonly referenced
+export const NON_INDIA_LOCATIONS = [
+  'abu dhabi', 'africa', 'bahrain', 'bangladesh', 'china', 'doha', 'dubai',
+  'europe', 'hong kong', 'indonesia', 'japan', 'kuwait', 'london', 'malaysia',
+  'mauritius', 'middle east', 'nepal', 'new zealand', 'oman', 'philippines',
+  'qatar', 'russia', 'saudi arabia', 'singapore', 'south africa', 'sri lanka',
+  'thailand', 'uae', 'uk', 'united kingdom', 'usa', 'united states', 'zambia', 'zimbabwe',
+  'canada', 'germany', 'australia', 'france', 'netherlands'
+];
+
+export const isIndiaAnywhereQuery = (query = '') => {
+  if (!query) return false;
+  const q = String(query).trim().toLowerCase();
+  return (
+    q === 'anywhere in india' ||
+    q === 'anywhere in india/multiple locations' ||
+    q === 'india' ||
+    q === 'pan india' ||
+    q === 'all india'
+  );
+};
+
+export const isJobInIndia = (jobLocation = '', workLocation = '') => {
+  const loc = String(jobLocation || '').toLowerCase().trim();
+  const workLoc = String(workLocation || '').toLowerCase().trim();
+  
+  // If location is blank or remote or explicitly mentions India
+  if (!loc) return true;
+  if (loc.includes('india') || loc.includes('pan india') || loc.includes('remote') || workLoc.includes('remote')) {
+    return true;
+  }
+
+  // If location explicitly includes an international country/city without mentioning India
+  const isInternational = NON_INDIA_LOCATIONS.some((intl) => loc.includes(intl));
+  if (isInternational) {
+    return false;
+  }
+
+  // All other domestic locations in the Indian job portal default to India
+  return true;
+};
+
+export const isLocationMatch = (jobLocation = '', searchLocation = '', workLocation = '') => {
+  if (!searchLocation || !searchLocation.trim()) return true;
+
+  if (isIndiaAnywhereQuery(searchLocation)) {
+    return isJobInIndia(jobLocation, workLocation);
+  }
+
+  const cleanSearch = searchLocation.trim().toLowerCase().split(',')[0].trim();
+  const jobLoc = String(jobLocation || '').toLowerCase();
+  const workLoc = String(workLocation || '').toLowerCase();
+
+  return (
+    jobLoc.includes(cleanSearch) ||
+    workLoc.includes(cleanSearch) ||
+    cleanSearch.includes(jobLoc)
+  );
+};
+
 // IIMJobs-style locations used by the onboarding preferred-location selector.
 const preferredLocations = [
-  'Anywhere in India/Multiple Locations',
+  'Anywhere in India',
   'Abu Dhabi', 'Africa', 'Agra', 'Ahmedabad', 'Ajmer', 'Akola', 'Aligarh',
   'Allahabad/Prayagraj', 'Alwar', 'Amritsar', 'Andhra Pradesh', 'Ankleshwar',
   'Asansol', 'Aurangabad', 'Baddi', 'Bahrain', 'Bangalore', 'Bangladesh',
@@ -36,9 +96,10 @@ const preferredLocations = [
 export const preferredLocationOptions = preferredLocations.map((location) => ({
   label: location,
   value: location,
+  displayName: location,
 }));
 
 // A current location must be one specific place, unlike a job preference.
 export const currentLocationOptions = preferredLocationOptions.filter(
-  ({ value }) => value !== 'Anywhere in India/Multiple Locations'
+  ({ value }) => value !== 'Anywhere in India' && value !== 'Anywhere in India/Multiple Locations'
 );
