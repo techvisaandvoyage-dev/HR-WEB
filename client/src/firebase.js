@@ -2,9 +2,20 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
+// Automatically use custom domain on live production (sahijob.com) and firebaseapp.com in dev
+const getAuthDomain = () => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'sahijob.com' || host === 'www.sahijob.com') {
+      return host;
+    }
+  }
+  return import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'hr-website-6c387.firebaseapp.com';
+};
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  authDomain: getAuthDomain(),
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,

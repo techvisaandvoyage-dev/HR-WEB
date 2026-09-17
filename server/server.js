@@ -1,3 +1,4 @@
+const https = require('https');
 const express = require('express');
 const dotenv = require('dotenv');
 
@@ -13,6 +14,18 @@ const employerAuthRoutes = require('./employer/routes/authRoutes');
 connectDB();
 
 const app = express();
+
+// Transparent proxy for Firebase Auth Handler on custom domain (sahijob.com/__/auth/*)
+app.use('/__/auth', (req, res) => {
+  const targetUrl = `https://hr-website-6c387.firebaseapp.com/__/auth${req.url}`;
+  https.get(targetUrl, (firebaseRes) => {
+    res.writeHead(firebaseRes.statusCode, firebaseRes.headers);
+    firebaseRes.pipe(res);
+  }).on('error', (err) => {
+    console.error('Firebase Auth proxy error:', err);
+    res.status(500).send('Auth proxy error');
+  });
+});
 
 // Body parser
 app.use(express.json());
