@@ -45,16 +45,20 @@ const HeroSectionEditor = ({ data, onChange, onSave, isSaving }) => {
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
             Live Hero Section Preview
           </label>
-          <div className="bg-gradient-to-b from-gray-50/80 to-white border border-dashed border-gray-300 rounded-2xl p-8 text-center space-y-3">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
-              <span>{hero.titlePrefix || 'Find Your'} </span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-500 to-green-800">
-                {hero.titleHighlight || 'Dream Job'}
-              </span>
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600 font-medium max-w-xl mx-auto">
-              {hero.subtitle || 'Discover opportunities that align with your passion and expertise.'}
-            </p>
+          <div className="relative overflow-hidden bg-gradient-to-b from-white via-emerald-50/30 to-white border border-dashed border-gray-300 rounded-2xl p-8 sm:p-10 text-center space-y-3 shadow-inner">
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#A5D6A7]/30 rounded-full blur-2xl pointer-events-none"></div>
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#66BB6A]/20 rounded-full blur-2xl pointer-events-none"></div>
+            <div className="relative z-10 space-y-3">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-[#1B5E20] leading-tight">
+                <span>{hero.titlePrefix || 'Find Your'} </span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#66BB6A] to-[#1B5E20]">
+                  {hero.titleHighlight || 'Dream Job'}
+                </span>
+              </h1>
+              <p className="text-sm sm:text-base text-[#1B5E20]/75 font-medium max-w-xl mx-auto">
+                {hero.subtitle || 'Discover opportunities that align with your passion and expertise.'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -63,27 +67,27 @@ const HeroSectionEditor = ({ data, onChange, onSave, isSaving }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Headline Prefix (Normal Dark Text)
+                Headline Prefix (Deep Green: #1B5E20)
               </label>
               <input
                 type="text"
                 value={hero.titlePrefix || ''}
                 onChange={(e) => handleFieldChange('titlePrefix', e.target.value)}
                 placeholder="e.g. Find Your"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-medium"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold text-[#1B5E20]"
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Headline Highlight (Vibrant Green Text)
+                Headline Highlight (Green Gradient: #66BB6A → #1B5E20)
               </label>
               <input
                 type="text"
                 value={hero.titleHighlight || ''}
                 onChange={(e) => handleFieldChange('titleHighlight', e.target.value)}
                 placeholder="e.g. Dream Job"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-medium text-green-700"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#66BB6A] to-[#1B5E20]"
               />
             </div>
           </div>
@@ -97,7 +101,7 @@ const HeroSectionEditor = ({ data, onChange, onSave, isSaving }) => {
               value={hero.subtitle || ''}
               onChange={(e) => handleFieldChange('subtitle', e.target.value)}
               placeholder="e.g. Discover opportunities that align with your passion and expertise."
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-medium"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-medium text-[#1B5E20]/80"
             />
           </div>
         </div>

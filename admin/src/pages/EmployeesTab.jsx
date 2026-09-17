@@ -1,687 +1,3996 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
-  Search, 
-  Filter, 
-  MapPin, 
-  Mail, 
-  Phone, 
-  Briefcase, 
-  GraduationCap, 
   FileText, 
-  Video, 
-  X, 
-  Calendar, 
-  ExternalLink, 
+  LogIn,
+  ShieldCheck,
+  Save, 
+  RefreshCw, 
   CheckCircle2, 
-  Clock, 
-  RefreshCw,
-  Building,
-  Eye,
-  Award
+  AlertCircle,
+  Sparkles,
+  LayoutDashboard,
+  ToggleLeft,
+  ToggleRight,
+  Lock,
+  UserCheck,
+  GraduationCap,
+  Briefcase,
+  Award,
+  FileUp,
+  CheckSquare,
+  Plus,
+  Trash2,
+  Tag,
+  RotateCcw,
+  Layers,
+  FolderPlus,
+  SlidersHorizontal,
+  GripVertical,
+  X,
+  MapPin,
+  Search,
+  Building2,
+  Shield,
+  BookOpen,
+  School
 } from 'lucide-react';
-
-const formatMonthYear = (dateStr) => {
-  if (!dateStr) return '';
-  if (typeof dateStr === 'string' && dateStr.includes('-')) {
-    const parts = dateStr.split('-');
-    if (parts.length >= 2) {
-      const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const m = parseInt(parts[1], 10);
-      if (m >= 1 && m <= 12) {
-        return `${monthsList[m - 1]} ${parts[0]}`;
-      }
-    }
-  }
-  const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-};
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-export default function EmployeesTab() {
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  const [search, setSearch] = useState('');
-  const [experienceFilter, setExperienceFilter] = useState('All');
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailEmployee, setDetailEmployee] = useState(null);
+export const DEFAULT_FUNCTIONS_DATA = {
+  'IT & Software': [
+    "Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", 
+    "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", 
+    "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", 
+    "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"
+  ],
+  'Finance & Accounts': [
+    "Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", 
+    "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"
+  ],
+  'Healthcare': [
+    "Doctor", "Nurse", "Pharmacist", "Medical Representative", 
+    "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"
+  ],
+  'Manufacturing': [
+    "Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", 
+    "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"
+  ],
+  'Marketing': [
+    "Marketing Executive", "Digital Marketer", "Marketing Manager", 
+    "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"
+  ],
+  'Sales': [
+    "Sales Executive", "Sales Manager", "Business Development Executive", 
+    "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"
+  ],
+  'HR': [
+    "HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", 
+    "Payroll Executive", "Training & Development Manager", "HR Generalist"
+  ],
+  'Other': [
+    "Product Manager", "Project Manager", "Business Analyst", "Operations Manager"
+  ]
+};
 
-  const fetchEmployees = async () => {
+export const DEFAULT_EXPERIENCE_OPTIONS = [
+  '0 - 1 Yrs',
+  '2 - 3 Yrs',
+  '4 - 6 Yrs',
+  '7 - 10 Yrs',
+  '11 - 15 Yrs',
+  '16 - 20 Yrs',
+  '21 - 25 Yrs',
+  '25+ yrs'
+];
+
+export const DEFAULT_LOCATION_CITIES = [
+  'Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata', 'Ahmedabad',
+  'Gurgaon/Gurugram', 'Noida', 'Navi Mumbai', 'Chandigarh', 'Jaipur', 'Indore', 'Surat',
+  'Cochin/Kochi', 'Lucknow', 'Bhopal', 'Visakhapatnam/Vizag', 'Nagpur', 'Patna', 'Vadodara/Baroda',
+  'Coimbatore', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot', 'Varanasi/Banaras',
+  'Srinagar', 'Aurangabad', 'Dhanbad', 'Amritsar', 'Allahabad/Prayagraj', 'Ranchi', 'Howrah',
+  'Gwalior', 'Jabalpur', 'Vijayawada', 'Jodhpur', 'Raipur', 'Kota', 'Guwahati',
+  'Thane', 'Trivandrum/Thiruvananthapuram', 'Mangalore', 'Mysore', 'Bhubaneshwar', 'Dehradun',
+  'Goa', 'Remote', 'Dubai', 'Singapore', 'Abu Dhabi', 'London', 'USA'
+];
+
+export const DEFAULT_EDUCATION_DATA = {
+  '10th': {
+    category: 'school',
+    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+  },
+  '12th': {
+    category: 'school',
+    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+  },
+  'Graduation/Diploma': {
+    category: 'higher',
+    options: ['B.Tech/B.E.', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA', 'B.Des', 'Diploma in Engineering', 'Polytechnic', 'Other']
+  },
+  'Masters/Post-Graduation': {
+    category: 'higher',
+    options: ['M.Tech/M.E.', 'M.Sc', 'M.Com', 'M.A', 'MBA/PGDM', 'MCA', 'M.Des', 'MS', 'Other']
+  },
+  'Accounting Degree': {
+    category: 'higher',
+    options: ['B.Com', 'B.Com (Hons.)', 'BBA in Finance', 'BBA in Accounting', 'B.Sc. in Accounting', 'Bachelor of Accounting / B.Acc.', 'BMS in Finance / Accounting', 'Other']
+  },
+  'Post Graduate Accounting & Finance': {
+    category: 'higher',
+    options: ['M.Com', 'M.Com in Accounting', 'M.Com in Finance', 'MBA in Finance', 'MBA in Accounting', 'M.Sc. in Accounting / Finance', 'Master of Accounting / M.Acc.', 'PG Diploma in Accounting', 'PG Diploma in Finance', 'Other']
+  },
+  'Professional Qualification': {
+    category: 'higher',
+    options: ['CA – Chartered Accountant', 'CMA – Cost and Management Accountant', 'CS – Company Secretary', 'ACCA', 'CPA – Certified Public Accountant', 'CFA – Chartered Financial Analyst', 'CIMA', 'CIA – Certified Internal Auditor', 'CGMA', 'Other']
+  },
+  'Accounting Certification': {
+    category: 'higher',
+    options: ['Certificate in Accounting', 'Certificate in Financial Accounting', 'Certificate in GST', 'Certificate in Tally', 'Certificate in Income Tax', 'Certificate in Payroll', 'DCA', 'PGDCA', 'Other Accounting Qualification', 'Other Finance Qualification', 'Other']
+  },
+  'Diploma': {
+    category: 'higher',
+    options: ['Diploma in Accounting', 'Diploma in Financial Accounting', 'Diploma in Taxation', 'Diploma in Computerized Accounting', 'Polytechnic / Technical Diploma', 'ITI', 'Other']
+  },
+  'Accounting Software': {
+    category: 'higher',
+    options: ['Tally / TallyPrime', 'Tally + GST', 'SAP FI', 'SAP FICO', 'QuickBooks', 'Zoho Books', 'BUSY Accounting Software', 'Oracle Financials', 'Sage Accounting', 'Advanced Excel for Accounting', 'MS Excel for Accounting', 'Other']
+  },
+  'Taxation': {
+    category: 'higher',
+    options: ['GST', 'GST Certification', 'Income Tax', 'Corporate Taxation', 'Tax Planning', 'Indirect Taxation', 'Transfer Pricing', 'Other']
+  },
+  'Audit': {
+    category: 'higher',
+    options: ['Financial Accounting', 'Advanced Financial Accounting', 'Corporate Accounting', 'Cost Accounting', 'Management Accounting', 'Auditing', 'Internal Audit', 'Forensic Accounting', 'Payroll Accounting', 'Financial Reporting', 'Accounts Payable (AP)', 'Accounts Receivable (AR)', 'Bank Reconciliation', 'Other']
+  },
+  'Finance': {
+    category: 'higher',
+    options: ['Financial Analysis', 'Financial Modeling', 'Corporate Finance', 'Investment Banking', 'Equity Research', 'Treasury Management', 'Risk Management', 'Financial Planning', 'Other']
+  },
+  'International Accounting': {
+    category: 'higher',
+    options: ['IFRS', 'Ind AS', 'US GAAP', 'International Accounting', 'Other']
+  },
+  'Doctorate / PhD': {
+    category: 'higher',
+    options: ['PhD in Computer Science', 'PhD in Management', 'PhD in Commerce/Finance', 'PhD in Economics', 'PhD in Engineering', 'PhD in Arts/Humanities', 'PhD in Science', 'Other']
+  },
+  'Other': {
+    category: 'higher',
+    options: ['Vocational Training', 'Certificate Course', 'Self-Taught / Bootcamp', 'Other']
+  }
+};
+
+export const DEFAULT_EDUCATION_TYPES = Object.keys(DEFAULT_EDUCATION_DATA);
+
+export default function EmployeesTab() {
+  const [activeSection, setActiveSectionState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sec = params.get('section') || params.get('subtab');
+    if (sec && ['auth', 'onboarding', 'overview'].includes(sec)) return sec;
+    const saved = localStorage.getItem('adminEmployeesSection');
+    if (saved && ['auth', 'onboarding', 'overview'].includes(saved)) return saved;
+    return 'onboarding';
+  });
+
+  const [authSubTab, setAuthSubTabState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sub = params.get('authSub');
+    if (sub && ['login', 'register'].includes(sub)) return sub;
+    const saved = localStorage.getItem('adminEmployeesAuthSub');
+    if (saved && ['login', 'register'].includes(saved)) return saved;
+    return 'login';
+  });
+
+  const [onboardingSubTab, setOnboardingSubTabState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const step = params.get('step');
+    if (step && ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'].includes(step)) return step;
+    const saved = localStorage.getItem('adminEmployeesOnboardingStep');
+    if (saved && ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'].includes(saved)) return saved;
+    return 'step1';
+  });
+
+  const setActiveSection = (newSec) => {
+    setActiveSectionState(newSec);
+    localStorage.setItem('adminEmployeesSection', newSec);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'employees');
+    params.set('section', newSec);
+    if (newSec === 'onboarding') {
+      params.set('step', onboardingSubTab);
+      params.delete('authSub');
+    } else if (newSec === 'auth') {
+      params.set('authSub', authSubTab);
+      params.delete('step');
+    } else {
+      params.delete('step');
+      params.delete('authSub');
+    }
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+  const setAuthSubTab = (newAuthSub) => {
+    setAuthSubTabState(newAuthSub);
+    localStorage.setItem('adminEmployeesAuthSub', newAuthSub);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'employees');
+    params.set('section', 'auth');
+    params.set('authSub', newAuthSub);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+  const setOnboardingSubTab = (newStep) => {
+    setOnboardingSubTabState(newStep);
+    localStorage.setItem('adminEmployeesOnboardingStep', newStep);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'employees');
+    params.set('section', 'onboarding');
+    params.set('step', newStep);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Function & Designation management state & Modal popup state
+  const [isFunctionsModalOpen, setIsFunctionsModalOpen] = useState(false);
+  const [selectedFunction, setSelectedFunction] = useState('IT & Software');
+  const [newFunctionName, setNewFunctionName] = useState('');
+  const [newRoleName, setNewRoleName] = useState('');
+
+  // Drag and Drop reordering state for functions
+  const [draggedFunctionIndex, setDraggedFunctionIndex] = useState(null);
+  const [dragOverFunctionIndex, setDragOverFunctionIndex] = useState(null);
+
+  // Total Experience Options management & Modal state
+  const [isExperienceModalOpen, setIsExperienceModalOpen] = useState(false);
+  const [newExperienceOption, setNewExperienceOption] = useState('');
+  const [draggedExpIndex, setDraggedExpIndex] = useState(null);
+  const [dragOverExpIndex, setDragOverExpIndex] = useState(null);
+
+  // Pre-visible Location Cities management & Modal state (Current & Preferred)
+  const [isLocationsModalOpen, setIsLocationsModalOpen] = useState(false);
+  const [newLocationCity, setNewLocationCity] = useState('');
+  const [locationFilterSearch, setLocationFilterSearch] = useState('');
+  const [draggedLocIndex, setDraggedLocIndex] = useState(null);
+  const [dragOverLocIndex, setDragOverLocIndex] = useState(null);
+
+  // Education & Courses/Boards management state & Modal state
+  const [isEducationModalOpen, setIsEducationModalOpen] = useState(false);
+  const [selectedEduType, setSelectedEduType] = useState('10th');
+  const [newEducationType, setNewEducationType] = useState('');
+  const [newEduCategory, setNewEduCategory] = useState('higher'); // 'higher' (course based) | 'school' (board based)
+  const [newEduOptionName, setNewEduOptionName] = useState('');
+  const [draggedEduIndex, setDraggedEduIndex] = useState(null);
+  const [dragOverEduIndex, setDragOverEduIndex] = useState(null);
+
+  // 1. Employee Register CMS State
+  const [registerConfig, setRegisterConfig] = useState({
+    modalTitle: 'Register',
+    modalSubtitle: '',
+    googleBtnText: 'Continue with Google',
+    dividerText: 'Or',
+    submitBtnText: 'Register now',
+    fields: {
+      name: { label: 'Full Name', placeholder: 'What is your name?', isRequired: true },
+      email: { label: 'Email ID', placeholder: 'Tell us your Email ID', isRequired: true },
+      mobile: { label: 'Mobile number', placeholder: 'Enter your mobile number', isRequired: true },
+      password: { label: 'Password', placeholder: 'Create a strong password', isRequired: true },
+      confirmPassword: { label: 'Re-enter password', placeholder: 'Confirm your password', isRequired: true }
+    }
+  });
+
+  // 2. Employee Login CMS State
+  const [loginConfig, setLoginConfig] = useState({
+    modalTitle: 'Employee Login',
+    googleBtnText: 'Continue with Google',
+    dividerText: 'Or with email',
+    submitBtnText: 'Login',
+    otpBtnText: 'Use OTP to Login',
+    fields: {
+      email: { label: 'Email ID', placeholder: 'Enter your active Email ID', isRequired: true },
+      password: { label: 'Password', placeholder: 'Enter your password', isRequired: true }
+    }
+  });
+
+  // 3. Employee Onboarding CMS State (All 6 Steps)
+  const [onboardingConfig, setOnboardingConfig] = useState({
+    header: {
+      title: 'Create your Profile'
+    },
+    buttons: {
+      nextBtnText: 'Save & Continue',
+      backBtnText: 'Back',
+      submitBtnText: 'Submit Profile'
+    },
+    step1: {
+      title: 'Basic Details',
+      functionsData: DEFAULT_FUNCTIONS_DATA,
+      experienceOptions: DEFAULT_EXPERIENCE_OPTIONS,
+      locationCities: DEFAULT_LOCATION_CITIES,
+      fields: {
+        firstName: { label: 'First Name', placeholder: 'Enter first name', isRequired: true },
+        lastName: { label: 'Last Name', placeholder: 'Enter last name', isRequired: false },
+        phone: { label: 'Phone Number', placeholder: 'Enter 10-digit mobile number', isRequired: true },
+        email: { label: 'Email (Read Only)', placeholder: 'Enter email address', isRequired: false },
+        industry: { label: 'Function', placeholder: 'Select Function', isRequired: true },
+        designation: { label: 'Designation / Role', placeholder: 'Select Designation / Role', isRequired: true },
+        totalExperience: { label: 'Total Experience', placeholder: 'Select Total Experience', isRequired: true },
+        location: { label: 'Current Location', placeholder: 'Select Current Location', isRequired: true },
+        preferredLocation: { label: 'Preferred Location', placeholder: 'Select Preferred Locations', isRequired: false },
+        brief: { label: 'Brief about yourself', placeholder: 'I am a passionate professional...', isRequired: false }
+      }
+    },
+    step2: {
+      title: 'Education',
+      subtitle: 'Details like course, university, and more, help recruiters identify your educational background',
+      addBtnText: 'Add +',
+      educationData: DEFAULT_EDUCATION_DATA,
+      educationTypes: DEFAULT_EDUCATION_TYPES,
+      fields: {
+        educationType: { label: 'Education', placeholder: 'Select education type', isRequired: true },
+        board: { label: 'Board', placeholder: 'Select board', isRequired: true },
+        endYear: { label: 'Passing out year', placeholder: 'Select passing out year', isRequired: true },
+        schoolMedium: { label: 'School medium', placeholder: 'Select medium', isRequired: true },
+        percentage: { label: 'Marks', placeholder: '% marks of 100 maximum', isRequired: true },
+        university: { label: 'University / Institute', placeholder: 'Enter University / Institute', isRequired: true },
+        course: { label: 'Course', placeholder: 'Select course', isRequired: true },
+        courseType: { label: 'Course type', placeholder: 'Select course type', isRequired: true },
+        startYear: { label: 'Starting year', placeholder: 'Select starting year', isRequired: true },
+        gradingSystem: { label: 'Grading system', placeholder: 'Select grading system', isRequired: false }
+      }
+    },
+    step3: {
+      title: 'Work Experience',
+      subtitle: 'Add details of your previous and current employment',
+      addBtnText: 'Add Experience +',
+      fresherLabel: 'I am a fresher (No Experience)',
+      fields: {
+        companyName: { label: 'Company Name', placeholder: 'Enter company name', isRequired: true },
+        jobTitle: { label: 'Job Title / Role', placeholder: 'Enter job title', isRequired: true },
+        employmentType: { label: 'Employment Type', placeholder: 'Select employment type', isRequired: true },
+        joiningDate: { label: 'Joining Date', placeholder: 'Select month & year', isRequired: true },
+        leavingDate: { label: 'Leaving Date', placeholder: 'Select month & year', isRequired: true },
+        currentCompany: { label: 'Currently working here', isRequired: false },
+        roleDescription: { label: 'Roles & Responsibilities', placeholder: 'Briefly describe your roles & responsibilities', isRequired: false },
+        noticePeriod: { label: 'Notice Period', placeholder: 'Select notice period', isRequired: false }
+      }
+    },
+    step4: {
+      title: 'Key Skills & Preferences',
+      subtitle: 'Highlight your key skills and preferences to find matching jobs',
+      fields: {
+        skills: { label: 'Key Skills', placeholder: 'Type skill and press Enter (e.g., React, Node.js)', isRequired: false },
+        currentSalary: { label: 'Current Annual CTC', placeholder: 'e.g. 5,00,000', isRequired: false },
+        expectedSalary: { label: 'Expected Annual CTC', placeholder: 'e.g. 7,50,000', isRequired: false },
+        noticePeriod: { label: 'Notice Period', placeholder: 'Select notice period', isRequired: false },
+        resumeHeadline: { label: 'Resume Headline', placeholder: 'Add a summary headline for your profile', isRequired: false }
+      }
+    },
+    step5: {
+      title: 'Documents & Media',
+      subtitle: 'Upload your resume, cover letter, and introductory video',
+      fields: {
+        resume: { label: 'Resume (PDF/DOCX)', placeholder: 'Upload PDF or DOCX (Max 5MB)', isRequired: true },
+        coverLetter: { label: 'Cover Letter', placeholder: 'Upload Cover Letter (PDF/DOCX)', isRequired: false },
+        introVideo: { label: 'Introductory Video', placeholder: 'Upload MP4/MOV or attach video link', isRequired: false }
+      }
+    },
+    step6: {
+      title: 'Final Review',
+      subtitle: 'Please review all the details you filled in before submitting.'
+    }
+  });
+
+  // Fetch Homepage, Register, Login & Onboarding Config on Mount
+  const fetchConfig = async () => {
     try {
       setLoading(true);
-      setError(null);
-      let queryParams = new URLSearchParams();
-      if (search) queryParams.append('search', search);
-      if (experienceFilter !== 'All') queryParams.append('experience', experienceFilter);
-
-      const res = await fetch(`${API_URL}/api/admin/employees?${queryParams.toString()}`);
+      const res = await fetch(`${API_URL}/api/homepage`);
       const data = await res.json();
       if (data.success) {
-        setEmployees(data.data || []);
-      } else {
-        setError(data.message || 'Failed to fetch employees');
+        if (data.data?.employeeRegister) {
+          setRegisterConfig(prev => ({
+            ...prev,
+            ...data.data.employeeRegister,
+            fields: {
+              ...prev.fields,
+              ...(data.data.employeeRegister.fields || {})
+            }
+          }));
+        }
+        if (data.data?.employeeLogin) {
+          setLoginConfig(prev => ({
+            ...prev,
+            ...data.data.employeeLogin,
+            fields: {
+              ...prev.fields,
+              ...(data.data.employeeLogin.fields || {})
+            }
+          }));
+        }
+        if (data.data?.employeeOnboarding) {
+          setOnboardingConfig(prev => ({
+            ...prev,
+            ...data.data.employeeOnboarding,
+            header: { ...prev.header, ...(data.data.employeeOnboarding.header || {}) },
+            buttons: { ...prev.buttons, ...(data.data.employeeOnboarding.buttons || {}) },
+            step1: {
+              ...prev.step1,
+              ...(data.data.employeeOnboarding.step1 || {}),
+              functionsData: (data.data.employeeOnboarding.step1?.functionsData && typeof data.data.employeeOnboarding.step1.functionsData === 'object' && Object.keys(data.data.employeeOnboarding.step1.functionsData).length > 0)
+                ? data.data.employeeOnboarding.step1.functionsData
+                : (prev.step1?.functionsData || DEFAULT_FUNCTIONS_DATA),
+              experienceOptions: (Array.isArray(data.data.employeeOnboarding.step1?.experienceOptions) && data.data.employeeOnboarding.step1.experienceOptions.length > 0)
+                ? data.data.employeeOnboarding.step1.experienceOptions
+                : (prev.step1?.experienceOptions || DEFAULT_EXPERIENCE_OPTIONS),
+              locationCities: (Array.isArray(data.data.employeeOnboarding.step1?.locationCities) && data.data.employeeOnboarding.step1.locationCities.length > 0)
+                ? data.data.employeeOnboarding.step1.locationCities
+                : (prev.step1?.locationCities || DEFAULT_LOCATION_CITIES),
+              fields: { ...prev.step1.fields, ...(data.data.employeeOnboarding.step1?.fields || {}) }
+            },
+            step2: {
+              ...prev.step2,
+              ...(data.data.employeeOnboarding.step2 || {}),
+              educationData: (data.data.employeeOnboarding.step2?.educationData && typeof data.data.employeeOnboarding.step2.educationData === 'object' && Object.keys(data.data.employeeOnboarding.step2.educationData).length > 0)
+                ? data.data.employeeOnboarding.step2.educationData
+                : (prev.step2?.educationData || DEFAULT_EDUCATION_DATA),
+              educationTypes: (Array.isArray(data.data.employeeOnboarding.step2?.educationTypes) && data.data.employeeOnboarding.step2.educationTypes.length > 0)
+                ? data.data.employeeOnboarding.step2.educationTypes
+                : (prev.step2?.educationTypes || DEFAULT_EDUCATION_TYPES),
+              fields: { ...prev.step2.fields, ...(data.data.employeeOnboarding.step2?.fields || {}) }
+            },
+            step3: {
+              ...prev.step3,
+              ...(data.data.employeeOnboarding.step3 || {}),
+              fields: { ...prev.step3.fields, ...(data.data.employeeOnboarding.step3?.fields || {}) }
+            },
+            step4: {
+              ...prev.step4,
+              ...(data.data.employeeOnboarding.step4 || {}),
+              fields: { ...prev.step4.fields, ...(data.data.employeeOnboarding.step4?.fields || {}) }
+            },
+            step5: {
+              ...prev.step5,
+              ...(data.data.employeeOnboarding.step5 || {}),
+              fields: { ...prev.step5.fields, ...(data.data.employeeOnboarding.step5?.fields || {}) }
+            },
+            step6: {
+              ...prev.step6,
+              ...(data.data.employeeOnboarding.step6 || {})
+            }
+          }));
+        }
       }
     } catch (err) {
-      console.error('Error fetching employees:', err);
-      setError('Unable to connect to server.');
+      console.error('Error fetching CMS config:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEmployees();
-  }, [experienceFilter]);
+    fetchConfig();
+  }, []);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    fetchEmployees();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'employees');
+    params.set('section', activeSection);
+    if (activeSection === 'onboarding') {
+      params.set('step', onboardingSubTab);
+      params.delete('authSub');
+    } else if (activeSection === 'auth') {
+      params.set('authSub', authSubTab);
+      params.delete('step');
+    } else {
+      params.delete('step');
+      params.delete('authSub');
+    }
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+
+    const handlePopState = () => {
+      const p = new URLSearchParams(window.location.search);
+      const sec = p.get('section') || p.get('subtab');
+      if (sec && ['auth', 'onboarding', 'overview'].includes(sec)) {
+        setActiveSectionState(sec);
+      }
+      const authSub = p.get('authSub');
+      if (authSub && ['login', 'register'].includes(authSub)) {
+        setAuthSubTabState(authSub);
+      }
+      const step = p.get('step');
+      if (step && ['step1', 'step2', 'step3', 'step4', 'step5', 'step6'].includes(step)) {
+        setOnboardingSubTabState(step);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeSection, authSubTab, onboardingSubTab]);
+
+  // Field change handler for Register
+  const handleFieldChange = (fieldKey, property, value) => {
+    setRegisterConfig(prev => ({
+      ...prev,
+      fields: {
+        ...prev.fields,
+        [fieldKey]: {
+          ...(prev.fields[fieldKey] || {}),
+          [property]: value
+        }
+      }
+    }));
   };
 
-  const handleViewEmployee = async (emp) => {
-    setSelectedEmployee(emp);
-    try {
-      setDetailLoading(true);
-      const res = await fetch(`${API_URL}/api/admin/employees/${emp._id || emp.id}`);
-      const data = await res.json();
-      if (data.success) {
-        setDetailEmployee(data.data);
-      } else {
-        setDetailEmployee(emp);
+  // Field change handler for Login
+  const handleLoginFieldChange = (fieldKey, property, value) => {
+    setLoginConfig(prev => ({
+      ...prev,
+      fields: {
+        ...prev.fields,
+        [fieldKey]: {
+          ...(prev.fields[fieldKey] || {}),
+          [property]: value
+        }
       }
-    } catch (err) {
-      console.error('Error fetching employee detail:', err);
-      setDetailEmployee(emp);
-    } finally {
-      setDetailLoading(false);
+    }));
+  };
+
+  // Mandatory toggle handler for Register
+  const handleMandatoryToggle = (fieldKey) => {
+    setRegisterConfig(prev => ({
+      ...prev,
+      fields: {
+        ...prev.fields,
+        [fieldKey]: {
+          ...(prev.fields[fieldKey] || {}),
+          isRequired: !prev.fields[fieldKey]?.isRequired
+        }
+      }
+    }));
+  };
+
+  // Onboarding field change handler
+  const handleOnboardingFieldChange = (stepKey, fieldKey, property, value) => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      [stepKey]: {
+        ...prev[stepKey],
+        fields: {
+          ...prev[stepKey]?.fields,
+          [fieldKey]: {
+            ...(prev[stepKey]?.fields?.[fieldKey] || {}),
+            [property]: value
+          }
+        }
+      }
+    }));
+  };
+
+  // Onboarding mandatory toggle handler
+  const handleOnboardingMandatoryToggle = (stepKey, fieldKey) => {
+    setOnboardingConfig(prev => {
+      const current = prev[stepKey]?.fields?.[fieldKey]?.isRequired;
+      return {
+        ...prev,
+        [stepKey]: {
+          ...prev[stepKey],
+          fields: {
+            ...prev[stepKey]?.fields,
+            [fieldKey]: {
+              ...(prev[stepKey]?.fields?.[fieldKey] || {}),
+              isRequired: !current
+            }
+          }
+        }
+      };
+    });
+  };
+
+  // Functions & Roles management handlers (Pure functional updates)
+  const handleAddFunction = () => {
+    const trimmed = newFunctionName.trim();
+    if (!trimmed) return;
+    setOnboardingConfig(prev => {
+      const currentFunctions = prev.step1?.functionsData || DEFAULT_FUNCTIONS_DATA;
+      if (currentFunctions[trimmed]) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          functionsData: {
+            ...currentFunctions,
+            [trimmed]: []
+          }
+        }
+      };
+    });
+    setSelectedFunction(trimmed);
+    setNewFunctionName('');
+  };
+
+  const handleDeleteFunction = (funcName) => {
+    setOnboardingConfig(prev => {
+      const currentFunctions = { ...(prev.step1?.functionsData || DEFAULT_FUNCTIONS_DATA) };
+      delete currentFunctions[funcName];
+      const remainingKeys = Object.keys(currentFunctions);
+      if (selectedFunction === funcName) {
+        setSelectedFunction(remainingKeys.length > 0 ? remainingKeys[0] : '');
+      }
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          functionsData: currentFunctions
+        }
+      };
+    });
+  };
+
+  const handleAddRole = () => {
+    const trimmed = newRoleName.trim();
+    if (!trimmed || !selectedFunction) return;
+    setOnboardingConfig(prev => {
+      const currentFunctions = prev.step1?.functionsData || DEFAULT_FUNCTIONS_DATA;
+      const currentRoles = currentFunctions[selectedFunction] || [];
+      if (currentRoles.includes(trimmed)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          functionsData: {
+            ...currentFunctions,
+            [selectedFunction]: [...currentRoles, trimmed]
+          }
+        }
+      };
+    });
+    setNewRoleName('');
+  };
+
+  const handleDeleteRole = (funcName, roleIndex) => {
+    setOnboardingConfig(prev => {
+      const currentFunctions = prev.step1?.functionsData || DEFAULT_FUNCTIONS_DATA;
+      const currentRoles = [...(currentFunctions[funcName] || [])];
+      currentRoles.splice(roleIndex, 1);
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          functionsData: {
+            ...currentFunctions,
+            [funcName]: currentRoles
+          }
+        }
+      };
+    });
+  };
+
+  const handleResetFunctions = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step1: {
+        ...prev.step1,
+        functionsData: DEFAULT_FUNCTIONS_DATA
+      }
+    }));
+    setSelectedFunction('IT & Software');
+  };
+
+  // Functions Drag & Drop Reordering handlers with preview
+  const handleFunctionDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedFunctionIndex(index);
+  };
+
+  const handleFunctionDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverFunctionIndex !== index) {
+      setDragOverFunctionIndex(index);
     }
   };
 
-  const experienceOptions = [
-    'All',
-    '0 - 1 Yrs',
-    '2 - 3 Yrs',
-    '4 - 6 Yrs',
-    '7 - 10 Yrs',
-    '11 - 15 Yrs',
-    '16 - 20 Yrs',
-    '21 - 25 Yrs',
-    '25+ yrs'
+  const handleFunctionDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedFunctionIndex === null || draggedFunctionIndex === dropIndex) {
+      setDraggedFunctionIndex(null);
+      setDragOverFunctionIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentFunctions = prev.step1?.functionsData || DEFAULT_FUNCTIONS_DATA;
+      const entries = Object.entries(currentFunctions);
+      const [draggedItem] = entries.splice(draggedFunctionIndex, 1);
+      entries.splice(dropIndex, 0, draggedItem);
+      const reordered = Object.fromEntries(entries);
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          functionsData: reordered
+        }
+      };
+    });
+
+    setDraggedFunctionIndex(null);
+    setDragOverFunctionIndex(null);
+  };
+
+  const handleFunctionDragEnd = () => {
+    setDraggedFunctionIndex(null);
+    setDragOverFunctionIndex(null);
+  };
+
+  // Total Experience Options management & Drag handlers
+  const handleAddExperienceOption = () => {
+    const trimmed = newExperienceOption.trim();
+    if (!trimmed) return;
+    setOnboardingConfig(prev => {
+      const currentList = prev.step1?.experienceOptions || DEFAULT_EXPERIENCE_OPTIONS;
+      if (currentList.includes(trimmed)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          experienceOptions: [...currentList, trimmed]
+        }
+      };
+    });
+    setNewExperienceOption('');
+  };
+
+  const handleDeleteExperienceOption = (indexToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step1?.experienceOptions || DEFAULT_EXPERIENCE_OPTIONS)];
+      currentList.splice(indexToDelete, 1);
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          experienceOptions: currentList
+        }
+      };
+    });
+  };
+
+  const handleResetExperienceOptions = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step1: {
+        ...prev.step1,
+        experienceOptions: DEFAULT_EXPERIENCE_OPTIONS
+      }
+    }));
+  };
+
+  const handleExpDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedExpIndex(index);
+  };
+
+  const handleExpDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverExpIndex !== index) {
+      setDragOverExpIndex(index);
+    }
+  };
+
+  const handleExpDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedExpIndex === null || draggedExpIndex === dropIndex) {
+      setDraggedExpIndex(null);
+      setDragOverExpIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step1?.experienceOptions || DEFAULT_EXPERIENCE_OPTIONS)];
+      const [draggedItem] = currentList.splice(draggedExpIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          experienceOptions: currentList
+        }
+      };
+    });
+
+    setDraggedExpIndex(null);
+    setDragOverExpIndex(null);
+  };
+
+  const handleExpDragEnd = () => {
+    setDraggedExpIndex(null);
+    setDragOverExpIndex(null);
+  };
+
+  // Location Cities management (Current & Preferred) & Drag handlers
+  const handleAddLocationCity = (cityNameToAdd) => {
+    const raw = (typeof cityNameToAdd === 'string' ? cityNameToAdd : newLocationCity).trim();
+    if (!raw) return;
+
+    if (raw.toLowerCase() === 'anywhere in india') {
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = prev.step1?.locationCities || DEFAULT_LOCATION_CITIES;
+      if (currentList.some(c => c.toLowerCase() === raw.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          locationCities: [...currentList, raw]
+        }
+      };
+    });
+    setNewLocationCity('');
+  };
+
+  const handleDeleteLocationCity = (indexToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step1?.locationCities || DEFAULT_LOCATION_CITIES)];
+      const target = currentList[indexToDelete];
+      if (target && target.toLowerCase() === 'anywhere in india') {
+        return prev;
+      }
+      currentList.splice(indexToDelete, 1);
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          locationCities: currentList
+        }
+      };
+    });
+  };
+
+  const handleResetLocationCities = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step1: {
+        ...prev.step1,
+        locationCities: DEFAULT_LOCATION_CITIES
+      }
+    }));
+  };
+
+  const handleLocDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedLocIndex(index);
+  };
+
+  const handleLocDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverLocIndex !== index) {
+      setDragOverLocIndex(index);
+    }
+  };
+
+  const handleLocDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedLocIndex === null || draggedLocIndex === dropIndex) {
+      setDraggedLocIndex(null);
+      setDragOverLocIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step1?.locationCities || DEFAULT_LOCATION_CITIES)];
+      const [draggedItem] = currentList.splice(draggedLocIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step1: {
+          ...prev.step1,
+          locationCities: currentList
+        }
+      };
+    });
+
+    setDraggedLocIndex(null);
+    setDragOverLocIndex(null);
+  };
+
+  const handleLocDragEnd = () => {
+    setDraggedLocIndex(null);
+    setDragOverLocIndex(null);
+  };
+
+  // Education Types & Linked Courses / Boards management (Step 2) Handlers
+  const handleAddEducationType = () => {
+    const trimmed = newEducationType.trim();
+    if (!trimmed) return;
+    setOnboardingConfig(prev => {
+      const currentEduData = prev.step2?.educationData || DEFAULT_EDUCATION_DATA;
+      if (currentEduData[trimmed]) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          educationData: {
+            ...currentEduData,
+            [trimmed]: {
+              category: newEduCategory,
+              options: []
+            }
+          },
+          educationTypes: [...Object.keys(currentEduData), trimmed]
+        }
+      };
+    });
+    setSelectedEduType(trimmed);
+    setNewEducationType('');
+  };
+
+  const handleToggleEduCategory = (eduKey) => {
+    setOnboardingConfig(prev => {
+      const currentEduData = { ...(prev.step2?.educationData || DEFAULT_EDUCATION_DATA) };
+      if (!currentEduData[eduKey]) return prev;
+      const currentCat = currentEduData[eduKey].category || 'higher';
+      const nextCat = currentCat === 'school' ? 'higher' : 'school';
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          educationData: {
+            ...currentEduData,
+            [eduKey]: {
+              ...currentEduData[eduKey],
+              category: nextCat
+            }
+          }
+        }
+      };
+    });
+  };
+
+  const handleDeleteEducationType = (eduKey) => {
+    setOnboardingConfig(prev => {
+      const currentEduData = { ...(prev.step2?.educationData || DEFAULT_EDUCATION_DATA) };
+      delete currentEduData[eduKey];
+      const remainingKeys = Object.keys(currentEduData);
+      if (selectedEduType === eduKey) {
+        setSelectedEduType(remainingKeys.length > 0 ? remainingKeys[0] : '');
+      }
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          educationData: currentEduData,
+          educationTypes: remainingKeys
+        }
+      };
+    });
+  };
+
+  const handleAddEduOption = () => {
+    const trimmed = newEduOptionName.trim();
+    if (!trimmed || !selectedEduType) return;
+    setOnboardingConfig(prev => {
+      const currentEduData = prev.step2?.educationData || DEFAULT_EDUCATION_DATA;
+      const targetObj = currentEduData[selectedEduType] || { category: 'higher', options: [] };
+      const currentOpts = targetObj.options || [];
+      if (currentOpts.some(o => o.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          educationData: {
+            ...currentEduData,
+            [selectedEduType]: {
+              ...targetObj,
+              options: [...currentOpts, trimmed]
+            }
+          }
+        }
+      };
+    });
+    setNewEduOptionName('');
+  };
+
+  const handleDeleteEduOption = (eduKey, optIndex) => {
+    setOnboardingConfig(prev => {
+      const currentEduData = prev.step2?.educationData || DEFAULT_EDUCATION_DATA;
+      const targetObj = currentEduData[eduKey] || { category: 'higher', options: [] };
+      const currentOpts = [...(targetObj.options || [])];
+      currentOpts.splice(optIndex, 1);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          educationData: {
+            ...currentEduData,
+            [eduKey]: {
+              ...targetObj,
+              options: currentOpts
+            }
+          }
+        }
+      };
+    });
+  };
+
+  const handleResetEducationData = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step2: {
+        ...prev.step2,
+        educationData: DEFAULT_EDUCATION_DATA,
+        educationTypes: Object.keys(DEFAULT_EDUCATION_DATA)
+      }
+    }));
+    setSelectedEduType('10th');
+  };
+
+  const handleEduDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedEduIndex(index);
+  };
+
+  const handleEduDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverEduIndex !== index) {
+      setDragOverEduIndex(index);
+    }
+  };
+
+  const handleEduDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedEduIndex === null || draggedEduIndex === dropIndex) {
+      setDraggedEduIndex(null);
+      setDragOverEduIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentEduData = prev.step2?.educationData || DEFAULT_EDUCATION_DATA;
+      const entries = Object.entries(currentEduData);
+      const [draggedItem] = entries.splice(draggedEduIndex, 1);
+      entries.splice(dropIndex, 0, draggedItem);
+      const reordered = Object.fromEntries(entries);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          educationData: reordered,
+          educationTypes: Object.keys(reordered)
+        }
+      };
+    });
+
+    setDraggedEduIndex(null);
+    setDragOverEduIndex(null);
+  };
+
+  const handleEduDragEnd = () => {
+    setDraggedEduIndex(null);
+    setDragOverEduIndex(null);
+  };
+
+  // Save Config to Backend
+  const handleSave = async (customOnboarding) => {
+    try {
+      setSaving(true);
+      setToastMessage('');
+      setErrorMessage('');
+
+      const targetOnboarding = customOnboarding || onboardingConfig;
+
+      const res = await fetch(`${API_URL}/api/homepage`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeRegister: registerConfig,
+          employeeLogin: loginConfig,
+          employeeOnboarding: targetOnboarding
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setToastMessage('Employee controls & text settings saved successfully!');
+        setTimeout(() => setToastMessage(''), 4000);
+      } else {
+        setErrorMessage(data.message || 'Failed to save settings.');
+      }
+    } catch (err) {
+      console.error('Error saving config:', err);
+      setErrorMessage('Unable to connect to server.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sidebarSections = [
+    { id: 'auth', label: 'Authentication', icon: ShieldCheck },
+    { id: 'onboarding', label: 'Onboarding', icon: UserCheck },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard }
   ];
 
-  const currentEmp = detailEmployee || selectedEmployee;
+  const fieldKeys = [
+    { key: 'name', title: 'Full Name' },
+    { key: 'email', title: 'Email ID' },
+    { key: 'mobile', title: 'Mobile Number' },
+    { key: 'password', title: 'Password' },
+    { key: 'confirmPassword', title: 'Confirm Password' }
+  ];
+
+  const loginFieldKeys = [
+    { key: 'email', title: 'Email ID' },
+    { key: 'password', title: 'Password' }
+  ];
+
+  const onboardingSteps = [
+    { id: 'step1', stepNumber: 'Step 1', title: 'Basic Details', icon: Users },
+    { id: 'step2', stepNumber: 'Step 2', title: 'Education', icon: GraduationCap },
+    { id: 'step3', stepNumber: 'Step 3', title: 'Work Experience', icon: Briefcase },
+    { id: 'step4', stepNumber: 'Step 4', title: 'Key Skills', icon: Award },
+    { id: 'step5', stepNumber: 'Step 5', title: 'Documents & Media', icon: FileUp },
+    { id: 'step6', stepNumber: 'Step 6', title: 'Final Review', icon: CheckSquare }
+  ];
+
+  const step1FieldKeys = [
+    { key: 'firstName', title: 'First Name' },
+    { key: 'lastName', title: 'Last Name' },
+    { key: 'phone', title: 'Phone Number' },
+    { key: 'email', title: 'Email (Read Only)' },
+    { key: 'industry', title: 'Function' },
+    { key: 'designation', title: 'Designation / Role' },
+    { key: 'totalExperience', title: 'Total Experience' },
+    { key: 'location', title: 'Current Location' },
+    { key: 'preferredLocation', title: 'Preferred Location' },
+    { key: 'brief', title: 'Brief about yourself' }
+  ];
+
+  const step2FieldKeys = [
+    { key: 'educationType', title: 'Education Type' },
+    { key: 'board', title: 'Board' },
+    { key: 'endYear', title: 'Passing Out Year' },
+    { key: 'schoolMedium', title: 'School Medium' },
+    { key: 'percentage', title: 'Marks / Percentage' },
+    { key: 'university', title: 'University / Institute' },
+    { key: 'course', title: 'Course' },
+    { key: 'courseType', title: 'Course Type' },
+    { key: 'startYear', title: 'Starting Year' },
+    { key: 'gradingSystem', title: 'Grading System' }
+  ];
+
+  const step3FieldKeys = [
+    { key: 'companyName', title: 'Company Name' },
+    { key: 'jobTitle', title: 'Job Title / Role' },
+    { key: 'employmentType', title: 'Employment Type' },
+    { key: 'joiningDate', title: 'Joining Date' },
+    { key: 'leavingDate', title: 'Leaving Date' },
+    { key: 'currentCompany', title: 'Currently Working Here' },
+    { key: 'roleDescription', title: 'Roles & Responsibilities' },
+    { key: 'noticePeriod', title: 'Notice Period' }
+  ];
+
+  const step4FieldKeys = [
+    { key: 'skills', title: 'Key Skills' },
+    { key: 'currentSalary', title: 'Current Annual CTC' },
+    { key: 'expectedSalary', title: 'Expected Annual CTC' },
+    { key: 'noticePeriod', title: 'Notice Period' },
+    { key: 'resumeHeadline', title: 'Resume Headline' }
+  ];
+
+  const step5FieldKeys = [
+    { key: 'resume', title: 'Resume (PDF/DOCX)' },
+    { key: 'coverLetter', title: 'Cover Letter' },
+    { key: 'introVideo', title: 'Introductory Video' }
+  ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-            <Users className="w-8 h-8 text-emerald-600" />
-            Registered Employees
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Browse and inspect all registered job seekers, their profile qualifications, resumes, and job application history.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 font-bold rounded-xl text-sm border border-emerald-100">
-            {employees.length} Candidates
-          </span>
-          <button
-            onClick={fetchEmployees}
-            disabled={loading}
-            className="p-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
-            title="Refresh list"
-          >
-            <RefreshCw className={`w-4 h-4 text-emerald-600 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Filter & Search Bar */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-        <form onSubmit={handleSearchSubmit} className="flex-1 w-full flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by candidate name, email, phone, designation, or city..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-5 py-2.5 bg-emerald-600 text-white font-semibold text-sm rounded-xl hover:bg-emerald-700 transition-colors shadow-sm shrink-0"
-          >
-            Search
-          </button>
-        </form>
-
-        <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <span>Experience:</span>
-          </div>
-          <select
-            value={experienceFilter}
-            onChange={(e) => setExperienceFilter(e.target.value)}
-            className="px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:border-emerald-500 transition-all"
-          >
-            {experienceOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt === 'All' ? 'All Experience Levels' : opt}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
-          {error}
+    <div className="flex-1 w-full h-full flex flex-col md:flex-row overflow-hidden bg-[#f8fafc]">
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-8 z-[100] bg-emerald-700 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
+          <span className="text-xs font-bold">{toastMessage}</span>
         </div>
       )}
 
-      {/* Employees Data Table */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="py-20 text-center text-gray-400 text-sm flex flex-col items-center justify-center gap-3">
-            <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
-            <span>Loading registered employees...</span>
-          </div>
-        ) : employees.length === 0 ? (
-          <div className="py-20 text-center text-gray-400 text-sm">
-            No employees found matching your criteria.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/75 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-6">Candidate</th>
-                  <th className="py-3.5 px-6">Contact Details</th>
-                  <th className="py-3.5 px-6">Designation & Experience</th>
-                  <th className="py-3.5 px-6">Location</th>
-                  <th className="py-3.5 px-6 text-center">Applications</th>
-                  <th className="py-3.5 px-6">Registered Date</th>
-                  <th className="py-3.5 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-sm">
-                {employees.map((emp) => (
-                  <tr key={emp._id || emp.id} className="hover:bg-emerald-50/40 transition-colors group">
-                    {/* Candidate */}
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-sm flex items-center justify-center shrink-0">
-                          {emp.avatar ? (
-                            <img src={emp.avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            (emp.name ? emp.name.charAt(0).toUpperCase() : 'U')
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-900 leading-tight">{emp.name || 'Unnamed'}</p>
-                          <span className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            emp.isFresher 
-                              ? 'bg-blue-50 text-blue-700 border border-blue-100' 
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                          }`}>
-                            {emp.isFresher ? 'Fresher' : 'Experienced'}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
+      {errorMessage && (
+        <div className="fixed top-20 right-8 z-[100] bg-red-600 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="w-5 h-5 text-red-200 shrink-0" />
+          <span className="text-xs font-bold">{errorMessage}</span>
+        </div>
+      )}
 
-                    {/* Contact */}
-                    <td className="py-4 px-6 text-xs text-gray-600 space-y-1">
-                      <div className="flex items-center gap-1.5 font-medium text-gray-800">
-                        <Mail className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{emp.email}</span>
-                      </div>
-                      {emp.mobile && (
-                        <div className="flex items-center gap-1.5 text-gray-500">
-                          <Phone className="w-3.5 h-3.5 text-gray-400" />
-                          <span>{emp.mobile}</span>
-                        </div>
-                      )}
-                    </td>
+      {/* Left Sidebar */}
+      <aside className="w-full md:w-64 lg:w-72 shrink-0 bg-white border-r border-gray-200/80 p-5 lg:p-6 flex flex-col gap-6 h-full overflow-y-auto">
+        <div className="pb-4 border-b border-gray-100">
+          <h2 className="text-lg font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+            <Users className="w-5 h-5 text-emerald-600" />
+            Employees
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Authentication & Onboarding Controls
+          </p>
+        </div>
 
-                    {/* Designation & Experience */}
-                    <td className="py-4 px-6">
-                      <p className="font-semibold text-gray-900 text-xs">{emp.designation || 'Not specified'}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{emp.totalExperience || '0 Yrs'}</p>
-                    </td>
-
-                    {/* Location */}
-                    <td className="py-4 px-6 text-xs">
-                      <div className="flex items-center gap-1 font-medium text-gray-800">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>{emp.location || 'Not set'}</span>
-                      </div>
-                      {emp.preferredLocation && (
-                        <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[150px]" title={emp.preferredLocation}>
-                          Pref: {emp.preferredLocation}
-                        </p>
-                      )}
-                    </td>
-
-                    {/* Applications */}
-                    <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 font-bold text-xs border border-purple-100">
-                        {emp.applicationsCount || 0} applied
-                      </span>
-                    </td>
-
-                    {/* Registered Date */}
-                    <td className="py-4 px-6 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{new Date(emp.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      {emp.lastLogin && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          Active: {new Date(emp.lastLogin).toLocaleDateString()}
-                        </p>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => handleViewEmployee(emp)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-semibold text-xs rounded-lg transition-colors border border-emerald-200"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View Profile
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Slide-over Profile Details Drawer / Modal */}
-      {selectedEmployee && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-end animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl bg-white h-full shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-right duration-300">
-            {/* Drawer Header */}
-            <div className="p-6 border-b border-gray-200 bg-white sticky top-0 z-20 flex items-start justify-between shadow-xs">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
-                  {currentEmp.avatar ? (
-                    <img src={currentEmp.avatar} alt="" className="w-full h-full rounded-2xl object-cover" />
-                  ) : (
-                    (currentEmp.name ? currentEmp.name.charAt(0).toUpperCase() : 'U')
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-gray-900">{currentEmp.name || 'Candidate Profile'}</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">{currentEmp.designation || 'Job Seeker'} • {currentEmp.totalExperience || '0 Yrs experience'}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                      {currentEmp.isFresher ? 'Fresher' : 'Experienced'}
-                    </span>
-                    {currentEmp.location && (
-                      <span className="text-[11px] text-gray-500 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-emerald-600" /> {currentEmp.location}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+        <nav className="space-y-1.5 flex-1">
+          {sidebarSections.map(section => {
+            const Icon = section.icon;
+            const isActive = activeSection === section.id;
+            return (
               <button
-                onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors"
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                  isActive
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/90 shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-transparent'
+                }`}
               >
-                <X className="w-5 h-5" />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700' : 'text-gray-400'}`} />
+                <span>{section.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* Right Content Area */}
+      <main className="flex-1 h-full overflow-y-auto p-6 lg:p-8 space-y-8">
+
+        {/* 1. Authentication Section */}
+        {activeSection === 'auth' && (
+          <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200">
+            
+            {/* Top Sub-Navigation Tabs */}
+            <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-gray-200/80 shadow-xs w-fit">
+              <button
+                type="button"
+                onClick={() => setAuthSubTab('login')}
+                className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  authSubTab === 'login'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Login</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthSubTab('register')}
+                className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  authSubTab === 'register'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Register</span>
               </button>
             </div>
 
-            {/* Drawer Body */}
-            <div className="p-6 space-y-6 flex-1">
-              {detailLoading && (
-                <div className="py-4 text-center text-xs text-emerald-600 font-medium">
-                  Loading latest application history...
-                </div>
-              )}
-
-              {/* Contact Information Card */}
-              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Contact & Account Details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            {/* SubTab 1: REGISTER */}
+            {authSubTab === 'register' && (
+              <div className="space-y-8 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
                   <div>
-                    <span className="text-gray-500 block">Email Address</span>
-                    <span className="font-semibold text-gray-900 select-all">{currentEmp.email}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Mobile Number</span>
-                    <span className="font-semibold text-gray-900">{currentEmp.mobile || 'Not provided'}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Current Location</span>
-                    <span className="font-semibold text-gray-900">{currentEmp.location || 'Not provided'}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Preferred Job Location</span>
-                    <span className="font-semibold text-gray-900">{currentEmp.preferredLocation || 'Anywhere in India'}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Registered On</span>
-                    <span className="font-semibold text-gray-900">{new Date(currentEmp.createdAt).toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Last Active / Login</span>
-                    <span className="font-semibold text-gray-900">
-                      {currentEmp.lastLogin ? new Date(currentEmp.lastLogin).toLocaleString() : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Brief / About */}
-              {currentEmp.brief && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">About / Summary</h3>
-                  <p className="text-xs text-gray-700 bg-emerald-50/40 p-3.5 rounded-xl border border-emerald-100/60 leading-relaxed">
-                    {currentEmp.brief}
-                  </p>
-                </div>
-              )}
-
-              {/* Attached Documents & Media */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Documents & Media</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Resume */}
-                  <div className="p-3.5 bg-white border border-gray-200 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <FileText className="w-5 h-5 text-emerald-600" />
-                      <div>
-                        <p className="text-xs font-bold text-gray-900">Resume / CV</p>
-                        <p className="text-[11px] text-gray-500">{currentEmp.resume ? 'Uploaded' : 'Not uploaded'}</p>
-                      </div>
-                    </div>
-                    {currentEmp.resume && (
-                      <a
-                        href={currentEmp.resume}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1"
-                      >
-                        View <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
+                    <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
+                      <FileText className="w-7 h-7 text-emerald-600" />
+                      Employee Register Page Controls
+                    </h1>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Customize text labels, placeholders, and toggle mandatory (<span className="text-red-500 font-bold">*</span>) fields for candidate registration.
+                    </p>
                   </div>
 
-                  {/* Intro Video */}
-                  <div className="p-3.5 bg-white border border-gray-200 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <Video className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="text-xs font-bold text-gray-900">Intro Video</p>
-                        <p className="text-[11px] text-gray-500">{currentEmp.introVideo ? 'Available' : 'None'}</p>
-                      </div>
-                    </div>
-                    {currentEmp.introVideo && (
-                      <a
-                        href={currentEmp.introVideo}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1"
-                      >
-                        Watch <ExternalLink className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Qualifications / Education */}
-              {(() => {
-                const qualificationsList = Array.isArray(currentEmp.qualifications) && currentEmp.qualifications.length > 0
-                  ? currentEmp.qualifications
-                  : Array.isArray(currentEmp.education) && currentEmp.education.length > 0
-                    ? currentEmp.education
-                    : Array.isArray(currentEmp.educationDetails) && currentEmp.educationDetails.length > 0
-                      ? currentEmp.educationDetails
-                      : Array.isArray(currentEmp.professionalDetails?.qualifications)
-                        ? currentEmp.professionalDetails.qualifications
-                        : [];
-
-                return (
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <GraduationCap className="w-4 h-4 text-emerald-600" />
-                      Education & Qualifications ({qualificationsList.length})
-                    </h3>
-                    {qualificationsList.length === 0 ? (
-                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center text-xs text-gray-400">
-                        No education details provided by candidate yet.
-                      </div>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || loading}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : (
-                      <div className="space-y-3">
-                        {qualificationsList.map((q, idx) => {
-                          const isSchool = q.educationType === '10th' || q.educationType === '12th';
-                          const title = isSchool
-                            ? (q.educationType === '12th' ? 'Class XII (Senior Secondary)' : 'Class X (Secondary)')
-                            : (q.course || q.degree || q.name || q.educationType || 'Higher Education');
-                          const institute = isSchool
-                            ? (q.board ? `${q.board} Board` : 'Board not specified')
-                            : (q.university || q.institution || q.college || 'Institution not specified');
+                      <Save className="w-4 h-4" />
+                    )}
+                    <span>Save Register Settings</span>
+                  </button>
+                </div>
 
-                          return (
-                            <div key={idx} className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs space-y-2 text-xs">
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="font-bold text-gray-900 text-sm">{title}</p>
-                                    {q.isPrimary && (
-                                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200">
-                                        Primary
-                                      </span>
+                {loading ? (
+                  <div className="py-20 text-center text-gray-400 text-sm flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin" />
+                    <span>Loading registration controls...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="lg:col-span-7 space-y-6">
+                      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-emerald-600" />
+                          Modal Header & Button Texts
+                        </h3>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Modal Title</label>
+                            <input
+                              type="text"
+                              value={registerConfig.modalTitle || ''}
+                              onChange={(e) => setRegisterConfig(prev => ({ ...prev, modalTitle: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Google Button Text</label>
+                            <input
+                              type="text"
+                              value={registerConfig.googleBtnText || ''}
+                              onChange={(e) => setRegisterConfig(prev => ({ ...prev, googleBtnText: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Submit Button Text</label>
+                            <input
+                              type="text"
+                              value={registerConfig.submitBtnText || ''}
+                              onChange={(e) => setRegisterConfig(prev => ({ ...prev, submitBtnText: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Divider Text</label>
+                            <input
+                              type="text"
+                              value={registerConfig.dividerText || ''}
+                              onChange={(e) => setRegisterConfig(prev => ({ ...prev, dividerText: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-6">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                              <Lock className="w-4 h-4 text-emerald-600" />
+                              Registration Fields Text Controls
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">Customize field labels, placeholders, and toggle mandatory status.</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {fieldKeys.map(item => {
+                            const fieldData = registerConfig.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: true };
+                            const isReq = fieldData.isRequired !== false;
+                            return (
+                              <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                    {item.title}
+                                    {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMandatoryToggle(item.key)}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                      isReq
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                    }`}
+                                  >
+                                    {isReq ? (
+                                      <>
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                        Mandatory (*)
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                        Optional
+                                      </>
                                     )}
-                                    {q.educationType && !isSchool && (
-                                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded-full">
-                                        {q.educationType}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-gray-700 font-medium mt-1 flex items-center gap-1.5">
-                                    <Building className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                    {institute}
-                                  </p>
+                                  </button>
                                 </div>
 
-                                {(q.percentage || q.gradingSystem) && (
-                                  <div className="text-right shrink-0">
-                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg font-bold text-xs border border-emerald-100 block">
-                                      {q.percentage ? `${q.percentage}%` : q.gradingSystem}
-                                    </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                    <input
+                                      type="text"
+                                      value={fieldData.label || ''}
+                                      onChange={(e) => handleFieldChange(item.key, 'label', e.target.value)}
+                                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                    />
                                   </div>
+
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                    <input
+                                      type="text"
+                                      value={fieldData.placeholder || ''}
+                                      onChange={(e) => handleFieldChange(item.key, 'placeholder', e.target.value)}
+                                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-5 space-y-4">
+                      <div className="sticky top-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Modal Preview</span>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Real-time</span>
+                        </div>
+
+                        <div className="bg-white rounded-3xl border border-gray-200 shadow-xl p-6 space-y-5 text-left">
+                          <div>
+                            <h2 className="text-xl font-bold text-gray-900">{registerConfig.modalTitle || 'Register'}</h2>
+                          </div>
+
+                          <div className="py-2.5 px-4 border border-gray-200 rounded-full text-xs font-bold text-gray-700 flex items-center justify-center gap-2 bg-gray-50/50">
+                            <span>🌐</span> {registerConfig.googleBtnText || 'Continue with Google'}
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                            <div className="flex-1 h-px bg-gray-200"></div>
+                            <span className="uppercase tracking-widest">{registerConfig.dividerText || 'Or'}</span>
+                            <div className="flex-1 h-px bg-gray-200"></div>
+                          </div>
+
+                          <div className="space-y-3 text-xs">
+                            {fieldKeys.map(item => {
+                              const fData = registerConfig.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: true };
+                              return (
+                                <div key={item.key} className="space-y-1">
+                                  <label className="block font-bold text-gray-800">
+                                    {fData.label}
+                                    {fData.isRequired && (
+                                      <span className="text-red-500 font-bold ml-1">*</span>
+                                    )}
+                                  </label>
+                                  <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-gray-400 text-xs">
+                                    {fData.placeholder || 'Enter value...'}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="pt-2">
+                            <div className="py-3 bg-emerald-600 text-white font-bold text-xs text-center rounded-full shadow-md">
+                              {registerConfig.submitBtnText || 'Register now'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SubTab 2: LOGIN */}
+            {authSubTab === 'login' && (
+              <div className="space-y-8 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
+                  <div>
+                    <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
+                      <LogIn className="w-7 h-7 text-emerald-600" />
+                      Employee Login Page Controls
+                    </h1>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Customize text labels, placeholders, and button texts for candidate login. Email and Password are mandatory by default (<span className="text-red-500 font-bold">*</span>).
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || loading}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    <span>Save Login Settings</span>
+                  </button>
+                </div>
+
+                {loading ? (
+                  <div className="py-20 text-center text-gray-400 text-sm flex items-center justify-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin" />
+                    <span>Loading login controls...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="lg:col-span-7 space-y-6">
+                      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-emerald-600" />
+                          Modal Header & Button Texts
+                        </h3>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Modal Title</label>
+                            <input
+                              type="text"
+                              value={loginConfig.modalTitle || ''}
+                              onChange={(e) => setLoginConfig(prev => ({ ...prev, modalTitle: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Google Button Text</label>
+                            <input
+                              type="text"
+                              value={loginConfig.googleBtnText || ''}
+                              onChange={(e) => setLoginConfig(prev => ({ ...prev, googleBtnText: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Submit Button Text</label>
+                            <input
+                              type="text"
+                              value={loginConfig.submitBtnText || ''}
+                              onChange={(e) => setLoginConfig(prev => ({ ...prev, submitBtnText: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-gray-700 mb-1">Divider Text</label>
+                            <input
+                              type="text"
+                              value={loginConfig.dividerText || ''}
+                              onChange={(e) => setLoginConfig(prev => ({ ...prev, dividerText: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="block font-bold text-gray-700 mb-1">OTP Button Text</label>
+                            <input
+                              type="text"
+                              value={loginConfig.otpBtnText || ''}
+                              onChange={(e) => setLoginConfig(prev => ({ ...prev, otpBtnText: e.target.value }))}
+                              placeholder="Use OTP to Login"
+                              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-6">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                              <Lock className="w-4 h-4 text-emerald-600" />
+                              Login Fields Text Controls
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">Customize text labels and placeholder texts for login inputs. Mandatory by default (<span className="text-red-500 font-bold">*</span>).</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {loginFieldKeys.map(item => {
+                            const fieldData = loginConfig.fields?.[item.key] || { label: item.title, placeholder: '' };
+                            return (
+                              <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                    {item.title}
+                                    <span className="text-red-500 text-sm font-bold">*</span>
+                                  </span>
+
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Mandatory by default
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                    <input
+                                      type="text"
+                                      value={fieldData.label || ''}
+                                      onChange={(e) => handleLoginFieldChange(item.key, 'label', e.target.value)}
+                                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                    <input
+                                      type="text"
+                                      value={fieldData.placeholder || ''}
+                                      onChange={(e) => handleLoginFieldChange(item.key, 'placeholder', e.target.value)}
+                                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div className="lg:col-span-5 space-y-4">
+                      <div className="sticky top-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Modal Preview</span>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Real-time</span>
+                        </div>
+
+                        <div className="bg-white rounded-3xl border border-gray-200 shadow-xl p-6 space-y-5 text-left">
+                          <div>
+                            <h2 className="text-xl font-bold text-gray-900">{loginConfig.modalTitle || 'Employee Login'}</h2>
+                          </div>
+
+                          <div className="py-2.5 px-4 border border-gray-200 rounded-full text-xs font-bold text-gray-700 flex items-center justify-center gap-2 bg-gray-50/50">
+                            <span>🌐</span> {loginConfig.googleBtnText || 'Continue with Google'}
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                            <div className="flex-1 h-px bg-gray-200"></div>
+                            <span className="uppercase tracking-widest">{loginConfig.dividerText || 'Or with email'}</span>
+                            <div className="flex-1 h-px bg-gray-200"></div>
+                          </div>
+
+                          <div className="space-y-3 text-xs">
+                            {loginFieldKeys.map(item => {
+                              const fData = loginConfig.fields?.[item.key] || { label: item.title, placeholder: '' };
+                              return (
+                                <div key={item.key} className="space-y-1">
+                                  <label className="block font-bold text-gray-800">
+                                    {fData.label}
+                                    <span className="text-red-500 font-bold ml-1">*</span>
+                                  </label>
+                                  <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-gray-400 text-xs">
+                                    {fData.placeholder || 'Enter value...'}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="pt-2 space-y-3">
+                            <div className="py-3 bg-emerald-800 text-white font-bold text-xs text-center rounded-full shadow-md">
+                              {loginConfig.submitBtnText || 'Login'}
+                            </div>
+
+                            <div className="text-center">
+                              <span className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer">
+                                {loginConfig.otpBtnText || 'Use OTP to Login'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* 2. Onboarding Section */}
+        {activeSection === 'onboarding' && (
+          <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200">
+            
+            {/* Header with Save Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
+              <div>
+                <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
+                  <UserCheck className="w-7 h-7 text-emerald-600" />
+                  Employee Onboarding Controls
+                </h1>
+                <p className="text-xs text-gray-500 mt-1">
+                  Customize step headers, labels, placeholders, and toggle mandatory (<span className="text-red-500 font-bold">*</span>) fields across all onboarding steps.
+                </p>
+              </div>
+
+              <button
+                onClick={handleSave}
+                disabled={saving || loading}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                {saving ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>Save Onboarding Settings</span>
+              </button>
+            </div>
+
+            {/* Top Sub-Navigation Steps Bar */}
+            <div className="flex items-center gap-2 bg-white p-2 rounded-2xl border border-gray-200/80 shadow-xs overflow-x-auto custom-scrollbar">
+              {onboardingSteps.map(step => {
+                const Icon = step.icon;
+                const isActive = onboardingSubTab === step.id;
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => setOnboardingSubTab(step.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{step.stepNumber}: {step.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Global Header & Action Buttons Control Card */}
+            <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+              <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                Global Page Header & Navigation Button Texts
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Page Title</label>
+                  <input
+                    type="text"
+                    value={onboardingConfig.header?.title || ''}
+                    onChange={(e) => setOnboardingConfig(prev => ({ ...prev, header: { ...prev.header, title: e.target.value } }))}
+                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Next Button Text</label>
+                  <input
+                    type="text"
+                    value={onboardingConfig.buttons?.nextBtnText || ''}
+                    onChange={(e) => setOnboardingConfig(prev => ({ ...prev, buttons: { ...prev.buttons, nextBtnText: e.target.value } }))}
+                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Submit Button Text</label>
+                  <input
+                    type="text"
+                    value={onboardingConfig.buttons?.submitBtnText || ''}
+                    onChange={(e) => setOnboardingConfig(prev => ({ ...prev, buttons: { ...prev.buttons, submitBtnText: e.target.value } }))}
+                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 1: BASIC DETAILS */}
+            {onboardingSubTab === 'step1' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+                {/* Left 7 Columns: Step 1 Controls */}
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <Users className="w-4 h-4 text-emerald-600" />
+                          Step 1: Basic Details Controls
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Customize labels, placeholders, and toggle required fields for Step 1.</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Section Header Title</label>
+                      <input
+                        type="text"
+                        value={onboardingConfig.step1?.title || ''}
+                        onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step1: { ...prev.step1, title: e.target.value } }))}
+                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      {step1FieldKeys.map(item => {
+                        const fieldData = onboardingConfig.step1?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: true };
+                        const isReq = fieldData.isRequired !== false;
+                        return (
+                          <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                {item.title}
+                                {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
+                              </span>
+
+                              <div className="flex items-center gap-2">
+                                {item.key === 'industry' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsFunctionsModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Functions & Designation Roles Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Functions & Roles</span>
+                                  </button>
                                 )}
+
+                                {item.key === 'totalExperience' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsExperienceModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Total Experience Options Editor"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Experience Ranges</span>
+                                  </button>
+                                )}
+
+                                {(item.key === 'location' || item.key === 'preferredLocation') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsLocationsModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Pre-visible Cities Editor (Current & Preferred Location)"
+                                  >
+                                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Cities List</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOnboardingMandatoryToggle('step1', item.key)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                    isReq
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                  }`}
+                                >
+                                  {isReq ? (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                      Mandatory (*)
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                      Optional
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.label || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step1', item.key, 'label', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
                               </div>
 
-                              <div className="flex items-center gap-4 text-[11px] text-gray-500 pt-2 border-t border-gray-100 flex-wrap">
-                                {(q.startYear || q.endYear || q.year || q.passingYear) && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3 text-gray-400" />
-                                    {q.startYear && q.endYear ? `${q.startYear} - ${q.endYear}` : `Passing Year: ${q.endYear || q.year || q.passingYear}`}
-                                  </span>
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.placeholder || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step1', item.key, 'placeholder', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Functions & Roles Management Modal Popup */}
+                {isFunctionsModalOpen && (
+                  <div 
+                    className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                    onClick={() => setIsFunctionsModalOpen(false)}
+                  >
+                    <div 
+                      className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Modal Header */}
+                      <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                            <Layers className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                              Functions & Designation Roles
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Add custom functions and configure their specific linked designation / job roles.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={handleResetFunctions}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset all functions and roles to standard default dictionary"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset to Defaults</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleSave();
+                              setIsFunctionsModalOpen(false);
+                            }}
+                            disabled={saving}
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            <span>Save Changes</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsFunctionsModalOpen(false)}
+                            className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                            title="Close popup"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Modal Body: 2-Column Split Manager */}
+                      <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                          
+                          {/* Left Sub-Column (5 Cols): Function List & Add Function */}
+                          <div className="md:col-span-5 space-y-3 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/70">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                <FolderPlus className="w-3.5 h-3.5 text-emerald-600" />
+                                Functions ({Object.keys(onboardingConfig.step1?.functionsData || DEFAULT_FUNCTIONS_DATA).length})
+                              </span>
+                            </div>
+
+                            {/* Add Function Input */}
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="New function..."
+                                value={newFunctionName}
+                                onChange={(e) => setNewFunctionName(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddFunction(); } }}
+                                className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddFunction}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add</span>
+                              </button>
+                            </div>
+
+                            {/* Function Items List with Drag & Drop Reordering */}
+                            <div 
+                              className="space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar pr-1"
+                              onDragLeave={(e) => {
+                                if (!e.currentTarget.contains(e.relatedTarget)) {
+                                  setDragOverFunctionIndex(null);
+                                }
+                              }}
+                            >
+                              {Object.keys(onboardingConfig.step1?.functionsData || DEFAULT_FUNCTIONS_DATA).map((funcName, fIdx) => {
+                                const isSelected = selectedFunction === funcName;
+                                const isDragging = draggedFunctionIndex === fIdx;
+                                const isDragOver = dragOverFunctionIndex === fIdx && draggedFunctionIndex !== fIdx;
+                                const roleCount = ((onboardingConfig.step1?.functionsData || DEFAULT_FUNCTIONS_DATA)[funcName] || []).length;
+                                return (
+                                  <div
+                                    key={funcName}
+                                    draggable
+                                    onDragStart={(e) => handleFunctionDragStart(e, fIdx)}
+                                    onDragOver={(e) => handleFunctionDragOver(e, fIdx)}
+                                    onDrop={(e) => handleFunctionDrop(e, fIdx)}
+                                    onDragEnd={handleFunctionDragEnd}
+                                    onClick={() => setSelectedFunction(funcName)}
+                                    className={`relative flex items-center justify-between p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
+                                      isDragging
+                                        ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                        : isDragOver
+                                        ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                        : isSelected
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'bg-white hover:bg-emerald-50/60 text-gray-700 border border-gray-200/80 hover:border-emerald-300'
+                                    }`}
+                                  >
+                                    {/* Visual Drop Placement Preview Line */}
+                                    {isDragOver && (
+                                      <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                    )}
+
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      {/* Drag Handle Icon */}
+                                      <span 
+                                        className={`cursor-grab active:cursor-grabbing p-0.5 rounded transition-colors ${
+                                          isSelected ? 'text-emerald-200 hover:text-white' : 'text-gray-400 hover:text-gray-700'
+                                        }`}
+                                        title="Drag to change position"
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <GripVertical className="w-3.5 h-3.5" />
+                                      </span>
+
+                                      <span className="truncate">{funcName}</span>
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                        isSelected ? 'bg-emerald-700 text-emerald-100' : 'bg-gray-100 text-gray-500'
+                                      }`}>
+                                        {roleCount}
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteFunction(funcName);
+                                      }}
+                                      className={`p-1 rounded hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${
+                                        isSelected ? 'text-emerald-200' : 'text-gray-400 hover:text-red-600'
+                                      }`}
+                                      title={`Delete function "${funcName}"`}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Right Sub-Column (7 Cols): Designation Roles for Selected Function */}
+                          <div className="md:col-span-7 space-y-3 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/70">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5 truncate">
+                                <Tag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                Roles in <span className="text-emerald-700 font-extrabold truncate">"{selectedFunction || 'None'}"</span>
+                                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">
+                                  {((onboardingConfig.step1?.functionsData || DEFAULT_FUNCTIONS_DATA)[selectedFunction] || []).length} Roles
+                                </span>
+                              </span>
+                            </div>
+
+                            {/* Add Role Input */}
+                            {selectedFunction ? (
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder={`Add role to ${selectedFunction}...`}
+                                  value={newRoleName}
+                                  onChange={(e) => setNewRoleName(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddRole(); } }}
+                                  className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleAddRole}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>Add Role</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400 italic">Select a function from the left to manage designations.</p>
+                            )}
+
+                            {/* Roles Pills Grid */}
+                            <div className="min-h-[160px] max-h-72 overflow-y-auto custom-scrollbar p-3 bg-white border border-gray-200/80 rounded-xl">
+                              {((onboardingConfig.step1?.functionsData || DEFAULT_FUNCTIONS_DATA)[selectedFunction] || []).length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-8">
+                                  <Tag className="w-6 h-6 text-gray-300 mb-1" />
+                                  <span className="text-xs font-medium">No designations added for this function yet.</span>
+                                  <span className="text-[11px] text-gray-400 mt-0.5">Type above and click "Add Role"</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {((onboardingConfig.step1?.functionsData || DEFAULT_FUNCTIONS_DATA)[selectedFunction] || []).map((role, rIdx) => (
+                                    <span
+                                      key={rIdx}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-lg text-[11px] font-bold"
+                                    >
+                                      <span>{role}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteRole(selectedFunction, rIdx)}
+                                        className="text-emerald-500 hover:text-red-600 transition-colors p-0.5 rounded cursor-pointer"
+                                        title="Remove designation"
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-xs text-gray-500 font-medium">
+                          Click <strong className="text-emerald-700">"Save & Apply"</strong> to persist your functions & roles to the database.
+                        </span>
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setIsFunctionsModalOpen(false)}
+                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleSave();
+                              setIsFunctionsModalOpen(false);
+                            }}
+                            disabled={saving}
+                            className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            <span>Save & Apply</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Total Experience Options Management Modal Popup */}
+                {isExperienceModalOpen && (
+                  <div 
+                    className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                    onClick={() => setIsExperienceModalOpen(false)}
+                  >
+                    <div 
+                      className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Modal Header */}
+                      <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                            <Briefcase className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                              Total Experience Options
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Add, remove, or drag & drop to reorder experience year ranges for candidates.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={handleResetExperienceOptions}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset to standard experience ranges"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Defaults</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleSave();
+                              setIsExperienceModalOpen(false);
+                            }}
+                            disabled={saving}
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            <span>Save Changes</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsExperienceModalOpen(false)}
+                            className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                            title="Close popup"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Modal Body */}
+                      <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                        {/* Add Input */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Add new experience range (e.g. 30+ yrs, 0 - 6 Months)..."
+                            value={newExperienceOption}
+                            onChange={(e) => setNewExperienceOption(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddExperienceOption(); } }}
+                            className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddExperienceOption}
+                            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Add Range</span>
+                          </button>
+                        </div>
+
+                        {/* Reorderable Items List */}
+                        <div 
+                          className="space-y-2 pt-2"
+                          onDragLeave={(e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget)) {
+                              setDragOverExpIndex(null);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center justify-between text-xs text-gray-500 font-semibold px-1">
+                            <span>Current Options ({(onboardingConfig.step1?.experienceOptions || DEFAULT_EXPERIENCE_OPTIONS).length})</span>
+                            <span className="text-[11px] text-gray-400">Drag items by handle to reorder</span>
+                          </div>
+
+                          {(onboardingConfig.step1?.experienceOptions || DEFAULT_EXPERIENCE_OPTIONS).map((opt, idx) => {
+                            const isDragging = draggedExpIndex === idx;
+                            const isDragOver = dragOverExpIndex === idx && draggedExpIndex !== idx;
+
+                            return (
+                              <div
+                                key={opt + idx}
+                                draggable
+                                onDragStart={(e) => handleExpDragStart(e, idx)}
+                                onDragOver={(e) => handleExpDragOver(e, idx)}
+                                onDrop={(e) => handleExpDrop(e, idx)}
+                                onDragEnd={handleExpDragEnd}
+                                className={`relative flex items-center justify-between p-3 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
+                                  isDragging
+                                    ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                    : isDragOver
+                                    ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                    : 'bg-white hover:bg-emerald-50/50 text-gray-800 border border-gray-200 shadow-2xs hover:border-emerald-300'
+                                }`}
+                              >
+                                {isDragOver && (
+                                  <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
                                 )}
-                                {q.courseType && (
-                                  <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                    {q.courseType}
+
+                                <div className="flex items-center gap-2.5">
+                                  <span 
+                                    className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                    title="Drag to change position"
+                                  >
+                                    <GripVertical className="w-4 h-4" />
                                   </span>
-                                )}
-                                {q.schoolMedium && (
-                                  <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                                    Medium: {q.schoolMedium}
+                                  <span className="text-gray-900 font-extrabold">{opt}</span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteExperienceOption(idx)}
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                  title={`Delete range "${opt}"`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-xs text-gray-500 font-medium">
+                          Click <strong className="text-emerald-700">"Save & Apply"</strong> to save updated options to the database.
+                        </span>
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setIsExperienceModalOpen(false)}
+                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleSave();
+                              setIsExperienceModalOpen(false);
+                            }}
+                            disabled={saving}
+                            className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            <span>Save & Apply</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pre-visible Location Cities Management Modal Popup (Current & Preferred) */}
+                {isLocationsModalOpen && (() => {
+                  const currentCities = onboardingConfig.step1?.locationCities || DEFAULT_LOCATION_CITIES;
+                  const trimmedInput = newLocationCity.trim();
+                  const lowerInput = trimmedInput.toLowerCase();
+                  
+                  const isAnywhereInIndia = lowerInput === 'anywhere in india';
+                  const isExactMatch = isAnywhereInIndia || currentCities.some(c => c.toLowerCase() === lowerInput);
+                  
+                  const matchingSuggestions = trimmedInput.length > 0
+                    ? currentCities.filter(c => c.toLowerCase().includes(lowerInput) && c.toLowerCase() !== lowerInput)
+                    : [];
+
+                  const filteredCities = locationFilterSearch.trim()
+                    ? currentCities.filter(c => c.toLowerCase().includes(locationFilterSearch.trim().toLowerCase()))
+                    : currentCities;
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsLocationsModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <MapPin className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                Pre-visible Location Cities
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Manage top visible cities for both <strong>Current Location</strong> and <strong>Preferred Location</strong> dropdowns.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={handleResetLocationCities}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                              title="Reset all cities to standard default list"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Reset Defaults</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsLocationsModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save Changes</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsLocationsModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-5">
+                          
+                          {/* Compulsory Item Banner: Anywhere in India */}
+                          <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex items-center justify-between shadow-2xs">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <Shield className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="text-sm font-extrabold text-gray-900">Anywhere in India</h4>
+                                  <span className="text-[10px] bg-emerald-200/80 text-emerald-900 font-bold px-2 py-0.5 rounded-full">
+                                    Compulsory for Preferred Location
                                   </span>
+                                </div>
+                                <p className="text-xs text-gray-600 mt-0.5">
+                                  Automatically pinned at the top of Preferred Location. Hidden from Current Location (requires specific city).
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-white/90 border border-emerald-200 px-3 py-1.5 rounded-xl shrink-0">
+                              <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>System Fixed</span>
+                            </div>
+                          </div>
+
+                          {/* Add New City Input with Smart Suggestions & Duplicate Alerts */}
+                          <div className="p-4 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-3">
+                            <label className="block text-xs font-extrabold text-gray-800 flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                                Add New Pre-visible City
+                              </span>
+                              {trimmedInput && !isExactMatch && (
+                                <span className="text-[11px] text-emerald-700 font-bold">
+                                  ✓ Ready to add
+                                </span>
+                              )}
+                            </label>
+
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Type city name (e.g., Surat, Chandigarh, Dubai, London)..."
+                                value={newLocationCity}
+                                onChange={(e) => setNewLocationCity(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (!isExactMatch && trimmedInput) {
+                                      handleAddLocationCity();
+                                    }
+                                  }
+                                }}
+                                className={`flex-1 px-4 py-2.5 bg-white border rounded-xl text-xs font-medium focus:outline-none transition-all ${
+                                  isExactMatch
+                                    ? 'border-amber-400 ring-2 ring-amber-100'
+                                    : 'border-gray-200 focus:border-emerald-500'
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddLocationCity()}
+                                disabled={!trimmedInput || isExactMatch}
+                                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>Add City</span>
+                              </button>
+                            </div>
+
+                            {/* Duplicate Warning */}
+                            {trimmedInput && isExactMatch && (
+                              <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium animate-in fade-in duration-150">
+                                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>
+                                  <strong>"{trimmedInput}"</strong> is already present in the pre-visible cities list or is a system fixed option!
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Similar Existing Suggestions */}
+                            {matchingSuggestions.length > 0 && !isExactMatch && (
+                              <div className="space-y-1.5 pt-1">
+                                <span className="text-[11px] font-semibold text-gray-500">Matching existing cities:</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {matchingSuggestions.slice(0, 6).map(sug => (
+                                    <span
+                                      key={sug}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-700 shadow-2xs"
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                      {sug}
+                                    </span>
+                                  ))}
+                                  {matchingSuggestions.length > 6 && (
+                                    <span className="text-[10px] text-gray-400 self-center">
+                                      +{matchingSuggestions.length - 6} more
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Existing Cities List with Search Filter and Drag & Drop */}
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-800">
+                                  Configured Cities ({currentCities.length})
+                                </span>
+                                <span className="text-[10px] bg-gray-100 text-gray-600 font-semibold px-2 py-0.5 rounded-full">
+                                  Applies to Step 1 Form
+                                </span>
+                              </div>
+
+                              {/* Search in existing list */}
+                              <div className="relative w-full sm:w-64">
+                                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <input
+                                  type="text"
+                                  placeholder="Search list..."
+                                  value={locationFilterSearch}
+                                  onChange={(e) => setLocationFilterSearch(e.target.value)}
+                                  className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:bg-white focus:border-emerald-500"
+                                />
+                                {locationFilterSearch && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLocationFilterSearch('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                                  >
+                                    ✕
+                                  </button>
                                 )}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
 
-              {/* Work Experience */}
-              {(() => {
-                const experienceList = Array.isArray(currentEmp.experience) && currentEmp.experience.length > 0
-                  ? currentEmp.experience
-                  : Array.isArray(currentEmp.workExperience) && currentEmp.workExperience.length > 0
-                    ? currentEmp.workExperience
-                    : Array.isArray(currentEmp.professionalDetails?.experience)
-                      ? currentEmp.professionalDetails.experience
-                      : [];
-
-                return (
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Briefcase className="w-4 h-4 text-blue-600" />
-                      Past Work Experience ({experienceList.length})
-                    </h3>
-                    {experienceList.length === 0 ? (
-                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center text-xs text-gray-400">
-                        No work experience details provided by candidate yet.
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {experienceList.map((exp, cIdx) => {
-                          const companyName = exp.companyName || exp.company || 'Company';
-                          const hasRoles = Array.isArray(exp.roles) && exp.roles.length > 0;
-                          const rolesList = hasRoles ? exp.roles : [exp];
-
-                          return (
-                            <div key={cIdx} className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs space-y-3">
-                              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs">
-                                    <Building className="w-4 h-4" />
-                                  </div>
-                                  <div>
-                                    <h4 className="font-bold text-gray-900 text-sm">{companyName}</h4>
-                                    {exp.noticePeriod && (
-                                      <p className="text-[11px] text-gray-500">Notice Period: <span className="font-semibold text-gray-700">{exp.noticePeriod}</span></p>
-                                    )}
-                                  </div>
+                            {/* City Items List */}
+                            <div 
+                              className="space-y-1.5 max-h-80 overflow-y-auto custom-scrollbar p-1"
+                              onDragLeave={(e) => {
+                                if (!e.currentTarget.contains(e.relatedTarget)) {
+                                  setDragOverLocIndex(null);
+                                }
+                              }}
+                            >
+                              {filteredCities.length === 0 ? (
+                                <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-gray-400 text-xs">
+                                  No cities matching "{locationFilterSearch}"
                                 </div>
-                              </div>
-
-                              <div className="relative border-l-2 border-emerald-500 ml-4 space-y-4 py-1">
-                                {rolesList.map((role, rIdx) => {
-                                  const jobTitle = role.jobTitle || role.designation || role.role || 'Job Role';
-                                  const empType = role.employmentType || role.type || 'Full-time';
-                                  const isCurrent = role.currentCompany || role.currentJob || (!role.leavingDate && !role.endDate);
-                                  const joinStr = role.joiningDate ? formatMonthYear(role.joiningDate) : (role.startDate ? formatMonthYear(role.startDate) : '');
-                                  const leaveStr = isCurrent ? 'Present' : (role.leavingDate ? formatMonthYear(role.leavingDate) : (role.endDate ? formatMonthYear(role.endDate) : 'Present'));
-                                  const dateDisplay = joinStr ? `${joinStr} - ${leaveStr}` : (role.duration || `${leaveStr}`);
+                              ) : (
+                                filteredCities.map((city) => {
+                                  const origIndex = currentCities.indexOf(city);
+                                  const isDragging = draggedLocIndex === origIndex;
+                                  const isDragOver = dragOverLocIndex === origIndex && draggedLocIndex !== origIndex;
+                                  const isFilterActive = !!locationFilterSearch.trim();
 
                                   return (
-                                    <div key={rIdx} className="relative pl-5 space-y-1">
-                                      <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1 ring-4 ring-white ${isCurrent ? 'bg-emerald-500' : 'bg-gray-400'}`}></div>
-                                      
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <h5 className="font-bold text-gray-900 text-xs">{jobTitle}</h5>
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                                          {empType}
-                                        </span>
-                                        {isCurrent && (
-                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            Current Role
+                                    <div
+                                      key={city + origIndex}
+                                      draggable={!isFilterActive}
+                                      onDragStart={(e) => !isFilterActive && handleLocDragStart(e, origIndex)}
+                                      onDragOver={(e) => !isFilterActive && handleLocDragOver(e, origIndex)}
+                                      onDrop={(e) => !isFilterActive && handleLocDrop(e, origIndex)}
+                                      onDragEnd={handleLocDragEnd}
+                                      className={`relative flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all duration-150 select-none ${
+                                        isDragging
+                                          ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                          : isDragOver
+                                          ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                          : 'bg-white hover:bg-emerald-50/40 text-gray-800 border border-gray-200 shadow-2xs hover:border-emerald-300'
+                                      }`}
+                                    >
+                                      {isDragOver && (
+                                        <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                      )}
+
+                                      <div className="flex items-center gap-2">
+                                        {!isFilterActive && (
+                                          <span 
+                                            className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                            title="Drag to change display order"
+                                          >
+                                            <GripVertical className="w-3.5 h-3.5" />
                                           </span>
                                         )}
+                                        <span className="text-[10px] text-gray-400 font-mono w-6">#{origIndex + 1}</span>
+                                        <span className="text-gray-900 font-extrabold">{city}</span>
                                       </div>
 
-                                      <p className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
-                                        <Clock className="w-3 h-3 text-gray-400" />
-                                        {dateDisplay}
-                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteLocationCity(origIndex)}
+                                        className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                        title={`Delete city "${city}"`}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
 
-                                      {(role.roleDescription || role.description) && (
-                                        <p className="text-xs text-gray-600 leading-relaxed bg-gray-50/80 p-2.5 rounded-lg border border-gray-100 mt-2">
-                                          {role.roleDescription || role.description}
-                                        </p>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <span className="text-xs text-gray-500 font-medium">
+                            Click <strong className="text-emerald-700">"Save & Apply"</strong> to persist city options to the database.
+                          </span>
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsLocationsModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsLocationsModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Right 5 Columns: Step 1 Live Preview */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="sticky top-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Onboarding Preview</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Step 1: 17% Completed</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden text-left">
+                      {/* Top Header Card */}
+                      <div className="p-5 border-b border-gray-100 bg-white">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="font-black text-gray-900 text-base">{onboardingConfig.header?.title || 'Create your Profile'}</h3>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold py-0.5 px-2 uppercase rounded-full text-emerald-700 bg-emerald-50 border border-emerald-100 inline-block">
+                            17% Completed
+                          </span>
+                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '17%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 1 Inner Form */}
+                      <div className="p-5 space-y-4 text-xs bg-gray-50/40">
+                        <div className="border-b border-gray-200 pb-2">
+                          <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step1?.title || 'Basic Details'}</h4>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          {step1FieldKeys.map(item => {
+                            const fData = onboardingConfig.step1?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: true };
+                            const isColSpan2 = item.key === 'brief';
+                            return (
+                              <div key={item.key} className={isColSpan2 ? 'col-span-2 space-y-1' : 'space-y-1'}>
+                                <label className="block font-bold text-gray-700 text-[11px]">
+                                  {fData.label}
+                                  {fData.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                                </label>
+                                <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px] truncate shadow-2xs">
+                                  {item.key === 'phone' ? '+91 ' + (fData.placeholder || '9876543210') : (fData.placeholder || 'Enter value...')}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="pt-3 flex justify-end">
+                          <div className="px-6 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md text-center">
+                            {onboardingConfig.buttons?.nextBtnText || 'Save & Continue'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: EDUCATION */}
+            {onboardingSubTab === 'step2' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-emerald-600" />
+                          Step 2: Education Controls
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Customize educational step texts, labels, and mandatory fields.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Section Header Title</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step2?.title || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step2: { ...prev.step2, title: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Add Button Text</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step2?.addBtnText || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step2: { ...prev.step2, addBtnText: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block font-bold text-gray-700 mb-1">Section Subtitle / Description</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step2?.subtitle || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step2: { ...prev.step2, subtitle: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      {step2FieldKeys.map(item => {
+                        const fieldData = onboardingConfig.step2?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: true };
+                        const isReq = fieldData.isRequired !== false;
+                        return (
+                          <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                {item.title}
+                                {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
+                              </span>
+
+                              <div className="flex items-center gap-2">
+                                {item.key === 'educationType' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsEducationModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Education Types Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Education Types</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOnboardingMandatoryToggle('step2', item.key)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                    isReq
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                  }`}
+                                >
+                                  {isReq ? (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                      Mandatory (*)
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                      Optional
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.label || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step2', item.key, 'label', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.placeholder || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step2', item.key, 'placeholder', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Education & Courses/Boards Management Modal Popup (2-Column Split Manager) */}
+                {isEducationModalOpen && (() => {
+                  const currentEduData = onboardingConfig.step2?.educationData || DEFAULT_EDUCATION_DATA;
+                  const eduKeys = Object.keys(currentEduData);
+                  const activeEdu = currentEduData[selectedEduType] || (eduKeys.length > 0 ? currentEduData[eduKeys[0]] : null);
+                  const activeKey = currentEduData[selectedEduType] ? selectedEduType : (eduKeys.length > 0 ? eduKeys[0] : '');
+                  const isSchoolActive = activeEdu?.category === 'school';
+                  const activeOptions = activeEdu?.options || [];
+
+                  const trimmedEduName = newEducationType.trim();
+                  const isEduDuplicate = trimmedEduName && eduKeys.some(k => k.toLowerCase() === trimmedEduName.toLowerCase());
+
+                  const trimmedOptName = newEduOptionName.trim();
+                  const isOptDuplicate = trimmedOptName && activeOptions.some(o => o.toLowerCase() === trimmedOptName.toLowerCase());
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsEducationModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <GraduationCap className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                Education Types & Courses / Boards
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Add education levels and configure whether candidates select Boards (School) or Courses / Degrees (Higher Education).
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={handleResetEducationData}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                              title="Reset all education types and options to standard default dictionary"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Reset to Defaults</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsEducationModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save Changes</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsEducationModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body: 2-Column Split Manager */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                            
+                            {/* Left Sub-Column (5 Cols): Education Types List & Add */}
+                            <div className="md:col-span-5 space-y-3 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/70">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                  <FolderPlus className="w-3.5 h-3.5 text-emerald-600" />
+                                  Education Types ({eduKeys.length})
+                                </span>
+                                <span className="text-[10px] bg-gray-200/80 text-gray-600 font-semibold px-2 py-0.5 rounded-full">
+                                  Drag to reorder
+                                </span>
+                              </div>
+
+                              {/* Add Education Section */}
+                              <div className="space-y-2 bg-white p-2.5 rounded-xl border border-gray-200 shadow-2xs">
+                                <input
+                                  type="text"
+                                  placeholder="New education type..."
+                                  value={newEducationType}
+                                  onChange={(e) => setNewEducationType(e.target.value)}
+                                  onKeyDown={(e) => { 
+                                    if (e.key === 'Enter') { 
+                                      e.preventDefault(); 
+                                      if (trimmedEduName && !isEduDuplicate) handleAddEducationType(); 
+                                    } 
+                                  }}
+                                  className={`w-full px-3 py-1.5 bg-gray-50 border rounded-lg text-xs font-medium focus:outline-none focus:bg-white transition-all ${
+                                    isEduDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                                  }`}
+                                />
+
+                                {/* Category Selector for New Education Type */}
+                                <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                                  <div className="inline-flex p-0.5 bg-gray-100 rounded-lg text-[11px] font-bold">
+                                    <button
+                                      type="button"
+                                      onClick={() => setNewEduCategory('higher')}
+                                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                                        newEduCategory === 'higher'
+                                          ? 'bg-emerald-600 text-white shadow-2xs'
+                                          : 'text-gray-600 hover:text-gray-900'
+                                      }`}
+                                      title="Higher Education uses Courses / Degrees"
+                                    >
+                                      🎓 Course
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setNewEduCategory('school')}
+                                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                                        newEduCategory === 'school'
+                                          ? 'bg-amber-600 text-white shadow-2xs'
+                                          : 'text-gray-600 hover:text-gray-900'
+                                      }`}
+                                      title="School uses Boards"
+                                    >
+                                      🏫 Board
+                                    </button>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={handleAddEducationType}
+                                    disabled={!trimmedEduName || isEduDuplicate}
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add</span>
+                                  </button>
+                                </div>
+
+                                {trimmedEduName && isEduDuplicate && (
+                                  <p className="text-[10px] text-amber-700 font-semibold">"{trimmedEduName}" already exists!</p>
+                                )}
+                              </div>
+
+                              {/* Education Types List with Drag & Drop */}
+                              <div 
+                                className="space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar pr-1"
+                                onDragLeave={(e) => {
+                                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                                    setDragOverEduIndex(null);
+                                  }
+                                }}
+                              >
+                                {eduKeys.map((eduKey, fIdx) => {
+                                  const itemConfig = currentEduData[eduKey] || { category: 'higher', options: [] };
+                                  const isSelected = activeKey === eduKey;
+                                  const isDragging = draggedEduIndex === fIdx;
+                                  const isDragOver = dragOverEduIndex === fIdx && draggedEduIndex !== fIdx;
+                                  const isSchool = itemConfig.category === 'school';
+                                  const optCount = (itemConfig.options || []).length;
+
+                                  return (
+                                    <div
+                                      key={eduKey}
+                                      draggable
+                                      onDragStart={(e) => handleEduDragStart(e, fIdx)}
+                                      onDragOver={(e) => handleEduDragOver(e, fIdx)}
+                                      onDrop={(e) => handleEduDrop(e, fIdx)}
+                                      onDragEnd={handleEduDragEnd}
+                                      onClick={() => setSelectedEduType(eduKey)}
+                                      className={`relative flex items-center justify-between p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
+                                        isDragging
+                                          ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                          : isDragOver
+                                          ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                          : isSelected
+                                          ? 'bg-emerald-600 text-white shadow-xs'
+                                          : 'bg-white hover:bg-emerald-50/60 text-gray-700 border border-gray-200/80 hover:border-emerald-300'
+                                      }`}
+                                    >
+                                      {/* Drop Placement Preview Line */}
+                                      {isDragOver && (
+                                        <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
                                       )}
+
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        {/* Drag Handle Icon */}
+                                        <span 
+                                          className={`cursor-grab active:cursor-grabbing p-0.5 rounded transition-colors ${
+                                            isSelected ? 'text-emerald-200 hover:text-white' : 'text-gray-400 hover:text-gray-700'
+                                          }`}
+                                          title="Drag to change position"
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                        >
+                                          <GripVertical className="w-3.5 h-3.5" />
+                                        </span>
+
+                                        <span className="truncate">{eduKey}</span>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                        {/* Category Badge */}
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                                          isSelected
+                                            ? isSchool ? 'bg-amber-500 text-white' : 'bg-emerald-700 text-emerald-100'
+                                            : isSchool ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'
+                                        }`}>
+                                          {isSchool ? '🏫 Board' : '🎓 Course'}
+                                        </span>
+
+                                        {/* Options count */}
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                          isSelected ? 'bg-emerald-800/80 text-emerald-100' : 'bg-gray-100 text-gray-500'
+                                        }`}>
+                                          {optCount}
+                                        </span>
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteEducationType(eduKey);
+                                          }}
+                                          className={`p-1 rounded hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${
+                                            isSelected ? 'text-emerald-200' : 'text-gray-400 hover:text-red-600'
+                                          }`}
+                                          title={`Delete education type "${eduKey}"`}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
                                   );
                                 })}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
 
-              {/* Job Applications History */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-purple-600" />
-                    Submitted Job Applications ({currentEmp.applications?.length || 0})
-                  </h3>
+                            {/* Right Sub-Column (7 Cols): Courses or Boards for Selected Education Type */}
+                            <div className="md:col-span-7 space-y-3 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/70">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {isSchoolActive ? (
+                                    <School className="w-4 h-4 text-amber-600 shrink-0" />
+                                  ) : (
+                                    <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />
+                                  )}
+                                  <span className="text-xs font-bold text-gray-800 truncate">
+                                    {isSchoolActive ? 'Boards' : 'Courses'} in <span className="text-emerald-700 font-extrabold truncate">"{activeKey || 'None'}"</span>
+                                  </span>
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">
+                                    {activeOptions.length} {isSchoolActive ? 'Boards' : 'Courses'}
+                                  </span>
+                                </div>
+
+                                {/* Category Toggle Switcher for the active education type */}
+                                {activeKey && (
+                                  <div className="flex items-center gap-1.5 shrink-0 bg-white px-2 py-1 rounded-xl border border-gray-200 shadow-2xs">
+                                    <span className="text-[10px] font-bold text-gray-500">Show in form:</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleEduCategory(activeKey)}
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                                        isSchoolActive
+                                          ? 'bg-amber-500 text-white shadow-xs'
+                                          : 'bg-emerald-600 text-white shadow-xs'
+                                      }`}
+                                      title="Click to switch between School (Board) and Higher/Degree (Course)"
+                                    >
+                                      {isSchoolActive ? '🏫 Board Dropdown' : '🎓 Course Dropdown'}
+                                      <span className="text-[9px] underline opacity-90 ml-0.5">(Switch)</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Explanatory Info Card */}
+                              <div className={`p-2.5 rounded-xl border text-[11px] leading-relaxed flex items-start gap-2 ${
+                                isSchoolActive 
+                                  ? 'bg-amber-50/80 border-amber-200 text-amber-900' 
+                                  : 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                              }`}>
+                                <span className="text-sm shrink-0 mt-0.5">{isSchoolActive ? '🏫' : '🎓'}</span>
+                                <div>
+                                  {isSchoolActive ? (
+                                    <span>
+                                      <strong>School Mode:</strong> Candidates who select <strong>"{activeKey}"</strong> will be asked for their <strong>Board</strong> (from the list below) along with School Medium, Marks & Passing Year.
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      <strong>Higher Education Mode:</strong> Candidates who select <strong>"{activeKey}"</strong> will be asked for their <strong>University/Institute</strong> and <strong>Course</strong> (from the list below) along with Course Type & Passing Year.
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Add Option Input */}
+                              {activeKey ? (
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder={`Add new ${isSchoolActive ? 'Board (e.g. CBSE, ICSE, State Board)' : 'Course / Degree (e.g. B.Tech, M.Com, CA, MBA)'}...`}
+                                    value={newEduOptionName}
+                                    onChange={(e) => setNewEduOptionName(e.target.value)}
+                                    onKeyDown={(e) => { 
+                                      if (e.key === 'Enter') { 
+                                        e.preventDefault(); 
+                                        if (trimmedOptName && !isOptDuplicate) handleAddEduOption(); 
+                                      } 
+                                    }}
+                                    className={`flex-1 px-3 py-1.5 bg-white border rounded-lg text-xs font-medium focus:outline-none transition-all ${
+                                      isOptDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                                    }`}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleAddEduOption}
+                                    disabled={!trimmedOptName || isOptDuplicate}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add {isSchoolActive ? 'Board' : 'Course'}</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-400 italic">Select an education type from the left to manage options.</p>
+                              )}
+
+                              {trimmedOptName && isOptDuplicate && (
+                                <p className="text-[10px] text-amber-700 font-semibold px-1">
+                                  "{trimmedOptName}" is already in the {isSchoolActive ? 'board' : 'course'} list!
+                                </p>
+                              )}
+
+                              {/* Options Pills Grid */}
+                              <div className="min-h-[160px] max-h-72 overflow-y-auto custom-scrollbar p-3 bg-white border border-gray-200/80 rounded-xl">
+                                {activeOptions.length === 0 ? (
+                                  <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 py-8">
+                                    <Tag className="w-6 h-6 text-gray-300 mb-1" />
+                                    <span className="text-xs font-medium">No {isSchoolActive ? 'boards' : 'courses'} added for "{activeKey}" yet.</span>
+                                    <span className="text-[11px] text-gray-400 mt-0.5">
+                                      Type above and click "Add {isSchoolActive ? 'Board' : 'Course'}"
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {activeOptions.map((opt, oIdx) => (
+                                      <span
+                                        key={oIdx}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all ${
+                                          isSchoolActive
+                                            ? 'bg-amber-50 text-amber-900 border-amber-200/80'
+                                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+                                        }`}
+                                      >
+                                        <span>{opt}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteEduOption(activeKey, oIdx)}
+                                          className={`transition-colors p-0.5 rounded cursor-pointer ${
+                                            isSchoolActive ? 'text-amber-500 hover:text-red-600' : 'text-emerald-500 hover:text-red-600'
+                                          }`}
+                                          title={`Remove ${isSchoolActive ? 'board' : 'course'}`}
+                                        >
+                                          ✕
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <span className="text-xs text-gray-500 font-medium">
+                            Click <strong className="text-emerald-700">"Save & Apply"</strong> to persist your education types, courses & boards to the database.
+                          </span>
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsEducationModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsEducationModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Right 5 Columns: Step 2 Live Preview */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="sticky top-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Onboarding Preview</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Step 2: 33% Completed</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden text-left">
+                      <div className="p-5 border-b border-gray-100 bg-white">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="font-black text-gray-900 text-base">{onboardingConfig.header?.title || 'Create your Profile'}</h3>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold py-0.5 px-2 uppercase rounded-full text-emerald-700 bg-emerald-50 border border-emerald-100 inline-block">
+                            33% Completed
+                          </span>
+                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '33%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4 text-xs bg-gray-50/40">
+                        <div className="flex justify-between items-start border-b border-gray-200 pb-2">
+                          <div>
+                            <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step2?.title || 'Education'}</h4>
+                            <p className="text-[10px] text-gray-500 mt-0.5">{onboardingConfig.step2?.subtitle || 'Details help recruiters identify your background'}</p>
+                          </div>
+                          <span className="text-xs font-bold text-emerald-600 cursor-pointer">{onboardingConfig.step2?.addBtnText || 'Add +'}</span>
+                        </div>
+
+                        <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2 shadow-2xs">
+                          <div className="space-y-1">
+                            <label className="block font-bold text-gray-700 text-[11px]">
+                              {onboardingConfig.step2?.fields?.educationType?.label || 'Education'}
+                              {onboardingConfig.step2?.fields?.educationType?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                            </label>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                              {onboardingConfig.step2?.fields?.educationType?.placeholder || 'Select education type'}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step2?.fields?.university?.label || 'University'}
+                                {onboardingConfig.step2?.fields?.university?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </label>
+                              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                                {onboardingConfig.step2?.fields?.university?.placeholder || 'Enter university'}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step2?.fields?.course?.label || 'Course'}
+                                {onboardingConfig.step2?.fields?.course?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </label>
+                              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                                {onboardingConfig.step2?.fields?.course?.placeholder || 'Select course'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 flex justify-between">
+                          <div className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">{onboardingConfig.buttons?.backBtnText || 'Back'}</div>
+                          <div className="px-6 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md">{onboardingConfig.buttons?.nextBtnText || 'Save & Continue'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: WORK EXPERIENCE */}
+            {onboardingSubTab === 'step3' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-emerald-600" />
+                          Step 3: Work Experience Controls
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Customize work experience headers, fresher label, and fields.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Section Header Title</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step3?.title || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step3: { ...prev.step3, title: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Add Experience Button Text</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step3?.addBtnText || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step3: { ...prev.step3, addBtnText: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block font-bold text-gray-700 mb-1">Fresher Toggle Label</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step3?.fresherLabel || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step3: { ...prev.step3, fresherLabel: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      {step3FieldKeys.map(item => {
+                        const fieldData = onboardingConfig.step3?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: true };
+                        const isReq = fieldData.isRequired !== false;
+                        return (
+                          <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                {item.title}
+                                {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOnboardingMandatoryToggle('step3', item.key)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                  isReq
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                }`}
+                              >
+                                {isReq ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Mandatory (*)
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                    Optional
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.label || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step3', item.key, 'label', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.placeholder || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step3', item.key, 'placeholder', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
-                {(!currentEmp.applications || currentEmp.applications.length === 0) ? (
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center text-xs text-gray-400">
-                    This candidate has not applied to any job yet.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {currentEmp.applications.map((app) => (
-                      <div key={app._id} className="p-3.5 bg-white border border-gray-200 rounded-xl text-xs space-y-1.5 hover:border-emerald-300 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-gray-900 text-sm">{app.jobId?.title || 'Job Position'}</p>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            app.status === 'Shortlisted' ? 'bg-green-100 text-green-700' :
-                            app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                            app.status === 'Viewed' ? 'bg-amber-100 text-amber-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
-                            {app.status || 'New'}
-                          </span>
+                {/* Right 5 Columns: Step 3 Live Preview */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="sticky top-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Onboarding Preview</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Step 3: 50% Completed</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden text-left">
+                      <div className="p-5 border-b border-gray-100 bg-white">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="font-black text-gray-900 text-base">{onboardingConfig.header?.title || 'Create your Profile'}</h3>
                         </div>
-                        <p className="text-gray-600">{app.jobId?.company || app.employerId?.companyName || 'Employer'} • {app.jobId?.location || 'Location'}</p>
-                        <div className="flex items-center justify-between text-[11px] text-gray-400 pt-1 border-t border-gray-50">
-                          <span>Applied on {new Date(app.createdAt).toLocaleDateString()}</span>
-                          {app.jobId?.salary && <span className="font-semibold text-gray-700">{app.jobId.salary}</span>}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold py-0.5 px-2 uppercase rounded-full text-emerald-700 bg-emerald-50 border border-emerald-100 inline-block">
+                            50% Completed
+                          </span>
+                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '50%' }}></div>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Drawer Footer */}
-            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button
-                onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
-                className="px-5 py-2 bg-gray-200 text-gray-800 font-semibold text-xs rounded-xl hover:bg-gray-300 transition-colors"
-              >
-                Close Drawer
-              </button>
-            </div>
+                      <div className="p-5 space-y-4 text-xs bg-gray-50/40">
+                        <div className="flex justify-between items-start border-b border-gray-200 pb-2">
+                          <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step3?.title || 'Work Experience'}</h4>
+                          <span className="text-xs font-bold text-emerald-600 cursor-pointer">{onboardingConfig.step3?.addBtnText || 'Add +'}</span>
+                        </div>
+
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                          <span className="font-bold text-emerald-800 text-[11px]">{onboardingConfig.step3?.fresherLabel || 'I am a fresher (No Experience)'}</span>
+                          <span className="w-8 h-4 bg-emerald-500 rounded-full inline-block"></span>
+                        </div>
+
+                        <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2 shadow-2xs">
+                          <div className="space-y-1">
+                            <label className="block font-bold text-gray-700 text-[11px]">
+                              {onboardingConfig.step3?.fields?.companyName?.label || 'Company Name'}
+                              {onboardingConfig.step3?.fields?.companyName?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                            </label>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                              {onboardingConfig.step3?.fields?.companyName?.placeholder || 'Enter company name'}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step3?.fields?.jobTitle?.label || 'Job Title'}
+                                {onboardingConfig.step3?.fields?.jobTitle?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </label>
+                              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                                {onboardingConfig.step3?.fields?.jobTitle?.placeholder || 'Enter job title'}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step3?.fields?.employmentType?.label || 'Employment Type'}
+                                {onboardingConfig.step3?.fields?.employmentType?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </label>
+                              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                                {onboardingConfig.step3?.fields?.employmentType?.placeholder || 'Full-time'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 flex justify-between">
+                          <div className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">{onboardingConfig.buttons?.backBtnText || 'Back'}</div>
+                          <div className="px-6 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md">{onboardingConfig.buttons?.nextBtnText || 'Save & Continue'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: KEY SKILLS */}
+            {onboardingSubTab === 'step4' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <Award className="w-4 h-4 text-emerald-600" />
+                          Step 4: Key Skills & Preferences Controls
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Customize skills, salary, notice period, and resume headline labels.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Section Header Title</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step4?.title || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step4: { ...prev.step4, title: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Section Subtitle</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step4?.subtitle || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step4: { ...prev.step4, subtitle: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      {step4FieldKeys.map(item => {
+                        const fieldData = onboardingConfig.step4?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: false };
+                        const isReq = fieldData.isRequired === true;
+                        return (
+                          <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                {item.title}
+                                {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOnboardingMandatoryToggle('step4', item.key)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                  isReq
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                }`}
+                              >
+                                {isReq ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Mandatory (*)
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                    Optional
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.label || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step4', item.key, 'label', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.placeholder || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step4', item.key, 'placeholder', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right 5 Columns: Step 4 Live Preview */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="sticky top-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Onboarding Preview</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Step 4: 67% Completed</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden text-left">
+                      <div className="p-5 border-b border-gray-100 bg-white">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="font-black text-gray-900 text-base">{onboardingConfig.header?.title || 'Create your Profile'}</h3>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold py-0.5 px-2 uppercase rounded-full text-emerald-700 bg-emerald-50 border border-emerald-100 inline-block">
+                            67% Completed
+                          </span>
+                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '67%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4 text-xs bg-gray-50/40">
+                        <div className="border-b border-gray-200 pb-2">
+                          <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step4?.title || 'Key Skills & Preferences'}</h4>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="block font-bold text-gray-700 text-[11px]">
+                              {onboardingConfig.step4?.fields?.skills?.label || 'Key Skills'}
+                            </label>
+                            <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">
+                              {onboardingConfig.step4?.fields?.skills?.placeholder || 'Type skill and press Enter'}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step4?.fields?.currentSalary?.label || 'Current Salary'}
+                              </label>
+                              <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">
+                                {onboardingConfig.step4?.fields?.currentSalary?.placeholder || '₹ 5,00,000'}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step4?.fields?.expectedSalary?.label || 'Expected Salary'}
+                              </label>
+                              <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">
+                                {onboardingConfig.step4?.fields?.expectedSalary?.placeholder || '₹ 7,50,000'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 flex justify-between">
+                          <div className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">{onboardingConfig.buttons?.backBtnText || 'Back'}</div>
+                          <div className="px-6 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md">{onboardingConfig.buttons?.nextBtnText || 'Save & Continue'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5: DOCUMENTS */}
+            {onboardingSubTab === 'step5' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <FileUp className="w-4 h-4 text-emerald-600" />
+                          Step 5: Documents & Media Controls
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Customize resume, cover letter, and intro video labels and requirement settings.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Section Header Title</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step5?.title || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step5: { ...prev.step5, title: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Section Subtitle</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step5?.subtitle || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step5: { ...prev.step5, subtitle: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      {step5FieldKeys.map(item => {
+                        const fieldData = onboardingConfig.step5?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: item.key === 'resume' };
+                        const isReq = fieldData.isRequired !== false;
+                        return (
+                          <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                {item.title}
+                                {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOnboardingMandatoryToggle('step5', item.key)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                  isReq
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                }`}
+                              >
+                                {isReq ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Mandatory (*)
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                    Optional
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.label || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step5', item.key, 'label', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-600 mb-1">Helper / Placeholder Text</label>
+                                <input
+                                  type="text"
+                                  value={fieldData.placeholder || ''}
+                                  onChange={(e) => handleOnboardingFieldChange('step5', item.key, 'placeholder', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right 5 Columns: Step 5 Live Preview */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="sticky top-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Onboarding Preview</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Step 5: 83% Completed</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden text-left">
+                      <div className="p-5 border-b border-gray-100 bg-white">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="font-black text-gray-900 text-base">{onboardingConfig.header?.title || 'Create your Profile'}</h3>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold py-0.5 px-2 uppercase rounded-full text-emerald-700 bg-emerald-50 border border-emerald-100 inline-block">
+                            83% Completed
+                          </span>
+                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '83%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4 text-xs bg-gray-50/40">
+                        <div className="border-b border-gray-200 pb-2">
+                          <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step5?.title || 'Documents & Media'}</h4>
+                        </div>
+
+                        <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl text-center bg-white space-y-1.5">
+                          <span className="text-xs font-bold text-emerald-700 block">
+                            {onboardingConfig.step5?.fields?.resume?.label || 'Resume (PDF/DOCX)'}
+                            {onboardingConfig.step5?.fields?.resume?.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
+                          </span>
+                          <span className="text-[10px] text-gray-400 block">{onboardingConfig.step5?.fields?.resume?.placeholder || 'Upload PDF or DOCX'}</span>
+                        </div>
+
+                        <div className="pt-3 flex justify-between">
+                          <div className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">{onboardingConfig.buttons?.backBtnText || 'Back'}</div>
+                          <div className="px-6 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md">{onboardingConfig.buttons?.nextBtnText || 'Save & Continue'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 6: FINAL REVIEW */}
+            {onboardingSubTab === 'step6' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+                <div className="lg:col-span-7 space-y-6">
+                  <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <CheckSquare className="w-4 h-4 text-emerald-600" />
+                          Step 6: Final Review Controls
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Customize final review title, subtitle, and final submission button.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Final Review Title</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step6?.title || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step6: { ...prev.step6, title: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-gray-700 mb-1">Submit Button Text</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.buttons?.submitBtnText || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, buttons: { ...prev.buttons, submitBtnText: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block font-bold text-gray-700 mb-1">Final Review Subtitle</label>
+                        <input
+                          type="text"
+                          value={onboardingConfig.step6?.subtitle || ''}
+                          onChange={(e) => setOnboardingConfig(prev => ({ ...prev, step6: { ...prev.step6, subtitle: e.target.value } }))}
+                          className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right 5 Columns: Step 6 Live Preview */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="sticky top-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider">Live Onboarding Preview</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Step 6: 100% Completed</span>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden text-left">
+                      <div className="p-5 border-b border-gray-100 bg-white">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="font-black text-gray-900 text-base">{onboardingConfig.header?.title || 'Create your Profile'}</h3>
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold py-0.5 px-2 uppercase rounded-full text-emerald-700 bg-emerald-50 border border-emerald-100 inline-block">
+                            100% Completed
+                          </span>
+                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '100%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 space-y-4 text-xs bg-gray-50/40">
+                        <div className="text-center">
+                          <h4 className="font-black text-gray-900 text-sm">{onboardingConfig.step6?.title || 'Final Review'}</h4>
+                          <p className="text-[10px] text-gray-500 mt-0.5">{onboardingConfig.step6?.subtitle || 'Please review all details before submitting.'}</p>
+                        </div>
+
+                        <div className="p-3 bg-white border border-gray-200 rounded-xl space-y-1">
+                          <span className="font-bold text-gray-800 text-[11px]">Basic Details Summary</span>
+                          <p className="text-gray-500 text-[10px]">Sonic 16t • 9876543210 • sonic16t@gmail.com</p>
+                        </div>
+
+                        <div className="pt-3 flex justify-between">
+                          <div className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">{onboardingConfig.buttons?.backBtnText || 'Back'}</div>
+                          <div className="px-6 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md">{onboardingConfig.buttons?.submitBtnText || 'Submit Profile'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
-        </div>
-      )}
+        )}
+
+        {/* 3. Overview Section */}
+        {activeSection === 'overview' && (
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-8 shadow-xs text-center py-20 animate-in fade-in duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+              <Users className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-extrabold text-gray-900">Employees Management & CMS</h3>
+            <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+              Select <b>Authentication</b> (Login & Register) or <b>Onboarding</b> (Steps 1 to 6) in the left sidebar to edit live page controls, text labels, and required field settings!
+            </p>
+          </div>
+        )}
+
+      </main>
+
     </div>
   );
 }

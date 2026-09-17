@@ -3,14 +3,51 @@ import LogoSectionEditor from './components/LogoSectionEditor';
 import HeroSectionEditor from './components/HeroSectionEditor';
 import SearchBarEditor from './components/SearchBarEditor';
 import JobCardsEditor from './components/JobCardsEditor';
+import TypographySectionEditor from './components/TypographySectionEditor';
 
 /**
  * HomepageCMS Component
  * Main orchestrator for Homepage CMS with 2-tier sub-navigation sidebar,
- * managing Logo, Hero, Search Bar, and Job Cards configurations.
+ * managing Logo, Typography & Fonts, Hero, Search Bar, and Job Cards configurations.
  */
+const VALID_SECTIONS = ['logo', 'typography', 'hero', 'search', 'jobCards'];
+
 const HomepageCMS = () => {
-  const [activeSection, setActiveSection] = useState('logo');
+  const [activeSection, setActiveSectionState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sec = params.get('section') || params.get('subtab');
+    if (sec && VALID_SECTIONS.includes(sec)) return sec;
+    const saved = localStorage.getItem('adminHomepageSection');
+    if (saved && VALID_SECTIONS.includes(saved)) return saved;
+    return 'logo';
+  });
+
+  const setActiveSection = (newSec) => {
+    setActiveSectionState(newSec);
+    localStorage.setItem('adminHomepageSection', newSec);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'homepage');
+    params.set('section', newSec);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'homepage');
+    params.set('section', activeSection);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+
+    const handlePopState = () => {
+      const p = new URLSearchParams(window.location.search);
+      const sec = p.get('section') || p.get('subtab');
+      if (sec && VALID_SECTIONS.includes(sec)) {
+        setActiveSectionState(sec);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeSection]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState('');
@@ -24,6 +61,26 @@ const HomepageCMS = () => {
       imageUrl: '',
       altText: 'sahijob.com',
       height: 36
+    },
+    typography: {
+      primaryFont: {
+        source: 'google',
+        family: 'Inter',
+        customUrl: '',
+        appliedTo: 'Body text, UI elements, buttons, form inputs, and tables'
+      },
+      headingFont: {
+        source: 'google',
+        family: 'Plus Jakarta Sans',
+        customUrl: '',
+        appliedTo: 'H1-H6 titles, section headers, card titles, and modal headers'
+      },
+      secondaryFont: {
+        source: 'google',
+        family: 'Roboto',
+        customUrl: '',
+        appliedTo: 'Hero highlights, badges, chips, tags, and stats'
+      }
     },
     hero: {
       titlePrefix: 'Find Your',
@@ -96,7 +153,7 @@ const HomepageCMS = () => {
 
       const json = await res.json();
       if (json.success) {
-        setSaveSuccessMessage('Homepage settings saved successfully!');
+        setSaveSuccessMessage('Homepage & Typography settings saved successfully!');
         setTimeout(() => setSaveSuccessMessage(''), 4000);
       } else {
         setSaveErrorMessage(json.message || 'Failed to save changes.');
@@ -117,6 +174,15 @@ const HomepageCMS = () => {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      )
+    },
+    {
+      id: 'typography',
+      label: 'Typography & Fonts',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
         </svg>
       )
     },
@@ -151,7 +217,7 @@ const HomepageCMS = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex-1 w-full h-full flex items-center justify-center bg-[#f8fafc]">
         <div className="flex flex-col items-center gap-3">
           <svg className="animate-spin h-8 w-8 text-green-700" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -164,10 +230,10 @@ const HomepageCMS = () => {
   }
 
   return (
-    <div className="w-full min-h-[calc(100vh-64px)] flex flex-col md:flex-row bg-[#f8fafc]">
+    <div className="w-full h-full flex flex-col md:flex-row overflow-hidden bg-[#f8fafc]">
       
-      {/* Left Sub-navigation Sidebar (Edge to Edge) */}
-      <aside className="w-full md:w-72 lg:w-80 shrink-0 bg-white border-r border-gray-200 p-6 lg:p-8 flex flex-col gap-6 md:min-h-[calc(100vh-64px)]">
+      {/* Left Sub-navigation Sidebar (Fixed & Stationary) */}
+      <aside className="w-full md:w-72 lg:w-80 shrink-0 bg-white border-r border-gray-200 p-6 lg:p-8 flex flex-col gap-6 h-full overflow-y-auto">
         <div className="pb-4 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 tracking-tight">Homepage Sections</h2>
           <p className="text-xs text-gray-500 mt-1 leading-relaxed">Update all homepage text & content</p>
@@ -196,68 +262,95 @@ const HomepageCMS = () => {
         </nav>
       </aside>
 
-      {/* Right Active Section Editor (Edge to Edge) */}
-      <main className="flex-1 w-full p-6 sm:p-8 lg:p-12 overflow-y-auto max-w-[1600px]">
-        {/* Toast Alerts */}
-        {saveSuccessMessage && (
-          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-5 py-3.5 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm animate-fade-in">
-            <div className="flex items-center gap-2.5">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-              </svg>
-              {saveSuccessMessage}
-            </div>
-            <button onClick={() => setSaveSuccessMessage('')} className="text-green-600 hover:text-green-800 cursor-pointer">✕</button>
+      {/* Floating Global Toast Notifications */}
+      {saveSuccessMessage && (
+        <div className="fixed top-20 right-6 sm:right-10 z-[100] max-w-md bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl shadow-emerald-900/30 flex items-center gap-3.5 animate-bounce-short border border-emerald-500/50 backdrop-blur-md">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+            </svg>
           </div>
-        )}
-
-        {saveErrorMessage && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-5 py-3.5 rounded-xl text-sm font-semibold flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {saveErrorMessage}
-            </div>
-            <button onClick={() => setSaveErrorMessage('')} className="text-red-600 hover:text-red-800 cursor-pointer">✕</button>
+          <div className="flex-1">
+            <h4 className="text-sm font-extrabold leading-none text-white">Success!</h4>
+            <p className="text-xs text-emerald-100 font-medium mt-0.5">{saveSuccessMessage}</p>
           </div>
-        )}
+          <button 
+            onClick={() => setSaveSuccessMessage('')} 
+            className="text-emerald-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer text-base"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
-        {activeSection === 'logo' && (
-          <LogoSectionEditor
-            data={cmsData}
-            onChange={handleSectionChange}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        )}
+      {saveErrorMessage && (
+        <div className="fixed top-20 right-6 sm:right-10 z-[100] max-w-md bg-rose-600 text-white px-6 py-4 rounded-2xl shadow-2xl shadow-rose-900/30 flex items-center gap-3.5 animate-bounce-short border border-rose-500/50 backdrop-blur-md">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-extrabold leading-none text-white">Upload / Save Error</h4>
+            <p className="text-xs text-rose-100 font-medium mt-0.5">{saveErrorMessage}</p>
+          </div>
+          <button 
+            onClick={() => setSaveErrorMessage('')} 
+            className="text-rose-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer text-base"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
-        {activeSection === 'hero' && (
-          <HeroSectionEditor
-            data={cmsData}
-            onChange={handleSectionChange}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        )}
+      {/* Right Active Section Editor (Independent Scroll Container) */}
+      <main className="flex-1 h-full overflow-y-auto p-6 sm:p-8 lg:p-12 min-h-0">
+        <div className="max-w-[1600px] mx-auto pb-12">
+          {activeSection === 'logo' && (
+            <LogoSectionEditor
+              data={cmsData}
+              onChange={handleSectionChange}
+              onSave={handleSave}
+              isSaving={isSaving}
+            />
+          )}
 
-        {activeSection === 'search' && (
-          <SearchBarEditor
-            data={cmsData}
-            onChange={handleSectionChange}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        )}
+          {activeSection === 'typography' && (
+            <TypographySectionEditor
+              data={cmsData}
+              onChange={handleSectionChange}
+              onSave={handleSave}
+              isSaving={isSaving}
+            />
+          )}
 
-        {activeSection === 'jobCards' && (
-          <JobCardsEditor
-            data={cmsData}
-            onChange={handleSectionChange}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        )}
+          {activeSection === 'hero' && (
+            <HeroSectionEditor
+              data={cmsData}
+              onChange={handleSectionChange}
+              onSave={handleSave}
+              isSaving={isSaving}
+            />
+          )}
+
+          {activeSection === 'search' && (
+            <SearchBarEditor
+              data={cmsData}
+              onChange={handleSectionChange}
+              onSave={handleSave}
+              isSaving={isSaving}
+            />
+          )}
+
+          {activeSection === 'jobCards' && (
+            <JobCardsEditor
+              data={cmsData}
+              onChange={handleSectionChange}
+              onSave={handleSave}
+              isSaving={isSaving}
+            />
+          )}
+        </div>
       </main>
 
     </div>

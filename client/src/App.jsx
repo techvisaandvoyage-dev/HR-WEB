@@ -13,7 +13,7 @@ import EmployerDashboard from './components/employer/dashboard/EmployerDashboard
 import LocationAutocomplete from './components/common/LocationAutocomplete';
 import Footer from './components/common/Footer';
 import StaticPage from './components/common/StaticPage';
-import { dummyJobs } from './data/dummyJobs';
+import BrandLogo from './components/common/BrandLogo';
 import { isLocationMatch } from './data/preferredLocations';
 
 function App() {
@@ -78,6 +78,135 @@ function App() {
     };
     fetchHomepageConfig();
   }, []);
+
+  // Load all custom fonts from the library into @font-face so they are always available
+  useEffect(() => {
+    const library = homepageConfig?.customFontsLibrary;
+    if (!Array.isArray(library)) return;
+    library.forEach(({ family, customUrl }) => {
+      if (!family || !customUrl) return;
+      const styleId = `custom-font-lib-${family.replace(/\s+/g, '-').toLowerCase()}`;
+      if (document.getElementById(styleId)) return; // already injected
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = `
+        @font-face {
+          font-family: '${family}';
+          src: url('${customUrl}');
+          font-display: swap;
+        }
+      `;
+      document.head.appendChild(style);
+      try {
+        if (typeof FontFace !== 'undefined') {
+          const fontFace = new FontFace(family, `url('${customUrl}')`);
+          fontFace.load().then(loaded => document.fonts.add(loaded)).catch(() => {});
+        }
+      } catch (_) {}
+    });
+  }, [homepageConfig?.customFontsLibrary]);
+
+  // Dynamically load & apply typography configured in CMS
+  useEffect(() => {
+    if (!homepageConfig?.typography) return;
+    const { primaryFont, headingFont, secondaryFont } = homepageConfig.typography;
+
+    const applyFont = (font, defaultFamily, cssVar) => {
+      if (!font) return;
+      const family = (font.family || defaultFamily).trim();
+      if (font.source === 'google' && family) {
+        const linkId = `google-font-${family.replace(/\s+/g, '-').toLowerCase()}`;
+        if (!document.getElementById(linkId)) {
+          const link = document.createElement('link');
+          link.id = linkId;
+          link.rel = 'stylesheet';
+          link.href = `https://fonts.googleapis.com/css2?family=${family.replace(/\s+/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap`;
+          link.onerror = () => {
+            link.href = `https://fonts.googleapis.com/css2?family=${family.replace(/\s+/g, '+')}&display=swap`;
+          };
+          document.head.appendChild(link);
+        }
+      } else if (font.source === 'custom' && font.customUrl) {
+        if (font.urlType === 'stylesheet') {
+          // Inject as a <link> stylesheet (Google Fonts link, CDN, etc.)
+          const linkId = `font-link-${family.replace(/\s+/g, '-').toLowerCase()}`;
+          if (!document.getElementById(linkId)) {
+            const link = document.createElement('link');
+            link.id = linkId;
+            link.rel = 'stylesheet';
+            link.href = font.customUrl;
+            document.head.appendChild(link);
+          }
+        } else {
+          // Inject as @font-face (uploaded file)
+          const styleId = `custom-font-${family.replace(/\s+/g, '-').toLowerCase()}`;
+          let style = document.getElementById(styleId);
+          if (!style) {
+            style = document.createElement('style');
+            style.id = styleId;
+            document.head.appendChild(style);
+          }
+          style.innerHTML = `
+            @font-face {
+              font-family: '${family}';
+              src: url('${font.customUrl}');
+              font-display: swap;
+            }
+          `;
+          try {
+            if (typeof FontFace !== 'undefined') {
+              const fontFace = new FontFace(family, `url('${font.customUrl}')`);
+              fontFace.load().then(loaded => document.fonts.add(loaded)).catch(() => {});
+            }
+          } catch (_) {}
+        }
+      }
+      document.documentElement.style.setProperty(cssVar, `'${family}', sans-serif`);
+    };
+
+    if (primaryFont) applyFont(primaryFont, 'Inter', '--font-primary');
+    if (headingFont) applyFont(headingFont, 'Plus Jakarta Sans', '--font-heading');
+    if (secondaryFont) applyFont(secondaryFont, 'Roboto', '--font-secondary');
+
+    const pFamily = (primaryFont?.family || 'Inter').trim();
+    const hFamily = (headingFont?.family || 'Plus Jakarta Sans').trim();
+    const sFamily = (secondaryFont?.family || 'Roboto').trim();
+
+    let dynamicStyle = document.getElementById('dynamic-typography-styles');
+    if (!dynamicStyle) {
+      dynamicStyle = document.createElement('style');
+      dynamicStyle.id = 'dynamic-typography-styles';
+      document.head.appendChild(dynamicStyle);
+    }
+    // Build Google Fonts @import only for google-sourced fonts
+    const googleFamilies = [
+      primaryFont?.source !== 'custom' ? pFamily : null,
+      headingFont?.source !== 'custom' ? hFamily : null,
+      secondaryFont?.source !== 'custom' ? sFamily : null,
+    ].filter(Boolean);
+    const googleImport = googleFamilies.length > 0
+      ? `@import url('https://fonts.googleapis.com/css2?${googleFamilies.map(f => `family=${f.replace(/\s+/g, '+')}:ital,wght@0,300..900;1,300..900`).join('&')}&display=swap');`
+      : '';
+
+    dynamicStyle.innerHTML = `
+      ${googleImport}
+      :root {
+        --font-primary: '${pFamily}', sans-serif;
+        --font-heading: '${hFamily}', sans-serif;
+        --font-secondary: '${sFamily}', serif, sans-serif;
+      }
+      body, button, input, select, textarea, p, div, a, li, label, table, td, th {
+        font-family: '${pFamily}', sans-serif;
+      }
+      h1, h2, h3, h4, h5, h6, .font-heading {
+        font-family: '${hFamily}', sans-serif !important;
+      }
+      .font-secondary, .font-accent, .hero-highlight, [data-typography="secondary"],
+      .rounded-full, .rounded-full *, .tag, .badge, .chip, [class*="bg-green-50"], [class*="bg-emerald-50"], [class*="bg-blue-50"], [class*="bg-purple-50"] {
+        font-family: '${sFamily}', serif, sans-serif !important;
+      }
+    `;
+  }, [homepageConfig?.typography]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -325,24 +454,10 @@ function App() {
             {/* Navbar */}
       <nav className="w-full px-6 py-4 md:px-12 md:py-5 flex justify-between items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-palette-100 shadow-sm">
         {/* Brand / Logo */}
-        <div 
-          onClick={() => navigate('/')}
-          className="cursor-pointer flex items-center gap-2 select-none hover:opacity-90 transition-opacity"
-        >
-          {homepageConfig?.logo?.type === 'image' && homepageConfig.logo.imageUrl ? (
-            <img
-              src={homepageConfig.logo.imageUrl}
-              alt={homepageConfig.logo.altText || 'sahijob.com'}
-              style={{ height: `${homepageConfig.logo.height || 36}px` }}
-              className="object-contain"
-            />
-          ) : (
-            <div className="text-2xl md:text-3xl font-black text-palette-900 tracking-tight">
-              <span>{homepageConfig?.logo?.text || 'sahijob'}</span>
-              <span className="text-palette-400">{homepageConfig?.logo?.accentText || '.com'}</span>
-            </div>
-          )}
-        </div>
+        <BrandLogo 
+          onClick={() => navigate('/')} 
+          customConfig={homepageConfig?.logo}
+        />
 
         {/* Desktop Buttons */}
         <div className="hidden md:flex items-center gap-4">
@@ -406,9 +521,9 @@ function App() {
         {/* Hero Section */}
         <div className="w-full max-w-4xl relative z-30 flex flex-col items-center text-center space-y-12 min-h-[45vh] justify-center mb-6 mt-8">
           <div className="space-y-4 px-4">
-            <h1 className="text-4xl md:text-7xl font-roboto font-black tracking-tight text-palette-900 leading-tight">
+            <h1 className="text-4xl md:text-7xl font-heading font-black tracking-tight text-palette-900 leading-tight">
               <span>{homepageConfig?.hero?.titlePrefix || 'Find Your'} </span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-palette-400 to-palette-900">
+              <span className="hero-highlight font-secondary text-transparent bg-clip-text bg-gradient-to-r from-palette-400 to-palette-900">
                 {homepageConfig?.hero?.titleHighlight || 'Dream Job'}
               </span>
             </h1>

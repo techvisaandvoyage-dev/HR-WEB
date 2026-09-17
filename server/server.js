@@ -27,8 +27,9 @@ app.use('/__/auth', (req, res) => {
   });
 });
 
-// Body parser
-app.use(express.json());
+// Body parser with 10mb limit for uploads and settings
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Enable CORS
 app.use(cors());

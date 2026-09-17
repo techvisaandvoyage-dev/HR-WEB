@@ -13,8 +13,11 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  LayoutDashboard
 } from 'lucide-react';
+import EmployeesTab from './EmployeesTab';
+import EmployersTab from './EmployersTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -22,6 +25,18 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('subtab') || 'overview';
+  });
+
+  const handleSubTabChange = (tabKey) => {
+    setActiveSubTab(tabKey);
+    const params = new URLSearchParams(window.location.search);
+    params.set('subtab', tabKey);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  };
 
   const fetchStats = async () => {
     try {
@@ -66,80 +81,135 @@ export default function DashboardOverview({ onNavigateTab }) {
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">sahijob.com Portal Overview</h1>
           <p className="text-gray-500 mt-1">Real-time statistics for registered employers, job seekers, and portal activity.</p>
         </div>
+        {activeSubTab === 'overview' && (
+          <button
+            onClick={fetchStats}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 text-emerald-600 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Stats
+          </button>
+        )}
+      </div>
+
+      {/* Sub-Navigation Tabs inside Overview */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-1.5 shadow-xs flex items-center gap-2 overflow-x-auto">
         <button
-          onClick={fetchStats}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm disabled:opacity-50"
+          onClick={() => handleSubTabChange('overview')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap ${
+            activeSubTab === 'overview'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+          }`}
         >
-          <RefreshCw className={`w-4 h-4 text-emerald-600 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Stats
+          <LayoutDashboard className="w-4 h-4" />
+          Overview
+        </button>
+
+        <button
+          onClick={() => handleSubTabChange('employees')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap ${
+            activeSubTab === 'employees'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Employees
+        </button>
+
+        <button
+          onClick={() => handleSubTabChange('employers')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap ${
+            activeSubTab === 'employers'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          Employers
         </button>
       </div>
 
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchStats} className="font-semibold underline">Retry</button>
+      {activeSubTab === 'employees' && (
+        <div className="-mx-8 -my-8">
+          <EmployeesTab />
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* 1. Total Registered Employers */}
-        <div 
-          onClick={() => onNavigateTab && onNavigateTab('employers')}
-          className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-blue-300"
-        >
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full flex items-center gap-1">
-              Companies <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-3xl font-black text-gray-900 tracking-tight">
-              {loading ? '...' : totals.totalEmployers}
-            </h3>
-            <p className="text-sm font-medium text-gray-500 mt-1">Total Registered Employers</p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>Hiring organizations</span>
-            <span className="font-semibold text-blue-600">View list &rarr;</span>
-          </div>
+      {activeSubTab === 'employers' && (
+        <div className="-mx-8 -my-8">
+          <EmployersTab />
         </div>
+      )}
 
-        {/* 2. Total Jobs Posted */}
-        <div 
-          onClick={() => onNavigateTab && onNavigateTab('employers')}
-          className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-purple-300"
-        >
-          <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Briefcase className="w-6 h-6" />
+      {activeSubTab === 'overview' && (
+        <>
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={fetchStats} className="font-semibold underline">Retry</button>
             </div>
-            <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">
-              {totals.activeJobs} Active
-            </span>
-          </div>
-          <div className="mt-4">
-            <h3 className="text-3xl font-black text-gray-900 tracking-tight">
-              {loading ? '...' : totals.totalJobs}
-            </h3>
-            <p className="text-sm font-medium text-gray-500 mt-1">Total Jobs Posted</p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-            <span>{totals.closedJobs} closed / expired</span>
-            <span className="font-semibold text-purple-600">{totals.activeJobs} live vacancies</span>
-          </div>
-        </div>
+          )}
 
-        {/* 3. Total Registered Employees */}
-        <div 
-          onClick={() => onNavigateTab && onNavigateTab('employees')}
-          className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-emerald-300"
-        >
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* 1. Total Registered Employers */}
+            <div 
+              onClick={() => handleSubTabChange('employers')}
+              className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-blue-300"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  Companies <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                </span>
+              </div>
+              <div className="mt-4">
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight">
+                  {loading ? '...' : totals.totalEmployers}
+                </h3>
+                <p className="text-sm font-medium text-gray-500 mt-1">Total Registered Employers</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span>Hiring organizations</span>
+                <span className="font-semibold text-blue-600">View list &rarr;</span>
+              </div>
+            </div>
+
+            {/* 2. Total Jobs Posted */}
+            <div 
+              onClick={() => handleSubTabChange('employers')}
+              className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-purple-300"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Briefcase className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">
+                  {totals.activeJobs} Active
+                </span>
+              </div>
+              <div className="mt-4">
+                <h3 className="text-3xl font-black text-gray-900 tracking-tight">
+                  {loading ? '...' : totals.totalJobs}
+                </h3>
+                <p className="text-sm font-medium text-gray-500 mt-1">Total Jobs Posted</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span>{totals.closedJobs} closed / expired</span>
+                <span className="font-semibold text-purple-600">{totals.activeJobs} live vacancies</span>
+              </div>
+            </div>
+
+            {/* 3. Total Registered Employees */}
+            <div 
+              onClick={() => handleSubTabChange('employees')}
+              className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:border-emerald-300"
+            >
           <div className="flex items-center justify-between">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
               <Users className="w-6 h-6" />
@@ -261,7 +331,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                 </div>
               </div>
               <button
-                onClick={() => onNavigateTab && onNavigateTab('employers')}
+                onClick={() => handleSubTabChange('employers')}
                 className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
               >
                 View All <ArrowUpRight className="w-3.5 h-3.5" />
@@ -317,7 +387,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                 </div>
               </div>
               <button
-                onClick={() => onNavigateTab && onNavigateTab('employees')}
+                onClick={() => handleSubTabChange('employees')}
                 className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
               >
                 View All <ArrowUpRight className="w-3.5 h-3.5" />
@@ -359,6 +429,8 @@ export default function DashboardOverview({ onNavigateTab }) {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

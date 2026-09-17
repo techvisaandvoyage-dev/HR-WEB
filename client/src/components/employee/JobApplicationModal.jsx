@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import CustomDropdown from '../common/CustomDropdown';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
+import { DEFAULT_EDUCATION_DATA } from './EmployeeOnboarding';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -804,10 +805,9 @@ const p = formData.professionalDetails || {};
                             <label className="block text-sm font-bold text-gray-900 mb-1.5">Education <span className="text-red-500">*</span></label>
                             <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.educationType || ''} onChange={e => updateArray('qualifications', idx, 'educationType', e.target.value)}>
                               <option value="">Select education type</option>
-                              <option value="10th">10th</option>
-                              <option value="12th">12th</option>
-                              <option value="Graduation/Diploma">Graduation/Diploma</option>
-                              <option value="Masters/Post-Graduation">Masters/Post-Graduation</option>
+                              {Object.keys(DEFAULT_EDUCATION_DATA).map(key => (
+                                <option key={key} value={key}>{key}</option>
+                              ))}
                             </select>
                           </div>
 
@@ -817,9 +817,9 @@ const p = formData.professionalDetails || {};
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Board <span className="text-red-500">*</span></label>
                                 <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.board || ''} onChange={e => updateArray('qualifications', idx, 'board', e.target.value)}>
                                   <option value="">Select board</option>
-                                  <option value="CBSE">CBSE</option>
-                                  <option value="ICSE">ICSE</option>
-                                  <option value="State Board">State Board</option>
+                                  {(DEFAULT_EDUCATION_DATA[q.educationType]?.options || ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']).map(b => (
+                                    <option key={b} value={b}>{b}</option>
+                                  ))}
                                 </select>
                               </div>
                               <div>
@@ -862,14 +862,9 @@ const p = formData.professionalDetails || {};
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
                                 <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.course || ''} onChange={e => updateArray('qualifications', idx, 'course', e.target.value)}>
                                   <option value="">Select course</option>
-                                  <option value="B.Tech/B.E.">B.Tech/B.E.</option>
-                                  <option value="B.Sc">B.Sc</option>
-                                  <option value="B.Com">B.Com</option>
-                                  <option value="B.A">B.A</option>
-                                  <option value="BBA">BBA</option>
-                                  <option value="M.Tech/M.E.">M.Tech/M.E.</option>
-                                  <option value="MBA/PGDM">MBA/PGDM</option>
-                                  <option value="MCA">MCA</option>
+                                  {(DEFAULT_EDUCATION_DATA[q.educationType]?.options || ['B.Tech/B.E.', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'M.Tech/M.E.', 'MBA/PGDM', 'MCA', 'Other']).map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
                                 </select>
                               </div>
                               <div>

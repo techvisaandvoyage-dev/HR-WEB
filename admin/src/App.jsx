@@ -30,8 +30,14 @@ function App() {
     localStorage.setItem('adminActiveTab', newTab);
     const params = new URLSearchParams(window.location.search);
     params.set('tab', newTab);
-    // If switching main tab, clear old subtab if it's not relevant
-    if (newTab !== 'employers' && newTab !== 'footer') {
+    
+    // Clean up specific sub-keys when changing main tabs
+    if (newTab !== 'employees') {
+      params.delete('section');
+      params.delete('step');
+      params.delete('authSub');
+    }
+    if (newTab !== 'employers' && newTab !== 'footer' && newTab !== 'homepage' && newTab !== 'overview') {
       params.delete('subtab');
     }
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
@@ -75,16 +81,24 @@ function App() {
         <HomepageCMS />
       )}
       {activeTab === 'footer' && (
-        <FooterEditor />
+        <div className="flex-1 w-full h-full overflow-y-auto">
+          <FooterEditor />
+        </div>
       )}
       {activeTab === 'overview' && (
-        <DashboardOverview onNavigateTab={handleSelectTab} />
+        <div className="flex-1 w-full h-full overflow-y-auto">
+          <DashboardOverview onNavigateTab={handleSelectTab} />
+        </div>
       )}
       {activeTab === 'employees' && (
-        <EmployeesTab />
+        <div className="flex-1 w-full h-full overflow-y-auto">
+          <EmployeesTab />
+        </div>
       )}
       {activeTab === 'employers' && (
-        <EmployersTab />
+        <div className="flex-1 w-full h-full overflow-y-auto">
+          <EmployersTab />
+        </div>
       )}
     </AdminLayout>
   );

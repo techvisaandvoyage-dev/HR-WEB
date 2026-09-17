@@ -1,5 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import CMSGuidelineBanner from './CMSGuidelineBanner';
+import { uploadFileToStorage, deleteFileFromStorage } from '../../../utils/firebaseStorage';
 
 /**
  * LogoSectionEditor Component
@@ -8,6 +9,9 @@ import CMSGuidelineBanner from './CMSGuidelineBanner';
  */
 const LogoSectionEditor = ({ data, onChange, onSave, isSaving }) => {
   const fileInputRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState('');
 
   const logo = data?.logo || {
     type: 'text',
@@ -26,34 +30,69 @@ const LogoSectionEditor = ({ data, onChange, onSave, isSaving }) => {
     onChange('logo', { ...logo, [field]: value });
   };
 
-  // Convert uploaded image to base64 data URL for direct instant preview & storage
-  const handleFileUpload = (e) => {
+  // Upload file directly to Firebase Storage
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1024 * 1024 * 2) {
-      alert('Logo file size should be less than 2MB for fast page loads.');
+    if (file.size > 1024 * 1024 * 5) {
+      setUploadError('Logo file size should be less than 5MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
+    try {
+      setIsUploading(true);
+      setUploadProgress(10);
+      setUploadError('');
+
+      // If replacing an existing firebase image, clean up old file
+      const oldUrl = logo.imageUrl;
+
+      const downloadURL = await uploadFileToStorage(file, 'branding/logos', (progress) => {
+        setUploadProgress(progress);
+      });
+
       onChange('logo', {
         ...logo,
         type: 'image',
-        imageUrl: uploadEvent.target.result
+        imageUrl: downloadURL
       });
-    };
-    reader.readAsDataURL(file);
+      setUploadProgress(100);
+
+      // Clean up previous image if replaced
+      if (oldUrl && oldUrl.startsWith('https://firebasestorage') && oldUrl !== downloadURL) {
+        deleteFileFromStorage(oldUrl).catch(console.error);
+      }
+    } catch (err) {
+      console.error('Firebase storage upload failed:', err);
+      setUploadError('Failed to upload image to Firebase Storage. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleRemoveImage = () => {
+  // Remove logo and delete file from Firebase Storage
+  const handleRemoveImage = async () => {
+    const oldUrl = logo.imageUrl;
+    
     onChange('logo', {
       ...logo,
       type: 'text',
       imageUrl: ''
     });
+    
     if (fileInputRef.current) fileInputRef.current.value = '';
+    setUploadProgress(0);
+    setUploadError('');
+
+    if (oldUrl && oldUrl.startsWith('https://firebasestorage')) {
+      try {
+        await deleteFileFromStorage(oldUrl);
+        console.log('Logo successfully removed from Firebase Storage');
+      } catch (err) {
+        console.error('Error deleting logo from Firebase Storage:', err);
+      }
+    }
   };
 
   return (
@@ -118,9 +157,9 @@ const LogoSectionEditor = ({ data, onChange, onSave, isSaving }) => {
         {/* Live Preview Box */}
         <div className="space-y-2">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-            Live Navigation Bar Preview
+            Current Logo Preview
           </label>
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100/60 border border-dashed border-gray-300 rounded-2xl p-6 flex items-center justify-between min-h-[90px]">
+          <div className="bg-gray-50/80 border border-dashed border-gray-300 rounded-2xl p-6 flex items-center min-h-[90px]">
             {/* Logo Preview */}
             <div className="flex items-center">
               {logo.type === 'image' && logo.imageUrl ? (
@@ -132,7 +171,7 @@ const LogoSectionEditor = ({ data, onChange, onSave, isSaving }) => {
                 />
               ) : logo.type === 'image' && !logo.imageUrl ? (
                 <span className="text-sm font-medium text-gray-400 italic">
-                  No image uploaded yet (click Choose File below)
+                  No logo uploaded yet
                 </span>
               ) : (
                 <div className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight select-none">
@@ -140,12 +179,6 @@ const LogoSectionEditor = ({ data, onChange, onSave, isSaving }) => {
                   <span className="text-green-600">{logo.accentText || '.com'}</span>
                 </div>
               )}
-            </div>
-
-            {/* Fake Nav Buttons to demonstrate header context */}
-            <div className="hidden sm:flex items-center gap-3 opacity-60 pointer-events-none">
-              <span className="text-xs font-semibold text-gray-700">Employee Login</span>
-              <span className="px-3 py-1 bg-green-800 text-white rounded-full text-xs font-semibold">Employer Login</span>
             </div>
           </div>
         </div>
@@ -164,18 +197,48 @@ const LogoSectionEditor = ({ data, onChange, onSave, isSaving }) => {
                   ref={fileInputRef}
                   accept="image/png, image/jpeg, image/webp, image/svg+xml"
                   onChange={handleFileUpload}
-                  className="block w-full max-w-md text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer"
+                  disabled={isUploading}
+                  className="block w-full max-w-md text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer disabled:opacity-50"
                 />
                 {logo.imageUrl && (
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                    className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg border border-red-200 transition-colors"
+                    className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg border border-red-200 transition-colors cursor-pointer"
                   >
                     Remove Logo
                   </button>
                 )}
               </div>
+
+              {/* Progress Bar & Status */}
+              {isUploading && (
+                <div className="mt-3 max-w-md space-y-1">
+                  <div className="flex justify-between text-xs font-bold text-green-800">
+                    <span>Uploading to Firebase Storage...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {uploadError && (
+                <p className="mt-2 text-xs font-bold text-red-600">{uploadError}</p>
+              )}
+
+              {!isUploading && logo.imageUrl && logo.imageUrl.startsWith('https://firebasestorage') && (
+                <p className="mt-2 text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Uploaded to Firebase Storage
+                </p>
+              )}
             </div>
 
             {/* Height & Alt Text */}

@@ -7,8 +7,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        heading: ['Plus Jakarta Sans', 'sans-serif'],
+        sans: ['var(--font-primary, Inter)', 'sans-serif'],
+        heading: ['var(--font-heading, Plus Jakarta Sans)', 'sans-serif'],
+        roboto: ['var(--font-heading, Plus Jakarta Sans)', 'sans-serif'],
+        accent: ['var(--font-secondary, Roboto)', 'sans-serif'],
       },
       colors: {
         palette: {

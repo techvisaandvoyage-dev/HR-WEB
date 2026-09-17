@@ -35,23 +35,74 @@ const formatIndianNumber = (val) => {
   return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
 };
 
-const educationTypeOptions = [
-  { value: '10th', label: '10th' },
-  { value: '12th', label: '12th' },
-  { value: 'Graduation/Diploma', label: 'Graduation/Diploma' },
-  { value: 'Masters/Post-Graduation', label: 'Masters/Post-Graduation' },
-  { value: 'Accounting Degree', label: 'Accounting Degree' },
-  { value: 'Post Graduate Accounting & Finance', label: 'Post Graduate Accounting & Finance' },
-  { value: 'Professional Qualification', label: 'Professional Qualification' },
-  { value: 'Accounting Certification', label: 'Accounting Certification' },
-  { value: 'Diploma', label: 'Diploma' },
-  { value: 'Accounting Software', label: 'Accounting Software' },
-  { value: 'Taxation', label: 'Taxation' },
-  { value: 'Audit', label: 'Audit' },
-  { value: 'Finance', label: 'Finance' },
-  { value: 'International Accounting', label: 'International Accounting' },
-  { value: 'Other', label: 'Other' },
-];
+export const DEFAULT_EDUCATION_DATA = {
+  '10th': {
+    category: 'school',
+    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+  },
+  '12th': {
+    category: 'school',
+    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+  },
+  'Graduation/Diploma': {
+    category: 'higher',
+    options: ['B.Tech/B.E.', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA', 'B.Des', 'Diploma in Engineering', 'Polytechnic', 'Other']
+  },
+  'Masters/Post-Graduation': {
+    category: 'higher',
+    options: ['M.Tech/M.E.', 'M.Sc', 'M.Com', 'M.A', 'MBA/PGDM', 'MCA', 'M.Des', 'MS', 'Other']
+  },
+  'Accounting Degree': {
+    category: 'higher',
+    options: ['B.Com', 'B.Com (Hons.)', 'BBA in Finance', 'BBA in Accounting', 'B.Sc. in Accounting', 'Bachelor of Accounting / B.Acc.', 'BMS in Finance / Accounting', 'Other']
+  },
+  'Post Graduate Accounting & Finance': {
+    category: 'higher',
+    options: ['M.Com', 'M.Com in Accounting', 'M.Com in Finance', 'MBA in Finance', 'MBA in Accounting', 'M.Sc. in Accounting / Finance', 'Master of Accounting / M.Acc.', 'PG Diploma in Accounting', 'PG Diploma in Finance', 'Other']
+  },
+  'Professional Qualification': {
+    category: 'higher',
+    options: ['CA – Chartered Accountant', 'CMA – Cost and Management Accountant', 'CS – Company Secretary', 'ACCA', 'CPA – Certified Public Accountant', 'CFA – Chartered Financial Analyst', 'CIMA', 'CIA – Certified Internal Auditor', 'CGMA', 'Other']
+  },
+  'Accounting Certification': {
+    category: 'higher',
+    options: ['Certificate in Accounting', 'Certificate in Financial Accounting', 'Certificate in GST', 'Certificate in Tally', 'Certificate in Income Tax', 'Certificate in Payroll', 'DCA', 'PGDCA', 'Other Accounting Qualification', 'Other Finance Qualification', 'Other']
+  },
+  'Diploma': {
+    category: 'higher',
+    options: ['Diploma in Accounting', 'Diploma in Financial Accounting', 'Diploma in Taxation', 'Diploma in Computerized Accounting', 'Polytechnic / Technical Diploma', 'ITI', 'Other']
+  },
+  'Accounting Software': {
+    category: 'higher',
+    options: ['Tally / TallyPrime', 'Tally + GST', 'SAP FI', 'SAP FICO', 'QuickBooks', 'Zoho Books', 'BUSY Accounting Software', 'Oracle Financials', 'Sage Accounting', 'Advanced Excel for Accounting', 'MS Excel for Accounting', 'Other']
+  },
+  'Taxation': {
+    category: 'higher',
+    options: ['GST', 'GST Certification', 'Income Tax', 'Corporate Taxation', 'Tax Planning', 'Indirect Taxation', 'Transfer Pricing', 'Other']
+  },
+  'Audit': {
+    category: 'higher',
+    options: ['Financial Accounting', 'Advanced Financial Accounting', 'Corporate Accounting', 'Cost Accounting', 'Management Accounting', 'Auditing', 'Internal Audit', 'Forensic Accounting', 'Payroll Accounting', 'Financial Reporting', 'Accounts Payable (AP)', 'Accounts Receivable (AR)', 'Bank Reconciliation', 'Other']
+  },
+  'Finance': {
+    category: 'higher',
+    options: ['Financial Analysis', 'Financial Modeling', 'Corporate Finance', 'Investment Banking', 'Equity Research', 'Treasury Management', 'Risk Management', 'Financial Planning', 'Other']
+  },
+  'International Accounting': {
+    category: 'higher',
+    options: ['IFRS', 'Ind AS', 'US GAAP', 'International Accounting', 'Other']
+  },
+  'Doctorate / PhD': {
+    category: 'higher',
+    options: ['PhD in Computer Science', 'PhD in Management', 'PhD in Commerce/Finance', 'PhD in Economics', 'PhD in Engineering', 'PhD in Arts/Humanities', 'PhD in Science', 'Other']
+  },
+  'Other': {
+    category: 'higher',
+    options: ['Vocational Training', 'Certificate Course', 'Self-Taught / Bootcamp', 'Other']
+  }
+};
+
+const educationTypeOptions = Object.keys(DEFAULT_EDUCATION_DATA).map(key => ({ value: key, label: key }));
 
 const diplomaCourses = [
   { value: 'Diploma in Accounting', label: 'Diploma in Accounting' },
@@ -188,6 +239,32 @@ const EmployeeOnboarding = () => {
   const [videoMode, setVideoMode] = useState('upload');
   const [videoLink, setVideoLink] = useState('');
   const [docError, setDocError] = useState({ resume: '', coverLetter: '', introVideo: '' });
+  const [cmsConfig, setCmsConfig] = useState(null);
+
+  // Fetch Homepage & Onboarding CMS configuration on mount
+  useEffect(() => {
+    const fetchCmsConfig = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
+        const data = await res.json();
+        if (data.success && data.data?.employeeOnboarding) {
+          setCmsConfig(data.data.employeeOnboarding);
+        }
+      } catch (err) {
+        console.error('Error fetching onboarding CMS config:', err);
+      }
+    };
+    fetchCmsConfig();
+  }, []);
+
+  const getStepField = (stepKey, fieldKey, defaultLabel, defaultPlaceholder, defaultRequired = true) => {
+    const field = cmsConfig?.[stepKey]?.fields?.[fieldKey];
+    return {
+      label: field?.label || defaultLabel,
+      placeholder: field?.placeholder || defaultPlaceholder,
+      isRequired: field?.isRequired !== undefined ? field.isRequired : defaultRequired
+    };
+  };
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem('userProfile');
@@ -307,9 +384,21 @@ const EmployeeOnboarding = () => {
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (!formData.firstName || !formData.phone || !formData.designation || !formData.industry || !formData.totalExperience || !formData.location) {
+      const step1Fields = cmsConfig?.step1?.fields;
+      const isReq = (key, defaultReq) => step1Fields?.[key]?.isRequired !== undefined ? step1Fields[key].isRequired : defaultReq;
+
+      const fNameErr = isReq('firstName', true) && !formData.firstName?.trim();
+      const lNameErr = isReq('lastName', false) && !formData.lastName?.trim();
+      const phoneErr = isReq('phone', true) && !formData.phone?.trim();
+      const industryErr = isReq('industry', true) && !formData.industry?.trim();
+      const desigErr = isReq('designation', true) && !formData.designation?.trim();
+      const expErr = isReq('totalExperience', true) && !formData.totalExperience?.trim();
+      const locErr = isReq('location', true) && !formData.location?.trim();
+      const prefLocErr = isReq('preferredLocation', false) && !formData.preferredLocation?.trim();
+      const briefErr = isReq('brief', false) && !formData.brief?.trim();
+
+      if (fNameErr || lNameErr || phoneErr || industryErr || desigErr || expErr || locErr || prefLocErr || briefErr) {
         setShowStep1Errors(true);
-        // alert("Please fill in all mandatory fields (marked with *) to continue.");
         return;
       }
       setShowStep1Errors(false);
@@ -416,137 +505,204 @@ const EmployeeOnboarding = () => {
   };
 
 
-  const Step1BasicDetails = () => (
-    <div className="space-y-6 animate-fade-in pb-2">
-      <div className="mb-6 pb-2 border-b border-gray-100">
-        <h3 className="text-xl font-bold text-gray-800">Basic Details</h3>
-      </div>
-      <div className="grid grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">First Name <span className="text-red-500">*</span></label>
-          <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.firstName ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder="John" value={formData.firstName || ''} onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} />
+  const Step1BasicDetails = () => {
+    const s1Title = cmsConfig?.step1?.title || 'Basic Details';
+    const fFirstName = getStepField('step1', 'firstName', 'First Name', 'Enter first name', true);
+    const fLastName = getStepField('step1', 'lastName', 'Last Name', 'Enter last name', false);
+    const fPhone = getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number', true);
+    const fEmail = getStepField('step1', 'email', 'Email (Read Only)', 'Enter email address', false);
+    const fIndustry = getStepField('step1', 'industry', 'Function', 'Select Function', true);
+    const fDesignation = getStepField('step1', 'designation', 'Designation / Role', 'Select Designation / Role', true);
+    const fTotalExp = getStepField('step1', 'totalExperience', 'Total Experience', 'Select Total Experience', true);
+    const fLocation = getStepField('step1', 'location', 'Current Location', 'Select Current Location', true);
+    const fPreferredLocation = getStepField('step1', 'preferredLocation', 'Preferred Location', 'Select Preferred Locations', false);
+    const fBrief = getStepField('step1', 'brief', 'Brief about yourself', 'I am a passionate professional...', false);
+
+    return (
+      <div className="space-y-6 animate-fade-in pb-2">
+        <div className="mb-6 pb-2 border-b border-gray-100">
+          <h3 className="text-xl font-bold text-gray-800">{s1Title}</h3>
         </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name</label>
-          <input type="text" className={`w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder="Doe" value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number <span className="text-red-500">*</span></label>
-          <div className="flex">
-            <span className={`px-4 py-3 border border-r-0 ${showStep1Errors && !formData.phone ? 'border-red-500' : 'border-gray-200'} rounded-l-xl bg-gray-50 text-gray-500 font-semibold`}>+91</span>
-            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.phone ? 'border-red-500' : 'border-gray-200'} rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder="9876543210" value={formData.phone || ''} onChange={e => { setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)}); setShowStep1Errors(false); }} />
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fFirstName.label} {fFirstName.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fFirstName.isRequired && !formData.firstName ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fFirstName.placeholder} value={formData.firstName || ''} onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fLastName.label} {fLastName.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLastName.isRequired && !formData.lastName ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fLastName.placeholder} value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fPhone.label} {fPhone.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <div className="flex">
+              <span className={`px-4 py-3 border border-r-0 ${showStep1Errors && fPhone.isRequired && !formData.phone ? 'border-red-500' : 'border-gray-200'} rounded-l-xl bg-gray-50 text-gray-500 font-semibold`}>+91</span>
+              <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fPhone.isRequired && !formData.phone ? 'border-red-500' : 'border-gray-200'} rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fPhone.placeholder} value={formData.phone || ''} onChange={e => { setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)}); setShowStep1Errors(false); }} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fEmail.label} {fEmail.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <input type="email" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fIndustry.label} {fIndustry.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <CustomDropdown 
+              options={(() => {
+                const defaultFunctions = {
+                  'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
+                  'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
+                  'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
+                  'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
+                  'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
+                  'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
+                  'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"],
+                  'Other': ["Product Manager", "Project Manager", "Business Analyst", "Operations Manager"]
+                };
+                const functionsMap = (cmsConfig?.step1?.functionsData && Object.keys(cmsConfig.step1.functionsData).length > 0)
+                  ? cmsConfig.step1.functionsData
+                  : defaultFunctions;
+                return Object.keys(functionsMap).map(ind => ({ value: ind, label: ind }));
+              })()}
+              value={formData.industry}
+              onChange={(val) => { setFormData({...formData, industry: val, designation: ''}); setShowStep1Errors(false); }}
+              placeholder={fIndustry.placeholder}
+              error={showStep1Errors && fIndustry.isRequired && !formData.industry}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fDesignation.label} {fDesignation.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <CustomDropdown 
+              options={(() => {
+                const defaultFunctions = {
+                  'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
+                  'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
+                  'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
+                  'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
+                  'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
+                  'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
+                  'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"],
+                  'Other': ["Product Manager", "Project Manager", "Business Analyst", "Operations Manager"]
+                };
+                const functionsMap = (cmsConfig?.step1?.functionsData && Object.keys(cmsConfig.step1.functionsData).length > 0)
+                  ? cmsConfig.step1.functionsData
+                  : defaultFunctions;
+                if (formData.industry && functionsMap[formData.industry]) {
+                  return [...functionsMap[formData.industry], "Other"].map(role => ({ value: role, label: role }));
+                }
+                const allRoles = [...new Set(Object.values(functionsMap).flat()), "Product Manager", "Project Manager", "Business Analyst", "Operations Manager", "Other"];
+                return allRoles.sort().map(role => ({ value: role, label: role }));
+              })()}
+              value={formData.designation}
+              onChange={(val) => { setFormData({...formData, designation: val}); setShowStep1Errors(false); }}
+              placeholder={fDesignation.placeholder}
+              error={showStep1Errors && fDesignation.isRequired && !formData.designation}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fTotalExp.label} {fTotalExp.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <CustomDropdown 
+              options={(() => {
+                const defaultExp = [
+                  '0 - 1 Yrs', '2 - 3 Yrs', '4 - 6 Yrs', '7 - 10 Yrs', 
+                  '11 - 15 Yrs', '16 - 20 Yrs', '21 - 25 Yrs', '25+ yrs'
+                ];
+                const list = (Array.isArray(cmsConfig?.step1?.experienceOptions) && cmsConfig.step1.experienceOptions.length > 0)
+                  ? cmsConfig.step1.experienceOptions
+                  : defaultExp;
+                return list.map(item => ({ value: item, label: item }));
+              })()}
+              value={formData.totalExperience}
+              onChange={(val) => { setFormData({...formData, totalExperience: val}); setShowStep1Errors(false); }}
+              placeholder={fTotalExp.placeholder}
+              error={showStep1Errors && fTotalExp.isRequired && !formData.totalExperience}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fLocation.label} {fLocation.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <MultiSelectLocationDropdown 
+              options={(() => {
+                if (Array.isArray(cmsConfig?.step1?.locationCities) && cmsConfig.step1.locationCities.length > 0) {
+                  return cmsConfig.step1.locationCities
+                    .filter(c => c !== 'Anywhere in India' && c !== 'Anywhere in India/Multiple Locations')
+                    .map(loc => ({ label: loc, value: loc, displayName: loc }));
+                }
+                return currentLocationOptions;
+              })()}
+              value={formData.location || ''}
+              onChange={(val) => { setFormData({...formData, location: val}); setShowStep1Errors(false); }}
+              multiple={false}
+              placeholder={fLocation.placeholder}
+              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLocation.isRequired && !formData.location ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fPreferredLocation.label} {fPreferredLocation.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            {(formData.preferredLocation ? formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean) : []).length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean).map(loc => (
+                  <span 
+                    key={loc} 
+                    className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-2xs" 
+                    onClick={() => removePreferredLocation(loc)} 
+                    title="Click to remove"
+                  >
+                    {loc} <span className="text-[10px]">✕</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            <MultiSelectLocationDropdown 
+              options={(() => {
+                if (Array.isArray(cmsConfig?.step1?.locationCities) && cmsConfig.step1.locationCities.length > 0) {
+                  const cleaned = cmsConfig.step1.locationCities
+                    .filter(c => c !== 'Anywhere in India' && c !== 'Anywhere in India/Multiple Locations');
+                  return [
+                    { label: 'Anywhere in India', value: 'Anywhere in India', displayName: 'Anywhere in India' },
+                    ...cleaned.map(loc => ({ label: loc, value: loc, displayName: loc }))
+                  ];
+                }
+                return preferredLocationOptions;
+              })()}
+              value={formData.preferredLocation || ''}
+              onChange={(val) => { setFormData({...formData, preferredLocation: val}); setShowStep1Errors(false); }}
+              multiple={true}
+              placeholder={fPreferredLocation.placeholder}
+              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fBrief.label} {fBrief.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <textarea 
+              rows="3"
+              placeholder={fBrief.placeholder}
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all custom-scrollbar" 
+              value={formData.brief || ''} 
+              onChange={e => setFormData({...formData, brief: e.target.value})} 
+            ></textarea>
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Email (Read Only)</label>
-          <input type="email" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Function <span className="text-red-500">*</span></label>
-          <CustomDropdown 
-            options={[
-              'IT & Software', 'Finance & Accounts', 'Healthcare',
-              'Manufacturing', 'Marketing', 'Sales', 'HR', 'Other'
-            ].sort().map(ind => ({ value: ind, label: ind }))}
-            value={formData.industry}
-            onChange={(val) => { setFormData({...formData, industry: val, designation: ''}); setShowStep1Errors(false); }}
-            placeholder="Select Function"
-            error={showStep1Errors && !formData.industry}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Designation / Role <span className="text-red-500">*</span></label>
-          <CustomDropdown 
-            options={(() => {
-              const rolesByIndustry = {
-                'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
-                'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
-                'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
-                'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
-                'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
-                'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
-                'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"]
-              };
-              if (formData.industry && rolesByIndustry[formData.industry]) {
-                return [...rolesByIndustry[formData.industry], "Other"].map(role => ({ value: role, label: role }));
-              }
-              const allRoles = [...new Set(Object.values(rolesByIndustry).flat()), "Product Manager", "Project Manager", "Business Analyst", "Operations Manager", "Other"];
-              return allRoles.sort().map(role => ({ value: role, label: role }));
-            })()}
-            value={formData.designation}
-            onChange={(val) => { setFormData({...formData, designation: val}); setShowStep1Errors(false); }}
-            placeholder="Select Designation / Role"
-            error={showStep1Errors && !formData.designation}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Total Experience <span className="text-red-500">*</span></label>
-          <CustomDropdown 
-            options={[
-              { value: '0 - 1 Yrs', label: '0 - 1 Yrs' },
-              { value: '2 - 3 Yrs', label: '2 - 3 Yrs' },
-              { value: '4 - 6 Yrs', label: '4 - 6 Yrs' },
-              { value: '7 - 10 Yrs', label: '7 - 10 Yrs' },
-              { value: '11 - 15 Yrs', label: '11 - 15 Yrs' },
-              { value: '16 - 20 Yrs', label: '16 - 20 Yrs' },
-              { value: '21 - 25 Yrs', label: '21 - 25 Yrs' },
-              { value: '25+ yrs', label: '25+ yrs' }
-            ]}
-            value={formData.totalExperience}
-            onChange={(val) => { setFormData({...formData, totalExperience: val}); setShowStep1Errors(false); }}
-            placeholder="Select Total Experience"
-            error={showStep1Errors && !formData.totalExperience}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location <span className="text-red-500">*</span></label>
-          <MultiSelectLocationDropdown 
-            options={currentLocationOptions}
-            value={formData.location || ''}
-            onChange={(val) => { setFormData({...formData, location: val}); setShowStep1Errors(false); }}
-            multiple={false}
-            placeholder="Select Current Location"
-            className={`w-full px-4 py-3 bg-white border ${showStep1Errors && !formData.location ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
-          />
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location</label>
-          {(formData.preferredLocation ? formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean) : []).length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2">
-              {formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean).map(loc => (
-                <span 
-                  key={loc} 
-                  className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-2xs" 
-                  onClick={() => removePreferredLocation(loc)} 
-                  title="Click to remove"
-                >
-                  {loc} <span className="text-[10px]">✕</span>
-                </span>
-              ))}
-            </div>
-          )}
-          <MultiSelectLocationDropdown 
-            options={preferredLocationOptions}
-            value={formData.preferredLocation || ''}
-            onChange={(val) => { setFormData({...formData, preferredLocation: val}); setShowStep1Errors(false); }}
-            multiple={true}
-            placeholder="Select Preferred Locations"
-            className={`w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
-          />
-        </div>
-        <div className="col-span-2">
-          <label className="block text-sm font-bold text-gray-900 mb-1.5">Brief about yourself</label>
-          <textarea 
-            rows="3"
-            placeholder="I am a passionate professional..."
-            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all custom-scrollbar" 
-            value={formData.brief || ''} 
-            onChange={e => setFormData({...formData, brief: e.target.value})} 
-          ></textarea>
-        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const handleAddEducation = (e) => {
     e.preventDefault();
@@ -559,7 +715,9 @@ const EmployeeOnboarding = () => {
         isValid = false;
         errors.educationType = true;
       } else {
-        const isSchool = lastEdu.educationType === '10th' || lastEdu.educationType === '12th';
+        const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
+        const currentEduConfig = eduData[lastEdu.educationType];
+        const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (lastEdu.educationType === '10th' || lastEdu.educationType === '12th');
         if (isSchool) {
           if (!lastEdu.board) errors.board = true;
           if (!lastEdu.endYear) errors.endYear = true;
@@ -598,7 +756,9 @@ const EmployeeOnboarding = () => {
         isValid = false;
         errors.educationType = true;
       } else {
-        const isSchool = currentEdu.educationType === '10th' || currentEdu.educationType === '12th';
+        const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
+        const currentEduConfig = eduData[currentEdu.educationType];
+        const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (currentEdu.educationType === '10th' || currentEdu.educationType === '12th');
         if (isSchool) {
           if (!currentEdu.board) errors.board = true;
           if (!currentEdu.endYear) errors.endYear = true;
@@ -690,24 +850,32 @@ const EmployeeOnboarding = () => {
     setExpandedExpIndex(-1);
   };
 
-  const Step2Education = () => { return (<div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
-                <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800">Education</h3>
-                    <p className="text-sm text-gray-500 mt-1">Details like course, university, and more, help recruiters identify your educational background</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {eduError && <span className="text-red-500 text-xs font-medium">{eduError}</span>}
-                    <button type="button" onClick={handleAddEducation} className="text-green-500 hover:text-green-600 font-semibold text-sm">
-                      Add +
-                    </button>
-                  </div>
-                </div>
+  const Step2Education = () => {
+    const s2Title = cmsConfig?.step2?.title || 'Education';
+    const s2Subtitle = cmsConfig?.step2?.subtitle || 'Details like course, university, and more, help recruiters identify your educational background';
+    const s2AddBtn = cmsConfig?.step2?.addBtnText || 'Add +';
+
+    return (
+      <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
+        <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">{s2Title}</h3>
+            <p className="text-sm text-gray-500 mt-1">{s2Subtitle}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {eduError && <span className="text-red-500 text-xs font-medium">{eduError}</span>}
+            <button type="button" onClick={handleAddEducation} className="text-green-500 hover:text-green-600 font-semibold text-sm">
+              {s2AddBtn}
+            </button>
+          </div>
+        </div>
                 
                 <div className="space-y-6">
                   {(formData.qualifications || []).map((q, idx) => {
-                    const isSchool = q.educationType === '10th' || q.educationType === '12th';
-                    const isHigher = q.educationType && !isSchool;
+                    const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
+                    const currentEduConfig = eduData[q.educationType];
+                    const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (q.educationType === '10th' || q.educationType === '12th');
+                    const isHigher = !isSchool && !!q.educationType;
                     
                     if (expandedEduIndex !== idx) {
                       return (
@@ -715,7 +883,7 @@ const EmployeeOnboarding = () => {
                           <div className="flex items-center gap-2">
                             <h4 className="font-bold text-gray-900 text-[15px]">
                               {isHigher ? (q.course || q.educationType || 'Higher Education') : 
-                               isSchool ? (q.educationType === '12th' ? 'Class XII' : 'Class X') : 
+                               isSchool ? (q.educationType === '12th' ? 'Class XII' : q.educationType === '10th' ? 'Class X' : (q.board || q.educationType)) : 
                                (q.educationType || 'Education')}
                             </h4>
                             {q.isPrimary && (
@@ -756,9 +924,12 @@ const EmployeeOnboarding = () => {
                               }}
                             >
                               <option value="">Select education type</option>
-                              {educationTypeOptions.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
+                              {(() => {
+                                const list = Object.keys(eduData).map(t => ({ value: t, label: t }));
+                                return list.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ));
+                              })()}
                             </select>
                           </div>
 
@@ -766,11 +937,20 @@ const EmployeeOnboarding = () => {
                             <>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Board <span className="text-red-500">*</span></label>
-                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.board ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.board || ''} onChange={e => { updateArray('qualifications', idx, 'board', e.target.value); setEduFieldErrors({...eduFieldErrors, board: false}); }}>
+                                <select 
+                                  className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.board ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                  value={q.board || ''} 
+                                  onChange={e => { updateArray('qualifications', idx, 'board', e.target.value); setEduFieldErrors({...eduFieldErrors, board: false}); }}
+                                >
                                   <option value="">Select board</option>
-                                  <option value="CBSE">CBSE</option>
-                                  <option value="ICSE">ICSE</option>
-                                  <option value="State Board">State Board</option>
+                                  {(() => {
+                                    const boardList = (currentEduConfig?.options && currentEduConfig.options.length > 0)
+                                      ? currentEduConfig.options
+                                      : ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board'];
+                                    return boardList.map(b => (
+                                      <option key={b} value={b}>{b}</option>
+                                    ));
+                                  })()}
                                 </select>
                               </div>
                               <div>
@@ -814,9 +994,18 @@ const EmployeeOnboarding = () => {
                               </div>
                               <div>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
-                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.course ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.course || ''} onChange={e => { updateArray('qualifications', idx, 'course', e.target.value); setEduFieldErrors({...eduFieldErrors, course: false}); }}>
+                                <select 
+                                  className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.course ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                  value={q.course || ''} 
+                                  onChange={e => { updateArray('qualifications', idx, 'course', e.target.value); setEduFieldErrors({...eduFieldErrors, course: false}); }}
+                                >
                                   <option value="">Select course</option>
                                   {(() => {
+                                    if (currentEduConfig?.options && currentEduConfig.options.length > 0) {
+                                      return currentEduConfig.options.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                      ));
+                                    }
                                     const opts = q.educationType === 'Accounting Degree' ? accountingDegrees :
                                       q.educationType === 'Post Graduate Accounting & Finance' ? postGradAccountingDegrees :
                                       q.educationType === 'Professional Qualification' ? professionalQualifications :
@@ -829,22 +1018,22 @@ const EmployeeOnboarding = () => {
                                       q.educationType === 'International Accounting' ? internationalAccountingCourses :
                                       null;
                                       
-                                      if (opts) {
-                                        return opts.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>);
-                                      } else {
-                                        return (
-                                          <>
-                                            <option value="B.Tech/B.E.">B.Tech/B.E.</option>
-                                            <option value="B.Sc">B.Sc</option>
-                                            <option value="B.Com">B.Com</option>
-                                            <option value="B.A">B.A</option>
-                                            <option value="BBA">BBA</option>
-                                            <option value="M.Tech/M.E.">M.Tech/M.E.</option>
-                                            <option value="MBA/PGDM">MBA/PGDM</option>
-                                            <option value="MCA">MCA</option>
-                                          </>
-                                        );
-                                      }
+                                    if (opts) {
+                                      return opts.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>);
+                                    } else {
+                                      return (
+                                        <>
+                                          <option value="B.Tech/B.E.">B.Tech/B.E.</option>
+                                          <option value="B.Sc">B.Sc</option>
+                                          <option value="B.Com">B.Com</option>
+                                          <option value="B.A">B.A</option>
+                                          <option value="BBA">BBA</option>
+                                          <option value="M.Tech/M.E.">M.Tech/M.E.</option>
+                                          <option value="MBA/PGDM">MBA/PGDM</option>
+                                          <option value="MCA">MCA</option>
+                                        </>
+                                      );
+                                    }
                                   })()}
                                 </select>
                               </div>
@@ -928,32 +1117,38 @@ const EmployeeOnboarding = () => {
                 </div>
               </div>); };
 
-  const Step3Experience = () => { return (<div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
-              <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800">Work Experience</h3>
-                </div>
-                <div className="flex items-center gap-3">
-                  {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
-                  <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                    Add +
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-6">
-                      <div className="flex flex-col items-start gap-3 mb-6">
-                        <label className="text-sm font-medium text-gray-700">Are you a Fresher?</label>
-                        <div className="flex items-center gap-6">
-                          <label className="flex items-center cursor-pointer group">
-                            <input type="radio" name="isFresher_onboarding" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
-                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Yes, I am a Fresher</span>
-                          </label>
-                          <label className="flex items-center cursor-pointer group">
-                            <input type="radio" name="isFresher_onboarding" value="no" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === false} onChange={() => setFormData({...formData, isFresher: false})} />
-                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>No, I have experience</span>
-                          </label>
-                        </div>
-                      </div>
+  const Step3Experience = () => {
+    const s3Title = cmsConfig?.step3?.title || 'Work Experience';
+    const s3AddBtn = cmsConfig?.step3?.addBtnText || 'Add +';
+    const s3FresherLabel = cmsConfig?.step3?.fresherLabel || 'Are you a Fresher?';
+
+    return (
+      <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
+        <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">{s3Title}</h3>
+          </div>
+          <div className="flex items-center gap-3">
+            {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
+            <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm">
+              {s3AddBtn}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-6">
+          <div className="flex flex-col items-start gap-3 mb-6">
+            <label className="text-sm font-medium text-gray-700">{s3FresherLabel}</label>
+            <div className="flex items-center gap-6">
+              <label className="flex items-center cursor-pointer group">
+                <input type="radio" name="isFresher_onboarding" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
+                <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Yes, I am a Fresher</span>
+              </label>
+              <label className="flex items-center cursor-pointer group">
+                <input type="radio" name="isFresher_onboarding" value="no" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === false} onChange={() => setFormData({...formData, isFresher: false})} />
+                <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>No, I have experience</span>
+              </label>
+            </div>
+          </div>
                       
                       {!formData.isFresher && (
                         <div className="space-y-6">
@@ -1190,10 +1385,14 @@ const EmployeeOnboarding = () => {
   const Step4Professional = () => {
     const p = formData.professionalDetails || {};
     const setP = (field, val) => setFormData({...formData, professionalDetails: {...p, [field]: val}});
+    const s4Title = cmsConfig?.step4?.title || 'Key Skills & Preferences';
+    const s4Subtitle = cmsConfig?.step4?.subtitle || 'Highlight your key skills and preferences to find matching jobs';
+
     return (
       <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
         <div className="mb-6 pb-2 border-b border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800">Professional Overview</h3>
+          <h3 className="text-xl font-bold text-gray-800">{s4Title}</h3>
+          {s4Subtitle && <p className="text-sm text-gray-500 mt-1">{s4Subtitle}</p>}
         </div>
         <div className="grid grid-cols-2 gap-6">
           {!formData.isFresher && (
@@ -1381,11 +1580,17 @@ const EmployeeOnboarding = () => {
       return url.includes('firebasestorage') || /\.(mp4|webm|mov|m4v|mkv)($|\?)/i.test(url);
     };
 
+    const s5Title = cmsConfig?.step5?.title || 'Documents & Media';
+    const s5Subtitle = cmsConfig?.step5?.subtitle || 'Upload your introductory video and documents to stand out to employers.';
+    const fResume = getStepField('step5', 'resume', 'Upload Resume', 'PDF, DOC, DOCX, RTF (Max: 300KB)', true);
+    const fCoverLetter = getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'PDF, DOC, DOCX, RTF (Max: 300KB)', false);
+    const fIntroVideo = getStepField('step5', 'introVideo', 'Introductory Video', '1–2 min video introduction. MP4, MOV, WebM (Max: 100MB) or link.', false);
+
     return (
       <div className="space-y-4 animate-fade-in pb-1">
         <div className="mb-2 pb-2 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800">Documents & Media</h3>
-          <p className="text-xs text-gray-500">Upload your introductory video and documents to stand out to employers.</p>
+          <h3 className="text-lg font-bold text-gray-800">{s5Title}</h3>
+          <p className="text-xs text-gray-500">{s5Subtitle}</p>
         </div>
 
         <div className="space-y-3.5">
@@ -1394,7 +1599,7 @@ const EmployeeOnboarding = () => {
             {/* Resume Upload */}
             <div className="flex flex-col justify-between">
               <label className="block text-xs font-bold text-gray-900 mb-1.5">
-                Upload Resume <span className="text-red-500">*</span>
+                {fResume.label} {fResume.isRequired && <span className="text-red-500">*</span>}
               </label>
               <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'resume' ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[90px]`}>
                 <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'resume')} />
@@ -1406,7 +1611,7 @@ const EmployeeOnboarding = () => {
                     {isUploading && uploadingType === 'resume' ? 'Uploading...' : 'Upload resume'}
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1 font-medium">PDF, DOC, DOCX, RTF (Max: 300KB)</p>
+                <p className="text-[10px] text-gray-500 mt-1 font-medium">{fResume.placeholder}</p>
               </div>
               {docError.resume && <p className="text-[11px] text-red-500 mt-1 font-medium">{docError.resume}</p>}
               {docs.resume && (
@@ -1423,8 +1628,12 @@ const EmployeeOnboarding = () => {
             {/* Cover Letter Upload */}
             <div className="flex flex-col justify-between">
               <label className="flex items-center justify-between text-xs font-bold text-gray-900 mb-1.5">
-                <span>Upload Cover Letter</span>
-                <span className="text-gray-400 font-normal text-[11px]">(Optional)</span>
+                <span>{fCoverLetter.label}</span>
+                {!fCoverLetter.isRequired ? (
+                  <span className="text-gray-400 font-normal text-[11px]">(Optional)</span>
+                ) : (
+                  <span className="text-red-500 font-bold ml-1">*</span>
+                )}
               </label>
               <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'coverLetter' ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[90px]`}>
                 <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'coverLetter')} />
@@ -1436,7 +1645,7 @@ const EmployeeOnboarding = () => {
                     {isUploading && uploadingType === 'coverLetter' ? 'Uploading...' : 'Upload cover letter'}
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1 font-medium">PDF, DOC, DOCX, RTF (Max: 300KB)</p>
+                <p className="text-[10px] text-gray-500 mt-1 font-medium">{fCoverLetter.placeholder}</p>
               </div>
               {docError.coverLetter && <p className="text-[11px] text-red-500 mt-1 font-medium">{docError.coverLetter}</p>}
               {docs.coverLetter && (
@@ -1457,9 +1666,9 @@ const EmployeeOnboarding = () => {
               <div>
                 <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  Introductory Video <span className="text-gray-400 font-normal text-[11px]">(Optional)</span>
+                  {fIntroVideo.label} {!fIntroVideo.isRequired ? <span className="text-gray-400 font-normal text-[11px]">(Optional)</span> : <span className="text-red-500 font-bold ml-1">*</span>}
                 </label>
-                <p className="text-[11px] text-gray-500">1–2 min video introduction. MP4, MOV, WebM (Max: 100MB) or link.</p>
+                <p className="text-[11px] text-gray-500">{fIntroVideo.placeholder}</p>
               </div>
               <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-semibold flex-shrink-0">
                 <button
@@ -1587,12 +1796,15 @@ const EmployeeOnboarding = () => {
   };
 
   const Step6Review = () => {
+    const s6Title = cmsConfig?.step6?.title || 'Final Review';
+    const s6Subtitle = cmsConfig?.step6?.subtitle || 'Please review all the details you filled in before submitting.';
     const p = formData.professionalDetails || {};
+
     return (
       <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar text-sm bg-blue-50/30 p-4 rounded-xl border border-blue-100">
         <div className="text-center mb-6">
-          <h3 className="text-2xl font-black text-palette-900 mb-2">Final Review</h3>
-          <p className="text-gray-500">Please review all the details you filled in before submitting.</p>
+          <h3 className="text-2xl font-black text-palette-900 mb-2">{s6Title}</h3>
+          <p className="text-gray-500">{s6Subtitle}</p>
         </div>
         
         <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm space-y-2">
@@ -1671,6 +1883,11 @@ const EmployeeOnboarding = () => {
     );
   };
 
+  const headerTitle = cmsConfig?.header?.title || 'Create your Profile';
+  const nextBtnText = cmsConfig?.buttons?.nextBtnText || 'Save & Continue';
+  const backBtnText = cmsConfig?.buttons?.backBtnText || 'Back';
+  const submitBtnText = cmsConfig?.buttons?.submitBtnText || 'Submit Profile';
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 md:p-8 font-sans">
       <div className="w-full max-w-4xl h-[90vh] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden animate-fade-in border border-gray-200">
@@ -1678,12 +1895,7 @@ const EmployeeOnboarding = () => {
         {/* Header & Progress */}
         <div className="pt-6 pb-4 px-8 border-b border-gray-100 flex-shrink-0 bg-white z-10 shadow-sm">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-black text-palette-900">Create your Profile</h2>
-            {currentStep !== 1 && (
-              <button type="button" onClick={() => navigate('/profile')} className="text-sm font-semibold text-gray-400 hover:text-gray-600 transition-colors">
-                Skip for now
-              </button>
-            )}
+            <h2 className="text-2xl font-black text-palette-900">{headerTitle}</h2>
           </div>
           
           <div className="relative pt-1">
@@ -1725,7 +1937,7 @@ const EmployeeOnboarding = () => {
                   }}
                   className="sm:w-auto px-10 py-3.5 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/30 hover:bg-green-700 transition-all hover:-translate-y-0.5 cursor-pointer"
                 >
-                  Save & Continue
+                  {nextBtnText}
                 </button>
               ) : (
                 <button 
@@ -1739,7 +1951,7 @@ const EmployeeOnboarding = () => {
                   disabled={isSubmitting}
                   className={`sm:w-auto px-10 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all cursor-pointer ${isSubmitting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 shadow-green-600/30 hover:bg-green-700 hover:-translate-y-0.5'}`}
                 >
-                  {isSubmitting ? 'Saving...' : 'Submit Profile'}
+                  {isSubmitting ? 'Saving...' : submitBtnText}
                 </button>
               )}
               
@@ -1754,7 +1966,7 @@ const EmployeeOnboarding = () => {
                   }} 
                   className="sm:w-auto px-10 py-3.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 cursor-pointer"
                 >
-                  Back
+                  {backBtnText}
                 </button>
               )}
             </div>

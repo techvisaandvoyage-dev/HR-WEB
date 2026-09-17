@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import BrandLogo from './BrandLogo';
 import LocationAutocomplete from './LocationAutocomplete';
 
 const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
@@ -142,11 +143,8 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
       <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
         
         {/* Logo / Brand */}
-        <div 
-          className="text-xl font-black text-palette-900 w-48 cursor-pointer" 
-          onClick={() => navigate('/employee')}
-        >
-          sahijob.com
+        <div className="w-48">
+          <BrandLogo onClick={() => navigate('/employee')} />
         </div>
 
         {/* Search Bar */}

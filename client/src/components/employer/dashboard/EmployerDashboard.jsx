@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import BrandLogo from '../../common/BrandLogo';
 import DashboardOverview from './DashboardOverview';
 import PostJob from './PostJob';
 import ManageJobs from './ManageJobs';
@@ -58,8 +59,8 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
     <div className="min-h-screen bg-[#fafbfc] flex font-sans text-gray-900">
       {/* Sidebar */}
       <aside className="w-64 bg-white flex flex-col shrink-0 border-r border-gray-100">
-        <div className="h-24 flex items-center px-8">
-          <span className="text-xl font-bold tracking-tight text-[#3ca152]">Job</span>
+        <div className="h-24 flex items-center px-6">
+          <BrandLogo />
         </div>
         
         <nav className="flex-1 px-4 space-y-1 mt-2 overflow-y-auto">

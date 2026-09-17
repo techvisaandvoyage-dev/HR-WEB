@@ -16,19 +16,32 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Helper: safely convert Mongoose subdoc or plain object to a plain JS object
+const toPlain = (val) => {
+  if (!val) return {};
+  if (typeof val.toObject === 'function') return val.toObject();
+  return JSON.parse(JSON.stringify(val));
+};
+
 // PUT update homepage configuration
 router.put('/', async (req, res) => {
   try {
-    let config = await HomepageConfig.findOne();
-    if (!config) {
-      config = new HomepageConfig(req.body);
-    } else {
-      if (req.body.logo) config.logo = { ...config.logo.toObject(), ...req.body.logo };
-      if (req.body.hero) config.hero = { ...config.hero.toObject(), ...req.body.hero };
-      if (req.body.searchBar) config.searchBar = { ...config.searchBar.toObject(), ...req.body.searchBar };
-      if (req.body.jobCards) config.jobCards = { ...config.jobCards.toObject(), ...req.body.jobCards };
-    }
-    const updated = await config.save();
+    const updateDoc = {};
+    if (req.body.logo !== undefined) updateDoc.logo = req.body.logo;
+    if (req.body.hero !== undefined) updateDoc.hero = req.body.hero;
+    if (req.body.searchBar !== undefined) updateDoc.searchBar = req.body.searchBar;
+    if (req.body.jobCards !== undefined) updateDoc.jobCards = req.body.jobCards;
+    if (req.body.typography !== undefined) updateDoc.typography = req.body.typography;
+    if (req.body.customFontsLibrary !== undefined) updateDoc.customFontsLibrary = req.body.customFontsLibrary;
+    if (req.body.employeeRegister !== undefined) updateDoc.employeeRegister = req.body.employeeRegister;
+    if (req.body.employeeLogin !== undefined) updateDoc.employeeLogin = req.body.employeeLogin;
+    if (req.body.employeeOnboarding !== undefined) updateDoc.employeeOnboarding = req.body.employeeOnboarding;
+
+    const updated = await HomepageConfig.findOneAndUpdate(
+      {},
+      { $set: updateDoc },
+      { new: true, upsert: true }
+    );
     res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error updating homepage config:', error);
