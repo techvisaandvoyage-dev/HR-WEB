@@ -43,6 +43,7 @@ app.use('/api/employer/jobs', require('./employer/routes/jobRoutes'));
 app.use('/api/employer/employees', require('./employer/routes/employeeRoutes'));
 app.use('/api/employer/messages', require('./employer/routes/messageRoutes'));
 app.use('/api/pages', require('./routes/pageRoutes'));
+app.use('/api/homepage', require('./routes/homepageRoutes'));
 app.use('/api/footer', require('./routes/footerRoutes'));
 app.use('/api/mux', require('./routes/muxRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));

@@ -47,6 +47,9 @@ function App() {
 
   const location = useLocation();
 
+  const [homepageConfig, setHomepageConfig] = useState(null);
+  const [visibleJobsCount, setVisibleJobsCount] = useState(6);
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     const isEmployerRoute = location.pathname.startsWith('/employer');
@@ -56,6 +59,25 @@ function App() {
       setUserRole('employee');
     }
   }, [location.pathname]);
+
+  // Fetch dynamic CMS homepage configuration
+  useEffect(() => {
+    const fetchHomepageConfig = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setHomepageConfig(json.data);
+          if (json.data.jobCards?.initialCount) {
+            setVisibleJobsCount(json.data.jobCards.initialCount);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load homepage config:', err);
+      }
+    };
+    fetchHomepageConfig();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -305,9 +327,21 @@ function App() {
         {/* Brand / Logo */}
         <div 
           onClick={() => navigate('/')}
-          className="text-2xl md:text-3xl font-black text-palette-900 tracking-tight cursor-pointer flex items-center gap-2 select-none hover:opacity-90 transition-opacity"
+          className="cursor-pointer flex items-center gap-2 select-none hover:opacity-90 transition-opacity"
         >
-          <span>sahijob<span className="text-palette-400">.com</span></span>
+          {homepageConfig?.logo?.type === 'image' && homepageConfig.logo.imageUrl ? (
+            <img
+              src={homepageConfig.logo.imageUrl}
+              alt={homepageConfig.logo.altText || 'sahijob.com'}
+              style={{ height: `${homepageConfig.logo.height || 36}px` }}
+              className="object-contain"
+            />
+          ) : (
+            <div className="text-2xl md:text-3xl font-black text-palette-900 tracking-tight">
+              <span>{homepageConfig?.logo?.text || 'sahijob'}</span>
+              <span className="text-palette-400">{homepageConfig?.logo?.accentText || '.com'}</span>
+            </div>
+          )}
         </div>
 
         {/* Desktop Buttons */}
@@ -373,10 +407,13 @@ function App() {
         <div className="w-full max-w-4xl relative z-30 flex flex-col items-center text-center space-y-12 min-h-[45vh] justify-center mb-6 mt-8">
           <div className="space-y-4 px-4">
             <h1 className="text-4xl md:text-7xl font-roboto font-black tracking-tight text-palette-900 leading-tight">
-              Find Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-palette-400 to-palette-900">Dream Job</span>
+              <span>{homepageConfig?.hero?.titlePrefix || 'Find Your'} </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-palette-400 to-palette-900">
+                {homepageConfig?.hero?.titleHighlight || 'Dream Job'}
+              </span>
             </h1>
             <p className="text-lg md:text-xl text-palette-900/70 font-medium max-w-2xl mx-auto">
-              Discover opportunities that align with your passion and expertise.
+              {homepageConfig?.hero?.subtitle || 'Discover opportunities that align with your passion and expertise.'}
             </p>
           </div>
 
@@ -393,7 +430,7 @@ function App() {
                   setShowSuggestions(true);
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                placeholder="Job title..." 
+                placeholder={homepageConfig?.searchBar?.jobPlaceholder || 'Job title...'} 
                 className="w-full bg-transparent border-none outline-none px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium"
               />
               {showSuggestions && searchJobTitle && (
@@ -423,21 +460,22 @@ function App() {
               <LocationAutocomplete 
                 value={searchLocation}
                 onChange={setSearchLocation}
-                placeholder="City, state, or country..."
+                placeholder={homepageConfig?.searchBar?.locationPlaceholder || 'City, state, or country...'}
                 className="w-full bg-transparent border-none outline-none px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium"
               />
             </div>
             
             <button 
               onClick={() => {
-                // If we want to scroll to jobs, we could do it here
                 document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="w-full md:w-auto px-10 py-3 md:py-4 bg-palette-400 text-white rounded-full font-bold text-base md:text-lg shadow-lg shadow-palette-400/40 hover:bg-palette-900 hover:shadow-xl hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2 flex items-center justify-center gap-2 group">
-              Search Jobs
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
+              className="w-full md:w-auto px-10 py-3 md:py-4 bg-palette-400 text-white rounded-full font-bold text-base md:text-lg shadow-lg shadow-palette-400/40 hover:bg-palette-900 hover:shadow-xl hover:shadow-palette-900/30 transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2 flex items-center justify-center gap-2 group cursor-pointer">
+              <span>{homepageConfig?.searchBar?.buttonText || 'Search Jobs'}</span>
+              {(homepageConfig?.searchBar?.showArrow ?? true) && (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
@@ -447,22 +485,38 @@ function App() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-green-900 flex items-center gap-2">
-                Latest Opportunities 
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
+                <span>{homepageConfig?.jobCards?.heading || 'Latest Opportunities'}</span>
+                {(homepageConfig?.jobCards?.showSparkleIcon ?? true) && (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                )}
               </h2>
               <p className="text-gray-500 mt-2 font-medium">
-                {filteredHomepageJobs.length > 0 ? `Showing ${filteredHomepageJobs.length} jobs` : "No jobs found matching your criteria."}
+                {filteredHomepageJobs.length > 0 
+                  ? (homepageConfig?.jobCards?.subtextTemplate || 'Showing {count} jobs').replace('{count}', Math.min(visibleJobsCount, filteredHomepageJobs.length))
+                  : "No jobs found matching your criteria."}
               </p>
             </div>
-            <button className="border border-green-200 text-green-800 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-green-50 transition-colors flex items-center gap-2 shadow-sm">
-              View All Jobs &rarr;
-            </button>
+            {filteredHomepageJobs.length > visibleJobsCount ? (
+              <button 
+                onClick={() => setVisibleJobsCount(prev => prev + (homepageConfig?.jobCards?.showMoreCount || 6))}
+                className="border border-green-200 text-green-800 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-green-50 transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
+              >
+                {homepageConfig?.jobCards?.viewAllButtonText || 'View All Jobs'} &rarr;
+              </button>
+            ) : filteredHomepageJobs.length > (homepageConfig?.jobCards?.initialCount || 6) ? (
+              <button 
+                onClick={() => setVisibleJobsCount(homepageConfig?.jobCards?.initialCount || 6)}
+                className="border border-gray-200 text-gray-600 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
+              >
+                Show Less &uarr;
+              </button>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredHomepageJobs.map(job => (
+            {filteredHomepageJobs.slice(0, visibleJobsCount).map(job => (
               <div key={job.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col">
                 <div className="flex items-start gap-4 mb-5">
                   <div className="w-14 h-14 bg-green-50 rounded-xl flex items-center justify-center font-bold text-green-800 text-2xl flex-shrink-0">
@@ -514,33 +568,26 @@ function App() {
                       <span className="font-bold text-gray-900 text-sm">{job.salary || 'Not specified'}</span>
                     </div>
                   </div>
-                  <button onClick={() => setIsEmployeeLoginOpen(true)} className="text-sm font-bold text-green-700 hover:text-green-800 transition-colors flex items-center gap-1">
+                  <button onClick={() => setIsEmployeeLoginOpen(true)} className="text-sm font-bold text-green-700 hover:text-green-800 transition-colors flex items-center gap-1 cursor-pointer">
                     Apply Now &rarr;
                   </button>
                 </div>
               </div>
             ))}
           </div>
-          
-          {/* Pagination */}
-          <div className="flex items-center justify-center gap-3 mt-12 mb-4 relative before:absolute before:h-px before:bg-gray-100 before:w-1/3 before:left-0 before:-z-10 after:absolute after:h-px after:bg-gray-100 after:w-1/3 after:right-0 after:-z-10">
-            <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors bg-white">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button className="w-9 h-9 rounded-full bg-green-800 text-white font-bold flex items-center justify-center text-sm shadow-md">
-              1
-            </button>
-            <button className="w-9 h-9 rounded-full border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-700 font-bold text-sm transition-colors bg-white">
-              2
-            </button>
-            <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors bg-white">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+
+          {/* Show More Pagination Button at bottom if more jobs exist */}
+          {filteredHomepageJobs.length > visibleJobsCount && (
+            <div className="flex justify-center pt-6">
+              <button
+                onClick={() => setVisibleJobsCount(prev => prev + (homepageConfig?.jobCards?.showMoreCount || 6))}
+                className="px-8 py-3 bg-white border border-green-600/30 text-green-800 font-bold text-sm rounded-full shadow-sm hover:bg-green-50 hover:border-green-600 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <span>Show More Jobs ({filteredHomepageJobs.length - visibleJobsCount} remaining)</span>
+                <span>&darr;</span>
+              </button>
+            </div>
+          )}
         </div>
       </main>
 

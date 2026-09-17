@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from './components/layout/AdminLayout';
+import HomepageCMS from './pages/homepage-cms/HomepageCMS';
 import DashboardOverview from './pages/DashboardOverview';
 import EmployeesTab from './pages/EmployeesTab';
 import EmployersTab from './pages/EmployersTab';
@@ -9,17 +10,19 @@ import AdminLogin from './pages/AdminLogin';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('adminAuthenticated') === 'true');
   
+  const VALID_TABS = ['homepage', 'footer', 'overview', 'employees', 'employers'];
+
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const urlTab = params.get('tab');
-    if (urlTab && ['overview', 'employees', 'employers', 'footer'].includes(urlTab)) {
+    if (urlTab && VALID_TABS.includes(urlTab)) {
       return urlTab;
     }
     const saved = localStorage.getItem('adminActiveTab');
-    if (saved && ['overview', 'employees', 'employers', 'footer'].includes(saved)) {
+    if (saved && VALID_TABS.includes(saved)) {
       return saved;
     }
-    return 'overview';
+    return 'homepage';
   });
 
   const handleSelectTab = (newTab) => {
@@ -45,7 +48,7 @@ function App() {
     const handlePopState = () => {
       const currentParams = new URLSearchParams(window.location.search);
       const tabFromUrl = currentParams.get('tab');
-      if (tabFromUrl && ['overview', 'employees', 'employers', 'footer'].includes(tabFromUrl)) {
+      if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) {
         setActiveTab(tabFromUrl);
         localStorage.setItem('adminActiveTab', tabFromUrl);
       }
@@ -68,6 +71,12 @@ function App() {
         setIsAuthenticated(false);
       }}
     >
+      {activeTab === 'homepage' && (
+        <HomepageCMS />
+      )}
+      {activeTab === 'footer' && (
+        <FooterEditor />
+      )}
       {activeTab === 'overview' && (
         <DashboardOverview onNavigateTab={handleSelectTab} />
       )}
@@ -76,9 +85,6 @@ function App() {
       )}
       {activeTab === 'employers' && (
         <EmployersTab />
-      )}
-      {activeTab === 'footer' && (
-        <FooterEditor />
       )}
     </AdminLayout>
   );
