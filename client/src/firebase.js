@@ -6,11 +6,14 @@ import { getStorage } from "firebase/storage";
 const getAuthDomain = () => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'hr-website-6c387.firebaseapp.com';
+    }
     if (host === 'sahijob.com' || host === 'www.sahijob.com') {
       return host;
     }
   }
-  return import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'hr-website-6c387.firebaseapp.com';
+  return 'hr-website-6c387.firebaseapp.com';
 };
 
 const firebaseConfig = {

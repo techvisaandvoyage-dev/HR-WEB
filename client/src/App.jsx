@@ -301,10 +301,13 @@ function App() {
         <Route path="/" element={
           <div className="min-h-screen bg-white font-sans text-palette-900 flex flex-col selection:bg-palette-200 selection:text-palette-900">
             {/* Navbar */}
-      <nav className="w-full px-6 py-4 md:px-8 md:py-6 flex justify-between md:justify-end items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-palette-100 shadow-sm">
-        {/* Mobile Logo */}
-        <div className="text-2xl font-black text-palette-900 md:hidden">
-          sahijob.com
+      <nav className="w-full px-6 py-4 md:px-12 md:py-5 flex justify-between items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-palette-100 shadow-sm">
+        {/* Brand / Logo */}
+        <div 
+          onClick={() => navigate('/')}
+          className="text-2xl md:text-3xl font-black text-palette-900 tracking-tight cursor-pointer flex items-center gap-2 select-none hover:opacity-90 transition-opacity"
+        >
+          <span>sahijob<span className="text-palette-400">.com</span></span>
         </div>
 
         {/* Desktop Buttons */}
@@ -390,7 +393,7 @@ function App() {
                   setShowSuggestions(true);
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                placeholder="Job title, keywords..." 
+                placeholder="Job title..." 
                 className="w-full bg-transparent border-none outline-none px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium"
               />
               {showSuggestions && searchJobTitle && (
