@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { currentLocationOptions, preferredLocationOptions } from '../../../data/preferredLocations';
+import { currentLocationOptions, preferredLocationOptions, isEmployeeCurrentLocationMatch, isEmployeePreferredLocationMatch } from '../../../data/preferredLocations';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 import VideoPlayer from '../../common/VideoPlayer';
 
@@ -142,10 +142,9 @@ const AllEmployeesTab = () => {
       if (!derivedIndustry.toLowerCase().includes(industryFilter.toLowerCase())) return false;
     }
 
-    // Location Filter
+    // Location Filter (Filters Candidate's Current Location)
     if (locationFilter !== 'All') {
-      const empLoc = emp.location || emp.preferredLocation || '';
-      if (!empLoc.toLowerCase().includes(locationFilter.toLowerCase())) return false;
+      if (!isEmployeeCurrentLocationMatch(emp, locationFilter)) return false;
     }
 
     // Last Update Filter
@@ -161,13 +160,11 @@ const AllEmployeesTab = () => {
       if (lastUpdateFilter === 'Past month' && diffDays > 30) return false;
     }
 
-    // Preferred Location Filter (multi-select)
+    // Preferred Location Filter (multi-select, filters Preferred Location)
     if (preferredLocationFilter) {
-      const selectedLocs = preferredLocationFilter.split(',').map(v => v.trim().toLowerCase()).filter(v => v);
+      const selectedLocs = preferredLocationFilter.split(',').map(v => v.trim()).filter(v => v);
       if (selectedLocs.length > 0) {
-        const empPrefLoc = (emp.preferredLocation || '').toLowerCase();
-        const empLoc = (emp.location || '').toLowerCase();
-        const matchesAny = selectedLocs.some(loc => empPrefLoc.includes(loc) || empLoc.includes(loc));
+        const matchesAny = selectedLocs.some(loc => isEmployeePreferredLocationMatch(emp, loc));
         if (!matchesAny) return false;
       }
     }
@@ -186,10 +183,10 @@ const AllEmployeesTab = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-visible relative">
         
         {/* Filters Bar */}
-        <div className="flex flex-wrap justify-between items-center mb-6 gap-4 bg-white p-4 rounded-xl border border-[#ECECEC] shadow-sm">
+        <div className="flex flex-wrap justify-between items-center mb-6 gap-4 bg-white p-4 rounded-xl border border-[#ECECEC] shadow-sm relative z-30">
           <div className="flex gap-4 items-center flex-1 min-w-[280px] max-w-[500px]">
             <div className="relative flex-1">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>

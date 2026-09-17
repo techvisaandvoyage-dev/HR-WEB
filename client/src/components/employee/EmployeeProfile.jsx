@@ -2015,7 +2015,7 @@ const EmployeeProfile = () => {
 
                                         {/* Animated Body */}
                                         <div className={`grid transition-all duration-300 ease-in-out ${isRoleExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                                          <div>
+                                          <div className="overflow-hidden min-h-0">
                                             <div className="p-6 border-t border-gray-100 space-y-6 relative bg-white">
                                               <button onClick={(e) => {
                                                 e.stopPropagation();

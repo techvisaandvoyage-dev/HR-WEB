@@ -75,8 +75,24 @@ export default function EmployersTab() {
   const [error, setError] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Filter & Search States
   const [search, setSearch] = useState('');
   const [industryFilter, setIndustryFilter] = useState('All');
+  const [sizeFilter, setSizeFilter] = useState('All');
+  const [locationFilter, setLocationFilter] = useState('All');
+  const [jobsFilter, setJobsFilter] = useState('All');
+  const [contactFilter, setContactFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All');
+  const [hiringForFilter, setHiringForFilter] = useState('All');
+
+  // Sorting State
+  const [sortField, setSortField] = useState('createdAt'); // 'companyName' | 'contact' | 'industry' | 'location' | 'jobs' | 'createdAt'
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' | 'desc'
+
+  // Popover & Filter UI States
+  const [openColumnFilter, setOpenColumnFilter] = useState(null); // 'company' | 'contact' | 'industry' | 'location' | 'jobs' | 'date' | 'hiringFor' | null
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
+
   const [selectedEmployer, setSelectedEmployer] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailEmployer, setDetailEmployer] = useState(null);
@@ -87,6 +103,17 @@ export default function EmployersTab() {
 
   const [expandedEmployers, setExpandedEmployers] = useState({});
   const [loadingJobsMap, setLoadingJobsMap] = useState({});
+
+  // Close popover when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (openColumnFilter && !e.target.closest('.column-filter-popover') && !e.target.closest('.column-filter-trigger')) {
+        setOpenColumnFilter(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openColumnFilter]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -104,7 +131,6 @@ export default function EmployersTab() {
     setExpandedEmployers(prev => {
       const willExpand = !prev[empId];
       if (willExpand) {
-        // If employer jobs not loaded yet, fetch in background
         const empr = employers.find(e => (e._id === empId || e.id === empId));
         if (!empr?.jobs || empr.jobs.length === 0) {
           fetchEmployerJobs(empId);
@@ -161,11 +187,233 @@ export default function EmployersTab() {
 
   useEffect(() => {
     fetchEmployers();
-  }, [industryFilter]);
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     fetchEmployers();
+  };
+
+  // Toggle sort direction or change sort column
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'companyName' ? 'asc' : 'desc');
+    }
+  };
+
+  // Dynamic filter options extracted from existing data
+  const uniqueLocations = React.useMemo(() => {
+    const locs = new Set();
+    employers.forEach(e => {
+      if (e.location && e.location.trim()) locs.add(e.location.trim());
+    });
+    return Array.from(locs).sort();
+  }, [employers]);
+
+  const uniqueSizes = [
+    'All',
+    '1-10 employees',
+    '11-50 employees',
+    '51-200 employees',
+    '201-500 employees',
+    '500+ employees'
+  ];
+
+  const industryOptions = [
+    'All',
+    'IT & Software',
+    'Finance & Banking',
+    'Finance',
+    'Healthcare & Pharma',
+    'Education & EdTech',
+    'Manufacturing',
+    'E-commerce & Retail',
+    'Marketing & Media',
+    'Consulting',
+    'Other'
+  ];
+
+  const jobsFilterOptions = [
+    { value: 'All', label: 'All Jobs' },
+    { value: 'has_active', label: 'Has Active Jobs (≥1)' },
+    { value: 'no_active', label: 'No Active Jobs (0 active)' },
+    { value: 'zero_jobs', label: 'Zero Jobs Posted (0 total)' },
+    { value: 'multiple_jobs', label: 'Multiple Jobs (≥2 total)' }
+  ];
+
+  const dateFilterOptions = [
+    { value: 'All', label: 'All Time' },
+    { value: 'today', label: 'Registered Today' },
+    { value: '7days', label: 'Last 7 Days' },
+    { value: '30days', label: 'Last 30 Days' },
+    { value: '90days', label: 'Last 90 Days' },
+    { value: 'year', label: 'This Year' }
+  ];
+
+  const contactFilterOptions = [
+    { value: 'All', label: 'All Contacts' },
+    { value: 'has_mobile', label: 'Has Phone Number' },
+    { value: 'email_only', label: 'Email Only' }
+  ];
+
+  const hiringForFilterOptions = [
+    { value: 'All', label: 'All Hiring Types' },
+    { value: 'your_company', label: 'Company / Business' },
+    { value: 'consultant', label: 'Individual / Proprietor' }
+  ];
+
+  // Helper to format hiring type
+  const isIndividualHiring = (empr) => {
+    return empr?.hiringFor === 'consultant' || empr?.accountType === 'individual';
+  };
+
+  // Client-Side Filter & Sort Pipeline
+  const filteredAndSortedEmployers = React.useMemo(() => {
+    return employers.filter(empr => {
+      // 1. Search Query
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        const comp = (empr.companyName || '').toLowerCase();
+        const name = (empr.fullName || '').toLowerCase();
+        const email = (empr.email || '').toLowerCase();
+        const phone = (empr.mobile || '').toLowerCase();
+        const loc = (empr.location || '').toLowerCase();
+        const ind = (empr.industry || '').toLowerCase();
+        const desig = (empr.designation || '').toLowerCase();
+        const hiringType = isIndividualHiring(empr) ? 'individual proprietor' : 'company business';
+        if (!comp.includes(q) && !name.includes(q) && !email.includes(q) && !phone.includes(q) && !loc.includes(q) && !ind.includes(q) && !desig.includes(q) && !hiringType.includes(q)) {
+          return false;
+        }
+      }
+
+      // 2. Hiring For Filter
+      if (hiringForFilter !== 'All') {
+        const isInd = isIndividualHiring(empr);
+        if (hiringForFilter === 'consultant' && !isInd) return false;
+        if (hiringForFilter === 'your_company' && isInd) return false;
+      }
+
+      // 3. Industry
+      if (industryFilter !== 'All') {
+        const ind = (empr.industry || '').toLowerCase();
+        if (!ind.includes(industryFilter.toLowerCase())) return false;
+      }
+
+      // 4. Company Size
+      if (sizeFilter !== 'All') {
+        const empSize = (empr.employees || '').toLowerCase();
+        const filterVal = sizeFilter.toLowerCase().replace(' employees', '');
+        if (!empSize.includes(filterVal)) return false;
+      }
+
+      // 5. Location
+      if (locationFilter !== 'All') {
+        const loc = (empr.location || '').toLowerCase();
+        if (!loc.includes(locationFilter.toLowerCase())) return false;
+      }
+
+      // 6. Jobs Status
+      if (jobsFilter === 'has_active') {
+        if ((empr.activeJobs || 0) < 1) return false;
+      } else if (jobsFilter === 'no_active') {
+        if ((empr.activeJobs || 0) > 0) return false;
+      } else if (jobsFilter === 'zero_jobs') {
+        if ((empr.totalJobs || 0) > 0) return false;
+      } else if (jobsFilter === 'multiple_jobs') {
+        if ((empr.totalJobs || 0) < 2) return false;
+      }
+
+      // 7. Contact Status
+      if (contactFilter === 'has_mobile') {
+        if (!empr.mobile || !empr.mobile.trim()) return false;
+      } else if (contactFilter === 'email_only') {
+        if (empr.mobile && empr.mobile.trim()) return false;
+      }
+
+      // 8. Date Filter
+      if (dateFilter !== 'All' && empr.createdAt) {
+        const created = new Date(empr.createdAt);
+        const now = new Date();
+        if (dateFilter === 'today') {
+          if (created.toDateString() !== now.toDateString()) return false;
+        } else if (dateFilter === '7days') {
+          const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+          if (diffDays > 7) return false;
+        } else if (dateFilter === '30days') {
+          const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+          if (diffDays > 30) return false;
+        } else if (dateFilter === '90days') {
+          const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+          if (diffDays > 90) return false;
+        } else if (dateFilter === 'year') {
+          if (created.getFullYear() !== now.getFullYear()) return false;
+        }
+      }
+
+      return true;
+    }).sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'companyName') {
+        const nameA = (a.companyName || a.fullName || '').toLowerCase();
+        const nameB = (b.companyName || b.fullName || '').toLowerCase();
+        comparison = nameA.localeCompare(nameB);
+      } else if (sortField === 'hiringFor') {
+        const typeA = isIndividualHiring(a) ? 'individual' : 'company';
+        const typeB = isIndividualHiring(b) ? 'individual' : 'company';
+        comparison = typeA.localeCompare(typeB);
+      } else if (sortField === 'contact') {
+        const emailA = (a.email || '').toLowerCase();
+        const emailB = (b.email || '').toLowerCase();
+        comparison = emailA.localeCompare(emailB);
+      } else if (sortField === 'industry') {
+        const indA = (a.industry || '').toLowerCase();
+        const indB = (b.industry || '').toLowerCase();
+        comparison = indA.localeCompare(indB);
+      } else if (sortField === 'location') {
+        const locA = (a.location || '').toLowerCase();
+        const locB = (b.location || '').toLowerCase();
+        comparison = locA.localeCompare(locB);
+      } else if (sortField === 'jobs') {
+        const jobsA = (a.activeJobs || 0) * 1000 + (a.totalJobs || 0);
+        const jobsB = (b.activeJobs || 0) * 1000 + (b.totalJobs || 0);
+        comparison = jobsA - jobsB;
+      } else if (sortField === 'createdAt') {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        comparison = dateA - dateB;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [employers, search, hiringForFilter, industryFilter, sizeFilter, locationFilter, jobsFilter, contactFilter, dateFilter, sortField, sortDirection]);
+
+  // Active filters count
+  const activeFiltersCount = [
+    hiringForFilter !== 'All',
+    industryFilter !== 'All',
+    sizeFilter !== 'All',
+    locationFilter !== 'All',
+    jobsFilter !== 'All',
+    contactFilter !== 'All',
+    dateFilter !== 'All',
+    search.trim() !== ''
+  ].filter(Boolean).length;
+
+  const resetAllFilters = () => {
+    setSearch('');
+    setHiringForFilter('All');
+    setIndustryFilter('All');
+    setSizeFilter('All');
+    setLocationFilter('All');
+    setJobsFilter('All');
+    setContactFilter('All');
+    setDateFilter('All');
+    setSortField('createdAt');
+    setSortDirection('desc');
+    setOpenColumnFilter(null);
   };
 
   const handleViewEmployer = async (employer, initialTab = 'overview') => {
@@ -310,19 +558,6 @@ export default function EmployersTab() {
     }
   };
 
-  const industryOptions = [
-    'All',
-    'IT & Software',
-    'Finance & Banking',
-    'Healthcare & Pharma',
-    'Education & EdTech',
-    'Manufacturing',
-    'E-commerce & Retail',
-    'Marketing & Media',
-    'Consulting',
-    'Other'
-  ];
-
   const currentEmployer = detailEmployer || selectedEmployer;
 
   return (
@@ -396,43 +631,259 @@ export default function EmployersTab() {
       {/* TAB 1: ALL EMPLOYERS DIRECTORY                                            */}
       {/* ========================================================================= */}
       {activeMainTab === 'list' && (
-        <div className="space-y-6">
-          {/* Filter & Search Bar */}
-          <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-            <form onSubmit={handleSearchSubmit} className="flex-1 w-full flex items-center gap-3">
-              <div className="relative flex-1">
+        <div className="space-y-4">
+          {/* Main Search & Quick Controls */}
+          <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm space-y-3">
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+              {/* Search Bar */}
+              <div className="relative flex-1 w-full">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search by company name, contact person, email, phone, or location..."
+                  placeholder="Search company, recruiter, email, phone, location, industry..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                  className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-400"
                 />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200/60"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-xl hover:bg-blue-700 transition-colors shadow-sm shrink-0 cursor-pointer"
-              >
-                Search
-              </button>
-            </form>
 
-            <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-              <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
-                <Filter className="w-4 h-4 text-gray-400" />
-                <span>Industry:</span>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-between md:justify-end">
+                {/* Advanced Filters Toggle */}
+                <button
+                  onClick={() => setIsAdvancedFiltersOpen(!isAdvancedFiltersOpen)}
+                  className={`px-4 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 transition-all border cursor-pointer ${
+                    isAdvancedFiltersOpen || activeFiltersCount > 0
+                      ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-xs'
+                      : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+                  }`}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>Column Filters</span>
+                  {activeFiltersCount > 0 && (
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isAdvancedFiltersOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Sort Order Quick Selector */}
+                <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-2 rounded-xl text-xs text-gray-700 font-medium">
+                  <span className="text-gray-400 text-[11px] hidden sm:inline">Sort:</span>
+                  <select
+                    value={`${sortField}-${sortDirection}`}
+                    onChange={(e) => {
+                      const [field, dir] = e.target.value.split('-');
+                      setSortField(field);
+                      setSortDirection(dir);
+                    }}
+                    className="bg-transparent text-gray-800 font-semibold focus:outline-none cursor-pointer pr-1"
+                  >
+                    <option value="createdAt-desc">Newest First</option>
+                    <option value="createdAt-asc">Oldest First</option>
+                    <option value="companyName-asc">Company (A-Z)</option>
+                    <option value="companyName-desc">Company (Z-A)</option>
+                    <option value="jobs-desc">Most Jobs Posted</option>
+                    <option value="location-asc">Location (A-Z)</option>
+                    <option value="industry-asc">Industry (A-Z)</option>
+                  </select>
+                </div>
+
+                {/* Reset All Filters Button */}
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={resetAllFilters}
+                    className="px-3 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-1 cursor-pointer border border-transparent hover:border-red-100"
+                    title="Reset all filters"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+                )}
               </div>
-              <select
-                value={industryFilter}
-                onChange={(e) => setIndustryFilter(e.target.value)}
-                className="px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
-              >
-                {industryOptions.map((opt) => (
-                  <option key={opt} value={opt}>{opt === 'All' ? 'All Industries' : opt}</option>
-                ))}
-              </select>
             </div>
+
+            {/* Expandable Advanced Column Filters Row */}
+            {isAdvancedFiltersOpen && (
+              <div className="pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* 1. Hiring For Filter */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Hiring For</label>
+                  <select
+                    value={hiringForFilter}
+                    onChange={(e) => setHiringForFilter(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    {hiringForFilterOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Industry Filter */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Industry</label>
+                  <select
+                    value={industryFilter}
+                    onChange={(e) => setIndustryFilter(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    {industryOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt === 'All' ? 'All Industries' : opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Company Size Filter */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Company Size</label>
+                  <select
+                    value={sizeFilter}
+                    onChange={(e) => setSizeFilter(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    {uniqueSizes.map(opt => (
+                      <option key={opt} value={opt}>{opt === 'All' ? 'All Sizes' : opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 4. Location Filter */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Location / City</label>
+                  <select
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value="All">All Locations</option>
+                    {uniqueLocations.map(loc => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 5. Jobs Posted Filter */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Jobs Posted</label>
+                  <select
+                    value={jobsFilter}
+                    onChange={(e) => setJobsFilter(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    {jobsFilterOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 6. Contact Availability */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Contact Info</label>
+                  <select
+                    value={contactFilter}
+                    onChange={(e) => setContactFilter(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    {contactFilterOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 7. Registered Date */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Registered Time</label>
+                  <select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    {dateFilterOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Active Filter Chips Bar */}
+            {activeFiltersCount > 0 && (
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-gray-400 font-semibold text-[11px]">Active Filters:</span>
+                  {search && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-100">
+                      Search: "{search}"
+                      <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setSearch('')} />
+                    </span>
+                  )}
+                  {hiringForFilter !== 'All' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg font-medium border border-emerald-200">
+                      Hiring For: {hiringForFilterOptions.find(o => o.value === hiringForFilter)?.label || hiringForFilter}
+                      <X className="w-3 h-3 cursor-pointer hover:text-emerald-950" onClick={() => setHiringForFilter('All')} />
+                    </span>
+                  )}
+                  {industryFilter !== 'All' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-100">
+                      Industry: {industryFilter}
+                      <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setIndustryFilter('All')} />
+                    </span>
+                  )}
+                  {sizeFilter !== 'All' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-100">
+                      Size: {sizeFilter}
+                      <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setSizeFilter('All')} />
+                    </span>
+                  )}
+                  {locationFilter !== 'All' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-100">
+                      Location: {locationFilter}
+                      <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setLocationFilter('All')} />
+                    </span>
+                  )}
+                  {jobsFilter !== 'All' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-100">
+                      Jobs: {jobsFilterOptions.find(o => o.value === jobsFilter)?.label || jobsFilter}
+                      <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setJobsFilter('All')} />
+                    </span>
+                  )}
+                  {contactFilter !== 'All' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-100">
+                      Contact: {contactFilterOptions.find(o => o.value === contactFilter)?.label || contactFilter}
+                      <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setContactFilter('All')} />
+                    </span>
+                  )}
+                  {dateFilter !== 'All' && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-medium border border-blue-100">
+                      Date: {dateFilterOptions.find(o => o.value === dateFilter)?.label || dateFilter}
+                      <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setDateFilter('All')} />
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-gray-500">
+                    Showing {filteredAndSortedEmployers.length} of {employers.length}
+                  </span>
+                  <button
+                    onClick={resetAllFilters}
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -448,26 +899,391 @@ export default function EmployersTab() {
                 <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
                 <span>Loading registered employers...</span>
               </div>
-            ) : employers.length === 0 ? (
-              <div className="py-20 text-center text-gray-400 text-sm">
-                No employers found matching your criteria.
+            ) : filteredAndSortedEmployers.length === 0 ? (
+              <div className="py-20 text-center text-gray-500 text-sm flex flex-col items-center justify-center gap-3">
+                <Building2 className="w-10 h-10 text-gray-300" />
+                <p className="font-semibold text-gray-700">No employers match your active filter criteria.</p>
+                <p className="text-xs text-gray-400">Try adjusting your search keywords or resetting your column filters.</p>
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={resetAllFilters}
+                    className="mt-2 px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-100 transition-colors border border-blue-200"
+                  >
+                    Reset All Filters
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50/75 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                      <th className="py-3.5 px-6">Company / Recruiter</th>
-                      <th className="py-3.5 px-6">Contact Details</th>
-                      <th className="py-3.5 px-6">Industry & Size</th>
-                      <th className="py-3.5 px-6">Location</th>
-                      <th className="py-3.5 px-6 text-center">Jobs Posted</th>
-                      <th className="py-3.5 px-6">Registered Date</th>
+                    <tr className="border-b border-gray-100 bg-gray-50/75 text-[11px] font-bold text-gray-500 uppercase tracking-wider select-none">
+                      {/* 1. Company / Recruiter Header */}
+                      <th className="py-3.5 px-6 relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => handleSort('companyName')}
+                            className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-left"
+                          >
+                            <span>Company / Recruiter</span>
+                            {sortField === 'companyName' ? (
+                              sortDirection === 'asc' ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+
+                          {/* Column Filter Trigger */}
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColumnFilter(openColumnFilter === 'company' ? null : 'company');
+                              }}
+                              className={`p-1 rounded-md transition-colors column-filter-trigger ${
+                                search ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200/70 text-gray-400 hover:text-gray-600'
+                              }`}
+                              title="Filter Company Column"
+                            >
+                              <Filter className="w-3 h-3" />
+                            </button>
+
+                            {openColumnFilter === 'company' && (
+                              <div className="column-filter-popover absolute left-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-30 text-xs normal-case font-normal space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="flex items-center justify-between font-bold text-gray-900 border-b border-gray-100 pb-1.5">
+                                  <span>Filter Company</span>
+                                  <X className="w-3.5 h-3.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setOpenColumnFilter(null)} />
+                                </div>
+                                <div>
+                                  <input
+                                    type="text"
+                                    placeholder="Search company, recruiter..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                                    autoFocus
+                                  />
+                                </div>
+                                <div className="flex gap-2 pt-1 border-t border-gray-100">
+                                  <button
+                                    onClick={() => { setSortField('companyName'); setSortDirection('asc'); setOpenColumnFilter(null); }}
+                                    className="flex-1 py-1 bg-gray-50 hover:bg-gray-100 rounded text-center text-[11px] font-semibold text-gray-700"
+                                  >
+                                    Sort A-Z
+                                  </button>
+                                  <button
+                                    onClick={() => { setSortField('companyName'); setSortDirection('desc'); setOpenColumnFilter(null); }}
+                                    className="flex-1 py-1 bg-gray-50 hover:bg-gray-100 rounded text-center text-[11px] font-semibold text-gray-700"
+                                  >
+                                    Sort Z-A
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </th>
+
+                      {/* 2. Hiring For Header */}
+                      <th className="py-3.5 px-6 relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => handleSort('hiringFor')}
+                            className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-left"
+                          >
+                            <span>Hiring For</span>
+                            {sortField === 'hiringFor' ? (
+                              sortDirection === 'asc' ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColumnFilter(openColumnFilter === 'hiringFor' ? null : 'hiringFor');
+                              }}
+                              className={`p-1 rounded-md transition-colors column-filter-trigger ${
+                                hiringForFilter !== 'All' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200/70 text-gray-400 hover:text-gray-600'
+                              }`}
+                              title="Filter Hiring For Column"
+                            >
+                              <Filter className="w-3 h-3" />
+                            </button>
+
+                            {openColumnFilter === 'hiringFor' && (
+                              <div className="column-filter-popover absolute left-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-30 text-xs normal-case font-normal space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="flex items-center justify-between font-bold text-gray-900 border-b border-gray-100 pb-1.5">
+                                  <span>Filter Hiring Type</span>
+                                  <X className="w-3.5 h-3.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setOpenColumnFilter(null)} />
+                                </div>
+                                <div className="space-y-1">
+                                  {hiringForFilterOptions.map(opt => (
+                                    <button
+                                      key={opt.value}
+                                      onClick={() => { setHiringForFilter(opt.value); setOpenColumnFilter(null); }}
+                                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between ${
+                                        hiringForFilter === opt.value ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                                      }`}
+                                    >
+                                      <span>{opt.label}</span>
+                                      {hiringForFilter === opt.value && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </th>
+
+                      {/* 3. Industry & Size Header */}
+                      <th className="py-3.5 px-6 relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => handleSort('industry')}
+                            className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-left"
+                          >
+                            <span>Industry & Size</span>
+                            {sortField === 'industry' ? (
+                              sortDirection === 'asc' ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColumnFilter(openColumnFilter === 'industry' ? null : 'industry');
+                              }}
+                              className={`p-1 rounded-md transition-colors column-filter-trigger ${
+                                (industryFilter !== 'All' || sizeFilter !== 'All') ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200/70 text-gray-400 hover:text-gray-600'
+                              }`}
+                              title="Filter Industry & Size"
+                            >
+                              <Filter className="w-3 h-3" />
+                            </button>
+
+                            {openColumnFilter === 'industry' && (
+                              <div className="column-filter-popover absolute left-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-30 text-xs normal-case font-normal space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="flex items-center justify-between font-bold text-gray-900 border-b border-gray-100 pb-1.5">
+                                  <span>Filter Industry & Size</span>
+                                  <X className="w-3.5 h-3.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setOpenColumnFilter(null)} />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Industry</label>
+                                  <select
+                                    value={industryFilter}
+                                    onChange={(e) => setIndustryFilter(e.target.value)}
+                                    className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                                  >
+                                    {industryOptions.map(opt => (
+                                      <option key={opt} value={opt}>{opt === 'All' ? 'All Industries' : opt}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Company Size</label>
+                                  <select
+                                    value={sizeFilter}
+                                    onChange={(e) => setSizeFilter(e.target.value)}
+                                    className="w-full px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs"
+                                  >
+                                    {uniqueSizes.map(opt => (
+                                      <option key={opt} value={opt}>{opt === 'All' ? 'All Sizes' : opt}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </th>
+
+                      {/* 4. Location Header */}
+                      <th className="py-3.5 px-6 relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => handleSort('location')}
+                            className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-left"
+                          >
+                            <span>Location</span>
+                            {sortField === 'location' ? (
+                              sortDirection === 'asc' ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColumnFilter(openColumnFilter === 'location' ? null : 'location');
+                              }}
+                              className={`p-1 rounded-md transition-colors column-filter-trigger ${
+                                locationFilter !== 'All' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200/70 text-gray-400 hover:text-gray-600'
+                              }`}
+                              title="Filter Location Column"
+                            >
+                              <Filter className="w-3 h-3" />
+                            </button>
+
+                            {openColumnFilter === 'location' && (
+                              <div className="column-filter-popover absolute left-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-30 text-xs normal-case font-normal space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="flex items-center justify-between font-bold text-gray-900 border-b border-gray-100 pb-1.5">
+                                  <span>Filter Location</span>
+                                  <X className="w-3.5 h-3.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setOpenColumnFilter(null)} />
+                                </div>
+                                <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                                  <button
+                                    onClick={() => { setLocationFilter('All'); setOpenColumnFilter(null); }}
+                                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between ${
+                                      locationFilter === 'All' ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                                    }`}
+                                  >
+                                    <span>All Locations</span>
+                                    {locationFilter === 'All' && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                  </button>
+                                  {uniqueLocations.map(loc => (
+                                    <button
+                                      key={loc}
+                                      onClick={() => { setLocationFilter(loc); setOpenColumnFilter(null); }}
+                                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between ${
+                                        locationFilter === loc ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                                      }`}
+                                    >
+                                      <span className="truncate">{loc}</span>
+                                      {locationFilter === loc && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </th>
+
+                      {/* 5. Jobs Posted Header */}
+                      <th className="py-3.5 px-6 text-center relative">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleSort('jobs')}
+                            className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+                          >
+                            <span>Jobs Posted</span>
+                            {sortField === 'jobs' ? (
+                              sortDirection === 'asc' ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColumnFilter(openColumnFilter === 'jobs' ? null : 'jobs');
+                              }}
+                              className={`p-1 rounded-md transition-colors column-filter-trigger ${
+                                jobsFilter !== 'All' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200/70 text-gray-400 hover:text-gray-600'
+                              }`}
+                              title="Filter Jobs Column"
+                            >
+                              <Filter className="w-3 h-3" />
+                            </button>
+
+                            {openColumnFilter === 'jobs' && (
+                              <div className="column-filter-popover absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-30 text-xs normal-case font-normal space-y-2 animate-in fade-in zoom-in-95 duration-150 text-left">
+                                <div className="flex items-center justify-between font-bold text-gray-900 border-b border-gray-100 pb-1.5">
+                                  <span>Filter Jobs</span>
+                                  <X className="w-3.5 h-3.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setOpenColumnFilter(null)} />
+                                </div>
+                                <div className="space-y-1">
+                                  {jobsFilterOptions.map(opt => (
+                                    <button
+                                      key={opt.value}
+                                      onClick={() => { setJobsFilter(opt.value); setOpenColumnFilter(null); }}
+                                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between ${
+                                        jobsFilter === opt.value ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                                      }`}
+                                    >
+                                      <span>{opt.label}</span>
+                                      {jobsFilter === opt.value && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </th>
+
+                      {/* 6. Registered Date Header */}
+                      <th className="py-3.5 px-6 relative">
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => handleSort('createdAt')}
+                            className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-left"
+                          >
+                            <span>Registered Date</span>
+                            {sortField === 'createdAt' ? (
+                              sortDirection === 'asc' ? <ChevronUp className="w-3.5 h-3.5 text-blue-600" /> : <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenColumnFilter(openColumnFilter === 'date' ? null : 'date');
+                              }}
+                              className={`p-1 rounded-md transition-colors column-filter-trigger ${
+                                dateFilter !== 'All' ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-200/70 text-gray-400 hover:text-gray-600'
+                              }`}
+                              title="Filter Date Column"
+                            >
+                              <Filter className="w-3 h-3" />
+                            </button>
+
+                            {openColumnFilter === 'date' && (
+                              <div className="column-filter-popover absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-30 text-xs normal-case font-normal space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="flex items-center justify-between font-bold text-gray-900 border-b border-gray-100 pb-1.5">
+                                  <span>Filter Date</span>
+                                  <X className="w-3.5 h-3.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setOpenColumnFilter(null)} />
+                                </div>
+                                <div className="space-y-1">
+                                  {dateFilterOptions.map(opt => (
+                                    <button
+                                      key={opt.value}
+                                      onClick={() => { setDateFilter(opt.value); setOpenColumnFilter(null); }}
+                                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between ${
+                                        dateFilter === opt.value ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                                      }`}
+                                    >
+                                      <span>{opt.label}</span>
+                                      {dateFilter === opt.value && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </th>
+
+                      {/* 7. Actions Header */}
                       <th className="py-3.5 px-6 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-sm">
-                    {employers.map((empr) => {
+                    {filteredAndSortedEmployers.map((empr) => {
                       const empId = empr._id || empr.id;
                       const isExpanded = !!expandedEmployers[empId];
                       const empJobs = empr.jobs || [];
@@ -479,7 +1295,7 @@ export default function EmployersTab() {
                             onClick={() => toggleExpandEmployer(empId)}
                             className={`transition-colors cursor-pointer group select-none ${isExpanded ? 'bg-blue-50/50' : 'hover:bg-slate-50/70'}`}
                           >
-                            {/* Company */}
+                            {/* 1. Company / Recruiter */}
                             <td className="py-4 px-6">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 text-blue-700 font-bold text-sm flex items-center justify-center shrink-0 shadow-xs">
@@ -501,27 +1317,28 @@ export default function EmployersTab() {
                               </div>
                             </td>
 
-                            {/* Contact */}
-                            <td className="py-4 px-6 text-xs text-gray-600 space-y-1" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center gap-1.5 font-medium text-gray-800">
-                                <Mail className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="select-all">{empr.email}</span>
-                              </div>
-                              {empr.mobile && (
-                                <div className="flex items-center gap-1.5 text-gray-500">
-                                  <Phone className="w-3.5 h-3.5 text-gray-400" />
-                                  <span>{empr.mobile}</span>
-                                </div>
+                            {/* 2. Hiring For (DEDICATED COLUMN CELL) */}
+                            <td className="py-4 px-6">
+                              {isIndividualHiring(empr) ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs whitespace-nowrap">
+                                  <UserCheck className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                  Individual / Proprietor
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs whitespace-nowrap">
+                                  <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  Company / Business
+                                </span>
                               )}
                             </td>
 
-                            {/* Industry & Size */}
+                            {/* 3. Industry & Size */}
                             <td className="py-4 px-6">
                               <p className="font-semibold text-gray-900 text-xs">{empr.industry || 'Company'}</p>
                               <p className="text-[11px] text-gray-500 mt-0.5">{empr.employees ? `${empr.employees} employees` : 'Size not set'}</p>
                             </td>
 
-                            {/* Location */}
+                            {/* 4. Location */}
                             <td className="py-4 px-6 text-xs">
                               <div className="flex items-center gap-1 font-medium text-gray-800">
                                 <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -529,7 +1346,7 @@ export default function EmployersTab() {
                               </div>
                             </td>
 
-                            {/* Jobs Posted */}
+                            {/* 5. Jobs Posted */}
                             <td className="py-4 px-6 text-center">
                               <div className="inline-flex flex-col items-center px-2 py-1 rounded-lg">
                                 <span className="font-bold text-gray-900 text-sm">{empr.totalJobs || 0}</span>
@@ -537,7 +1354,7 @@ export default function EmployersTab() {
                               </div>
                             </td>
 
-                            {/* Registered Date */}
+                            {/* 6. Registered Date */}
                             <td className="py-4 px-6 text-xs text-gray-500">
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -550,7 +1367,7 @@ export default function EmployersTab() {
                               )}
                             </td>
 
-                            {/* Actions */}
+                            {/* 7. Actions */}
                             <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={(e) => {
@@ -558,10 +1375,9 @@ export default function EmployersTab() {
                                   handleViewEmployer(empr, 'overview');
                                 }}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white font-semibold text-xs rounded-xl transition-all duration-150 border border-blue-200 hover:border-blue-600 cursor-pointer shadow-xs"
-                                title="Open sidebar preview"
                               >
                                 <Eye className="w-3.5 h-3.5" />
-                                <span>View Jobs</span>
+                                View Profile
                               </button>
                             </td>
                           </tr>
@@ -583,10 +1399,23 @@ export default function EmployersTab() {
                                       {/* Company Details Frame */}
                                       <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-100 space-y-3">
                                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60 pb-2">
-                                          <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                                            <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                                            Company Details & Contact Overview
-                                          </h4>
+                                          <div className="flex items-center gap-2">
+                                            <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                              <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                                              Company Details & Contact Overview
+                                            </h4>
+                                            {isIndividualHiring(empr) ? (
+                                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                                <UserCheck className="w-3 h-3 text-purple-600" />
+                                                Hiring For: Individual / Proprietor
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                <Building2 className="w-3 h-3 text-emerald-600" />
+                                                Hiring For: Company / Business
+                                              </span>
+                                            )}
+                                          </div>
                                           <div className="flex items-center gap-2">
                                             <span className="text-[11px] font-medium text-gray-500">
                                               Registered: <strong className="text-gray-800">{new Date(empr.createdAt).toLocaleDateString()}</strong>
@@ -605,11 +1434,18 @@ export default function EmployersTab() {
                                         </div>
 
                                         {/* Company Details Grid */}
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
                                           <div>
                                             <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">Company / Recruiter</span>
                                             <span className="font-bold text-gray-900 block mt-0.5">{empr.companyName || 'Not Set'}</span>
                                             <span className="text-[11px] text-gray-500 font-normal">{empr.fullName} {empr.designation ? `(${empr.designation})` : ''}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">Hiring & Account Type</span>
+                                            <span className="font-bold text-gray-900 block mt-0.5">
+                                              {isIndividualHiring(empr) ? 'Individual / Proprietor' : 'Company / Business'}
+                                            </span>
+                                            <span className="text-[11px] text-gray-500 capitalize">{empr.accountType || 'Company'} Account</span>
                                           </div>
                                           <div>
                                             <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider block">Contact Email & Phone</span>
@@ -989,11 +1825,24 @@ export default function EmployersTab() {
                     : (currentEmployer.fullName ? currentEmployer.fullName.charAt(0).toUpperCase() : 'C')}
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-gray-900">{currentEmployer.companyName || currentEmployer.fullName}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl font-black text-gray-900">{currentEmployer.companyName || currentEmployer.fullName}</h2>
+                    {isIndividualHiring(currentEmployer) ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                        <UserCheck className="w-3 h-3 text-purple-600" />
+                        Individual / Proprietor
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <Building2 className="w-3 h-3 text-emerald-600" />
+                        Company / Business
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {currentEmployer.fullName} • {currentEmployer.industry || 'Company'}
                   </p>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     {currentEmployer.location && (
                       <span className="text-[11px] text-gray-500 flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-blue-600" /> {currentEmployer.location}
@@ -1064,6 +1913,22 @@ export default function EmployersTab() {
                   <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Company & Contact Information</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-gray-500 block">Hiring For</span>
+                        <span className="font-semibold text-gray-900 flex items-center gap-1.5">
+                          {isIndividualHiring(currentEmployer) ? (
+                            <span className="text-purple-700 font-bold">Individual / Proprietor</span>
+                          ) : (
+                            <span className="text-emerald-700 font-bold">Company / Business</span>
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block">Account Type</span>
+                        <span className="font-semibold text-gray-900 capitalize">
+                          {currentEmployer.accountType || 'Company'} Account
+                        </span>
+                      </div>
                       <div>
                         <span className="text-gray-500 block">Contact Email</span>
                         <span className="font-semibold text-gray-900 select-all">{currentEmployer.email}</span>

@@ -21,6 +21,22 @@ import {
   Award
 } from 'lucide-react';
 
+const formatMonthYear = (dateStr) => {
+  if (!dateStr) return '';
+  if (typeof dateStr === 'string' && dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+      const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const m = parseInt(parts[1], 10);
+      if (m >= 1 && m <= 12) {
+        return `${monthsList[m - 1]} ${parts[0]}`;
+      }
+    }
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+};
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function EmployeesTab() {
@@ -298,7 +314,7 @@ export default function EmployeesTab() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-end animate-in fade-in duration-200">
           <div className="w-full max-w-2xl bg-white h-full shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-right duration-300">
             {/* Drawer Header */}
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50/50 to-white sticky top-0 z-10 flex items-start justify-between">
+            <div className="p-6 border-b border-gray-200 bg-white sticky top-0 z-20 flex items-start justify-between shadow-xs">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
                   {currentEmp.avatar ? (
@@ -429,50 +445,190 @@ export default function EmployeesTab() {
                 </div>
               </div>
 
-              {/* Qualifications */}
-              {Array.isArray(currentEmp.qualifications) && currentEmp.qualifications.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4 text-emerald-600" />
-                    Education & Qualifications
-                  </h3>
-                  <div className="space-y-2">
-                    {currentEmp.qualifications.map((q, idx) => (
-                      <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                        <p className="font-bold text-gray-900">{q.degree || q.course || q.name || 'Degree'}</p>
-                        <p className="text-gray-600 mt-0.5">{q.institution || q.college || q.university || 'College/University'}</p>
-                        {(q.year || q.passingYear || q.percentage) && (
-                          <p className="text-[11px] text-gray-400 mt-0.5">
-                            {q.year || q.passingYear ? `Passing Year: ${q.year || q.passingYear}` : ''} 
-                            {q.percentage ? ` • Score: ${q.percentage}%` : ''}
-                          </p>
-                        )}
+              {/* Qualifications / Education */}
+              {(() => {
+                const qualificationsList = Array.isArray(currentEmp.qualifications) && currentEmp.qualifications.length > 0
+                  ? currentEmp.qualifications
+                  : Array.isArray(currentEmp.education) && currentEmp.education.length > 0
+                    ? currentEmp.education
+                    : Array.isArray(currentEmp.educationDetails) && currentEmp.educationDetails.length > 0
+                      ? currentEmp.educationDetails
+                      : Array.isArray(currentEmp.professionalDetails?.qualifications)
+                        ? currentEmp.professionalDetails.qualifications
+                        : [];
+
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4 text-emerald-600" />
+                      Education & Qualifications ({qualificationsList.length})
+                    </h3>
+                    {qualificationsList.length === 0 ? (
+                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center text-xs text-gray-400">
+                        No education details provided by candidate yet.
                       </div>
-                    ))}
+                    ) : (
+                      <div className="space-y-3">
+                        {qualificationsList.map((q, idx) => {
+                          const isSchool = q.educationType === '10th' || q.educationType === '12th';
+                          const title = isSchool
+                            ? (q.educationType === '12th' ? 'Class XII (Senior Secondary)' : 'Class X (Secondary)')
+                            : (q.course || q.degree || q.name || q.educationType || 'Higher Education');
+                          const institute = isSchool
+                            ? (q.board ? `${q.board} Board` : 'Board not specified')
+                            : (q.university || q.institution || q.college || 'Institution not specified');
+
+                          return (
+                            <div key={idx} className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs space-y-2 text-xs">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-bold text-gray-900 text-sm">{title}</p>
+                                    {q.isPrimary && (
+                                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200">
+                                        Primary
+                                      </span>
+                                    )}
+                                    {q.educationType && !isSchool && (
+                                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-medium rounded-full">
+                                        {q.educationType}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-gray-700 font-medium mt-1 flex items-center gap-1.5">
+                                    <Building className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                    {institute}
+                                  </p>
+                                </div>
+
+                                {(q.percentage || q.gradingSystem) && (
+                                  <div className="text-right shrink-0">
+                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg font-bold text-xs border border-emerald-100 block">
+                                      {q.percentage ? `${q.percentage}%` : q.gradingSystem}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-4 text-[11px] text-gray-500 pt-2 border-t border-gray-100 flex-wrap">
+                                {(q.startYear || q.endYear || q.year || q.passingYear) && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-gray-400" />
+                                    {q.startYear && q.endYear ? `${q.startYear} - ${q.endYear}` : `Passing Year: ${q.endYear || q.year || q.passingYear}`}
+                                  </span>
+                                )}
+                                {q.courseType && (
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                    {q.courseType}
+                                  </span>
+                                )}
+                                {q.schoolMedium && (
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                    Medium: {q.schoolMedium}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Work Experience */}
-              {Array.isArray(currentEmp.experience) && currentEmp.experience.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Briefcase className="w-4 h-4 text-blue-600" />
-                    Past Work Experience
-                  </h3>
-                  <div className="space-y-2">
-                    {currentEmp.experience.map((exp, idx) => (
-                      <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs">
-                        <p className="font-bold text-gray-900">{exp.designation || exp.role || 'Job Role'}</p>
-                        <p className="text-gray-600 mt-0.5">{exp.company || exp.companyName || 'Company'}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          {exp.duration || `${exp.startDate || ''} - ${exp.endDate || 'Present'}`}
-                        </p>
+              {(() => {
+                const experienceList = Array.isArray(currentEmp.experience) && currentEmp.experience.length > 0
+                  ? currentEmp.experience
+                  : Array.isArray(currentEmp.workExperience) && currentEmp.workExperience.length > 0
+                    ? currentEmp.workExperience
+                    : Array.isArray(currentEmp.professionalDetails?.experience)
+                      ? currentEmp.professionalDetails.experience
+                      : [];
+
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Briefcase className="w-4 h-4 text-blue-600" />
+                      Past Work Experience ({experienceList.length})
+                    </h3>
+                    {experienceList.length === 0 ? (
+                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center text-xs text-gray-400">
+                        No work experience details provided by candidate yet.
                       </div>
-                    ))}
+                    ) : (
+                      <div className="space-y-4">
+                        {experienceList.map((exp, cIdx) => {
+                          const companyName = exp.companyName || exp.company || 'Company';
+                          const hasRoles = Array.isArray(exp.roles) && exp.roles.length > 0;
+                          const rolesList = hasRoles ? exp.roles : [exp];
+
+                          return (
+                            <div key={cIdx} className="bg-white rounded-xl border border-gray-200 p-4 shadow-xs space-y-3">
+                              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-xs">
+                                    <Building className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-bold text-gray-900 text-sm">{companyName}</h4>
+                                    {exp.noticePeriod && (
+                                      <p className="text-[11px] text-gray-500">Notice Period: <span className="font-semibold text-gray-700">{exp.noticePeriod}</span></p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="relative border-l-2 border-emerald-500 ml-4 space-y-4 py-1">
+                                {rolesList.map((role, rIdx) => {
+                                  const jobTitle = role.jobTitle || role.designation || role.role || 'Job Role';
+                                  const empType = role.employmentType || role.type || 'Full-time';
+                                  const isCurrent = role.currentCompany || role.currentJob || (!role.leavingDate && !role.endDate);
+                                  const joinStr = role.joiningDate ? formatMonthYear(role.joiningDate) : (role.startDate ? formatMonthYear(role.startDate) : '');
+                                  const leaveStr = isCurrent ? 'Present' : (role.leavingDate ? formatMonthYear(role.leavingDate) : (role.endDate ? formatMonthYear(role.endDate) : 'Present'));
+                                  const dateDisplay = joinStr ? `${joinStr} - ${leaveStr}` : (role.duration || `${leaveStr}`);
+
+                                  return (
+                                    <div key={rIdx} className="relative pl-5 space-y-1">
+                                      <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1 ring-4 ring-white ${isCurrent ? 'bg-emerald-500' : 'bg-gray-400'}`}></div>
+                                      
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <h5 className="font-bold text-gray-900 text-xs">{jobTitle}</h5>
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
+                                          {empType}
+                                        </span>
+                                        {isCurrent && (
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            Current Role
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <p className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
+                                        <Clock className="w-3 h-3 text-gray-400" />
+                                        {dateDisplay}
+                                      </p>
+
+                                      {(role.roleDescription || role.description) && (
+                                        <p className="text-xs text-gray-600 leading-relaxed bg-gray-50/80 p-2.5 rounded-lg border border-gray-100 mt-2">
+                                          {role.roleDescription || role.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Job Applications History */}
               <div className="space-y-3">

@@ -40,6 +40,95 @@ export const isJobInIndia = (jobLocation = '', workLocation = '') => {
   return true;
 };
 
+export const isEmployeeInIndia = (empOrLoc = '', prefLoc = '') => {
+  let loc = '';
+  let pref = '';
+
+  if (typeof empOrLoc === 'object' && empOrLoc !== null) {
+    loc = String(empOrLoc.location || '').toLowerCase().trim();
+    pref = String(empOrLoc.preferredLocation || '').toLowerCase().trim();
+  } else {
+    loc = String(empOrLoc || '').toLowerCase().trim();
+    pref = String(prefLoc || '').toLowerCase().trim();
+  }
+
+  // If preferred location has India / anywhere in india
+  if (isIndiaAnywhereQuery(pref) || pref.includes('anywhere in india') || pref.includes('india')) {
+    return true;
+  }
+
+  // If location explicitly mentions India, Pan India, or Remote
+  if (loc.includes('india') || loc.includes('pan india') || loc.includes('remote')) {
+    return true;
+  }
+
+  // If location explicitly includes an international country/city without mentioning India
+  const isInternational = NON_INDIA_LOCATIONS.some((intl) => loc.includes(intl));
+  if (isInternational) {
+    if (pref.includes('india') || isIndiaAnywhereQuery(pref)) {
+      return true;
+    }
+    return false;
+  }
+
+  // All other domestic locations (e.g. Janjgir, Allahabad, Bangalore, Mumbai, etc., or empty) default to India
+  return true;
+};
+
+export const isEmployeeCurrentLocationMatch = (emp, searchLocation = '') => {
+  if (!searchLocation || searchLocation === 'All' || !searchLocation.trim()) return true;
+
+  const empLoc = String(emp?.location || '').toLowerCase().trim();
+
+  // If employer selects "Anywhere in India" / "India" for Location filter
+  if (isIndiaAnywhereQuery(searchLocation)) {
+    if (!empLoc) return true; // Default domestic in Indian job platform
+    if (empLoc.includes('india') || empLoc.includes('pan india') || empLoc.includes('remote')) {
+      return true;
+    }
+    const isInternational = NON_INDIA_LOCATIONS.some((intl) => empLoc.includes(intl));
+    return !isInternational;
+  }
+
+  // Specific location selected (e.g. "Abu Dhabi", "Bangalore", "Allahabad/Prayagraj")
+  if (!empLoc) return false;
+
+  const cleanSearch = searchLocation.trim().toLowerCase().split(',')[0].trim();
+  const cleanSearchParts = searchLocation.toLowerCase().split(/[\/,\(\)]/).map(p => p.trim()).filter(Boolean);
+
+  if (empLoc.includes(cleanSearch) || cleanSearch.includes(empLoc)) {
+    return true;
+  }
+
+  return cleanSearchParts.some(part => part.length > 2 && empLoc.includes(part));
+};
+
+export const isEmployeePreferredLocationMatch = (emp, searchLocation = '') => {
+  if (!searchLocation || searchLocation === 'All' || !searchLocation.trim()) return true;
+
+  const empPrefLoc = String(emp?.preferredLocation || '').toLowerCase().trim();
+  if (!empPrefLoc) return false;
+
+  // If employer selects "Anywhere in India" for Preferred Location filter
+  if (isIndiaAnywhereQuery(searchLocation)) {
+    if (empPrefLoc.includes('anywhere in india') || empPrefLoc.includes('pan india') || empPrefLoc.includes('india')) {
+      return true;
+    }
+    const isInternational = NON_INDIA_LOCATIONS.some((intl) => empPrefLoc.includes(intl));
+    return !isInternational;
+  }
+
+  // Specific preferred location selected (e.g. "Abu Dhabi", "Bangalore")
+  const cleanSearch = searchLocation.trim().toLowerCase().split(',')[0].trim();
+  const cleanSearchParts = searchLocation.toLowerCase().split(/[\/,\(\)]/).map(p => p.trim()).filter(Boolean);
+
+  if (empPrefLoc.includes(cleanSearch) || cleanSearch.includes(empPrefLoc)) {
+    return true;
+  }
+
+  return cleanSearchParts.some(part => part.length > 2 && empPrefLoc.includes(part));
+};
+
 export const isLocationMatch = (jobLocation = '', searchLocation = '', workLocation = '') => {
   if (!searchLocation || !searchLocation.trim()) return true;
 
