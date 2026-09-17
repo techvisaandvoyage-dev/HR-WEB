@@ -8,5 +8,8 @@
     "build": "cd server && npm install",
     "start": "cd server && node server.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {}
 }
