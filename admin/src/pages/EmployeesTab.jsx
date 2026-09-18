@@ -33,7 +33,9 @@ import {
   Building2,
   Shield,
   BookOpen,
-  School
+  School,
+  Video,
+  Calendar
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -165,6 +167,128 @@ export const DEFAULT_EDUCATION_DATA = {
 
 export const DEFAULT_EDUCATION_TYPES = Object.keys(DEFAULT_EDUCATION_DATA);
 
+export const DEFAULT_COURSE_TYPE_OPTIONS = [
+  'Full time',
+  'Part time',
+  'Correspondence/Distance learning'
+];
+
+export const DEFAULT_MEDIUM_OPTIONS = [
+  'English',
+  'Hindi',
+  'Other'
+];
+
+export const DEFAULT_GRADING_SYSTEMS = [
+  {
+    name: 'Scale 10 Grading System',
+    label: 'Grade (out of 10)',
+    placeholder: 'e.g. 8.5'
+  },
+  {
+    name: 'Scale 4 Grading System',
+    label: 'Grade (out of 4)',
+    placeholder: 'e.g. 3.6'
+  },
+  {
+    name: '% Marks of 100 Maximum',
+    label: 'Marks / Percentage (%)',
+    placeholder: 'e.g. 85'
+  },
+  {
+    name: 'Not Applicable',
+    label: 'Marks / Grade (Optional)',
+    placeholder: 'e.g. Grade or Marks'
+  }
+];
+
+export const DEFAULT_EMPLOYMENT_TYPE_OPTIONS = [
+  'Full-time',
+  'Part-time',
+  'Contract',
+  'Internship',
+  'Freelance'
+];
+
+export const DEFAULT_NOTICE_PERIOD_OPTIONS = [
+  '15 Days',
+  '30 Days',
+  '60 Days',
+  '90+ Days',
+  'Immediately available'
+];
+
+export const DEFAULT_SKILLS_OPTIONS = [
+  '3D Modeling', 'ASP.NET', 'AWS', 'Account Management', 'Accounting', 'Adobe After Effects',
+  'Adobe Illustrator', 'Adobe InDesign', 'Adobe Lightroom', 'Adobe Photoshop', 'Adobe Premiere Pro',
+  'Adobe XD', 'Agile', 'Alpine.js', 'Android Development', 'Angular', 'Animation', 'Ansible',
+  'Ant Design', 'Apache', 'Appcelerator', 'ArangoDB', 'Artificial Intelligence', 'Assembly',
+  'Auditing', 'AutoCAD', 'Axure', 'B2B Sales', 'Babel', 'Backbone.js', 'Backend Development',
+  'Balsamiq', 'Big Data', 'Blender', 'Blogging', 'Bookkeeping', 'Bootstrap', 'Brand Management',
+  'Business Development', 'C#', 'C++', 'CI/CD', 'CakePHP', 'Cassandra', 'Chakra UI', 'Chef',
+  'Cinema 4D', 'CircleCI', 'Cloud Security', 'CodeIgniter', 'Communication', 'Compliance',
+  'Computer Vision', 'Confluence', 'Content Marketing', 'Copywriting', 'Cordova', 'CorelDRAW',
+  'Corporate Finance', 'CouchDB', 'Couchbase', 'Critical Thinking', 'Cryptography', 'Customer Service',
+  'Customer Success', 'Cybersecurity', 'Dart', 'Data Analysis', 'Data Entry', 'Data Mining',
+  'Data Science', 'Database Management', 'DaVinci Resolve', 'Deep Learning', 'Digital Marketing',
+  'DigitalOcean', 'Django', 'Docker', 'DynamoDB', 'Editing', 'Elasticsearch', 'Ember.js',
+  'Email Marketing', 'Employee Relations', 'Ethical Hacking', 'Event Planning', 'Excel',
+  'Express.js', 'Facebook Ads', 'FastAPI', 'Figma', 'Final Cut Pro', 'Financial Analysis',
+  'Financial Modeling', 'Firebase', 'Firewalls', 'Flask', 'Flutter', 'Forensics',
+  'Frontend Development', 'Game Development', 'Git', 'GitHub', 'GitLab', 'Go', 'Google Ads',
+  'Google Analytics', 'Google Cloud (GCP)', 'GraphQL', 'Groovy', 'HIPAA', 'HTML', 'HBase',
+  'Hadoop', 'Haskell', 'Heroku', 'Human Resources', 'IAM', 'ISO 27001', 'Incident Response',
+  'Information Security', 'InVision', 'Inventory Management', 'Investment Banking', 'Ionic',
+  'Java', 'JavaScript', 'Jenkins', 'Jetpack Compose', 'Jira', 'Kafka', 'Keras', 'Koa',
+  'Kotlin', 'Kubernetes', 'Laravel', 'Lean Six Sigma', 'Linux', 'Logistics', 'Looker',
+  'Lua', 'MATLAB', 'Machine Learning', 'MariaDB', 'Market Research', 'Marvel', 'Material UI',
+  'Maya', 'Memcached', 'Meteor', 'Microservices', 'Microsoft Azure', 'Microsoft Office',
+  'Microsoft SQL Server', 'MongoDB', 'MySQL', 'NLP', 'NativeScript', 'Negotiation',
+  'Neo4j', 'NestJS', 'Netlify', 'Network Security', 'Next.js', 'Nginx', 'Node.js',
+  'NumPy', 'Nuke', 'Nuxt.js', 'Objective-C', 'Onboarding', 'Operations Management',
+  'Oracle', 'PCI DSS', 'PHP', 'Pandas', 'Payroll', 'Penetration Testing',
+  'Performance Management', 'Perl', 'PhoneGap', 'Photography', 'Podcasting',
+  'PostgreSQL', 'Power BI', 'PowerShell', 'Problem Solving', 'Procurement',
+  'Product Management', 'Project Management', 'Prototyping', 'Public Relations',
+  'Public Speaking', 'Puppet', 'PyTorch', 'Python', 'QlikView', 'Quality Assurance',
+  'QuickBooks', 'R', 'REST API', 'React Native', 'React.js', 'Reactjs Workflows',
+  'Recruiting', 'Redis', 'Redux', 'Research', 'RethinkDB', 'Risk Management',
+  'Ruby', 'Ruby on Rails', 'Rust', 'SEO', 'SIEM', 'SOC', 'SQL', 'SQLite',
+  'Sails.js', 'Sales', 'Scala', 'Scikit-learn', 'Scrum', 'Shell', 'Sketch',
+  'Social Media Marketing', 'SolidWorks', 'Sound Design', 'Spark', 'Spring Boot',
+  'Styled Components', 'Substance Painter', 'Supply Chain Management', 'Svelte',
+  'Swift', 'SwiftUI', 'Symphony', 'Tableau', 'Tailwind CSS', 'Talent Acquisition',
+  'Tally', 'Tax Preparation', 'Team Leadership', 'Technical Writing', 'TensorFlow',
+  'Terraform', 'Time Management', 'Translation', 'Travis CI', 'TypeScript', 'Typing',
+  'UI Design', 'UX Research', 'Unity', 'Unreal Engine', 'VBA', 'VPN', 'Vagrant',
+  'Vercel', 'Video Editing', 'Vlogging', 'Vue.js', 'Vulnerability Assessment',
+  'Wealth Management', 'Webpack', 'Wireframing', 'Writing', 'Xamarin', 'ZBrush',
+  'Zend Framework', 'Zeplin', 'jQuery', 'iOS Development'
+];
+
+export const normalizeGradingSystems = (list) => {
+  if (!Array.isArray(list) || list.length === 0) return DEFAULT_GRADING_SYSTEMS;
+  return list.map(item => {
+    if (typeof item === 'string') {
+      if (item === 'Scale 10 Grading System') {
+        return { name: item, label: 'Grade (out of 10)', placeholder: 'e.g. 8.5' };
+      } else if (item === 'Scale 4 Grading System') {
+        return { name: item, label: 'Grade (out of 4)', placeholder: 'e.g. 3.6' };
+      } else if (item === '% Marks of 100 Maximum') {
+        return { name: item, label: 'Marks / Percentage (%)', placeholder: 'e.g. 85' };
+      } else if (item === 'Not Applicable') {
+        return { name: item, label: 'Marks / Grade (Optional)', placeholder: 'e.g. Grade or Marks' };
+      }
+      return { name: item, label: `${item} Marks / Grade`, placeholder: 'Enter grade or marks' };
+    }
+    return {
+      name: item.name || '',
+      label: item.label || 'Marks / Grade',
+      placeholder: item.placeholder || 'Enter grade or marks'
+    };
+  });
+};
+
 export default function EmployeesTab() {
   const [activeSection, setActiveSectionState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -269,6 +393,46 @@ export default function EmployeesTab() {
   const [draggedEduIndex, setDraggedEduIndex] = useState(null);
   const [dragOverEduIndex, setDragOverEduIndex] = useState(null);
 
+  // Course Type Options management & Modal state
+  const [isCourseTypeModalOpen, setIsCourseTypeModalOpen] = useState(false);
+  const [newCourseTypeOption, setNewCourseTypeOption] = useState('');
+  const [draggedCourseTypeIndex, setDraggedCourseTypeIndex] = useState(null);
+  const [dragOverCourseTypeIndex, setDragOverCourseTypeIndex] = useState(null);
+
+  // School Medium Options management & Modal state (Step 2)
+  const [isMediumModalOpen, setIsMediumModalOpen] = useState(false);
+  const [newMediumOption, setNewMediumOption] = useState('');
+  const [draggedMediumIndex, setDraggedMediumIndex] = useState(null);
+  const [dragOverMediumIndex, setDragOverMediumIndex] = useState(null);
+
+  // Employment Type Options management & Modal state (Step 3)
+  const [isEmploymentTypeModalOpen, setIsEmploymentTypeModalOpen] = useState(false);
+  const [newEmploymentTypeOption, setNewEmploymentTypeOption] = useState('');
+  const [draggedEmploymentTypeIndex, setDraggedEmploymentTypeIndex] = useState(null);
+  const [dragOverEmploymentTypeIndex, setDragOverEmploymentTypeIndex] = useState(null);
+
+  // Notice Period Options management & Modal state (Step 3 & 4)
+  const [isNoticePeriodModalOpen, setIsNoticePeriodModalOpen] = useState(false);
+  const [newNoticePeriodOption, setNewNoticePeriodOption] = useState('');
+  const [draggedNoticePeriodIndex, setDraggedNoticePeriodIndex] = useState(null);
+  const [dragOverNoticePeriodIndex, setDragOverNoticePeriodIndex] = useState(null);
+  // Grading Systems management state & Modal state
+  const [isGradingModalOpen, setIsGradingModalOpen] = useState(false);
+  const [newGradingName, setNewGradingName] = useState('');
+  const [newGradingLabel, setNewGradingLabel] = useState('');
+  const [newGradingPlaceholder, setNewGradingPlaceholder] = useState('');
+  const [draggedGradingIndex, setDraggedGradingIndex] = useState(null);
+  const [dragOverGradingIndex, setDragOverGradingIndex] = useState(null);
+  const [previewGradingSelection, setPreviewGradingSelection] = useState('Scale 10 Grading System');
+
+  // Key Skills Options management & Modal state (Step 4)
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
+  const [newSkillOption, setNewSkillOption] = useState('');
+  const [skillFilterSearch, setSkillFilterSearch] = useState('');
+  const [draggedSkillIndex, setDraggedSkillIndex] = useState(null);
+  const [dragOverSkillIndex, setDragOverSkillIndex] = useState(null);
+  const [previewSalaryType, setPreviewSalaryType] = useState('Yearly');
+
   // 1. Employee Register CMS State
   const [registerConfig, setRegisterConfig] = useState({
     modalTitle: 'Register',
@@ -287,7 +451,8 @@ export default function EmployeesTab() {
 
   // 2. Employee Login CMS State
   const [loginConfig, setLoginConfig] = useState({
-    modalTitle: 'Employee Login',
+    modalTitle: 'Login to your account',
+    modalSubtitle: 'Welcome back! Please enter your details.',
     googleBtnText: 'Continue with Google',
     dividerText: 'Or with email',
     submitBtnText: 'Login',
@@ -301,7 +466,8 @@ export default function EmployeesTab() {
   // 3. Employee Onboarding CMS State (All 6 Steps)
   const [onboardingConfig, setOnboardingConfig] = useState({
     header: {
-      title: 'Create your Profile'
+      title: 'Create your Profile',
+      subtitle: 'Complete all steps to get verified & discovered by recruiters'
     },
     buttons: {
       nextBtnText: 'Save & Continue',
@@ -317,7 +483,7 @@ export default function EmployeesTab() {
         firstName: { label: 'First Name', placeholder: 'Enter first name', isRequired: true },
         lastName: { label: 'Last Name', placeholder: 'Enter last name', isRequired: false },
         phone: { label: 'Phone Number', placeholder: 'Enter 10-digit mobile number', isRequired: true },
-        email: { label: 'Email (Read Only)', placeholder: 'Enter email address', isRequired: false },
+        email: { label: 'Email ID (Read Only)', placeholder: 'Enter email address', isRequired: false },
         industry: { label: 'Function', placeholder: 'Select Function', isRequired: true },
         designation: { label: 'Designation / Role', placeholder: 'Select Designation / Role', isRequired: true },
         totalExperience: { label: 'Total Experience', placeholder: 'Select Total Experience', isRequired: true },
@@ -328,28 +494,32 @@ export default function EmployeesTab() {
     },
     step2: {
       title: 'Education',
-      subtitle: 'Details like course, university, and more, help recruiters identify your educational background',
+      subtitle: 'Details help recruiters identify your background',
       addBtnText: 'Add +',
       educationData: DEFAULT_EDUCATION_DATA,
       educationTypes: DEFAULT_EDUCATION_TYPES,
+      courseTypeOptions: DEFAULT_COURSE_TYPE_OPTIONS,
+      mediumOptions: DEFAULT_MEDIUM_OPTIONS,
+      gradingSystems: DEFAULT_GRADING_SYSTEMS,
       fields: {
         educationType: { label: 'Education', placeholder: 'Select education type', isRequired: true },
-        board: { label: 'Board', placeholder: 'Select board', isRequired: true },
-        endYear: { label: 'Passing out year', placeholder: 'Select passing out year', isRequired: true },
-        schoolMedium: { label: 'School medium', placeholder: 'Select medium', isRequired: true },
-        percentage: { label: 'Marks', placeholder: '% marks of 100 maximum', isRequired: true },
-        university: { label: 'University / Institute', placeholder: 'Enter University / Institute', isRequired: true },
+        university: { label: 'University / Institute', placeholder: 'Search or enter university/institute...', isRequired: true },
         course: { label: 'Course', placeholder: 'Select course', isRequired: true },
-        courseType: { label: 'Course type', placeholder: 'Select course type', isRequired: true },
-        startYear: { label: 'Starting year', placeholder: 'Select starting year', isRequired: true },
-        gradingSystem: { label: 'Grading system', placeholder: 'Select grading system', isRequired: false }
+        schoolMedium: { label: 'School medium', placeholder: 'Select medium', isRequired: true },
+        courseType: { label: 'Course Type', placeholder: 'Select course type', isRequired: true },
+        startYear: { label: 'Starting Year', placeholder: 'Select starting year', isRequired: true },
+        endYear: { label: 'Passing Out Year', placeholder: 'Select passing out year', isRequired: true },
+        gradingSystem: { label: 'Grading System', placeholder: 'Select grading system', isRequired: true },
+        percentage: { label: 'Marks / Grade', placeholder: 'Enter percentage or grade', isRequired: true }
       }
     },
     step3: {
       title: 'Work Experience',
-      subtitle: 'Add details of your previous and current employment',
-      addBtnText: 'Add Experience +',
+      subtitle: 'Highlight your professional journey',
+      addBtnText: 'Add +',
       fresherLabel: 'I am a fresher (No Experience)',
+      employmentTypeOptions: DEFAULT_EMPLOYMENT_TYPE_OPTIONS,
+      noticePeriodOptions: DEFAULT_NOTICE_PERIOD_OPTIONS,
       fields: {
         companyName: { label: 'Company Name', placeholder: 'Enter company name', isRequired: true },
         jobTitle: { label: 'Job Title / Role', placeholder: 'Enter job title', isRequired: true },
@@ -364,21 +534,23 @@ export default function EmployeesTab() {
     step4: {
       title: 'Key Skills & Preferences',
       subtitle: 'Highlight your key skills and preferences to find matching jobs',
+      skillsOptions: DEFAULT_SKILLS_OPTIONS,
       fields: {
-        skills: { label: 'Key Skills', placeholder: 'Type skill and press Enter (e.g., React, Node.js)', isRequired: false },
+        linkedinUrl: { label: 'LinkedIn Profile', placeholder: 'https://linkedin.com/in/...', isRequired: false },
+        salaryType: { label: 'Salary Type', placeholder: 'Select salary type', isRequired: true },
+        currency: { label: 'Currency', placeholder: 'Select currency', isRequired: true },
         currentSalary: { label: 'Current Annual CTC', placeholder: 'e.g. 5,00,000', isRequired: false },
         expectedSalary: { label: 'Expected Annual CTC', placeholder: 'e.g. 7,50,000', isRequired: false },
-        noticePeriod: { label: 'Notice Period', placeholder: 'Select notice period', isRequired: false },
-        resumeHeadline: { label: 'Resume Headline', placeholder: 'Add a summary headline for your profile', isRequired: false }
+        skills: { label: 'Key Skills', placeholder: 'Type skill and press Enter (e.g., React, Node.js)', isRequired: false }
       }
     },
     step5: {
       title: 'Documents & Media',
-      subtitle: 'Upload your resume, cover letter, and introductory video',
+      subtitle: 'Manage your introductory video, resume, and cover letter.',
       fields: {
-        resume: { label: 'Resume (PDF/DOCX)', placeholder: 'Upload PDF or DOCX (Max 5MB)', isRequired: true },
-        coverLetter: { label: 'Cover Letter', placeholder: 'Upload Cover Letter (PDF/DOCX)', isRequired: false },
-        introVideo: { label: 'Introductory Video', placeholder: 'Upload MP4/MOV or attach video link', isRequired: false }
+        resume: { label: 'Upload Resume', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: true },
+        coverLetter: { label: 'Upload Cover Letter', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: false },
+        introVideo: { label: 'Introductory Video', placeholder: 'Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.', isRequired: false }
       }
     },
     step6: {
@@ -443,16 +615,37 @@ export default function EmployeesTab() {
               educationTypes: (Array.isArray(data.data.employeeOnboarding.step2?.educationTypes) && data.data.employeeOnboarding.step2.educationTypes.length > 0)
                 ? data.data.employeeOnboarding.step2.educationTypes
                 : (prev.step2?.educationTypes || DEFAULT_EDUCATION_TYPES),
+              courseTypeOptions: (Array.isArray(data.data.employeeOnboarding.step2?.courseTypeOptions) && data.data.employeeOnboarding.step2.courseTypeOptions.length > 0)
+                ? data.data.employeeOnboarding.step2.courseTypeOptions
+                : (prev.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS),
+              mediumOptions: (Array.isArray(data.data.employeeOnboarding.step2?.mediumOptions) && data.data.employeeOnboarding.step2.mediumOptions.length > 0)
+                ? data.data.employeeOnboarding.step2.mediumOptions
+                : (prev.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS),
+              gradingSystems: (Array.isArray(data.data.employeeOnboarding.step2?.gradingSystems) && data.data.employeeOnboarding.step2.gradingSystems.length > 0)
+                ? normalizeGradingSystems(data.data.employeeOnboarding.step2.gradingSystems)
+                : (prev.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS),
               fields: { ...prev.step2.fields, ...(data.data.employeeOnboarding.step2?.fields || {}) }
             },
             step3: {
               ...prev.step3,
               ...(data.data.employeeOnboarding.step3 || {}),
+              employmentTypeOptions: (Array.isArray(data.data.employeeOnboarding.step3?.employmentTypeOptions) && data.data.employeeOnboarding.step3.employmentTypeOptions.length > 0)
+                ? data.data.employeeOnboarding.step3.employmentTypeOptions
+                : (prev.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS),
+              noticePeriodOptions: (Array.isArray(data.data.employeeOnboarding.step3?.noticePeriodOptions) && data.data.employeeOnboarding.step3.noticePeriodOptions.length > 0)
+                ? data.data.employeeOnboarding.step3.noticePeriodOptions
+                : (prev.step3?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS),
               fields: { ...prev.step3.fields, ...(data.data.employeeOnboarding.step3?.fields || {}) }
             },
             step4: {
               ...prev.step4,
               ...(data.data.employeeOnboarding.step4 || {}),
+              noticePeriodOptions: (Array.isArray(data.data.employeeOnboarding.step4?.noticePeriodOptions) && data.data.employeeOnboarding.step4.noticePeriodOptions.length > 0)
+                ? data.data.employeeOnboarding.step4.noticePeriodOptions
+                : (data.data.employeeOnboarding.step3?.noticePeriodOptions || prev.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS),
+              skillsOptions: (Array.isArray(data.data.employeeOnboarding.step4?.skillsOptions) && data.data.employeeOnboarding.step4.skillsOptions.length > 0)
+                ? data.data.employeeOnboarding.step4.skillsOptions
+                : (prev.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS),
               fields: { ...prev.step4.fields, ...(data.data.employeeOnboarding.step4?.fields || {}) }
             },
             step5: {
@@ -1095,14 +1288,609 @@ export default function EmployeesTab() {
     setDragOverEduIndex(null);
   };
 
+  // Course Types Handlers
+  const handleAddCourseTypeOption = () => {
+    const trimmed = newCourseTypeOption.trim();
+    if (!trimmed) return;
+    setOnboardingConfig(prev => {
+      const currentList = prev.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS;
+      if (currentList.some(o => o.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          courseTypeOptions: [...currentList, trimmed]
+        }
+      };
+    });
+    setNewCourseTypeOption('');
+  };
+
+  const handleDeleteCourseTypeOption = (idxToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = prev.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS;
+      const updated = currentList.filter((_, idx) => idx !== idxToDelete);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          courseTypeOptions: updated
+        }
+      };
+    });
+  };
+
+  const handleResetCourseTypeOptions = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step2: {
+        ...prev.step2,
+        courseTypeOptions: DEFAULT_COURSE_TYPE_OPTIONS
+      }
+    }));
+  };
+
+  const handleCourseTypeDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedCourseTypeIndex(index);
+  };
+
+  const handleCourseTypeDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverCourseTypeIndex !== index) {
+      setDragOverCourseTypeIndex(index);
+    }
+  };
+
+  const handleCourseTypeDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedCourseTypeIndex === null || draggedCourseTypeIndex === dropIndex) {
+      setDraggedCourseTypeIndex(null);
+      setDragOverCourseTypeIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS)];
+      const [draggedItem] = currentList.splice(draggedCourseTypeIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          courseTypeOptions: currentList
+        }
+      };
+    });
+
+    setDraggedCourseTypeIndex(null);
+    setDragOverCourseTypeIndex(null);
+  };
+
+  const handleCourseTypeDragEnd = () => {
+    setDraggedCourseTypeIndex(null);
+    setDragOverCourseTypeIndex(null);
+  };
+
+  // School Medium Types Handlers (Step 2)
+  const handleAddMediumOption = () => {
+    const trimmed = newMediumOption.trim();
+    if (!trimmed) return;
+    setOnboardingConfig(prev => {
+      const currentList = prev.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS;
+      if (currentList.some(o => o.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          mediumOptions: [...currentList, trimmed]
+        }
+      };
+    });
+    setNewMediumOption('');
+  };
+
+  const handleDeleteMediumOption = (idxToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = prev.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS;
+      const updated = currentList.filter((_, idx) => idx !== idxToDelete);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          mediumOptions: updated
+        }
+      };
+    });
+  };
+
+  const handleResetMediumOptions = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step2: {
+        ...prev.step2,
+        mediumOptions: DEFAULT_MEDIUM_OPTIONS
+      }
+    }));
+  };
+
+  const handleMediumDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedMediumIndex(index);
+  };
+
+  const handleMediumDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverMediumIndex !== index) {
+      setDragOverMediumIndex(index);
+    }
+  };
+
+  const handleMediumDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedMediumIndex === null || draggedMediumIndex === dropIndex) {
+      setDraggedMediumIndex(null);
+      setDragOverMediumIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS)];
+      const [draggedItem] = currentList.splice(draggedMediumIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          mediumOptions: currentList
+        }
+      };
+    });
+
+    setDraggedMediumIndex(null);
+    setDragOverMediumIndex(null);
+  };
+
+  const handleMediumDragEnd = () => {
+    setDraggedMediumIndex(null);
+    setDragOverMediumIndex(null);
+  };
+
+  // Employment Type Handlers (Step 3)
+  const handleAddEmploymentTypeOption = () => {
+    const trimmed = newEmploymentTypeOption.trim();
+    if (!trimmed) return;
+    setOnboardingConfig(prev => {
+      const currentList = prev.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS;
+      if (currentList.some(o => o.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        step3: {
+          ...prev.step3,
+          employmentTypeOptions: [...currentList, trimmed]
+        }
+      };
+    });
+    setNewEmploymentTypeOption('');
+  };
+
+  const handleDeleteEmploymentTypeOption = (idxToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = prev.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS;
+      const updated = currentList.filter((_, idx) => idx !== idxToDelete);
+      return {
+        ...prev,
+        step3: {
+          ...prev.step3,
+          employmentTypeOptions: updated
+        }
+      };
+    });
+  };
+
+  const handleResetEmploymentTypeOptions = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step3: {
+        ...prev.step3,
+        employmentTypeOptions: DEFAULT_EMPLOYMENT_TYPE_OPTIONS
+      }
+    }));
+  };
+
+  const handleEmploymentTypeDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedEmploymentTypeIndex(index);
+  };
+
+  const handleEmploymentTypeDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverEmploymentTypeIndex !== index) {
+      setDragOverEmploymentTypeIndex(index);
+    }
+  };
+
+  const handleEmploymentTypeDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedEmploymentTypeIndex === null || draggedEmploymentTypeIndex === dropIndex) {
+      setDraggedEmploymentTypeIndex(null);
+      setDragOverEmploymentTypeIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS)];
+      const [draggedItem] = currentList.splice(draggedEmploymentTypeIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step3: {
+          ...prev.step3,
+          employmentTypeOptions: currentList
+        }
+      };
+    });
+
+    setDraggedEmploymentTypeIndex(null);
+    setDragOverEmploymentTypeIndex(null);
+  };
+
+  const handleEmploymentTypeDragEnd = () => {
+    setDraggedEmploymentTypeIndex(null);
+    setDragOverEmploymentTypeIndex(null);
+  };
+
+  // Notice Period Handlers (Step 3 & Step 4)
+  const handleAddNoticePeriodOption = () => {
+    const trimmed = newNoticePeriodOption.trim();
+    if (!trimmed) return;
+    setOnboardingConfig(prev => {
+      const currentList = prev.step3?.noticePeriodOptions || prev.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS;
+      if (currentList.some(o => o.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      const updated = [...currentList, trimmed];
+      return {
+        ...prev,
+        step3: {
+          ...prev.step3,
+          noticePeriodOptions: updated
+        },
+        step4: {
+          ...prev.step4,
+          noticePeriodOptions: updated
+        }
+      };
+    });
+    setNewNoticePeriodOption('');
+  };
+
+  const handleDeleteNoticePeriodOption = (idxToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = prev.step3?.noticePeriodOptions || prev.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS;
+      const updated = currentList.filter((_, idx) => idx !== idxToDelete);
+      return {
+        ...prev,
+        step3: {
+          ...prev.step3,
+          noticePeriodOptions: updated
+        },
+        step4: {
+          ...prev.step4,
+          noticePeriodOptions: updated
+        }
+      };
+    });
+  };
+
+  const handleResetNoticePeriodOptions = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step3: {
+        ...prev.step3,
+        noticePeriodOptions: DEFAULT_NOTICE_PERIOD_OPTIONS
+      },
+      step4: {
+        ...prev.step4,
+        noticePeriodOptions: DEFAULT_NOTICE_PERIOD_OPTIONS
+      }
+    }));
+  };
+
+  const handleNoticePeriodDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedNoticePeriodIndex(index);
+  };
+
+  const handleNoticePeriodDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverNoticePeriodIndex !== index) {
+      setDragOverNoticePeriodIndex(index);
+    }
+  };
+
+  const handleNoticePeriodDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedNoticePeriodIndex === null || draggedNoticePeriodIndex === dropIndex) {
+      setDraggedNoticePeriodIndex(null);
+      setDragOverNoticePeriodIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step3?.noticePeriodOptions || prev.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS)];
+      const [draggedItem] = currentList.splice(draggedNoticePeriodIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step3: {
+          ...prev.step3,
+          noticePeriodOptions: currentList
+        },
+        step4: {
+          ...prev.step4,
+          noticePeriodOptions: currentList
+        }
+      };
+    });
+
+    setDraggedNoticePeriodIndex(null);
+    setDragOverNoticePeriodIndex(null);
+  };
+
+  const handleNoticePeriodDragEnd = () => {
+    setDraggedNoticePeriodIndex(null);
+    setDragOverNoticePeriodIndex(null);
+  };
+
+  // Grading Systems Handlers
+  const handleAddGradingSystem = () => {
+    const trimmedName = newGradingName.trim();
+    if (!trimmedName) return;
+    setOnboardingConfig(prev => {
+      const currentList = normalizeGradingSystems(prev.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
+      if (currentList.some(o => o.name.toLowerCase() === trimmedName.toLowerCase())) {
+        return prev;
+      }
+      const newObj = {
+        name: trimmedName,
+        label: newGradingLabel.trim() || `${trimmedName} Score`,
+        placeholder: newGradingPlaceholder.trim() || 'Enter grade or marks'
+      };
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          gradingSystems: [...currentList, newObj]
+        }
+      };
+    });
+    setNewGradingName('');
+    setNewGradingLabel('');
+    setNewGradingPlaceholder('');
+  };
+
+  const handleUpdateGradingItem = (index, field, value) => {
+    setOnboardingConfig(prev => {
+      const currentList = normalizeGradingSystems(prev.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
+      const updated = currentList.map((item, idx) => {
+        if (idx === index) {
+          return { ...item, [field]: value };
+        }
+        return item;
+      });
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          gradingSystems: updated
+        }
+      };
+    });
+  };
+
+  const handleDeleteGradingSystem = (idxToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = normalizeGradingSystems(prev.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
+      const updated = currentList.filter((_, idx) => idx !== idxToDelete);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          gradingSystems: updated
+        }
+      };
+    });
+  };
+
+  const handleResetGradingSystems = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step2: {
+        ...prev.step2,
+        gradingSystems: DEFAULT_GRADING_SYSTEMS
+      }
+    }));
+  };
+
+  const handleGradingDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedGradingIndex(index);
+  };
+
+  const handleGradingDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverGradingIndex !== index) {
+      setDragOverGradingIndex(index);
+    }
+  };
+
+  const handleGradingDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedGradingIndex === null || draggedGradingIndex === dropIndex) {
+      setDraggedGradingIndex(null);
+      setDragOverGradingIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...normalizeGradingSystems(prev.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS)];
+      const [draggedItem] = currentList.splice(draggedGradingIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          gradingSystems: currentList
+        }
+      };
+    });
+
+    setDraggedGradingIndex(null);
+    setDragOverGradingIndex(null);
+  };
+
+  const handleGradingDragEnd = () => {
+    setDraggedGradingIndex(null);
+    setDragOverGradingIndex(null);
+  };
+
+  // Key Skills Options Handlers (Step 4)
+  const handleAddSkillOption = () => {
+    const raw = newSkillOption.trim();
+    if (!raw) return;
+    
+    // Support adding comma-separated skills in bulk
+    const itemsToAdd = raw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (itemsToAdd.length === 0) return;
+
+    setOnboardingConfig(prev => {
+      const currentList = prev.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS;
+      const lowerExisting = new Set(currentList.map(s => s.toLowerCase()));
+      const uniqueNew = itemsToAdd.filter(item => !lowerExisting.has(item.toLowerCase()));
+
+      if (uniqueNew.length === 0) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        step4: {
+          ...prev.step4,
+          skillsOptions: [...currentList, ...uniqueNew]
+        }
+      };
+    });
+    setNewSkillOption('');
+  };
+
+  const handleDeleteSkillOption = (idxToDelete) => {
+    setOnboardingConfig(prev => {
+      const currentList = prev.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS;
+      const updated = currentList.filter((_, idx) => idx !== idxToDelete);
+      return {
+        ...prev,
+        step4: {
+          ...prev.step4,
+          skillsOptions: updated
+        }
+      };
+    });
+  };
+
+  const handleResetSkillsOptions = () => {
+    setOnboardingConfig(prev => ({
+      ...prev,
+      step4: {
+        ...prev.step4,
+        skillsOptions: DEFAULT_SKILLS_OPTIONS
+      }
+    }));
+  };
+
+  const handleSkillDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDraggedSkillIndex(index);
+  };
+
+  const handleSkillDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverSkillIndex !== index) {
+      setDragOverSkillIndex(index);
+    }
+  };
+
+  const handleSkillDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedSkillIndex === null || draggedSkillIndex === dropIndex) {
+      setDraggedSkillIndex(null);
+      setDragOverSkillIndex(null);
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentList = [...(prev.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS)];
+      const [draggedItem] = currentList.splice(draggedSkillIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step4: {
+          ...prev.step4,
+          skillsOptions: currentList
+        }
+      };
+    });
+
+    setDraggedSkillIndex(null);
+    setDragOverSkillIndex(null);
+  };
+
+  const handleSkillDragEnd = () => {
+    setDraggedSkillIndex(null);
+    setDragOverSkillIndex(null);
+  };
+
   // Save Config to Backend
   const handleSave = async (customOnboarding) => {
     try {
+      if (customOnboarding && typeof customOnboarding.preventDefault === 'function') {
+        customOnboarding.preventDefault();
+      }
       setSaving(true);
       setToastMessage('');
       setErrorMessage('');
 
-      const targetOnboarding = customOnboarding || onboardingConfig;
+      // Check if customOnboarding is an actual onboarding configuration object, not a React SyntheticEvent
+      const isConfigObject = customOnboarding && 
+        typeof customOnboarding === 'object' && 
+        !customOnboarding.nativeEvent && 
+        !customOnboarding.target && 
+        !customOnboarding._reactName &&
+        (customOnboarding.step1 || customOnboarding.step2 || customOnboarding.header || customOnboarding.buttons);
+
+      const targetOnboarding = isConfigObject ? customOnboarding : onboardingConfig;
 
       const res = await fetch(`${API_URL}/api/homepage`, {
         method: 'PUT',
@@ -1171,15 +1959,12 @@ export default function EmployeesTab() {
   ];
 
   const step2FieldKeys = [
-    { key: 'educationType', title: 'Education Type' },
-    { key: 'board', title: 'Board' },
-    { key: 'endYear', title: 'Passing Out Year' },
-    { key: 'schoolMedium', title: 'School Medium' },
-    { key: 'percentage', title: 'Marks / Percentage' },
+    { key: 'educationType', title: 'Education' },
     { key: 'university', title: 'University / Institute' },
     { key: 'course', title: 'Course' },
+    { key: 'schoolMedium', title: 'Medium' },
     { key: 'courseType', title: 'Course Type' },
-    { key: 'startYear', title: 'Starting Year' },
+    { key: 'duration', title: 'Duration' },
     { key: 'gradingSystem', title: 'Grading System' }
   ];
 
@@ -1195,16 +1980,17 @@ export default function EmployeesTab() {
   ];
 
   const step4FieldKeys = [
-    { key: 'skills', title: 'Key Skills' },
+    { key: 'linkedinUrl', title: 'LinkedIn Profile' },
+    { key: 'salaryType', title: 'Salary Type' },
+    { key: 'currency', title: 'Currency' },
     { key: 'currentSalary', title: 'Current Annual CTC' },
     { key: 'expectedSalary', title: 'Expected Annual CTC' },
-    { key: 'noticePeriod', title: 'Notice Period' },
-    { key: 'resumeHeadline', title: 'Resume Headline' }
+    { key: 'skills', title: 'Key Skills' }
   ];
 
   const step5FieldKeys = [
-    { key: 'resume', title: 'Resume (PDF/DOCX)' },
-    { key: 'coverLetter', title: 'Cover Letter' },
+    { key: 'resume', title: 'Upload Resume' },
+    { key: 'coverLetter', title: 'Upload Cover Letter' },
     { key: 'introVideo', title: 'Introductory Video' }
   ];
 
@@ -2815,6 +3601,135 @@ export default function EmployeesTab() {
 
                     <div className="space-y-4 pt-2">
                       {step2FieldKeys.map(item => {
+                        if (item.key === 'duration') {
+                          const startFieldData = onboardingConfig.step2?.fields?.startYear || { label: 'Starting Year', placeholder: 'Select starting year', isRequired: true };
+                          const endFieldData = onboardingConfig.step2?.fields?.endYear || { label: 'Passing Out Year', placeholder: 'Select passing out year', isRequired: true };
+                          const isStartReq = startFieldData.isRequired !== false;
+                          const isEndReq = endFieldData.isRequired !== false;
+
+                          return (
+                            <div key="duration" className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-extrabold text-gray-900 flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                                  Duration (Starting Year & Passing Out Year)
+                                  {(isStartReq || isEndReq) && <span className="text-red-500 text-sm font-bold">*</span>}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                {/* Starting Year */}
+                                <div className="p-3 bg-white rounded-lg border border-gray-200/80 space-y-2.5 shadow-2xs">
+                                  <div className="flex items-center justify-between pb-1 border-b border-gray-100">
+                                    <span className="text-[11px] font-bold text-gray-800 flex items-center gap-1">
+                                      Starting Year
+                                      {isStartReq && <span className="text-red-500 font-bold">*</span>}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOnboardingMandatoryToggle('step2', 'startYear')}
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
+                                        isStartReq
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                      }`}
+                                    >
+                                      {isStartReq ? (
+                                        <>
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                          Mandatory (*)
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                          Optional
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <div className="space-y-2 text-xs">
+                                    <div>
+                                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                      <input
+                                        type="text"
+                                        value={startFieldData.label || ''}
+                                        onChange={(e) => handleOnboardingFieldChange('step2', 'startYear', 'label', e.target.value)}
+                                        className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                        placeholder="Starting Year"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                      <input
+                                        type="text"
+                                        value={startFieldData.placeholder || ''}
+                                        onChange={(e) => handleOnboardingFieldChange('step2', 'startYear', 'placeholder', e.target.value)}
+                                        className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                        placeholder="Select starting year"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Passing Out Year */}
+                                <div className="p-3 bg-white rounded-lg border border-gray-200/80 space-y-2.5 shadow-2xs">
+                                  <div className="flex items-center justify-between pb-1 border-b border-gray-100">
+                                    <span className="text-[11px] font-bold text-gray-800 flex items-center gap-1">
+                                      Passing Out Year
+                                      {isEndReq && <span className="text-red-500 font-bold">*</span>}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOnboardingMandatoryToggle('step2', 'endYear')}
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
+                                        isEndReq
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                      }`}
+                                    >
+                                      {isEndReq ? (
+                                        <>
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                          Mandatory (*)
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                          Optional
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <div className="space-y-2 text-xs">
+                                    <div>
+                                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">Field Label Text</label>
+                                      <input
+                                        type="text"
+                                        value={endFieldData.label || ''}
+                                        onChange={(e) => handleOnboardingFieldChange('step2', 'endYear', 'label', e.target.value)}
+                                        className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                        placeholder="Passing Out Year"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[11px] font-semibold text-gray-600 mb-1">Placeholder Text</label>
+                                      <input
+                                        type="text"
+                                        value={endFieldData.placeholder || ''}
+                                        onChange={(e) => handleOnboardingFieldChange('step2', 'endYear', 'placeholder', e.target.value)}
+                                        className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                        placeholder="Select passing out year"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         const fieldData = onboardingConfig.step2?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: true };
                         const isReq = fieldData.isRequired !== false;
                         return (
@@ -2835,6 +3750,42 @@ export default function EmployeesTab() {
                                   >
                                     <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
                                     <span>Edit Education Types</span>
+                                  </button>
+                                )}
+
+                                {item.key === 'courseType' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsCourseTypeModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Course Types Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Course Types</span>
+                                  </button>
+                                )}
+
+                                {item.key === 'schoolMedium' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsMediumModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open School Medium Options Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Medium Options ({((onboardingConfig.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS)).length})</span>
+                                  </button>
+                                )}
+
+                                {item.key === 'gradingSystem' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsGradingModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Grading Systems Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Grading Systems</span>
                                   </button>
                                 )}
 
@@ -2931,29 +3882,6 @@ export default function EmployeesTab() {
                           </div>
 
                           <div className="flex items-center gap-2.5">
-                            <button
-                              type="button"
-                              onClick={handleResetEducationData}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                              title="Reset all education types and options to standard default dictionary"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span>Reset to Defaults</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                await handleSave();
-                                setIsEducationModalOpen(false);
-                              }}
-                              disabled={saving}
-                              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                              <span>Save Changes</span>
-                            </button>
-
                             <button
                               type="button"
                               onClick={() => setIsEducationModalOpen(false)}
@@ -3307,6 +4235,667 @@ export default function EmployeesTab() {
                   );
                 })()}
 
+                {/* Course Types Management Modal Popup */}
+                {isCourseTypeModalOpen && (() => {
+                  const currentOptions = onboardingConfig.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS;
+                  const trimmedName = newCourseTypeOption.trim();
+                  const isDuplicate = trimmedName && currentOptions.some(o => o.toLowerCase() === trimmedName.toLowerCase());
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsCourseTypeModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <SlidersHorizontal className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                Course Types Management
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Add, remove, or drag & drop to reorder course types for candidates.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsCourseTypeModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                          {/* Add Input */}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Add new course type (e.g. Online, Hybrid, Evening Batch, Executive)..."
+                              value={newCourseTypeOption}
+                              onChange={(e) => setNewCourseTypeOption(e.target.value)}
+                              onKeyDown={(e) => { 
+                                if (e.key === 'Enter') { 
+                                  e.preventDefault(); 
+                                  if (trimmedName && !isDuplicate) handleAddCourseTypeOption(); 
+                                } 
+                              }}
+                              className={`flex-1 px-4 py-2.5 bg-gray-50 border rounded-xl text-xs font-medium focus:outline-none focus:bg-white transition-all ${
+                                isDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCourseTypeOption}
+                              disabled={!trimmedName || isDuplicate}
+                              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Type</span>
+                            </button>
+                          </div>
+
+                          {trimmedName && isDuplicate && (
+                            <p className="text-[10px] text-amber-700 font-semibold px-1">
+                              "{trimmedName}" already exists in course types!
+                            </p>
+                          )}
+
+                          {/* Reorderable Items List */}
+                          <div 
+                            className="space-y-2 pt-2"
+                            onDragLeave={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget)) {
+                                setDragOverCourseTypeIndex(null);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-semibold px-1">
+                              <span>Current Course Types ({currentOptions.length})</span>
+                              <span className="text-[11px] text-gray-400">Drag items by handle to reorder</span>
+                            </div>
+
+                            {currentOptions.map((opt, idx) => {
+                              const isDragging = draggedCourseTypeIndex === idx;
+                              const isDragOver = dragOverCourseTypeIndex === idx && draggedCourseTypeIndex !== idx;
+
+                              return (
+                                <div
+                                  key={opt + idx}
+                                  draggable
+                                  onDragStart={(e) => handleCourseTypeDragStart(e, idx)}
+                                  onDragOver={(e) => handleCourseTypeDragOver(e, idx)}
+                                  onDrop={(e) => handleCourseTypeDrop(e, idx)}
+                                  onDragEnd={handleCourseTypeDragEnd}
+                                  className={`relative flex items-center justify-between p-3 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
+                                    isDragging
+                                      ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                      : isDragOver
+                                      ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                      : 'bg-white hover:bg-emerald-50/50 text-gray-800 border border-gray-200 shadow-2xs hover:border-emerald-300'
+                                  }`}
+                                >
+                                  {isDragOver && (
+                                    <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                  )}
+
+                                  <div className="flex items-center gap-2.5">
+                                    <span 
+                                      className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                      title="Drag to change position"
+                                    >
+                                      <GripVertical className="w-4 h-4" />
+                                    </span>
+                                    <span className="text-gray-900 font-extrabold">{opt}</span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCourseTypeOption(idx)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    title={`Delete course type "${opt}"`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={handleResetCourseTypeOptions}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset to standard course types"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Defaults</span>
+                          </button>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsCourseTypeModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsCourseTypeModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* School Medium Options Management Modal Popup */}
+                {isMediumModalOpen && (() => {
+                  const currentOptions = onboardingConfig.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS;
+                  const trimmedName = newMediumOption.trim();
+                  const isDuplicate = trimmedName && currentOptions.some(o => o.toLowerCase() === trimmedName.toLowerCase());
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsMediumModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <BookOpen className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                School Medium Options
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Add, remove, and reorder medium of instruction options available in dropdowns.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsMediumModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                          
+                          {/* Add New Option Input */}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="New medium (e.g. Marathi, Tamil, Bengali)..."
+                              value={newMediumOption}
+                              onChange={(e) => setNewMediumOption(e.target.value)}
+                              onKeyDown={(e) => { 
+                                if (e.key === 'Enter') { 
+                                  e.preventDefault(); 
+                                  if (trimmedName && !isDuplicate) handleAddMediumOption(); 
+                                } 
+                              }}
+                              className={`flex-1 px-4 py-2.5 bg-gray-50 border rounded-xl text-xs font-medium focus:outline-none focus:bg-white transition-all ${
+                                isDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddMediumOption}
+                              disabled={!trimmedName || isDuplicate}
+                              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Medium</span>
+                            </button>
+                          </div>
+
+                          {trimmedName && isDuplicate && (
+                            <p className="text-[10px] text-amber-700 font-semibold px-1">
+                              "{trimmedName}" already exists in medium options!
+                            </p>
+                          )}
+
+                          {/* Reorderable Items List */}
+                          <div 
+                            className="space-y-2 pt-2"
+                            onDragLeave={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget)) {
+                                setDragOverMediumIndex(null);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-semibold px-1">
+                              <span>Current Medium Options ({currentOptions.length})</span>
+                              <span className="text-[11px] text-gray-400">Drag items by handle to reorder</span>
+                            </div>
+
+                            {currentOptions.map((opt, idx) => {
+                              const isDragging = draggedMediumIndex === idx;
+                              const isDragOver = dragOverMediumIndex === idx && draggedMediumIndex !== idx;
+
+                              return (
+                                <div
+                                  key={opt + idx}
+                                  draggable
+                                  onDragStart={(e) => handleMediumDragStart(e, idx)}
+                                  onDragOver={(e) => handleMediumDragOver(e, idx)}
+                                  onDrop={(e) => handleMediumDrop(e, idx)}
+                                  onDragEnd={handleMediumDragEnd}
+                                  className={`relative flex items-center justify-between p-3 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
+                                    isDragging
+                                      ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                      : isDragOver
+                                      ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                      : 'bg-white hover:bg-emerald-50/50 text-gray-800 border border-gray-200 shadow-2xs hover:border-emerald-300'
+                                  }`}
+                                >
+                                  {isDragOver && (
+                                    <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                  )}
+
+                                  <div className="flex items-center gap-2.5">
+                                    <span 
+                                      className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                      title="Drag to change position"
+                                    >
+                                      <GripVertical className="w-4 h-4" />
+                                    </span>
+                                    <span className="text-gray-900 font-extrabold">{opt}</span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMediumOption(idx)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    title={`Delete medium "${opt}"`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={handleResetMediumOptions}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset to standard medium options"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Defaults</span>
+                          </button>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsMediumModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsMediumModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Grading Systems Management Modal Popup */}
+                {isGradingModalOpen && (() => {
+                  const currentList = normalizeGradingSystems(onboardingConfig.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
+                  const trimmedName = newGradingName.trim();
+                  const isDuplicate = trimmedName && currentList.some(o => o.name.toLowerCase() === trimmedName.toLowerCase());
+                  const activePreviewObj = currentList.find(g => g.name === previewGradingSelection) || currentList[0] || { name: 'Scale 10 Grading System', label: 'Grade (out of 10)', placeholder: 'e.g. 8.5' };
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsGradingModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <SlidersHorizontal className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                Grading Systems Management
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Add grading options and configure the dynamic text box label & placeholder shown below when candidates select each option.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsGradingModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-5">
+                          
+                          {/* Add New Grading System Form Card */}
+                          <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                                <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                                Add New Grading System
+                              </span>
+                              <span className="text-[11px] text-gray-400">Specify dropdown option name, plus dynamic input label & placeholder</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs">
+                              <div className="sm:col-span-5">
+                                <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                  Option Name in Dropdown <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Scale 7 Grading System, Letter Grade (A-F)"
+                                  value={newGradingName}
+                                  onChange={(e) => setNewGradingName(e.target.value)}
+                                  className={`w-full px-3 py-2 bg-white border rounded-xl font-medium text-xs focus:outline-none transition-all ${
+                                    isDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                                  }`}
+                                />
+                              </div>
+
+                              <div className="sm:col-span-4">
+                                <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                  Below Input Label <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Grade (out of 7), Grade Letter"
+                                  value={newGradingLabel}
+                                  onChange={(e) => setNewGradingLabel(e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl font-medium text-xs focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div className="sm:col-span-3 flex flex-col justify-end">
+                                <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                  Placeholder
+                                </label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. e.g. 5.8"
+                                    value={newGradingPlaceholder}
+                                    onChange={(e) => setNewGradingPlaceholder(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl font-medium text-xs focus:outline-none focus:border-emerald-500"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleAddGradingSystem}
+                                    disabled={!trimmedName || isDuplicate}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {trimmedName && isDuplicate && (
+                              <p className="text-[10px] text-amber-700 font-semibold px-1">
+                                "{trimmedName}" already exists in grading systems!
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Live Interactive Simulator */}
+                          <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200/70 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                Live Candidate Dropdown & Label Simulator
+                              </span>
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                                Test Behavior
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <label className="block font-bold text-gray-800 text-[11px]">
+                                  Candidate selects Grading System:
+                                </label>
+                                <select
+                                  value={previewGradingSelection}
+                                  onChange={(e) => setPreviewGradingSelection(e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-gray-800 outline-none focus:ring-1 focus:ring-emerald-500"
+                                >
+                                  {currentList.map((gs) => (
+                                    <option key={gs.name} value={gs.name}>{gs.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="block font-bold text-emerald-950 text-[11px]">
+                                  Input Label & Placeholder below automatically updates to:
+                                </label>
+                                <div className="p-2.5 bg-white border border-emerald-300 rounded-xl space-y-1">
+                                  <div className="flex items-center justify-between text-[11px] font-black text-emerald-800">
+                                    <span>Label: "{activePreviewObj.label || 'Marks'}"</span>
+                                    <span className="text-red-500">*</span>
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 italic">
+                                    Placeholder: "{activePreviewObj.placeholder || 'Enter grade or marks'}"
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Reorderable Items List */}
+                          <div 
+                            className="space-y-2 pt-1"
+                            onDragLeave={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget)) {
+                                setDragOverGradingIndex(null);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-semibold px-1">
+                              <span>Configured Grading Systems ({currentList.length})</span>
+                              <span className="text-[11px] text-gray-400">Drag items to change dropdown order</span>
+                            </div>
+
+                            {currentList.map((gs, idx) => {
+                              const isDragging = draggedGradingIndex === idx;
+                              const isDragOver = dragOverGradingIndex === idx && draggedGradingIndex !== idx;
+
+                              return (
+                                <div
+                                  key={gs.name + idx}
+                                  draggable
+                                  onDragStart={(e) => handleGradingDragStart(e, idx)}
+                                  onDragOver={(e) => handleGradingDragOver(e, idx)}
+                                  onDrop={(e) => handleGradingDrop(e, idx)}
+                                  onDragEnd={handleGradingDragEnd}
+                                  className={`relative p-3.5 rounded-2xl text-xs transition-all duration-150 select-none border ${
+                                    isDragging
+                                      ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                      : isDragOver
+                                      ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                      : 'bg-white hover:bg-gray-50/70 text-gray-800 border-gray-200 shadow-2xs hover:border-emerald-300'
+                                  }`}
+                                >
+                                  {isDragOver && (
+                                    <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                  )}
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                                    <div className="sm:col-span-4 flex items-center gap-2">
+                                      <span 
+                                        className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                        title="Drag to change dropdown order"
+                                      >
+                                        <GripVertical className="w-4 h-4" />
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={gs.name}
+                                        onChange={(e) => handleUpdateGradingItem(idx, 'name', e.target.value)}
+                                        className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-900 focus:outline-none focus:bg-white focus:border-emerald-500"
+                                        title="Dropdown Option Name"
+                                      />
+                                    </div>
+
+                                    <div className="sm:col-span-4">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-bold text-gray-400 shrink-0">Label:</span>
+                                        <input
+                                          type="text"
+                                          value={gs.label || ''}
+                                          onChange={(e) => handleUpdateGradingItem(idx, 'label', e.target.value)}
+                                          placeholder="Below input label"
+                                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="sm:col-span-3">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-bold text-gray-400 shrink-0">Ph:</span>
+                                        <input
+                                          type="text"
+                                          value={gs.placeholder || ''}
+                                          onChange={(e) => handleUpdateGradingItem(idx, 'placeholder', e.target.value)}
+                                          placeholder="Placeholder"
+                                          className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="sm:col-span-1 flex justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteGradingSystem(idx)}
+                                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                        title={`Delete "${gs.name}"`}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={handleResetGradingSystems}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset to standard grading systems"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Defaults</span>
+                          </button>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsGradingModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsGradingModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Right 5 Columns: Step 2 Live Preview */}
                 <div className="lg:col-span-5 space-y-4">
                   <div className="sticky top-6">
@@ -3339,7 +4928,8 @@ export default function EmployeesTab() {
                           <span className="text-xs font-bold text-emerald-600 cursor-pointer">{onboardingConfig.step2?.addBtnText || 'Add +'}</span>
                         </div>
 
-                        <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2 shadow-2xs">
+                        <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2.5 shadow-2xs">
+                          {/* 1. Education */}
                           <div className="space-y-1">
                             <label className="block font-bold text-gray-700 text-[11px]">
                               {onboardingConfig.step2?.fields?.educationType?.label || 'Education'}
@@ -3349,13 +4939,15 @@ export default function EmployeesTab() {
                               {onboardingConfig.step2?.fields?.educationType?.placeholder || 'Select education type'}
                             </div>
                           </div>
+
+                          {/* 2. University & 3. Course */}
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                               <label className="block font-bold text-gray-700 text-[11px]">
-                                {onboardingConfig.step2?.fields?.university?.label || 'University'}
+                                {onboardingConfig.step2?.fields?.university?.label || 'University / Institute'}
                                 {onboardingConfig.step2?.fields?.university?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
                               </label>
-                              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px] truncate">
                                 {onboardingConfig.step2?.fields?.university?.placeholder || 'Enter university'}
                               </div>
                             </div>
@@ -3369,6 +4961,97 @@ export default function EmployeesTab() {
                               </div>
                             </div>
                           </div>
+
+                          {/* 4. School Medium */}
+                          <div className="space-y-1 pt-1">
+                            <label className="block font-bold text-gray-700 text-[11px]">
+                              {onboardingConfig.step2?.fields?.schoolMedium?.label || 'Medium'}
+                              {onboardingConfig.step2?.fields?.schoolMedium?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                            </label>
+                            <select className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-medium text-[11px] focus:outline-none">
+                              <option value="">{onboardingConfig.step2?.fields?.schoolMedium?.placeholder || 'Select medium'}</option>
+                              {(onboardingConfig.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map((m, mIdx) => (
+                                <option key={mIdx} value={m}>{m}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* 5. Course Type */}
+                          <div className="space-y-1 pt-1">
+                            <label className="block font-bold text-gray-700 text-[11px]">
+                              {onboardingConfig.step2?.fields?.courseType?.label || 'Course Type'}
+                              {onboardingConfig.step2?.fields?.courseType?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                            </label>
+                            <div className="flex flex-wrap items-center gap-3 pt-0.5">
+                              {(onboardingConfig.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS).map((ct, ctIdx) => (
+                                <label key={ctIdx} className="flex items-center gap-1.5 text-[11px] text-gray-700 font-medium">
+                                  <input type="radio" name="previewCourseType" checked={ctIdx === 0} readOnly className="w-3.5 h-3.5 accent-emerald-600" />
+                                  <span>{ct}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* 6. Duration */}
+                          <div className="space-y-1 pt-1 border-t border-gray-100">
+                            <label className="block font-bold text-gray-700 text-[11px]">
+                              Course Duration {(onboardingConfig.step2?.fields?.startYear?.isRequired || onboardingConfig.step2?.fields?.endYear?.isRequired) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-gray-500 font-medium">{onboardingConfig.step2?.fields?.startYear?.label || 'Starting Year'}</span>
+                                <div className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                                  {onboardingConfig.step2?.fields?.startYear?.placeholder || 'Select starting year'}
+                                </div>
+                              </div>
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-gray-500 font-medium">{onboardingConfig.step2?.fields?.endYear?.label || 'Passing Out Year'}</span>
+                                <div className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
+                                  {onboardingConfig.step2?.fields?.endYear?.placeholder || 'Select passing out year'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 7. Dynamic Grading System & Marks in Live Preview */}
+                          {(() => {
+                            const currentGradingSystems = normalizeGradingSystems(onboardingConfig.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
+                            const selectedGradingObj = currentGradingSystems.find(g => g.name === previewGradingSelection) || currentGradingSystems[0] || { name: 'Scale 10 Grading System', label: 'Grade (out of 10)', placeholder: 'e.g. 8.5' };
+                            const dynamicLabel = selectedGradingObj?.label || 'Marks';
+                            const dynamicPlaceholder = selectedGradingObj?.placeholder || 'Enter grade or marks';
+
+                            return (
+                              <div className="space-y-2 pt-1 border-t border-gray-100 mt-2">
+                                <div className="space-y-1">
+                                  <label className="block font-bold text-gray-700 text-[11px]">
+                                    {onboardingConfig.step2?.fields?.gradingSystem?.label || 'Grading System'}
+                                    {onboardingConfig.step2?.fields?.gradingSystem?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                                  </label>
+                                  <select 
+                                    className="w-full px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-medium text-[11px] focus:outline-none"
+                                    value={previewGradingSelection}
+                                    onChange={(e) => setPreviewGradingSelection(e.target.value)}
+                                  >
+                                    {currentGradingSystems.map((gs) => (
+                                      <option key={gs.name} value={gs.name}>{gs.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {selectedGradingObj.name !== 'Not Applicable' && (
+                                  <div className="space-y-1 animate-in fade-in duration-150">
+                                    <label className="block font-bold text-emerald-800 text-[11px]">
+                                      {dynamicLabel}
+                                      {onboardingConfig.step2?.fields?.percentage?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                                    </label>
+                                    <div className="px-3 py-1.5 bg-white border border-emerald-300 rounded-lg text-gray-400 text-[11px]">
+                                      {dynamicPlaceholder}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <div className="pt-3 flex justify-between">
@@ -3439,27 +5122,53 @@ export default function EmployeesTab() {
                                 {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
                               </span>
 
-                              <button
-                                type="button"
-                                onClick={() => handleOnboardingMandatoryToggle('step3', item.key)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                                  isReq
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
-                                }`}
-                              >
-                                {isReq ? (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    Mandatory (*)
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                                    Optional
-                                  </>
+                              <div className="flex items-center gap-2">
+                                {item.key === 'employmentType' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsEmploymentTypeModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Employment Types Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Employment Types ({((onboardingConfig.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS)).length})</span>
+                                  </button>
                                 )}
-                              </button>
+
+                                {item.key === 'noticePeriod' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsNoticePeriodModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Notice Period Options Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Notice Period Options ({((onboardingConfig.step3?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS)).length})</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOnboardingMandatoryToggle('step3', item.key)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                    isReq
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                  }`}
+                                >
+                                  {isReq ? (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                      Mandatory (*)
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                      Optional
+                                    </>
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -3489,6 +5198,366 @@ export default function EmployeesTab() {
                     </div>
                   </div>
                 </div>
+
+                {/* Employment Types Management Modal Popup */}
+                {isEmploymentTypeModalOpen && (() => {
+                  const currentOptions = onboardingConfig.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS;
+                  const trimmedName = newEmploymentTypeOption.trim();
+                  const isDuplicate = trimmedName && currentOptions.some(o => o.toLowerCase() === trimmedName.toLowerCase());
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsEmploymentTypeModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <SlidersHorizontal className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                Employment Types Management
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Add, remove, or drag & drop to reorder employment types (e.g. Full-time, Part-time, Contract, Internship) for candidates.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsEmploymentTypeModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                          {/* Add Input */}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Add new employment type (e.g. Full-time, Part-time, Contract, Internship, Freelance)..."
+                              value={newEmploymentTypeOption}
+                              onChange={(e) => setNewEmploymentTypeOption(e.target.value)}
+                              onKeyDown={(e) => { 
+                                if (e.key === 'Enter') { 
+                                  e.preventDefault(); 
+                                  if (trimmedName && !isDuplicate) handleAddEmploymentTypeOption(); 
+                                } 
+                              }}
+                              className={`flex-1 px-4 py-2.5 bg-gray-50 border rounded-xl text-xs font-medium focus:outline-none focus:bg-white transition-all ${
+                                isDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddEmploymentTypeOption}
+                              disabled={!trimmedName || isDuplicate}
+                              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Type</span>
+                            </button>
+                          </div>
+
+                          {trimmedName && isDuplicate && (
+                            <p className="text-[10px] text-amber-700 font-semibold px-1">
+                              "{trimmedName}" already exists in employment types!
+                            </p>
+                          )}
+
+                          {/* Reorderable Items List */}
+                          <div 
+                            className="space-y-2 pt-2"
+                            onDragLeave={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget)) {
+                                setDragOverEmploymentTypeIndex(null);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-semibold px-1">
+                              <span>Current Employment Types ({currentOptions.length})</span>
+                              <span className="text-[11px] text-gray-400">Drag items by handle to reorder</span>
+                            </div>
+
+                            {currentOptions.map((opt, idx) => {
+                              const isDragging = draggedEmploymentTypeIndex === idx;
+                              const isDragOver = dragOverEmploymentTypeIndex === idx && draggedEmploymentTypeIndex !== idx;
+
+                              return (
+                                <div
+                                  key={opt + idx}
+                                  draggable
+                                  onDragStart={(e) => handleEmploymentTypeDragStart(e, idx)}
+                                  onDragOver={(e) => handleEmploymentTypeDragOver(e, idx)}
+                                  onDrop={(e) => handleEmploymentTypeDrop(e, idx)}
+                                  onDragEnd={handleEmploymentTypeDragEnd}
+                                  className={`relative flex items-center justify-between p-3 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
+                                    isDragging
+                                      ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                      : isDragOver
+                                      ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                      : 'bg-white hover:bg-emerald-50/50 text-gray-800 border border-gray-200 shadow-2xs hover:border-emerald-300'
+                                  }`}
+                                >
+                                  {isDragOver && (
+                                    <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                  )}
+
+                                  <div className="flex items-center gap-2.5">
+                                    <span 
+                                      className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                      title="Drag to change position"
+                                    >
+                                      <GripVertical className="w-4 h-4" />
+                                    </span>
+                                    <span className="text-gray-900 font-extrabold">{opt}</span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteEmploymentTypeOption(idx)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    title={`Delete employment type "${opt}"`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={handleResetEmploymentTypeOptions}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset to standard employment types"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Defaults</span>
+                          </button>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsEmploymentTypeModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsEmploymentTypeModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Notice Period Options Management Modal Popup */}
+                {isNoticePeriodModalOpen && (() => {
+                  const currentOptions = onboardingConfig.step3?.noticePeriodOptions || onboardingConfig.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS;
+                  const trimmedName = newNoticePeriodOption.trim();
+                  const isDuplicate = trimmedName && currentOptions.some(o => o.toLowerCase() === trimmedName.toLowerCase());
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsNoticePeriodModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <SlidersHorizontal className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                Notice Period Options Management
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Add, remove, or drag & drop to reorder notice period options (e.g. 15 Days, 30 Days, Immediately available) for candidates.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsNoticePeriodModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                          {/* Add Input */}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Add new notice period (e.g. 15 Days, 30 Days, 45 Days, Immediately available)..."
+                              value={newNoticePeriodOption}
+                              onChange={(e) => setNewNoticePeriodOption(e.target.value)}
+                              onKeyDown={(e) => { 
+                                if (e.key === 'Enter') { 
+                                  e.preventDefault(); 
+                                  if (trimmedName && !isDuplicate) handleAddNoticePeriodOption(); 
+                                } 
+                              }}
+                              className={`flex-1 px-4 py-2.5 bg-gray-50 border rounded-xl text-xs font-medium focus:outline-none focus:bg-white transition-all ${
+                                isDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddNoticePeriodOption}
+                              disabled={!trimmedName || isDuplicate}
+                              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Option</span>
+                            </button>
+                          </div>
+
+                          {trimmedName && isDuplicate && (
+                            <p className="text-[10px] text-amber-700 font-semibold px-1">
+                              "{trimmedName}" already exists in notice period options!
+                            </p>
+                          )}
+
+                          {/* Reorderable Items List */}
+                          <div 
+                            className="space-y-2 pt-2"
+                            onDragLeave={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget)) {
+                                setDragOverNoticePeriodIndex(null);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between text-xs text-gray-500 font-semibold px-1">
+                              <span>Current Notice Period Options ({currentOptions.length})</span>
+                              <span className="text-[11px] text-gray-400">Drag items by handle to reorder</span>
+                            </div>
+
+                            {currentOptions.map((opt, idx) => {
+                              const isDragging = draggedNoticePeriodIndex === idx;
+                              const isDragOver = dragOverNoticePeriodIndex === idx && draggedNoticePeriodIndex !== idx;
+
+                              return (
+                                <div
+                                  key={opt + idx}
+                                  draggable
+                                  onDragStart={(e) => handleNoticePeriodDragStart(e, idx)}
+                                  onDragOver={(e) => handleNoticePeriodDragOver(e, idx)}
+                                  onDrop={(e) => handleNoticePeriodDrop(e, idx)}
+                                  onDragEnd={handleNoticePeriodDragEnd}
+                                  className={`relative flex items-center justify-between p-3 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
+                                    isDragging
+                                      ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                      : isDragOver
+                                      ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                      : 'bg-white hover:bg-emerald-50/50 text-gray-800 border border-gray-200 shadow-2xs hover:border-emerald-300'
+                                  }`}
+                                >
+                                  {isDragOver && (
+                                    <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                  )}
+
+                                  <div className="flex items-center gap-2.5">
+                                    <span 
+                                      className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                      title="Drag to change position"
+                                    >
+                                      <GripVertical className="w-4 h-4" />
+                                    </span>
+                                    <span className="text-gray-900 font-extrabold">{opt}</span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteNoticePeriodOption(idx)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    title={`Delete notice period "${opt}"`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={handleResetNoticePeriodOptions}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset to standard notice periods"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Defaults</span>
+                          </button>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsNoticePeriodModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsNoticePeriodModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Right 5 Columns: Step 3 Live Preview */}
                 <div className="lg:col-span-5 space-y-4">
@@ -3549,10 +5618,31 @@ export default function EmployeesTab() {
                                 {onboardingConfig.step3?.fields?.employmentType?.label || 'Employment Type'}
                                 {onboardingConfig.step3?.fields?.employmentType?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
                               </label>
-                              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-400 text-[11px]">
-                                {onboardingConfig.step3?.fields?.employmentType?.placeholder || 'Full-time'}
-                              </div>
+                              <select 
+                                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium text-[11px] focus:outline-none"
+                                defaultValue=""
+                              >
+                                <option value="">{onboardingConfig.step3?.fields?.employmentType?.placeholder || 'Select employment type'}</option>
+                                {(onboardingConfig.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS).map((opt, optIdx) => (
+                                  <option key={optIdx} value={opt}>{opt}</option>
+                                ))}
+                              </select>
                             </div>
+                          </div>
+                          <div className="space-y-1 pt-1">
+                            <label className="block font-bold text-gray-700 text-[11px]">
+                              {onboardingConfig.step3?.fields?.noticePeriod?.label || 'Notice Period'}
+                              {onboardingConfig.step3?.fields?.noticePeriod?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                            </label>
+                            <select 
+                              className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium text-[11px] focus:outline-none"
+                              defaultValue=""
+                            >
+                              <option value="">{onboardingConfig.step3?.fields?.noticePeriod?.placeholder || 'Select notice period'}</option>
+                              {(onboardingConfig.step3?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS).map((opt, optIdx) => (
+                                <option key={optIdx} value={opt}>{opt}</option>
+                              ))}
+                            </select>
                           </div>
                         </div>
 
@@ -3615,27 +5705,41 @@ export default function EmployeesTab() {
                                 {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
                               </span>
 
-                              <button
-                                type="button"
-                                onClick={() => handleOnboardingMandatoryToggle('step4', item.key)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                                  isReq
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
-                                }`}
-                              >
-                                {isReq ? (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    Mandatory (*)
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                                    Optional
-                                  </>
+                              <div className="flex items-center gap-2">
+                                {item.key === 'skills' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsSkillsModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open Key Skills Options Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Edit Skills List ({((onboardingConfig.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS)).length})</span>
+                                  </button>
                                 )}
-                              </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOnboardingMandatoryToggle('step4', item.key)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                    isReq
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                  }`}
+                                >
+                                  {isReq ? (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                      Mandatory (*)
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                      Optional
+                                    </>
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -3666,6 +5770,265 @@ export default function EmployeesTab() {
                   </div>
                 </div>
 
+                {/* Key Skills Options Management Modal Popup */}
+                {isSkillsModalOpen && (() => {
+                  const currentSkillsList = onboardingConfig.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS;
+                  const trimmedInput = newSkillOption.trim();
+                  const isDuplicate = trimmedInput && currentSkillsList.some(s => s.toLowerCase() === trimmedInput.toLowerCase());
+                  
+                  const filteredList = currentSkillsList.filter(s => 
+                    !skillFilterSearch || s.toLowerCase().includes(skillFilterSearch.toLowerCase())
+                  );
+
+                  return (
+                    <div 
+                      className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+                      onClick={() => setIsSkillsModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                              <Award className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                Key Skills Options Manager
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Add, delete, search, and reorder skills available in candidate onboarding & profile dropdowns.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={handleResetSkillsOptions}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                              title="Reset to default standard skills list"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Reset Defaults</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsSkillsModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save Changes</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsSkillsModalOpen(false)}
+                              className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                              title="Close popup"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-5">
+                          {/* Add New Skill Card with Comma-separated Bulk Add Support */}
+                          <div className="p-4 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-3">
+                            <label className="block text-xs font-extrabold text-gray-800 flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                                Add Skill to Dropdown (Single or comma-separated for bulk add)
+                              </span>
+                              {trimmedInput && !isDuplicate && (
+                                <span className="text-[11px] text-emerald-700 font-bold">✓ Ready to add</span>
+                              )}
+                            </label>
+
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Type skill name e.g. React, Next.js, Python, Power BI (or comma-separated)..."
+                                value={newSkillOption}
+                                onChange={(e) => setNewSkillOption(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddSkillOption();
+                                  }
+                                }}
+                                className={`flex-1 px-4 py-2.5 bg-white border rounded-xl text-xs font-medium focus:outline-none transition-all ${
+                                  isDuplicate
+                                    ? 'border-amber-400 ring-2 ring-amber-100'
+                                    : 'border-gray-200 focus:border-emerald-500'
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddSkillOption}
+                                disabled={!trimmedInput}
+                                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>Add Skill</span>
+                              </button>
+                            </div>
+
+                            {isDuplicate && (
+                              <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium animate-in fade-in duration-150">
+                                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span><strong>"{trimmedInput}"</strong> is already in the skills list!</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Search Filter and Count Bar */}
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                            <div className="relative w-full sm:w-72">
+                              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                              <input
+                                type="text"
+                                placeholder="Search skills..."
+                                value={skillFilterSearch}
+                                onChange={(e) => setSkillFilterSearch(e.target.value)}
+                                className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:bg-white focus:border-emerald-500"
+                              />
+                              {skillFilterSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSkillFilterSearch('')}
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="text-xs text-gray-500 font-semibold self-end sm:self-center">
+                              Total Configured Skills: <span className="text-emerald-700 font-bold">{currentSkillsList.length}</span>
+                              {skillFilterSearch && (
+                                <span className="ml-1 text-gray-400">({filteredList.length} filtered)</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Skills Grid / Reorderable List */}
+                          <div 
+                            className="space-y-1.5 max-h-[380px] overflow-y-auto custom-scrollbar pr-1"
+                            onDragLeave={(e) => {
+                              if (!e.currentTarget.contains(e.relatedTarget)) {
+                                setDragOverSkillIndex(null);
+                              }
+                            }}
+                          >
+                            {filteredList.length === 0 ? (
+                              <div className="py-12 text-center text-gray-400 text-xs font-medium">
+                                No skills match "{skillFilterSearch}"
+                              </div>
+                            ) : (
+                              filteredList.map((skillName) => {
+                                const originalIndex = currentSkillsList.indexOf(skillName);
+                                const isDragging = draggedSkillIndex === originalIndex;
+                                const isDragOver = dragOverSkillIndex === originalIndex && draggedSkillIndex !== originalIndex;
+
+                                return (
+                                  <div
+                                    key={skillName + originalIndex}
+                                    draggable
+                                    onDragStart={(e) => handleSkillDragStart(e, originalIndex)}
+                                    onDragOver={(e) => handleSkillDragOver(e, originalIndex)}
+                                    onDrop={(e) => handleSkillDrop(e, originalIndex)}
+                                    onDragEnd={handleSkillDragEnd}
+                                    className={`relative flex items-center justify-between p-2.5 rounded-xl text-xs font-medium transition-all duration-150 select-none border ${
+                                      isDragging
+                                        ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                                        : isDragOver
+                                        ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                                        : 'bg-white hover:bg-gray-50/80 text-gray-800 border-gray-200/80 shadow-2xs hover:border-emerald-300'
+                                    }`}
+                                  >
+                                    {isDragOver && (
+                                      <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                                    )}
+
+                                    <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
+                                      <span
+                                        className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                                        title="Drag to change dropdown order"
+                                      >
+                                        <GripVertical className="w-3.5 h-3.5" />
+                                      </span>
+                                      <span className="w-7 text-[10px] text-gray-400 font-mono font-bold shrink-0">
+                                        #{originalIndex + 1}
+                                      </span>
+                                      <span className="font-bold text-gray-900 truncate">
+                                        {skillName}
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteSkillOption(originalIndex)}
+                                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                                      title={`Delete skill "${skillName}"`}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={handleResetSkillsOptions}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            title="Reset to default standard skills"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Reset Defaults</span>
+                          </button>
+
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsSkillsModalOpen(false)}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await handleSave();
+                                setIsSkillsModalOpen(false);
+                              }}
+                              disabled={saving}
+                              className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                              <span>Save & Apply</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Right 5 Columns: Step 4 Live Preview */}
                 <div className="lg:col-span-5 space-y-4">
                   <div className="sticky top-6">
@@ -3692,34 +6055,106 @@ export default function EmployeesTab() {
                       <div className="p-5 space-y-4 text-xs bg-gray-50/40">
                         <div className="border-b border-gray-200 pb-2">
                           <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step4?.title || 'Key Skills & Preferences'}</h4>
+                          {onboardingConfig.step4?.subtitle && (
+                            <p className="text-[11px] text-gray-500 mt-0.5">{onboardingConfig.step4?.subtitle}</p>
+                          )}
                         </div>
 
                         <div className="space-y-3">
+                          {/* 1. LinkedIn Profile */}
                           <div className="space-y-1">
                             <label className="block font-bold text-gray-700 text-[11px]">
-                              {onboardingConfig.step4?.fields?.skills?.label || 'Key Skills'}
+                              {onboardingConfig.step4?.fields?.linkedinUrl?.label || 'LinkedIn Profile'}
+                              {onboardingConfig.step4?.fields?.linkedinUrl?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
                             </label>
                             <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">
-                              {onboardingConfig.step4?.fields?.skills?.placeholder || 'Type skill and press Enter'}
+                              {onboardingConfig.step4?.fields?.linkedinUrl?.placeholder || 'https://linkedin.com/in/...'}
                             </div>
                           </div>
 
+                          {/* 2. Salary Type & Currency */}
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                               <label className="block font-bold text-gray-700 text-[11px]">
-                                {onboardingConfig.step4?.fields?.currentSalary?.label || 'Current Salary'}
+                                {onboardingConfig.step4?.fields?.salaryType?.label || 'Salary Type'}
+                                {onboardingConfig.step4?.fields?.salaryType?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </label>
+                              <select 
+                                value={previewSalaryType} 
+                                onChange={(e) => setPreviewSalaryType(e.target.value)}
+                                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium text-[11px] focus:outline-none cursor-pointer"
+                              >
+                                <option value="Yearly">Yearly</option>
+                                <option value="Monthly">Monthly</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step4?.fields?.currency?.label || 'Currency'}
+                                {onboardingConfig.step4?.fields?.currency?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </label>
+                              <select 
+                                className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium text-[11px] focus:outline-none cursor-pointer"
+                                defaultValue="INR"
+                              >
+                                <option value="INR">INR (₹)</option>
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="GBP">GBP (£)</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* 3. Current & Expected CTC / Salary (Dynamic based on Salary Type) */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {previewSalaryType === 'Monthly'
+                                  ? (onboardingConfig.step4?.fields?.currentSalary?.label ? onboardingConfig.step4.fields.currentSalary.label.replace(/Annual CTC|Annual Salary|Annual/gi, 'Monthly CTC') : 'Current Monthly CTC')
+                                  : (onboardingConfig.step4?.fields?.currentSalary?.label || 'Current Annual CTC')}
+                                {onboardingConfig.step4?.fields?.currentSalary?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
                               </label>
                               <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">
-                                {onboardingConfig.step4?.fields?.currentSalary?.placeholder || '₹ 5,00,000'}
+                                {previewSalaryType === 'Monthly'
+                                  ? (onboardingConfig.step4?.fields?.currentSalary?.placeholder ? onboardingConfig.step4.fields.currentSalary.placeholder.replace(/5,00,000|500000/g, '40,000') : 'e.g. 40,000')
+                                  : (onboardingConfig.step4?.fields?.currentSalary?.placeholder || 'e.g. 5,00,000')}
                               </div>
                             </div>
                             <div className="space-y-1">
                               <label className="block font-bold text-gray-700 text-[11px]">
-                                {onboardingConfig.step4?.fields?.expectedSalary?.label || 'Expected Salary'}
+                                {previewSalaryType === 'Monthly'
+                                  ? (onboardingConfig.step4?.fields?.expectedSalary?.label ? onboardingConfig.step4.fields.expectedSalary.label.replace(/Annual CTC|Annual Salary|Annual/gi, 'Monthly CTC') : 'Expected Monthly CTC')
+                                  : (onboardingConfig.step4?.fields?.expectedSalary?.label || 'Expected Annual CTC')}
+                                {onboardingConfig.step4?.fields?.expectedSalary?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
                               </label>
                               <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">
-                                {onboardingConfig.step4?.fields?.expectedSalary?.placeholder || '₹ 7,50,000'}
+                                {previewSalaryType === 'Monthly'
+                                  ? (onboardingConfig.step4?.fields?.expectedSalary?.placeholder ? onboardingConfig.step4.fields.expectedSalary.placeholder.replace(/7,50,000|750000|8,00,000|800000/g, '60,000') : 'e.g. 60,000')
+                                  : (onboardingConfig.step4?.fields?.expectedSalary?.placeholder || 'e.g. 7,50,000')}
                               </div>
+                            </div>
+                          </div>
+
+                          {/* 4. Key Skills */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="block font-bold text-gray-700 text-[11px]">
+                                {onboardingConfig.step4?.fields?.skills?.label || 'Key Skills'}
+                                {onboardingConfig.step4?.fields?.skills?.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                              </label>
+                              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                {(onboardingConfig.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS).length} options configured
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mb-1.5">
+                              {((onboardingConfig.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS).slice(0, 4)).map(s => (
+                                <span key={s} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-bold border border-emerald-100">
+                                  {s} ✕
+                                </span>
+                              ))}
+                            </div>
+                            <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">
+                              {onboardingConfig.step4?.fields?.skills?.placeholder || 'Search or select a skill to add...'}
                             </div>
                           </div>
                         </div>
@@ -3860,14 +6295,97 @@ export default function EmployeesTab() {
                       <div className="p-5 space-y-4 text-xs bg-gray-50/40">
                         <div className="border-b border-gray-200 pb-2">
                           <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step5?.title || 'Documents & Media'}</h4>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{onboardingConfig.step5?.subtitle || 'Manage your introductory video, resume, and cover letter.'}</p>
                         </div>
 
-                        <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl text-center bg-white space-y-1.5">
-                          <span className="text-xs font-bold text-emerald-700 block">
-                            {onboardingConfig.step5?.fields?.resume?.label || 'Resume (PDF/DOCX)'}
-                            {onboardingConfig.step5?.fields?.resume?.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
-                          </span>
-                          <span className="text-[10px] text-gray-400 block">{onboardingConfig.step5?.fields?.resume?.placeholder || 'Upload PDF or DOCX'}</span>
+                        {/* Side by side 2 cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Resume Upload Card */}
+                          <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2">
+                            <label className="block font-bold text-gray-900 text-xs">
+                              {onboardingConfig.step5?.fields?.resume?.label || 'Upload Resume'}
+                              {onboardingConfig.step5?.fields?.resume?.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-full text-[10px]">Choose File</span>
+                              <span className="text-[10px] text-gray-500">No file chosen</span>
+                            </div>
+                            <p className="text-[10px] text-gray-600 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+                            
+                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                  <FileText className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-[11px] text-gray-900 block truncate">Uploaded Document (Click to view)</span>
+                                  <span className="text-[9px] text-gray-500 block">Uploaded Document</span>
+                                </div>
+                              </div>
+                              <Trash2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            </div>
+                          </div>
+
+                          {/* Cover Letter Upload Card */}
+                          <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2">
+                            <div className="flex items-center justify-between">
+                              <label className="block font-bold text-gray-900 text-xs">
+                                {onboardingConfig.step5?.fields?.coverLetter?.label || 'Upload Cover Letter'}
+                                {onboardingConfig.step5?.fields?.coverLetter?.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
+                              </label>
+                              {!onboardingConfig.step5?.fields?.coverLetter?.isRequired && (
+                                <span className="text-gray-400 text-[10px] font-medium">(Optional)</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-full text-[10px]">Choose File</span>
+                              <span className="text-[10px] text-gray-500">No file chosen</span>
+                            </div>
+                            <p className="text-[10px] text-gray-600 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+                            
+                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                  <FileText className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-[11px] text-gray-900 block truncate">Uploaded Document (Click to view)</span>
+                                  <span className="text-[9px] text-gray-500 block">Uploaded Document</span>
+                                </div>
+                              </div>
+                              <Trash2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Introductory Video Card */}
+                        <div className="p-4 border border-emerald-200 rounded-2xl bg-white space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center gap-1.5 font-bold text-gray-900 text-xs">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span>{onboardingConfig.step5?.fields?.introVideo?.label || 'Introductory Video'}</span>
+                                {!onboardingConfig.step5?.fields?.introVideo?.isRequired ? (
+                                  <span className="text-gray-400 font-normal text-[10px]">(Optional)</span>
+                                ) : (
+                                  <span className="text-red-500 font-bold ml-0.5">*</span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-gray-500 mt-0.5">Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.</p>
+                            </div>
+                            <div className="flex bg-gray-100 p-0.5 rounded-lg text-[10px] font-semibold shrink-0">
+                              <span className="px-2 py-0.5 bg-white text-gray-900 rounded-md shadow-xs">Upload File</span>
+                              <span className="px-2 py-0.5 text-gray-500">Paste Link</span>
+                            </div>
+                          </div>
+
+                          <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl text-center flex flex-col items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5">
+                              <Video className="w-4 h-4" />
+                            </div>
+                            <span className="text-xs font-bold text-emerald-600 block">Click or drag video to upload</span>
+                            <span className="text-[10px] text-gray-400 block mt-0.5">MP4, MOV, WebM up to 100MB</span>
+                          </div>
                         </div>
 
                         <div className="pt-3 flex justify-between">

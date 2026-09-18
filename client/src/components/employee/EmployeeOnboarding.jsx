@@ -9,6 +9,8 @@ import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
 import VideoPlayer from '../common/VideoPlayer';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
+import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
+import CompanyAutocomplete from '../common/CompanyAutocomplete';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -33,6 +35,38 @@ const formatIndianNumber = (val) => {
     lastThree = ',' + lastThree;
   }
   return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+};
+
+export const sortQualifications = (quals) => {
+  if (!Array.isArray(quals)) return [];
+  const arr = [...quals];
+  const primaryIdx = arr.findIndex(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1));
+  if (primaryIdx > 0) {
+    const [primaryItem] = arr.splice(primaryIdx, 1);
+    arr.unshift(primaryItem);
+  }
+  return arr;
+};
+
+export const sortExperience = (expList) => {
+  if (!Array.isArray(expList)) return [];
+  const arr = expList.map(exp => {
+    if (!exp) return exp;
+    const roles = Array.isArray(exp.roles) ? [...exp.roles] : [];
+    const currentRoleIdx = roles.findIndex(r => r && (r.currentCompany === true || r.currentCompany === 'true' || r.currentCompany === 1));
+    if (currentRoleIdx > 0) {
+      const [currentRole] = roles.splice(currentRoleIdx, 1);
+      roles.unshift(currentRole);
+    }
+    return { ...exp, roles };
+  });
+
+  const currentCompanyIdx = arr.findIndex(exp => exp && Array.isArray(exp.roles) && exp.roles.some(r => r && (r.currentCompany === true || r.currentCompany === 'true' || r.currentCompany === 1)));
+  if (currentCompanyIdx > 0) {
+    const [currentComp] = arr.splice(currentCompanyIdx, 1);
+    arr.unshift(currentComp);
+  }
+  return arr;
 };
 
 export const DEFAULT_EDUCATION_DATA = {
@@ -103,6 +137,80 @@ export const DEFAULT_EDUCATION_DATA = {
 };
 
 const educationTypeOptions = Object.keys(DEFAULT_EDUCATION_DATA).map(key => ({ value: key, label: key }));
+
+export const DEFAULT_COURSE_TYPE_OPTIONS = [
+  'Full time',
+  'Part time',
+  'Correspondence/Distance learning'
+];
+
+export const DEFAULT_MEDIUM_OPTIONS = [
+  'English',
+  'Hindi',
+  'Other'
+];
+
+export const DEFAULT_EMPLOYMENT_TYPE_OPTIONS = [
+  'Full-time',
+  'Part-time',
+  'Contract',
+  'Internship',
+  'Freelance'
+];
+
+export const DEFAULT_NOTICE_PERIOD_OPTIONS = [
+  '15 Days',
+  '30 Days',
+  '60 Days',
+  '90+ Days',
+  'Immediately available'
+];
+
+export const DEFAULT_GRADING_SYSTEMS = [
+  {
+    name: 'Scale 10 Grading System',
+    label: 'Grade (out of 10)',
+    placeholder: 'e.g. 8.5'
+  },
+  {
+    name: 'Scale 4 Grading System',
+    label: 'Grade (out of 4)',
+    placeholder: 'e.g. 3.6'
+  },
+  {
+    name: '% Marks of 100 Maximum',
+    label: 'Marks / Percentage (%)',
+    placeholder: 'e.g. 85'
+  },
+  {
+    name: 'Not Applicable',
+    label: 'Marks / Grade (Optional)',
+    placeholder: 'e.g. Grade or Marks'
+  }
+];
+
+export const normalizeGradingSystems = (list) => {
+  if (!Array.isArray(list) || list.length === 0) return DEFAULT_GRADING_SYSTEMS;
+  return list.map(item => {
+    if (typeof item === 'string') {
+      if (item === 'Scale 10 Grading System') {
+        return { name: item, label: 'Grade (out of 10)', placeholder: 'e.g. 8.5' };
+      } else if (item === 'Scale 4 Grading System') {
+        return { name: item, label: 'Grade (out of 4)', placeholder: 'e.g. 3.6' };
+      } else if (item === '% Marks of 100 Maximum') {
+        return { name: item, label: 'Marks / Percentage (%)', placeholder: 'e.g. 85' };
+      } else if (item === 'Not Applicable') {
+        return { name: item, label: 'Marks / Grade (Optional)', placeholder: 'e.g. Grade or Marks' };
+      }
+      return { name: item, label: `${item} Marks / Grade`, placeholder: 'Enter grade or marks' };
+    }
+    return {
+      name: item.name || '',
+      label: item.label || 'Marks / Grade',
+      placeholder: item.placeholder || 'Enter grade or marks'
+    };
+  });
+};
 
 const diplomaCourses = [
   { value: 'Diploma in Accounting', label: 'Diploma in Accounting' },
@@ -222,10 +330,38 @@ const accountingCertifications = [
 
 const EmployeeOnboarding = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStepState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlStep = parseInt(params.get('step'), 10);
+    if (urlStep >= 1 && urlStep <= 6) return urlStep;
+    const savedStep = parseInt(localStorage.getItem('onboardingCurrentStep'), 10);
+    if (savedStep >= 1 && savedStep <= 6) return savedStep;
+    return 1;
+  });
+
+  const setCurrentStep = (newStep) => {
+    setCurrentStepState((prev) => {
+      const validStep = typeof newStep === 'function' ? newStep(prev) : newStep;
+      localStorage.setItem('onboardingCurrentStep', validStep.toString());
+      const params = new URLSearchParams(window.location.search);
+      params.set('step', validStep.toString());
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      return validStep;
+    });
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('step') !== currentStep.toString()) {
+      params.set('step', currentStep.toString());
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    }
+  }, [currentStep]);
+
   const totalSteps = 6;
   const [expandedEduIndex, setExpandedEduIndex] = useState(-1);
   const [expandedExpIndex, setExpandedExpIndex] = useState(-1);
+  const [expandedRoleIndex, setExpandedRoleIndex] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [expError, setExpError] = useState('');
   const [expFieldErrors, setExpFieldErrors] = useState({});
@@ -240,6 +376,58 @@ const EmployeeOnboarding = () => {
   const [videoLink, setVideoLink] = useState('');
   const [docError, setDocError] = useState({ resume: '', coverLetter: '', introVideo: '' });
   const [cmsConfig, setCmsConfig] = useState(null);
+  const [phoneError, setPhoneError] = useState('');
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+
+  const scrollToFirstError = (targetId) => {
+    setTimeout(() => {
+      let targetEl = targetId ? document.getElementById(targetId) : null;
+      if (!targetEl) {
+        targetEl = document.querySelector('.border-red-500, .ring-red-500, .text-red-500, [aria-invalid="true"]');
+      }
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const inputEl = targetEl.tagName === 'INPUT' || targetEl.tagName === 'SELECT' || targetEl.tagName === 'TEXTAREA'
+          ? targetEl
+          : targetEl.querySelector('input, select, textarea, button');
+        if (inputEl) {
+          inputEl.focus({ preventScroll: true });
+        }
+      }
+    }, 60);
+  };
+
+  const checkPhoneAvailability = async (phoneVal) => {
+    const cleanPhone = String(phoneVal !== undefined ? phoneVal : (formData.phone || '')).trim();
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setPhoneError('');
+      return true;
+    }
+    try {
+      setIsCheckingPhone(true);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employee/auth/check-mobile-available`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          mobile: cleanPhone, 
+          currentEmail: formData.email 
+        })
+      });
+      const data = await res.json();
+      if (data && data.available === false) {
+        setPhoneError(data.message || 'This phone number is already registered with another account.');
+        return false;
+      } else {
+        setPhoneError('');
+        return true;
+      }
+    } catch (err) {
+      console.error('Error checking phone availability:', err);
+      return true;
+    } finally {
+      setIsCheckingPhone(false);
+    }
+  };
 
   // Fetch Homepage & Onboarding CMS configuration on mount
   useEffect(() => {
@@ -285,6 +473,12 @@ const EmployeeOnboarding = () => {
             }]
           }));
         }
+        if (parsed.experience && Array.isArray(parsed.experience)) {
+          parsed.experience = sortExperience(parsed.experience);
+        }
+        if (parsed.qualifications && Array.isArray(parsed.qualifications)) {
+          parsed.qualifications = sortQualifications(parsed.qualifications);
+        }
         return parsed;
       } catch (e) {
         console.error("Failed to parse profile data");
@@ -315,10 +509,10 @@ const EmployeeOnboarding = () => {
       ],
 
       professionalDetails: {
+        currentDesignation: '',
         currentSalary: '',
         expectedSalary: '',
-        linkedinUrl: '',
-        majorAchievements: '',
+        noticePeriod: '',
         skills: ''
       },
 
@@ -330,6 +524,9 @@ const EmployeeOnboarding = () => {
     };
   });
 
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Fetch Profile if exists
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -344,24 +541,53 @@ const EmployeeOnboarding = () => {
         
         // Profile controller directly returns the object, or a message on error
         if (res.ok && data && !data.message) {
-          setFormData(prev => ({
-            ...prev,
-            firstName: data.firstName || prev.firstName,
-            lastName: data.lastName || prev.lastName,
-            email: data.email || prev.email,
-            phone: data.phone || prev.phone,
-          }));
+          setFormData(prev => {
+            const next = {
+              ...prev,
+              firstName: data.firstName || prev.firstName,
+              lastName: data.lastName || prev.lastName,
+              email: data.email || prev.email,
+              phone: data.phone || prev.phone,
+              isFresher: data.isFresher !== undefined ? data.isFresher : prev.isFresher,
+              designation: data.designation || prev.designation,
+              totalExperience: data.totalExperience || prev.totalExperience,
+              location: data.location || prev.location,
+              preferredLocation: data.preferredLocation || prev.preferredLocation,
+              industry: data.industry || prev.industry,
+              brief: data.brief || prev.brief,
+              qualifications: (data.qualifications && data.qualifications.length > 0) ? sortQualifications(data.qualifications) : prev.qualifications,
+              experience: (data.experience && data.experience.length > 0) ? sortExperience(data.experience) : prev.experience,
+              professionalDetails: data.professionalDetails ? { ...(prev.professionalDetails || {}), ...data.professionalDetails } : prev.professionalDetails,
+              documents: data.documents ? { ...(prev.documents || {}), ...data.documents } : prev.documents
+            };
+            localStorage.setItem('userProfile', JSON.stringify(next));
+            return next;
+          });
         }
       } catch (err) {
         console.error("Failed to fetch initial profile", err);
+      } finally {
+        setInitialLoading(false);
       }
     };
     
     fetchProfile();
   }, []);
 
-  const saveToBackend = async () => {
+  // Ensure any primary qualification is continuously kept at index 0
+  useEffect(() => {
+    if (formData.qualifications && Array.isArray(formData.qualifications)) {
+      const primaryIdx = formData.qualifications.findIndex(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1));
+      if (primaryIdx > 0) {
+        const sorted = sortQualifications(formData.qualifications);
+        setFormData(prev => ({ ...prev, qualifications: sorted }));
+      }
+    }
+  }, [formData.qualifications]);
+
+  const saveToBackend = async (dataToSave = formData) => {
     try {
+      localStorage.setItem('userProfile', JSON.stringify(dataToSave));
       const token = localStorage.getItem('employeeToken');
       if (token) {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
@@ -370,11 +596,13 @@ const EmployeeOnboarding = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(dataToSave)
         });
         if (response.ok) {
           const data = await response.json();
-          localStorage.setItem('userProfile', JSON.stringify(data.profile));
+          if (data && data.profile) {
+            localStorage.setItem('userProfile', JSON.stringify(data.profile));
+          }
         }
       }
     } catch (err) {
@@ -382,7 +610,7 @@ const EmployeeOnboarding = () => {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 1) {
       const step1Fields = cmsConfig?.step1?.fields;
       const isReq = (key, defaultReq) => step1Fields?.[key]?.isRequired !== undefined ? step1Fields[key].isRequired : defaultReq;
@@ -399,9 +627,77 @@ const EmployeeOnboarding = () => {
 
       if (fNameErr || lNameErr || phoneErr || industryErr || desigErr || expErr || locErr || prefLocErr || briefErr) {
         setShowStep1Errors(true);
+        const firstErrId = fNameErr ? 'field-firstName'
+          : lNameErr ? 'field-lastName'
+          : phoneErr ? 'field-phone'
+          : industryErr ? 'field-industry'
+          : desigErr ? 'field-designation'
+          : expErr ? 'field-totalExperience'
+          : locErr ? 'field-location'
+          : prefLocErr ? 'field-preferredLocation'
+          : 'field-brief';
+        scrollToFirstError(firstErrId);
         return;
       }
+
+      if (formData.phone && formData.phone.length === 10) {
+        const isAvailable = await checkPhoneAvailability(formData.phone);
+        if (!isAvailable) {
+          setShowStep1Errors(true);
+          scrollToFirstError('field-phone');
+          return;
+        }
+      }
+
+      if (phoneError) {
+        setShowStep1Errors(true);
+        scrollToFirstError('field-phone');
+        return;
+      }
+
       setShowStep1Errors(false);
+    }
+    if (currentStep === 2) {
+      const result = validateEducationData(expandedEduIndex >= 0 ? expandedEduIndex : null);
+      if (!result.isValid) {
+        setExpandedEduIndex(result.eduIdx);
+        setEduFieldErrors(result.errors);
+        setEduError('Fill details');
+        scrollToFirstError(result.targetFieldId);
+        return;
+      }
+      setEduError('');
+      setEduFieldErrors({});
+      setExpandedEduIndex(-1);
+    }
+    if (currentStep === 3) {
+      const result = validateExperienceData(expandedExpIndex >= 0 ? expandedExpIndex : null);
+      if (!result.isValid) {
+        setExpandedExpIndex(result.cIdx);
+        setExpandedRoleIndex(result.rIdx);
+        setExpFieldErrors(result.errors);
+        setExpError('Fill details');
+        scrollToFirstError(result.targetFieldId);
+        return;
+      }
+      setExpError('');
+      setExpFieldErrors({});
+      setExpandedExpIndex(-1);
+    }
+    if (currentStep === 5) {
+      const fResume = getStepField('step5', 'resume', 'Upload Resume', '', true);
+      const fCoverLetter = getStepField('step5', 'coverLetter', 'Upload Cover Letter', '', false);
+      const fIntroVideo = getStepField('step5', 'introVideo', 'Introductory Video', '', false);
+
+      const resumeErr = fResume.isRequired && !docs.resume;
+      const coverErr = fCoverLetter.isRequired && !docs.coverLetter;
+      const videoErr = fIntroVideo.isRequired && !docs.introVideo;
+
+      if (resumeErr || coverErr || videoErr) {
+        const firstDocErrId = resumeErr ? 'field-resume' : coverErr ? 'field-coverLetter' : 'field-introVideo';
+        scrollToFirstError(firstDocErrId);
+        return;
+      }
     }
     if (currentStep === 4) {
       // No validation required for Professional Overview
@@ -451,14 +747,31 @@ const EmployeeOnboarding = () => {
       localStorage.setItem('userProfile', JSON.stringify(formData));
     } finally {
       localStorage.setItem('hasProfile', 'true');
+      localStorage.removeItem('onboardingCurrentStep');
       setIsSubmitting(false);
       navigate('/employee', { state: { profileCreated: true } });
     }
   };
 
   const updateArray = (arrayName, index, field, value) => {
-    const newArr = [...(formData[arrayName] || [])];
-    newArr[index] = { ...newArr[index], [field]: value };
+    let newArr = [...(formData[arrayName] || [])];
+    if (arrayName === 'qualifications' && field === 'isPrimary') {
+      if (value) {
+        // Set all other qualifications isPrimary to false
+        newArr = newArr.map((item, i) => ({
+          ...item,
+          isPrimary: i === index
+        }));
+        // Move the marked primary item to index 0 (first in order)
+        const [primaryItem] = newArr.splice(index, 1);
+        newArr.unshift(primaryItem);
+        setExpandedEduIndex(0);
+      } else {
+        newArr[index] = { ...newArr[index], isPrimary: false };
+      }
+    } else {
+      newArr[index] = { ...newArr[index], [field]: value };
+    }
     setFormData({ ...formData, [arrayName]: newArr });
   };
 
@@ -524,34 +837,61 @@ const EmployeeOnboarding = () => {
           <h3 className="text-xl font-bold text-gray-800">{s1Title}</h3>
         </div>
         <div className="grid grid-cols-2 gap-6">
-          <div>
+          <div id="field-firstName">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fFirstName.label} {fFirstName.isRequired && <span className="text-red-500">*</span>}
             </label>
-            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fFirstName.isRequired && !formData.firstName ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fFirstName.placeholder} value={formData.firstName || ''} onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} />
+            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fFirstName.isRequired && !formData.firstName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fFirstName.placeholder} value={formData.firstName || ''} onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} />
           </div>
-          <div>
+          <div id="field-lastName">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fLastName.label} {fLastName.isRequired && <span className="text-red-500">*</span>}
             </label>
-            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLastName.isRequired && !formData.lastName ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fLastName.placeholder} value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
+            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLastName.isRequired && !formData.lastName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fLastName.placeholder} value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
           </div>
-          <div>
+          <div id="field-phone">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fPhone.label} {fPhone.isRequired && <span className="text-red-500">*</span>}
             </label>
             <div className="flex">
-              <span className={`px-4 py-3 border border-r-0 ${showStep1Errors && fPhone.isRequired && !formData.phone ? 'border-red-500' : 'border-gray-200'} rounded-l-xl bg-gray-50 text-gray-500 font-semibold`}>+91</span>
-              <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fPhone.isRequired && !formData.phone ? 'border-red-500' : 'border-gray-200'} rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fPhone.placeholder} value={formData.phone || ''} onChange={e => { setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)}); setShowStep1Errors(false); }} />
+              <span className={`px-4 py-3 border border-r-0 ${((showStep1Errors && fPhone.isRequired && !formData.phone) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-l-xl bg-gray-50 text-gray-500 font-semibold`}>+91</span>
+              <input 
+                type="text" 
+                className={`w-full px-4 py-3 bg-white border ${((showStep1Errors && fPhone.isRequired && !formData.phone) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+                placeholder={fPhone.placeholder} 
+                value={formData.phone || ''} 
+                onChange={e => { 
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({...formData, phone: val}); 
+                  setShowStep1Errors(false); 
+                  setPhoneError('');
+                  if (val.length === 10) {
+                    checkPhoneAvailability(val);
+                  }
+                }}
+                onBlur={() => {
+                  if (formData.phone && formData.phone.length === 10) {
+                    checkPhoneAvailability(formData.phone);
+                  }
+                }}
+              />
             </div>
+            {phoneError && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                {phoneError}
+              </p>
+            )}
           </div>
-          <div>
+          <div id="field-email">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fEmail.label} {fEmail.isRequired && <span className="text-red-500">*</span>}
             </label>
             <input type="email" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
           </div>
-          <div>
+          <div id="field-industry">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fIndustry.label} {fIndustry.isRequired && <span className="text-red-500">*</span>}
             </label>
@@ -578,7 +918,7 @@ const EmployeeOnboarding = () => {
               error={showStep1Errors && fIndustry.isRequired && !formData.industry}
             />
           </div>
-          <div>
+          <div id="field-designation">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fDesignation.label} {fDesignation.isRequired && <span className="text-red-500">*</span>}
             </label>
@@ -609,7 +949,7 @@ const EmployeeOnboarding = () => {
               error={showStep1Errors && fDesignation.isRequired && !formData.designation}
             />
           </div>
-          <div>
+          <div id="field-totalExperience">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fTotalExp.label} {fTotalExp.isRequired && <span className="text-red-500">*</span>}
             </label>
@@ -630,7 +970,7 @@ const EmployeeOnboarding = () => {
               error={showStep1Errors && fTotalExp.isRequired && !formData.totalExperience}
             />
           </div>
-          <div>
+          <div id="field-location">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fLocation.label} {fLocation.isRequired && <span className="text-red-500">*</span>}
             </label>
@@ -647,10 +987,10 @@ const EmployeeOnboarding = () => {
               onChange={(val) => { setFormData({...formData, location: val}); setShowStep1Errors(false); }}
               multiple={false}
               placeholder={fLocation.placeholder}
-              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLocation.isRequired && !formData.location ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
+              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLocation.isRequired && !formData.location ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
             />
           </div>
-          <div className="col-span-2 sm:col-span-1">
+          <div id="field-preferredLocation" className="col-span-2 sm:col-span-1">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fPreferredLocation.label} {fPreferredLocation.isRequired && <span className="text-red-500">*</span>}
             </label>
@@ -684,17 +1024,17 @@ const EmployeeOnboarding = () => {
               onChange={(val) => { setFormData({...formData, preferredLocation: val}); setShowStep1Errors(false); }}
               multiple={true}
               placeholder={fPreferredLocation.placeholder}
-              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation ? 'border-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
+              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
             />
           </div>
-          <div className="col-span-2">
+          <div id="field-brief" className="col-span-2">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fBrief.label} {fBrief.isRequired && <span className="text-red-500">*</span>}
             </label>
             <textarea 
               rows="3"
               placeholder={fBrief.placeholder}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all custom-scrollbar" 
+              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fBrief.isRequired && !formData.brief ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all custom-scrollbar`} 
               value={formData.brief || ''} 
               onChange={e => setFormData({...formData, brief: e.target.value})} 
             ></textarea>
@@ -704,150 +1044,229 @@ const EmployeeOnboarding = () => {
     );
   };
 
-  const handleAddEducation = (e) => {
-    e.preventDefault();
+  const validateEducationData = (targetIdx = null) => {
     const qualifications = formData.qualifications || [];
-    if (qualifications.length > 0) {
-      const lastEdu = qualifications[qualifications.length - 1];
-      let isValid = true;
+    if (qualifications.length === 0) return { isValid: true };
+    const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
+    const isPercentageRequired = cmsConfig?.step2?.fields?.percentage?.isRequired !== false;
+
+    const indicesToCheck = (targetIdx !== null && targetIdx !== undefined && targetIdx >= 0) 
+      ? [targetIdx] 
+      : Array.from({ length: qualifications.length }, (_, i) => i);
+
+    for (const eduIdx of indicesToCheck) {
+      const currentEdu = qualifications[eduIdx];
+      if (!currentEdu) continue;
       const errors = {};
-      if (!lastEdu.educationType) {
-        isValid = false;
+      let hasError = false;
+      let firstMissingId = null;
+
+      if (!currentEdu.educationType) {
         errors.educationType = true;
+        hasError = true;
+        firstMissingId = `field-edu-type-${eduIdx}`;
       } else {
-        const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
-        const currentEduConfig = eduData[lastEdu.educationType];
-        const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (lastEdu.educationType === '10th' || lastEdu.educationType === '12th');
+        const currentEduConfig = eduData[currentEdu.educationType];
+        const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (currentEdu.educationType === '10th' || currentEdu.educationType === '12th');
         if (isSchool) {
-          if (!lastEdu.board) errors.board = true;
-          if (!lastEdu.endYear) errors.endYear = true;
-          if (!lastEdu.schoolMedium) errors.schoolMedium = true;
-          if (!lastEdu.percentage) errors.percentage = true;
+          if (!currentEdu.board) { errors.board = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-board-${eduIdx}`; }
+          if (!currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
+          if (!currentEdu.schoolMedium) { errors.schoolMedium = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-schoolMedium-${eduIdx}`; }
+          if (isPercentageRequired && !currentEdu.percentage) { errors.percentage = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`; }
         } else {
-          if (!lastEdu.university) errors.university = true;
-          if (!lastEdu.course) errors.course = true;
-          if (!lastEdu.courseType) errors.courseType = true;
-          if (!lastEdu.startYear) errors.startYear = true;
-          if (!lastEdu.endYear) errors.endYear = true;
-          if (lastEdu.gradingSystem && lastEdu.gradingSystem !== 'Not Applicable' && !lastEdu.percentage) errors.percentage = true;
+          if (!currentEdu.university) { errors.university = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-university-${eduIdx}`; }
+          if (!currentEdu.course) { errors.course = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-course-${eduIdx}`; }
+          if (!currentEdu.courseType) { errors.courseType = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-courseType-${eduIdx}`; }
+          if (!currentEdu.startYear) { errors.startYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-startYear-${eduIdx}`; }
+          if (!currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
+          if (isPercentageRequired && currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable' && !currentEdu.percentage) {
+            errors.percentage = true;
+            hasError = true;
+            if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+          }
         }
-        if (Object.keys(errors).length > 0) isValid = false;
       }
-      setEduFieldErrors(errors);
-      if (!isValid) {
-        setEduError('Fill details');
-        return;
+
+      if (hasError) {
+        return {
+          isValid: false,
+          eduIdx,
+          errors,
+          targetFieldId: firstMissingId
+        };
       }
+    }
+    return { isValid: true };
+  };
+
+  const handleAddEducation = (e) => {
+    if (e) e.preventDefault();
+    const result = validateEducationData();
+    if (!result.isValid) {
+      setExpandedEduIndex(result.eduIdx);
+      setEduFieldErrors(result.errors);
+      setEduError('Fill details');
+      scrollToFirstError(result.targetFieldId);
+      return;
     }
     setEduError('');
     setEduFieldErrors({});
-    setExpandedEduIndex(qualifications.length);
+    const newIdx = (formData.qualifications || []).length;
+    setExpandedEduIndex(newIdx);
     addArrayItem('qualifications', { educationType: '', board: '', endYear: '', schoolMedium: '', percentage: '', university: '', course: '', startYear: '', gradingSystem: '', isPrimary: false });
+    scrollToFirstError(`field-edu-type-${newIdx}`);
   };
 
   const handleSaveEducation = (e) => {
     if (e) e.preventDefault();
-    const qualifications = formData.qualifications || [];
-    if (qualifications.length > 0 && expandedEduIndex >= 0 && expandedEduIndex < qualifications.length) {
-      const currentEdu = qualifications[expandedEduIndex];
-      let isValid = true;
-      const errors = {};
-      if (!currentEdu.educationType) {
-        isValid = false;
-        errors.educationType = true;
-      } else {
-        const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
-        const currentEduConfig = eduData[currentEdu.educationType];
-        const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (currentEdu.educationType === '10th' || currentEdu.educationType === '12th');
-        if (isSchool) {
-          if (!currentEdu.board) errors.board = true;
-          if (!currentEdu.endYear) errors.endYear = true;
-          if (!currentEdu.schoolMedium) errors.schoolMedium = true;
-          if (!currentEdu.percentage) errors.percentage = true;
-        } else {
-          if (!currentEdu.university) errors.university = true;
-          if (!currentEdu.course) errors.course = true;
-          if (!currentEdu.courseType) errors.courseType = true;
-          if (!currentEdu.startYear) errors.startYear = true;
-          if (!currentEdu.endYear) errors.endYear = true;
-          if (currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable' && !currentEdu.percentage) errors.percentage = true;
-        }
-        if (Object.keys(errors).length > 0) isValid = false;
-      }
-      setEduFieldErrors(errors);
-      if (!isValid) {
-        setEduError('Fill details');
-        return;
-      }
+    const result = validateEducationData(expandedEduIndex >= 0 ? expandedEduIndex : null);
+    if (!result.isValid) {
+      setExpandedEduIndex(result.eduIdx);
+      setEduFieldErrors(result.errors);
+      setEduError('Fill details');
+      scrollToFirstError(result.targetFieldId);
+      return;
     }
+    let updatedQuals = sortQualifications([...(formData.qualifications || [])]);
+    const nextFormData = { ...formData, qualifications: updatedQuals };
+    setFormData(nextFormData);
+    localStorage.setItem('userProfile', JSON.stringify(nextFormData));
     setEduError('');
     setEduFieldErrors({});
     setExpandedEduIndex(-1);
+    saveToBackend(nextFormData);
+  };
+
+  const validateExperienceData = (targetIdx = null) => {
+    if (formData.isFresher === true) return { isValid: true };
+    const experience = formData.experience || [];
+    if (experience.length === 0) return { isValid: true };
+
+    const fCompany = getStepField('step3', 'companyName', 'Company Name', 'Enter company name', true);
+    const fJobTitle = getStepField('step3', 'jobTitle', 'Job Title / Role', 'Enter job title', true);
+    const fEmpType = getStepField('step3', 'employmentType', 'Employment Type', 'Select employment type', true);
+    const fJoining = getStepField('step3', 'joiningDate', 'Joining Date', 'Select month & year', true);
+    const fLeaving = getStepField('step3', 'leavingDate', 'Leaving Date', 'Select month & year', true);
+    const fRoleDesc = getStepField('step3', 'roleDescription', 'Roles & Responsibilities', 'Briefly describe your roles & responsibilities', false);
+
+    const indicesToCheck = (targetIdx !== null && targetIdx !== undefined && targetIdx >= 0)
+      ? [targetIdx]
+      : Array.from({ length: experience.length }, (_, i) => i);
+
+    for (const cIdx of indicesToCheck) {
+      const exp = experience[cIdx];
+      if (!exp) continue;
+      const errors = { roles: [] };
+      let hasError = false;
+      let firstMissingId = null;
+      let firstInvalidRoleIdx = 0;
+
+      if (fCompany.isRequired && !exp.companyName?.trim()) {
+        errors.companyName = true;
+        hasError = true;
+        firstMissingId = `field-exp-company-${cIdx}`;
+      }
+
+      if (exp.roles && exp.roles.length > 0) {
+        exp.roles.forEach((role, rIdx) => {
+          const roleErrors = {};
+          if (fJobTitle.isRequired && !role.jobTitle?.trim()) {
+            roleErrors.jobTitle = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-jobTitle-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fEmpType.isRequired && !role.employmentType) {
+            roleErrors.employmentType = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-empType-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fJoining.isRequired && !role.joiningDate) {
+            roleErrors.joiningDate = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-joiningDate-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fLeaving.isRequired && !role.currentCompany && !role.leavingDate) {
+            roleErrors.leavingDate = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-leavingDate-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fRoleDesc.isRequired && !role.roleDescription?.trim()) {
+            roleErrors.roleDescription = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-roleDesc-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          errors.roles[rIdx] = roleErrors;
+        });
+      }
+
+      if (hasError) {
+        return {
+          isValid: false,
+          cIdx,
+          rIdx: firstInvalidRoleIdx,
+          errors,
+          targetFieldId: firstMissingId
+        };
+      }
+    }
+
+    return { isValid: true };
   };
 
   const handleAddExperience = (e) => {
     if (e) e.preventDefault();
-    const experience = formData.experience || [];
-    if (experience.length > 0) {
-      const lastExp = experience[experience.length - 1];
-      let isValid = true;
-      const errors = { roles: [] };
-      if (!lastExp.companyName) {
-        isValid = false;
-        errors.companyName = true;
-      }
-      if (lastExp.roles) {
-        lastExp.roles.forEach((role, idx) => {
-          const roleErrors = {};
-          if (!role.jobTitle) { isValid = false; roleErrors.jobTitle = true; }
-          if (!role.employmentType) { isValid = false; roleErrors.employmentType = true; }
-          if (!role.joiningDate) { isValid = false; roleErrors.joiningDate = true; }
-          if (!role.currentCompany && !role.leavingDate) { isValid = false; roleErrors.leavingDate = true; }
-          errors.roles[idx] = roleErrors;
-        });
-      }
-      setExpFieldErrors(errors);
-      if (!isValid) {
-        setExpError('Fill details');
-        return;
-      }
+    const result = validateExperienceData();
+    if (!result.isValid) {
+      setExpandedExpIndex(result.cIdx);
+      setExpandedRoleIndex(result.rIdx);
+      setExpFieldErrors(result.errors);
+      setExpError('Fill details');
+      scrollToFirstError(result.targetFieldId);
+      return;
     }
     setExpError('');
     setExpFieldErrors({});
-    setExpandedExpIndex(experience.length);
+    const newIdx = (formData.experience || []).length;
+    setExpandedExpIndex(newIdx);
+    setExpandedRoleIndex(0);
     addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] });
+    scrollToFirstError(`field-exp-company-${newIdx}`);
   };
 
   const handleSaveExperience = (e) => {
     if (e) e.preventDefault();
-    const experience = formData.experience || [];
-    if (experience.length > 0 && expandedExpIndex >= 0 && expandedExpIndex < experience.length) {
-      const currentExp = experience[expandedExpIndex];
-      let isValid = true;
-      const errors = { roles: [] };
-      if (!currentExp.companyName) {
-        isValid = false;
-        errors.companyName = true;
-      }
-      if (currentExp.roles) {
-        currentExp.roles.forEach((role, idx) => {
-          const roleErrors = {};
-          if (!role.jobTitle) { isValid = false; roleErrors.jobTitle = true; }
-          if (!role.employmentType) { isValid = false; roleErrors.employmentType = true; }
-          if (!role.joiningDate) { isValid = false; roleErrors.joiningDate = true; }
-          if (!role.currentCompany && !role.leavingDate) { isValid = false; roleErrors.leavingDate = true; }
-          errors.roles[idx] = roleErrors;
-        });
-      }
-      setExpFieldErrors(errors);
-      if (!isValid) {
-        setExpError('Fill details');
-        return;
-      }
+    const result = validateExperienceData(expandedExpIndex >= 0 ? expandedExpIndex : null);
+    if (!result.isValid) {
+      setExpandedExpIndex(result.cIdx);
+      setExpandedRoleIndex(result.rIdx);
+      setExpFieldErrors(result.errors);
+      setExpError('Fill details');
+      scrollToFirstError(result.targetFieldId);
+      return;
     }
     setExpError('');
     setExpFieldErrors({});
+    const sorted = sortExperience(formData.experience || []);
+    const nextFormData = { ...formData, experience: sorted };
+    setFormData(nextFormData);
+    localStorage.setItem('userProfile', JSON.stringify(nextFormData));
     setExpandedExpIndex(-1);
+    saveToBackend(nextFormData);
   };
 
   const Step2Education = () => {
@@ -871,7 +1290,7 @@ const EmployeeOnboarding = () => {
         </div>
                 
                 <div className="space-y-6">
-                  {(formData.qualifications || []).map((q, idx) => {
+                  {sortQualifications(formData.qualifications || []).map((q, idx) => {
                     const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
                     const currentEduConfig = eduData[q.educationType];
                     const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (q.educationType === '10th' || q.educationType === '12th');
@@ -912,7 +1331,7 @@ const EmployeeOnboarding = () => {
                         </button>
                         
                         <div className="space-y-6 pt-2">
-                          <div>
+                          <div id={`field-edu-type-${idx}`}>
                             <label className="block text-sm font-bold text-gray-900 mb-1.5">Education <span className="text-red-500">*</span></label>
                             <select 
                               className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.educationType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
@@ -935,14 +1354,16 @@ const EmployeeOnboarding = () => {
 
                           {isSchool && (
                             <>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Board <span className="text-red-500">*</span></label>
+                              <div id={`field-edu-board-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'board', 'Board', 'Select board').label} {getStepField('step2', 'board').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <select 
                                   className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.board ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
                                   value={q.board || ''} 
                                   onChange={e => { updateArray('qualifications', idx, 'board', e.target.value); setEduFieldErrors({...eduFieldErrors, board: false}); }}
                                 >
-                                  <option value="">Select board</option>
+                                  <option value="">{getStepField('step2', 'board', 'Board', 'Select board').placeholder || 'Select board'}</option>
                                   {(() => {
                                     const boardList = (currentEduConfig?.options && currentEduConfig.options.length > 0)
                                       ? currentEduConfig.options
@@ -953,53 +1374,63 @@ const EmployeeOnboarding = () => {
                                   })()}
                                 </select>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Passing out year <span className="text-red-500">*</span></label>
+                              <div id={`field-edu-endYear-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').label} {getStepField('step2', 'endYear').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                  <option value="">Select passing out year</option>
+                                  <option value="">{getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder || 'Select passing out year'}</option>
                                   {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
                                     <option key={year} value={year}>{year}</option>
                                   ))}
                                 </select>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">School medium <span className="text-red-500">*</span></label>
+                              <div id={`field-edu-schoolMedium-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').label} {getStepField('step2', 'schoolMedium').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.schoolMedium ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.schoolMedium || ''} onChange={e => { updateArray('qualifications', idx, 'schoolMedium', e.target.value); setEduFieldErrors({...eduFieldErrors, schoolMedium: false}); }}>
-                                  <option value="">Select medium</option>
-                                  <option value="English">English</option>
-                                  <option value="Hindi">Hindi</option>
-                                  <option value="Other">Other</option>
+                                  <option value="">{getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').placeholder || 'Select medium'}</option>
+                                  {(cmsConfig?.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map((opt, oIdx) => (
+                                    <option key={oIdx} value={opt}>{opt}</option>
+                                  ))}
                                 </select>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
-                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="% marks of 100 maximum" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
+                              <div id={`field-edu-percentage-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').label} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
+                                </label>
+                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder={getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').placeholder || '% marks of 100 maximum'} value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
                               </div>
                             </>
                           )}
 
                           {isHigher && (
                             <>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute <span className="text-red-500">*</span></label>
+                              <div id={`field-edu-university-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'university', 'University / Institute', 'Search or enter university/institute...').label} {getStepField('step2', 'university').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <InstituteAutocomplete 
                                   value={q.university || ''} 
                                   onChange={val => { 
                                     updateArray('qualifications', idx, 'university', val); 
                                     setEduFieldErrors(prev => ({...prev, university: false})); 
                                   }} 
-                                  placeholder="Search or enter university/institute..." 
+                                  placeholder={getStepField('step2', 'university', 'University / Institute', 'Search or enter university/institute...').placeholder || 'Search or enter university/institute...'} 
                                   className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
                                 />
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course <span className="text-red-500">*</span></label>
+                              <div id={`field-edu-course-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'course', 'Course', 'Select course').label} {getStepField('step2', 'course').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <select 
                                   className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.course ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
                                   value={q.course || ''} 
                                   onChange={e => { updateArray('qualifications', idx, 'course', e.target.value); setEduFieldErrors({...eduFieldErrors, course: false}); }}
                                 >
-                                  <option value="">Select course</option>
+                                  <option value="">{getStepField('step2', 'course', 'Course', 'Select course').placeholder || 'Select course'}</option>
                                   {(() => {
                                     if (currentEduConfig?.options && currentEduConfig.options.length > 0) {
                                       return currentEduConfig.options.map(c => (
@@ -1037,64 +1468,108 @@ const EmployeeOnboarding = () => {
                                   })()}
                                 </select>
                               </div>
-                              <div>
-                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>Course type <span className="text-red-500">*</span></label>
+                              <div id={`field-edu-courseType-${idx}`}>
+                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>
+                                  {getStepField('step2', 'courseType', 'Course type', 'Select course type').label} {getStepField('step2', 'courseType').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <div className="flex flex-wrap items-center gap-6">
-                                  <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Full time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Full time'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
-                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Full time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Full time</span>
-                                  </label>
-                                  <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Part time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Part time'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
-                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Part time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Part time</span>
-                                  </label>
-                                  <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Correspondence/Distance learning" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Correspondence/Distance learning'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
-                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Correspondence/Distance learning' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Correspondence/Distance learning</span>
-                                  </label>
+                                  {(cmsConfig?.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS).map((ct) => (
+                                    <label key={ct} className="flex items-center cursor-pointer group">
+                                      <input 
+                                        type="radio" 
+                                        name={`courseType-${idx}`} 
+                                        value={ct} 
+                                        className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" 
+                                        checked={q.courseType === ct} 
+                                        onChange={(e) => { 
+                                          updateArray('qualifications', idx, 'courseType', e.target.value); 
+                                          setEduFieldErrors({...eduFieldErrors, courseType: false}); 
+                                        }} 
+                                      />
+                                      <span className={`ml-2.5 text-[15px] ${q.courseType === ct ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>
+                                        {ct}
+                                      </span>
+                                    </label>
+                                  ))}
                                 </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration <span className="text-red-500">*</span></label>
+                              <div id={`field-edu-startYear-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  Course duration {(getStepField('step2', 'startYear').isRequired || getStepField('step2', 'endYear').isRequired) && <span className="text-red-500">*</span>}
+                                </label>
                                 <div className="flex items-center gap-4">
                                   <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.startYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.startYear || ''} onChange={e => { updateArray('qualifications', idx, 'startYear', e.target.value); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}>
-                                    <option value="">Starting year</option>
+                                    <option value="">{getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder || 'Starting year'}</option>
                                     {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => (
                                       <option key={year} value={year}>{year}</option>
                                     ))}
                                   </select>
                                   <span className="font-bold text-gray-900">To</span>
                                   <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                    <option value="">Ending year</option>
+                                    <option value="">{getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder || 'Ending year'}</option>
                                     {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
                                       <option key={year} value={year}>{year}</option>
                                     ))}
                                   </select>
                                 </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Grading system</label>
-                                <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={q.gradingSystem || ''} onChange={e => updateArray('qualifications', idx, 'gradingSystem', e.target.value)}>
-                                  <option value="">Select grading system</option>
-                                  <option value="Scale 10 Grading System">Scale 10 Grading System</option>
-                                  <option value="Scale 4 Grading System">Scale 4 Grading System</option>
-                                  <option value="% Marks of 100 Maximum">% Marks of 100 Maximum</option>
-                                  <option value="Not Applicable">Not Applicable</option>
-                                </select>
-                              </div>
-                              {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
-                                <div>
-                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks <span className="text-red-500">*</span></label>
-                                  <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
-                                </div>
-                              )}
+                              {(() => {
+                                const currentGradingSystems = normalizeGradingSystems(cmsConfig?.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
+                                const selectedGradingObj = currentGradingSystems.find(g => g.name === q.gradingSystem);
+                                const dynamicMarksLabel = selectedGradingObj?.label || 'Marks';
+                                const dynamicMarksPlaceholder = selectedGradingObj?.placeholder || 'Enter grade or marks';
+
+                                return (
+                                  <>
+                                    <div>
+                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                        {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).label}
+                                        {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                                      </label>
+                                      <select 
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" 
+                                        value={q.gradingSystem || ''} 
+                                        onChange={e => updateArray('qualifications', idx, 'gradingSystem', e.target.value)}
+                                      >
+                                        <option value="">{getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).placeholder || 'Select grading system'}</option>
+                                        {currentGradingSystems.map((gs) => (
+                                          <option key={gs.name} value={gs.name}>{gs.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
+                                      <div>
+                                        <label className={`block text-sm font-bold ${eduFieldErrors.percentage ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
+                                          {dynamicMarksLabel} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input 
+                                          type="text" 
+                                          className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                          placeholder={dynamicMarksPlaceholder} 
+                                          value={q.percentage || ''} 
+                                          onChange={e => { 
+                                            updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
+                                            setEduFieldErrors({...eduFieldErrors, percentage: false}); 
+                                          }} 
+                                        />
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </>
                           )}
                           
-                          {q.educationType && (
+                          {q.educationType && !q.isPrimary && (
                             <div className="flex items-center pt-2 border-t border-gray-100 mt-4">
                               <input type="checkbox" id={`primary-edu-${idx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
-                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium">Mark this as my primary education</label>
+                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium cursor-pointer">Mark this as my primary education</label>
+                            </div>
+                          )}
+                          {q.educationType && q.isPrimary && (
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-4 text-xs font-bold text-green-700">
+                              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                              <span>Primary Education</span>
                             </div>
                           )}
 
@@ -1128,12 +1603,14 @@ const EmployeeOnboarding = () => {
           <div>
             <h3 className="text-xl font-bold text-gray-800">{s3Title}</h3>
           </div>
-          <div className="flex items-center gap-3">
-            {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
-            <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-              {s3AddBtn}
-            </button>
-          </div>
+          {!formData.isFresher && (
+            <div className="flex items-center gap-3">
+              {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
+              <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm">
+                {s3AddBtn}
+              </button>
+            </div>
+          )}
         </div>
         <div className="space-y-6">
           <div className="flex flex-col items-start gap-3 mb-6">
@@ -1141,11 +1618,34 @@ const EmployeeOnboarding = () => {
             <div className="flex items-center gap-6">
               <label className="flex items-center cursor-pointer group">
                 <input type="radio" name="isFresher_onboarding" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
-                <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Yes, I am a Fresher</span>
+                <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>I am a Fresher</span>
               </label>
               <label className="flex items-center cursor-pointer group">
-                <input type="radio" name="isFresher_onboarding" value="no" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === false} onChange={() => setFormData({...formData, isFresher: false})} />
-                <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>No, I have experience</span>
+                <input 
+                  type="radio" 
+                  name="isFresher_onboarding" 
+                  value="no" 
+                  className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" 
+                  checked={formData.isFresher === false} 
+                  onChange={() => {
+                    const isExpEmpty = !formData.experience || formData.experience.length === 0;
+                    if (isExpEmpty) {
+                      setExpandedExpIndex(0);
+                      setExpandedRoleIndex(0);
+                      setFormData({
+                        ...formData,
+                        isFresher: false,
+                        experience: [{ companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] }]
+                      });
+                    } else {
+                      if (expandedExpIndex < 0) {
+                        setExpandedExpIndex(0);
+                      }
+                      setFormData({...formData, isFresher: false});
+                    }
+                  }} 
+                />
+                <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>I have experience</span>
               </label>
             </div>
           </div>
@@ -1196,157 +1696,229 @@ const EmployeeOnboarding = () => {
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                                 <h4 className="font-semibold text-gray-700 pr-8">Company {cIdx + 1}</h4>
-                                <div>
-                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Company Name <span className="text-red-500">*</span></label>
-                                  <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={exp.companyName || ''} onChange={e => {
-                                    const newExp = [...(formData.experience || [])];
-                                    newExp[cIdx].companyName = e.target.value;
-                                    setFormData({...formData, experience: newExp});
-                                    setExpFieldErrors({...expFieldErrors, companyName: false});
-                                  }} />
-                                </div>
-                                <div className="relative border-l-2 border-green-500 ml-3 mt-8 space-y-8 pb-4">
-                                  {(exp.roles || []).map((role, rIdx) => (
-                                    <div key={rIdx} className="relative pl-6">
-                                      <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-green-500 border-4 border-gray-50 shadow-sm"></div>
-                                      
-                                      <div className="p-6 border border-gray-200 rounded-xl space-y-6 bg-white shadow-sm relative group">
-                                        <button type="button" onClick={() => {
-                                          const newExp = [...(formData.experience || [])];
-                                          newExp[cIdx].roles.splice(rIdx, 1);
-                                          setFormData({...formData, experience: newExp});
-                                        }} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors hidden group-hover:block">
-                                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                        
-                                        <div className="absolute -top-3 left-4 bg-white px-3 text-sm font-bold text-green-600 border border-green-100 rounded-full shadow-sm">Role {rIdx + 1}</div>
-                                        
-                                        <div className="space-y-6 pt-2">
-                                      <div>
-                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                                        <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.jobTitle || ''} onChange={e => {
-                                          const newExp = [...(formData.experience || [])];
-                                          newExp[cIdx].roles[rIdx].jobTitle = e.target.value;
-                                          setFormData({...formData, experience: newExp});
-                                          if (expFieldErrors.roles?.[rIdx]?.jobTitle) {
-                                            const newErrors = {...expFieldErrors};
-                                            newErrors.roles[rIdx].jobTitle = false;
-                                            setExpFieldErrors(newErrors);
-                                          }
-                                        }} />
+                                {(() => {
+                                  const fCompany = getStepField('step3', 'companyName', 'Company Name', 'Enter or search company name...', true);
+                                  const fJobTitle = getStepField('step3', 'jobTitle', 'Job Title', 'Enter or search job title...', true);
+                                  const fEmpType = getStepField('step3', 'employmentType', 'Employment Type', 'Select', true);
+                                  const fJoining = getStepField('step3', 'joiningDate', 'Joining', 'Select joining date', true);
+                                  const fLeaving = getStepField('step3', 'leavingDate', 'Leaving', 'Select leaving date', true);
+                                  const fCurrent = getStepField('step3', 'currentCompany', 'Current role', '', false);
+                                  const fRoleDesc = getStepField('step3', 'roleDescription', 'Roles & Responsibilities', 'Briefly describe your roles & responsibilities', false);
+                                  const fNotice = getStepField('step3', 'noticePeriod', 'Notice Period', 'Select', false);
+
+                                  return (
+                                    <>
+                                      <div id={`field-exp-company-${cIdx}`}>
+                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">{fCompany.label} {fCompany.isRequired && <span className="text-red-500">*</span>}</label>
+                                        <CompanyAutocomplete 
+                                          value={exp.companyName || ''} 
+                                          className={`w-full px-4 py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`}
+                                          onChange={val => {
+                                            const newExp = [...(formData.experience || [])];
+                                            newExp[cIdx].companyName = val;
+                                            setFormData({...formData, experience: newExp});
+                                            setExpFieldErrors({...expFieldErrors, companyName: false});
+                                          }} 
+                                          placeholder={fCompany.placeholder || "Enter or search company name..."}
+                                        />
                                       </div>
-                                      <div>
-                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">Employment Type <span className="text-red-500">*</span></label>
-                                        <select className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.employmentType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.employmentType || ''} onChange={e => {
-                                          const newExp = [...(formData.experience || [])];
-                                          newExp[cIdx].roles[rIdx].employmentType = e.target.value;
-                                          setFormData({...formData, experience: newExp});
-                                          if (expFieldErrors.roles?.[rIdx]?.employmentType) {
-                                            const newErrors = {...expFieldErrors};
-                                            newErrors.roles[rIdx].employmentType = false;
-                                            setExpFieldErrors(newErrors);
-                                          }
-                                        }}>
-                                          <option value="">Select</option>
-                                          <option value="Full-time">Full-time</option>
-                                          <option value="Part-time">Part-time</option>
-                                          <option value="Contract">Contract</option>
-                                        </select>
-                                      </div>
-                                      <div className="flex items-center mt-6">
-                                        <input type="checkbox" id={`current-${cIdx}-${rIdx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500 mr-3" checked={role.currentCompany || false} onChange={e => {
-                                          const newExp = [...(formData.experience || [])];
-                                          newExp[cIdx].roles[rIdx].currentCompany = e.target.checked;
-                                          if (e.target.checked) newExp[cIdx].roles[rIdx].leavingDate = '';
-                                          setFormData({...formData, experience: newExp});
-                                        }} />
-                                        <label htmlFor={`current-${cIdx}-${rIdx}`} className="text-sm font-bold text-gray-900">Current role</label>
-                                      </div>
-                                      <div className="space-y-6">
-                                        <div>
-                                          <label className="block text-sm font-bold text-gray-900 mb-1.5">Joining <span className="text-red-500">*</span></label>
-                                          <div className={`${expFieldErrors.roles?.[rIdx]?.joiningDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
-                                            <CustomMonthPicker
-                                              value={role.joiningDate || ''}
-                                              onChange={val => {
-                                                const newExp = [...(formData.experience || [])];
-                                                newExp[cIdx].roles[rIdx].joiningDate = val;
-                                                setFormData({...formData, experience: newExp});
-                                                if (expFieldErrors.roles?.[rIdx]?.joiningDate) {
-                                                  const newErrors = {...expFieldErrors};
-                                                  newErrors.roles[rIdx].joiningDate = false;
-                                                  setExpFieldErrors(newErrors);
-                                                }
-                                              }}
-                                              placeholder="Select joining date"
-                                            />
-                                          </div>
-                                        </div>
-                                        {!role.currentCompany && (
-                                          <div>
-                                            <label className="block text-sm font-bold text-gray-900 mb-1.5">Leaving <span className="text-red-500">*</span></label>
-                                            <div className={`${expFieldErrors.roles?.[rIdx]?.leavingDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
-                                              <CustomMonthPicker
-                                                value={role.leavingDate || ''}
-                                                onChange={val => {
-                                                  const newExp = [...(formData.experience || [])];
-                                                  newExp[cIdx].roles[rIdx].leavingDate = val;
-                                                  setFormData({...formData, experience: newExp});
-                                                  if (expFieldErrors.roles?.[rIdx]?.leavingDate) {
-                                                    const newErrors = {...expFieldErrors};
-                                                    newErrors.roles[rIdx].leavingDate = false;
-                                                    setExpFieldErrors(newErrors);
-                                                  }
-                                                }}
-                                                placeholder="Select leaving date"
-                                              />
+                                      <div className="relative border-l-2 border-green-500 ml-3 mt-8 space-y-8 pb-4">
+                                        {(exp.roles || []).map((role, rIdx) => {
+                                          const isRoleExpanded = expandedRoleIndex === rIdx;
+                                          return (
+                                          <div key={rIdx} className="relative pl-6">
+                                            <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-green-500 border-4 border-gray-50 shadow-sm"></div>
+                                            
+                                            <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative group">
+                                              {/* Clickable Header */}
+                                              <div
+                                                className={`p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors ${isRoleExpanded ? 'bg-gray-50 rounded-t-xl' : 'rounded-xl'}`}
+                                                onClick={() => setExpandedRoleIndex(isRoleExpanded ? -1 : rIdx)}
+                                              >
+                                                <div>
+                                                  <h5 className="font-bold text-gray-900">{role.jobTitle || `Role ${rIdx + 1}`}</h5>
+                                                  <p className="text-sm text-gray-500 mt-0.5">{role.employmentType || 'Employment Type'}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                  <button type="button" onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const newExp = [...(formData.experience || [])];
+                                                    newExp[cIdx].roles.splice(rIdx, 1);
+                                                    setFormData({...formData, experience: newExp});
+                                                    setExpandedRoleIndex(0);
+                                                  }} className="text-gray-300 hover:text-red-500 transition-colors hidden group-hover:block">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                  </button>
+                                                  <svg className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isRoleExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                                </div>
+                                              </div>
+
+                                              {/* Animated Body */}
+                                              <div className={`grid transition-all duration-300 ease-in-out ${isRoleExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                                <div className="overflow-hidden min-h-0">
+                                                  <div className="p-6 border-t border-gray-100 space-y-6 bg-white rounded-b-xl">
+                                                    <div id={`field-exp-jobTitle-${cIdx}-${rIdx}`}>
+                                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">{fJobTitle.label} {fJobTitle.isRequired && <span className="text-red-500">*</span>}</label>
+                                                      <JobTitleAutocomplete 
+                                                        value={role.jobTitle || ''} 
+                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`}
+                                                        onChange={val => {
+                                                          const newExp = [...(formData.experience || [])];
+                                                          newExp[cIdx].roles[rIdx].jobTitle = val;
+                                                          setFormData({...formData, experience: newExp});
+                                                          if (expFieldErrors.roles?.[rIdx]?.jobTitle) {
+                                                            const newErrors = {...expFieldErrors};
+                                                            newErrors.roles[rIdx].jobTitle = false;
+                                                            setExpFieldErrors(newErrors);
+                                                          }
+                                                        }} 
+                                                        placeholder={fJobTitle.placeholder || "Enter or search job title..."}
+                                                      />
+                                                    </div>
+                                                    <div id={`field-exp-empType-${cIdx}-${rIdx}`}>
+                                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">{fEmpType.label} {fEmpType.isRequired && <span className="text-red-500">*</span>}</label>
+                                                      <select className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.employmentType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.employmentType || ''} onChange={e => {
+                                                        const newExp = [...(formData.experience || [])];
+                                                        newExp[cIdx].roles[rIdx].employmentType = e.target.value;
+                                                        setFormData({...formData, experience: newExp});
+                                                        if (expFieldErrors.roles?.[rIdx]?.employmentType) {
+                                                          const newErrors = {...expFieldErrors};
+                                                          newErrors.roles[rIdx].employmentType = false;
+                                                          setExpFieldErrors(newErrors);
+                                                        }
+                                                      }}>
+                                                        <option value="">{fEmpType.placeholder || 'Select'}</option>
+                                                        {(cmsConfig?.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS).map((opt, oIdx) => (
+                                                          <option key={oIdx} value={opt}>{opt}</option>
+                                                        ))}
+                                                      </select>
+                                                    </div>
+                                                    <div className="flex items-center">
+                                                      <input 
+                                                        type="checkbox" 
+                                                        id={`current-${cIdx}-${rIdx}`} 
+                                                        className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500 mr-3 cursor-pointer" 
+                                                        checked={role.currentCompany || false} 
+                                                        onChange={e => {
+                                                          const isChecked = e.target.checked;
+                                                          const newExp = (formData.experience || []).map((expItem, compI) => ({
+                                                            ...expItem,
+                                                            roles: (expItem.roles || []).map((rItem, roleI) => ({
+                                                              ...rItem,
+                                                              currentCompany: (compI === cIdx && roleI === rIdx) ? isChecked : false,
+                                                              leavingDate: (compI === cIdx && roleI === rIdx && isChecked) ? '' : rItem.leavingDate
+                                                            }))
+                                                          }));
+                                                          setFormData({ ...formData, experience: newExp });
+                                                        }} 
+                                                      />
+                                                      <label htmlFor={`current-${cIdx}-${rIdx}`} className="text-sm font-bold text-gray-900 cursor-pointer">
+                                                        {fCurrent.label || 'Currently working here'}
+                                                      </label>
+                                                    </div>
+                                                    <div className="space-y-6">
+                                                      <div id={`field-exp-joiningDate-${cIdx}-${rIdx}`}>
+                                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">{fJoining.label} {fJoining.isRequired && <span className="text-red-500">*</span>}</label>
+                                                        <div className={`${expFieldErrors.roles?.[rIdx]?.joiningDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
+                                                          <CustomMonthPicker
+                                                            value={role.joiningDate || ''}
+                                                            onChange={val => {
+                                                              const newExp = [...(formData.experience || [])];
+                                                              newExp[cIdx].roles[rIdx].joiningDate = val;
+                                                              setFormData({...formData, experience: newExp});
+                                                              if (expFieldErrors.roles?.[rIdx]?.joiningDate) {
+                                                                const newErrors = {...expFieldErrors};
+                                                                newErrors.roles[rIdx].joiningDate = false;
+                                                                setExpFieldErrors(newErrors);
+                                                              }
+                                                            }}
+                                                            placeholder={fJoining.placeholder || "Select joining date"}
+                                                          />
+                                                        </div>
+                                                      </div>
+                                                      {!role.currentCompany && (
+                                                        <div id={`field-exp-leavingDate-${cIdx}-${rIdx}`}>
+                                                          <label className="block text-sm font-bold text-gray-900 mb-1.5">{fLeaving.label} {fLeaving.isRequired && <span className="text-red-500">*</span>}</label>
+                                                          <div className={`${expFieldErrors.roles?.[rIdx]?.leavingDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
+                                                            <CustomMonthPicker
+                                                              value={role.leavingDate || ''}
+                                                              onChange={val => {
+                                                                const newExp = [...(formData.experience || [])];
+                                                                newExp[cIdx].roles[rIdx].leavingDate = val;
+                                                                setFormData({...formData, experience: newExp});
+                                                                if (expFieldErrors.roles?.[rIdx]?.leavingDate) {
+                                                                  const newErrors = {...expFieldErrors};
+                                                                  newErrors.roles[rIdx].leavingDate = false;
+                                                                  setExpFieldErrors(newErrors);
+                                                                }
+                                                              }}
+                                                              placeholder={fLeaving.placeholder || "Select leaving date"}
+                                                            />
+                                                          </div>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    <div className="mt-2" id={`field-exp-roleDesc-${cIdx}-${rIdx}`}>
+                                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">{fRoleDesc.label} {fRoleDesc.isRequired && <span className="text-red-500">*</span>}</label>
+                                                      <textarea 
+                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.roleDescription ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 h-24 resize-none outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                                        placeholder={fRoleDesc.placeholder || "Briefly describe your roles & responsibilities"}
+                                                        value={role.roleDescription || ''} 
+                                                        onChange={e => {
+                                                          const newExp = [...(formData.experience || [])];
+                                                          newExp[cIdx].roles[rIdx].roleDescription = e.target.value;
+                                                          setFormData({...formData, experience: newExp});
+                                                          if (expFieldErrors.roles?.[rIdx]?.roleDescription) {
+                                                            const newErrors = {...expFieldErrors};
+                                                            if (newErrors.roles?.[rIdx]) newErrors.roles[rIdx].roleDescription = false;
+                                                            setExpFieldErrors(newErrors);
+                                                          }
+                                                        }} 
+                                                      />
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
                                             </div>
                                           </div>
-                                        )}
-                                      </div>
-                                      <div className="col-span-2 mt-6">
-                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">Role Description</label>
-                                        <textarea className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 h-24 resize-none outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.roleDescription || ''} onChange={e => {
+                                          );
+                                        })}
+
+                                    <div className="relative pl-6">
+                                        <div className="absolute -left-[7px] top-2 w-3 h-3 rounded-full bg-gray-300 border-2 border-gray-50"></div>
+                                        <button type="button" onClick={() => {
                                           const newExp = [...(formData.experience || [])];
-                                          newExp[cIdx].roles[rIdx].roleDescription = e.target.value;
+                                          newExp[cIdx].roles.push({ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' });
                                           setFormData({...formData, experience: newExp});
-                                        }} />
+                                          setExpandedRoleIndex(newExp[cIdx].roles.length - 1);
+                                        }} className="flex items-center gap-1 text-sm font-bold text-green-600 hover:text-green-700 transition-colors">
+                                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                          Add Role
+                                        </button>
                                       </div>
                                     </div>
-                                  </div>
-                                </div>
-                              ))}
 
-                                <div className="relative pl-6">
-                                    <div className="absolute -left-[7px] top-2 w-3 h-3 rounded-full bg-gray-300 border-2 border-gray-50"></div>
-                                    <button type="button" onClick={() => {
-                                      const newExp = [...(formData.experience || [])];
-                                      newExp[cIdx].roles.push({ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' });
-                                      setFormData({...formData, experience: newExp});
-                                    }} className="flex items-center gap-1 text-sm font-bold text-green-600 hover:text-green-700 transition-colors">
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                      Add Role
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {hasCurrentRole && (
-                                  <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Notice Period</label>
-                                    <select className="w-1/2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={exp.noticePeriod || ''} onChange={e => {
-                                      const newExp = [...(formData.experience || [])];
-                                      newExp[cIdx].noticePeriod = e.target.value;
-                                      setFormData({...formData, experience: newExp});
-                                    }}>
-                                      <option value="">Select</option>
-                                      <option value="15 Days">15 Days</option>
-                                      <option value="30 Days">30 Days</option>
-                                      <option value="45 Days">45 Days</option>
-                                      <option value="60 Days">60 Days</option>
-                                      <option value="90 Days">90 Days</option>
-                                    </select>
-                                  </div>
-                                )}
+                                    {hasCurrentRole && (
+                                      <div className="mt-6 pt-6 border-t border-gray-200">
+                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">{fNotice.label} {fNotice.isRequired && <span className="text-red-500">*</span>}</label>
+                                        <select className={`w-1/2 px-4 py-3 bg-white border ${expFieldErrors.noticePeriod ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={exp.noticePeriod || ''} onChange={e => {
+                                          const newExp = [...(formData.experience || [])];
+                                          newExp[cIdx].noticePeriod = e.target.value;
+                                          setFormData({...formData, experience: newExp});
+                                          if (expFieldErrors.noticePeriod) {
+                                            setExpFieldErrors({...expFieldErrors, noticePeriod: false});
+                                          }
+                                        }}>
+                                          <option value="">{fNotice.placeholder || 'Select'}</option>
+                                          {(cmsConfig?.step3?.noticePeriodOptions || cmsConfig?.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS).map((opt, optIdx) => (
+                                            <option key={optIdx} value={opt}>{opt}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                                 
                                 <div className="flex justify-end pt-4 mt-2">
                                   <button type="button" onClick={handleSaveExperience} className="px-6 py-2 rounded-full bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors shadow-sm">Save</button>
@@ -1357,26 +1929,13 @@ const EmployeeOnboarding = () => {
                           
                           <div className="pt-4">
                         {formData.isFresher !== true && (
-                    <div className="flex items-center gap-3">
-                      {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
-                      <button type="button" onClick={(e) => {
-                        e.preventDefault();
-                        const experiences = formData.experience || [];
-                        if (experiences.length > 0) {
-                          const lastExp = experiences[experiences.length - 1];
-                          const lastRole = lastExp.roles && lastExp.roles.length > 0 ? lastExp.roles[lastExp.roles.length - 1] : {};
-                          if (!lastExp.companyName || !lastRole.jobTitle || !lastRole.roleDescription) {
-                            setExpError('Fill details');
-                            return;
-                          }
-                        }
-                        setExpError('');
-                        setExpandedExpIndex(experiences.length); addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] });
-                      }} className="text-green-500 font-semibold hover:text-green-600 text-sm whitespace-nowrap">
-                        Add +
-                      </button>
-                    </div>
-                  )}          </div>
+                          <div className="flex items-center gap-3">
+                            {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
+                            <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm whitespace-nowrap">
+                              Add +
+                            </button>
+                          </div>
+                        )}          </div>
                         </div>
                       )}
                     </div>
@@ -1388,6 +1947,30 @@ const EmployeeOnboarding = () => {
     const s4Title = cmsConfig?.step4?.title || 'Key Skills & Preferences';
     const s4Subtitle = cmsConfig?.step4?.subtitle || 'Highlight your key skills and preferences to find matching jobs';
 
+    const fDesignation = getStepField('step4', 'currentDesignation', 'Current Designation', 'e.g. Software Engineer', false);
+    const fLinkedin = getStepField('step4', 'linkedinUrl', 'LinkedIn Profile', 'https://linkedin.com/in/...', false);
+    const fSalaryType = getStepField('step4', 'salaryType', 'Salary Type', 'Select salary type', false);
+    const fCurrency = getStepField('step4', 'currency', 'Currency', 'Select currency', false);
+    const fCurrentSalary = getStepField('step4', 'currentSalary', 'Current Annual CTC', 'e.g. 5,00,000', false);
+    const fExpectedSalary = getStepField('step4', 'expectedSalary', 'Expected Annual CTC', 'e.g. 7,50,000', false);
+    const fSkills = getStepField('step4', 'skills', 'Key Skills', 'Type skill and press Enter (e.g., React, Node.js)', false);
+
+    const currentSalaryDisplayLabel = p.salaryType === 'Monthly'
+      ? (fCurrentSalary.label ? fCurrentSalary.label.replace(/Annual CTC|Annual Salary|Annual/gi, 'Monthly CTC') : 'Current Monthly CTC')
+      : (fCurrentSalary.label || 'Current Annual CTC');
+
+    const expectedSalaryDisplayLabel = p.salaryType === 'Monthly'
+      ? (fExpectedSalary.label ? fExpectedSalary.label.replace(/Annual CTC|Annual Salary|Annual/gi, 'Monthly CTC') : 'Expected Monthly CTC')
+      : (fExpectedSalary.label || 'Expected Annual CTC');
+
+    const currentSalaryDisplayPlaceholder = p.salaryType === 'Monthly'
+      ? (fCurrentSalary.placeholder ? fCurrentSalary.placeholder.replace(/5,00,000|500000/g, '40,000') : `e.g. ${getCurrencySymbol(p.currency)}40,000`)
+      : (fCurrentSalary.placeholder || `e.g. ${getCurrencySymbol(p.currency)}5,00,000`);
+
+    const expectedSalaryDisplayPlaceholder = p.salaryType === 'Monthly'
+      ? (fExpectedSalary.placeholder ? fExpectedSalary.placeholder.replace(/7,50,000|750000|8,00,000|800000/g, '60,000') : `e.g. ${getCurrencySymbol(p.currency)}60,000`)
+      : (fExpectedSalary.placeholder || `e.g. ${getCurrencySymbol(p.currency)}7,50,000`);
+
     return (
       <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
         <div className="mb-6 pb-2 border-b border-gray-100">
@@ -1395,28 +1978,34 @@ const EmployeeOnboarding = () => {
           {s4Subtitle && <p className="text-sm text-gray-500 mt-1">{s4Subtitle}</p>}
         </div>
         <div className="grid grid-cols-2 gap-6">
-          {!formData.isFresher && (
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Designation</label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" value={formData.designation || ''} onChange={e => setFormData({...formData, designation: e.target.value})} />
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">LinkedIn Profile URL</label>
-            <input type="url" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" value={p.linkedinUrl || ''} onChange={e => setP('linkedinUrl', e.target.value)} />
+          <div className="col-span-2">
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fLinkedin.label} {fLinkedin.isRequired && <span className="text-red-500">*</span>}
+            </label>
+            <input 
+              type="url" 
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" 
+              placeholder={fLinkedin.placeholder || 'https://linkedin.com/in/...'}
+              value={p.linkedinUrl || ''} 
+              onChange={e => setP('linkedinUrl', e.target.value)} 
+            />
           </div>
           
           <div className="col-span-2 grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Salary Type</label>
-              <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" value={p.salaryType || 'Yearly'} onChange={e => setP('salaryType', e.target.value)}>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {fSalaryType.label || 'Salary Type'} {fSalaryType.isRequired && <span className="text-red-500">*</span>}
+              </label>
+              <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer" value={p.salaryType || 'Yearly'} onChange={e => setP('salaryType', e.target.value)}>
                 <option value="Yearly">Yearly</option>
                 <option value="Monthly">Monthly</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Currency</label>
-              <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" value={p.currency || 'INR'} onChange={e => setP('currency', e.target.value)}>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {fCurrency.label || 'Currency'} {fCurrency.isRequired && <span className="text-red-500">*</span>}
+              </label>
+              <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer" value={p.currency || 'INR'} onChange={e => setP('currency', e.target.value)}>
                 <option value="INR">INR (₹)</option>
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
@@ -1427,17 +2016,35 @@ const EmployeeOnboarding = () => {
 
           <div className="col-span-2 grid grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Salary</label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder={p.salaryType === 'Monthly' ? `e.g. ${getCurrencySymbol(p.currency)}40,000` : `e.g. ${getCurrencySymbol(p.currency)}5,00,000`} value={p.currentSalary || ''} onChange={e => setP('currentSalary', formatIndianNumber(e.target.value))} />
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {currentSalaryDisplayLabel} {fCurrentSalary.isRequired && <span className="text-red-500">*</span>}
+              </label>
+              <input 
+                type="text" 
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" 
+                placeholder={currentSalaryDisplayPlaceholder} 
+                value={p.currentSalary || ''} 
+                onChange={e => setP('currentSalary', formatIndianNumber(e.target.value))} 
+              />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Expected Salary</label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" placeholder={p.salaryType === 'Monthly' ? `e.g. ${getCurrencySymbol(p.currency)}60,000` : `e.g. ${getCurrencySymbol(p.currency)}8,00,000`} value={p.expectedSalary || ''} onChange={e => setP('expectedSalary', formatIndianNumber(e.target.value))} />
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {expectedSalaryDisplayLabel} {fExpectedSalary.isRequired && <span className="text-red-500">*</span>}
+              </label>
+              <input 
+                type="text" 
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" 
+                placeholder={expectedSalaryDisplayPlaceholder} 
+                value={p.expectedSalary || ''} 
+                onChange={e => setP('expectedSalary', formatIndianNumber(e.target.value))} 
+              />
             </div>
           </div>
 
           <div className="col-span-2">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">Skills</label>
+            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              {fSkills.label} {fSkills.isRequired && <span className="text-red-500">*</span>}
+            </label>
             <div className="flex flex-wrap gap-2 mb-2">
               {(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []).map(skill => (
                 <span key={skill} className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors" onClick={() => removeSkill(skill)} title="Click to remove">
@@ -1446,7 +2053,12 @@ const EmployeeOnboarding = () => {
               ))}
             </div>
             <CustomDropdown
-              options={allSkillsOptions}
+              options={(() => {
+                if (Array.isArray(cmsConfig?.step4?.skillsOptions) && cmsConfig.step4.skillsOptions.length > 0) {
+                  return cmsConfig.step4.skillsOptions.map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt));
+                }
+                return allSkillsOptions;
+              })()}
               value=""
               onChange={val => {
                 if (val) {
@@ -1457,7 +2069,7 @@ const EmployeeOnboarding = () => {
                   }
                 }
               }}
-              placeholder="Search or select a skill to add..."
+              placeholder={fSkills.placeholder || "Search or select a skill to add..."}
             />
             {(() => {
               const suggested = getSuggestedSkills(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []);
@@ -1486,10 +2098,6 @@ const EmployeeOnboarding = () => {
                 </div>
               );
             })()}
-          </div>
-          <div className="col-span-2">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">Major Achievements</label>
-            <textarea className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all h-24 resize-none" value={p.majorAchievements || ''} onChange={e => setP('majorAchievements', e.target.value)} />
           </div>
         </div>
       </div>
@@ -1587,101 +2195,143 @@ const EmployeeOnboarding = () => {
     const fIntroVideo = getStepField('step5', 'introVideo', 'Introductory Video', '1–2 min video introduction. MP4, MOV, WebM (Max: 100MB) or link.', false);
 
     return (
-      <div className="space-y-4 animate-fade-in pb-1">
+      <div className="space-y-6 animate-fade-in pb-1">
         <div className="mb-2 pb-2 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800">{s5Title}</h3>
-          <p className="text-xs text-gray-500">{s5Subtitle}</p>
+          <h3 className="text-xl font-bold text-gray-800">{s5Title}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{s5Subtitle || 'Manage your introductory video, resume, and cover letter.'}</p>
         </div>
 
-        <div className="space-y-3.5">
-          {/* 1 & 2: Side-by-Side Resume & Cover Letter */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {/* Resume Upload */}
-            <div className="flex flex-col justify-between">
-              <label className="block text-xs font-bold text-gray-900 mb-1.5">
-                {fResume.label} {fResume.isRequired && <span className="text-red-500">*</span>}
+        <div className="space-y-6">
+          {/* 1 & 2: Side-by-Side Resume & Cover Letter Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Resume Upload Card */}
+            <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-2xs space-y-3">
+              <label className="block text-sm font-bold text-gray-900">
+                {fResume.label || 'Upload Resume'} {fResume.isRequired && <span className="text-red-500">*</span>}
               </label>
-              <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'resume' ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[90px]`}>
-                <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'resume')} />
-                <div className="flex items-center gap-1.5">
-                  <svg className="h-5 w-5 text-gray-400 group-hover:text-green-500 transition-colors flex-shrink-0" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span className="text-xs font-semibold text-green-600 hover:text-green-500">
-                    {isUploading && uploadingType === 'resume' ? 'Uploading...' : 'Upload resume'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-500 mt-1 font-medium">{fResume.placeholder}</p>
+              <div>
+                <input 
+                  type="file" 
+                  disabled={isUploading} 
+                  accept=".pdf,.doc,.docx" 
+                  className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all" 
+                  onChange={e => handleFileUpload(e, 'resume')} 
+                />
               </div>
-              {docError.resume && <p className="text-[11px] text-red-500 mt-1 font-medium">{docError.resume}</p>}
+              <p className="text-xs text-gray-700 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+              {docError.resume && <p className="text-xs text-red-500 font-medium">{docError.resume}</p>}
               {docs.resume && (
-                <div className="flex items-center justify-between mt-2 bg-green-50/70 p-2 rounded-lg border border-green-100">
-                  <p className="text-xs text-green-800 flex items-center gap-1.5 truncate font-medium">
-                    <svg className="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                    <a href={docs.resume.startsWith('http') ? docs.resume : '#'} target="_blank" rel="noreferrer" className="underline hover:text-green-900 truncate">{getFileName(docs.resume)}</a>
-                  </p>
-                  <button type="button" onClick={() => setDoc('resume', null)} className="text-[11px] text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded hover:bg-red-50 flex-shrink-0">Remove</button>
+                <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 truncate">
+                      <a 
+                        href={docs.resume.startsWith('http') ? docs.resume : '#'} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
+                      >
+                        {getFileName(docs.resume)}
+                      </a>
+                      <p className="text-[11px] text-gray-500 font-medium">Uploaded Document</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setDoc('resume', null)} 
+                    className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0"
+                    title="Remove Resume"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               )}
             </div>
 
-            {/* Cover Letter Upload */}
-            <div className="flex flex-col justify-between">
-              <label className="flex items-center justify-between text-xs font-bold text-gray-900 mb-1.5">
-                <span>{fCoverLetter.label}</span>
+            {/* Cover Letter Upload Card */}
+            <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-2xs space-y-3">
+              <label className="flex items-center justify-between text-sm font-bold text-gray-900">
+                <span>{fCoverLetter.label || 'Upload Cover Letter'}</span>
                 {!fCoverLetter.isRequired ? (
-                  <span className="text-gray-400 font-normal text-[11px]">(Optional)</span>
+                  <span className="text-gray-400 font-medium text-xs">(Optional)</span>
                 ) : (
                   <span className="text-red-500 font-bold ml-1">*</span>
                 )}
               </label>
-              <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'coverLetter' ? 'border-gray-300 opacity-50' : 'border-gray-300'} rounded-xl bg-gray-50 text-center hover:bg-gray-100 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[90px]`}>
-                <input type="file" disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept=".pdf,.doc,.docx,.rtf" onChange={e => handleFileUpload(e, 'coverLetter')} />
-                <div className="flex items-center gap-1.5">
-                  <svg className="h-5 w-5 text-gray-400 group-hover:text-green-500 transition-colors flex-shrink-0" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span className="text-xs font-semibold text-green-600 hover:text-green-500">
-                    {isUploading && uploadingType === 'coverLetter' ? 'Uploading...' : 'Upload cover letter'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-500 mt-1 font-medium">{fCoverLetter.placeholder}</p>
+              <div>
+                <input 
+                  type="file" 
+                  disabled={isUploading} 
+                  accept=".pdf,.doc,.docx" 
+                  className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all" 
+                  onChange={e => handleFileUpload(e, 'coverLetter')} 
+                />
               </div>
-              {docError.coverLetter && <p className="text-[11px] text-red-500 mt-1 font-medium">{docError.coverLetter}</p>}
+              <p className="text-xs text-gray-700 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+              {docError.coverLetter && <p className="text-xs text-red-500 font-medium">{docError.coverLetter}</p>}
               {docs.coverLetter && (
-                <div className="flex items-center justify-between mt-2 bg-green-50/70 p-2 rounded-lg border border-green-100">
-                  <p className="text-xs text-green-800 flex items-center gap-1.5 truncate font-medium">
-                    <svg className="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                    <a href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} target="_blank" rel="noreferrer" className="underline hover:text-green-900 truncate">{getFileName(docs.coverLetter)}</a>
-                  </p>
-                  <button type="button" onClick={() => setDoc('coverLetter', null)} className="text-[11px] text-red-500 hover:text-red-700 font-semibold px-1.5 py-0.5 rounded hover:bg-red-50 flex-shrink-0">Remove</button>
+                <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 truncate">
+                      <a 
+                        href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
+                      >
+                        {getFileName(docs.coverLetter)}
+                      </a>
+                      <p className="text-[11px] text-gray-500 font-medium">Uploaded Document</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setDoc('coverLetter', null)} 
+                    className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0"
+                    title="Remove Cover Letter"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* 3. Introductory Video Section (Below Resume & Cover Letter) */}
-          <div className="bg-gradient-to-br from-emerald-50/30 via-white to-gray-50 p-3.5 rounded-xl border border-emerald-100/80 shadow-xs space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
+          {/* 3: Introductory Video Card */}
+          <div className="p-6 border border-emerald-200 rounded-2xl bg-white shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <label className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  {fIntroVideo.label} {!fIntroVideo.isRequired ? <span className="text-gray-400 font-normal text-[11px]">(Optional)</span> : <span className="text-red-500 font-bold ml-1">*</span>}
+                <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                  {fIntroVideo.label || 'Introductory Video'} {!fIntroVideo.isRequired ? <span className="text-gray-400 font-normal text-xs">(Optional)</span> : <span className="text-red-500 font-bold ml-1">*</span>}
                 </label>
-                <p className="text-[11px] text-gray-500">{fIntroVideo.placeholder}</p>
+                <p className="text-xs text-gray-500 mt-0.5">Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.</p>
               </div>
-              <div className="flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-semibold flex-shrink-0">
+              <div className="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold self-start">
                 <button
                   type="button"
                   onClick={() => setVideoMode('upload')}
-                  className={`px-2.5 py-0.5 rounded-md transition-all ${videoMode === 'upload' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                  className={`px-3 py-1 rounded-lg transition-all ${videoMode === 'upload' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
                 >
                   Upload File
                 </button>
                 <button
                   type="button"
                   onClick={() => setVideoMode('link')}
-                  className={`px-2.5 py-0.5 rounded-md transition-all ${videoMode === 'link' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
+                  className={`px-3 py-1 rounded-lg transition-all ${videoMode === 'link' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
                 >
                   Paste Link
                 </button>
@@ -1690,7 +2340,7 @@ const EmployeeOnboarding = () => {
 
             {/* Mode 1: File Upload */}
             {videoMode === 'upload' && !docs.introVideo && (
-              <div className={`p-4 border-2 border-dashed ${isUploading && uploadingType === 'introVideo' ? 'border-green-400 bg-green-50/40' : 'border-gray-200'} rounded-xl bg-white text-center hover:bg-emerald-50/20 hover:border-green-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center`}>
+              <div className={`p-6 border-2 border-dashed ${isUploading && uploadingType === 'introVideo' ? 'border-emerald-400 bg-emerald-50/40' : 'border-gray-300'} rounded-2xl bg-white text-center hover:border-emerald-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[140px]`}>
                 <input 
                   type="file" 
                   disabled={isUploading} 
@@ -1698,21 +2348,25 @@ const EmployeeOnboarding = () => {
                   accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.mov,.webm,.mkv,.m4v" 
                   onChange={e => handleFileUpload(e, 'introVideo')} 
                 />
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="mx-auto w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1">
+                  {isUploading && uploadingType === 'introVideo' ? (
+                    <svg className="animate-spin w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                  </div>
-                  <span className="text-xs font-semibold text-green-600 hover:text-green-500">
-                    {isUploading && uploadingType === 'introVideo' ? `Uploading Video (${videoUploadProgress}%)...` : 'Upload video file'}
-                  </span>
-                  <span className="text-xs text-gray-500">or drag and drop</span>
+                  )}
                 </div>
-                <p className="text-[10.5px] text-gray-400 mt-1 font-medium">MP4, MOV, WebM, M4V (Max: 100MB)</p>
+                <p className="text-sm font-bold text-emerald-600">
+                  {isUploading && uploadingType === 'introVideo' ? `Uploading Video (${videoUploadProgress}%)...` : 'Click or drag video to upload'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5 font-medium">MP4, MOV, WebM up to 100MB</p>
                 
                 {isUploading && uploadingType === 'introVideo' && (
-                  <div className="w-full max-w-xs mx-auto mt-2">
+                  <div className="w-full max-w-xs mx-auto mt-3">
                     <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                       <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${videoUploadProgress}%` }}></div>
                     </div>
@@ -1723,57 +2377,30 @@ const EmployeeOnboarding = () => {
 
             {/* Mode 2: Link Input */}
             {videoMode === 'link' && !docs.introVideo && (
-              <div className="bg-white p-2.5 rounded-xl border border-gray-200 space-y-1.5">
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
                 <div className="flex gap-2">
                   <input
                     type="url"
                     placeholder="e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link"
                     value={videoLink}
                     onChange={(e) => setVideoLink(e.target.value)}
-                    className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+                    className="flex-1 px-3.5 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-green-500 font-medium"
                   />
                   <button
                     type="button"
                     onClick={handleAttachVideoLink}
-                    className="px-3.5 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-xs flex-shrink-0"
+                    className="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors shadow-xs flex-shrink-0"
                   >
                     Attach
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-400">YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.</p>
+                <p className="text-[11px] text-gray-400">Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.</p>
               </div>
             )}
 
-            {docError.introVideo && (
-              <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs shadow-xs animate-shake">
-                <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <div className="flex-1">
-                  <span className="font-bold block text-red-800">Cannot upload video:</span>
-                  <p className="mt-0.5 leading-relaxed">{docError.introVideo}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDocError(prev => ({ ...prev, introVideo: '' }))}
-                  className="text-red-400 hover:text-red-700 p-0.5 rounded transition-colors"
-                  title="Dismiss"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-            )}
-
-            {/* Attached Video Preview */}
             {docs.introVideo && (
-              <div className="p-2.5 bg-white border border-gray-200 rounded-xl space-y-2">
+              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Video Ready
-                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -1828,7 +2455,7 @@ const EmployeeOnboarding = () => {
         <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm space-y-2">
           <h4 className="font-bold text-gray-800 border-b pb-2 mb-2">Work Experience</h4>
           {formData.isFresher ? (
-            <p className="font-medium text-palette-900">Fresher (No Experience)</p>
+            <p className="font-medium text-palette-900">Fresher</p>
           ) : (!formData.experience || formData.experience.length === 0) ? (
             <p className="text-gray-500 italic">N/A</p>
           ) : (

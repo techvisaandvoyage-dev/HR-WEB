@@ -4,6 +4,8 @@ import ImageCropperModal from '../common/ImageCropperModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
 import CustomDropdown from '../common/CustomDropdown';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
+import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
+import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
@@ -12,6 +14,18 @@ import { uploadVideoToMux } from '../../utils/muxUpload';
 import VideoPlayer from '../common/VideoPlayer';
 import AccountSecuritySection from './AccountSecuritySection';
 import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
+import { DEFAULT_EDUCATION_DATA, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, sortQualifications, sortExperience } from './EmployeeOnboarding';
+
+const DEFAULT_FUNCTIONS_DATA = {
+  'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
+  'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
+  'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
+  'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
+  'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
+  'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
+  'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"],
+  'Other': ["Product Manager", "Project Manager", "Business Analyst", "Operations Manager"]
+};
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -93,12 +107,51 @@ const educationTypeOptions = [
   { value: 'Other', label: 'Other' },
 ];
 
-const gradingSystemOptions = [
-  { value: 'Scale 10 Grading System', label: 'Scale 10 Grading System' },
-  { value: 'Scale 4 Grading System', label: 'Scale 4 Grading System' },
-  { value: '% Marks of 100 Maximum', label: '% Marks of 100 Maximum' },
-  { value: 'Not Applicable', label: 'Not Applicable' }
+export const DEFAULT_GRADING_SYSTEMS = [
+  {
+    name: 'Scale 10 Grading System',
+    label: 'Grade (out of 10)',
+    placeholder: 'e.g. 8.5'
+  },
+  {
+    name: 'Scale 4 Grading System',
+    label: 'Grade (out of 4)',
+    placeholder: 'e.g. 3.6'
+  },
+  {
+    name: '% Marks of 100 Maximum',
+    label: 'Marks / Percentage (%)',
+    placeholder: 'e.g. 85'
+  },
+  {
+    name: 'Not Applicable',
+    label: 'Marks / Grade (Optional)',
+    placeholder: 'e.g. Grade or Marks'
+  }
 ];
+
+export const normalizeGradingSystems = (list) => {
+  if (!Array.isArray(list) || list.length === 0) return DEFAULT_GRADING_SYSTEMS;
+  return list.map(item => {
+    if (typeof item === 'string') {
+      if (item === 'Scale 10 Grading System') {
+        return { name: item, label: 'Grade (out of 10)', placeholder: 'e.g. 8.5' };
+      } else if (item === 'Scale 4 Grading System') {
+        return { name: item, label: 'Grade (out of 4)', placeholder: 'e.g. 3.6' };
+      } else if (item === '% Marks of 100 Maximum') {
+        return { name: item, label: 'Marks / Percentage (%)', placeholder: 'e.g. 85' };
+      } else if (item === 'Not Applicable') {
+        return { name: item, label: 'Marks / Grade (Optional)', placeholder: 'e.g. Grade or Marks' };
+      }
+      return { name: item, label: `${item} Marks / Grade`, placeholder: 'Enter grade or marks' };
+    }
+    return {
+      name: item.name || '',
+      label: item.label || 'Marks / Grade',
+      placeholder: item.placeholder || 'Enter grade or marks'
+    };
+  });
+};
 
 const startYearOptions = Array.from({length: 30}, (_, i) => {
   const year = new Date().getFullYear() - i;
@@ -226,6 +279,12 @@ const professionalQualifications = [
   { value: 'CGMA', label: 'CGMA' }
 ];
 
+export const DEFAULT_COURSE_TYPE_OPTIONS = [
+  'Full time',
+  'Part time',
+  'Correspondence/Distance learning'
+];
+
 const accountingSoftwareCourses = [
   { value: 'Tally / TallyPrime', label: 'Tally / TallyPrime' },
   { value: 'Tally + GST', label: 'Tally + GST' },
@@ -306,13 +365,15 @@ const employmentTypeOptions = [
   { value: 'Internship', label: 'Internship' }
 ];
 
-const noticePeriodOptions = [
-  { value: '15 Days', label: '15 Days' },
-  { value: '30 Days', label: '30 Days' },
-  { value: '60 Days', label: '60 Days' },
-  { value: '90+ Days', label: '90+ Days' },
-  { value: 'Immediately available', label: 'Immediately available' }
+export const DEFAULT_NOTICE_PERIOD_OPTIONS = [
+  '15 Days',
+  '30 Days',
+  '60 Days',
+  '90+ Days',
+  'Immediately available'
 ];
+
+export const noticePeriodOptions = DEFAULT_NOTICE_PERIOD_OPTIONS.map(opt => ({ value: opt, label: opt }));
 
 const designationOptions = [
   // Tech & Engineering
@@ -414,7 +475,6 @@ const EmployeeProfile = () => {
   const [isEditingBasicOnMobile, setIsEditingBasicOnMobile] = useState(false);
   const [isEditingSummaryOnMobile, setIsEditingSummaryOnMobile] = useState(false);
   const [isEditingProfOverviewMobile, setIsEditingProfOverviewMobile] = useState(false);
-  const [isEditingSkillsMobile, setIsEditingSkillsMobile] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: 'Yash Raj',
@@ -441,13 +501,68 @@ const EmployeeProfile = () => {
   });
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [cmsConfig, setCmsConfig] = useState(null);
+  const [phoneError, setPhoneError] = useState('');
+
+  const checkPhoneAvailability = async (phoneVal) => {
+    const cleanPhone = String(phoneVal !== undefined ? phoneVal : (formData.phone || '')).trim();
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setPhoneError('');
+      return true;
+    }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employee/auth/check-mobile-available`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          mobile: cleanPhone, 
+          currentEmail: formData.email 
+        })
+      });
+      const data = await res.json();
+      if (data && data.available === false) {
+        setPhoneError(data.message || 'This phone number is already registered with another account.');
+        return false;
+      } else {
+        setPhoneError('');
+        return true;
+      }
+    } catch (err) {
+      console.error('Error checking phone availability in EmployeeProfile:', err);
+      return true;
+    }
+  };
+
+  useEffect(() => {
+    const fetchCms = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
+        const data = await res.json();
+        if (data.success && data.data?.employeeOnboarding) {
+          setCmsConfig(data.data.employeeOnboarding);
+        } else if (data?.employeeOnboarding) {
+          setCmsConfig(data.employeeOnboarding);
+        }
+      } catch (err) {
+        console.error("Failed to fetch CMS config in EmployeeProfile:", err);
+      }
+    };
+    fetchCms();
+  }, []);
 
   useEffect(() => {
     const fetchLatestProfile = async () => {
       const saved = localStorage.getItem('userProfile');
       if (saved) {
         try {
-          setFormData(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          if (parsed.qualifications && Array.isArray(parsed.qualifications)) {
+            parsed.qualifications = sortQualifications(parsed.qualifications);
+          }
+          if (parsed.experience && Array.isArray(parsed.experience)) {
+            parsed.experience = sortExperience(parsed.experience);
+          }
+          setFormData(parsed);
         } catch (e) {
           console.error("Failed to parse profile data");
         }
@@ -463,6 +578,8 @@ const EmployeeProfile = () => {
             setFormData(prev => ({
               ...prev,
               ...data,
+              qualifications: data.qualifications ? sortQualifications(data.qualifications) : sortQualifications(prev.qualifications),
+              experience: data.experience ? sortExperience(data.experience) : (prev.experience ? sortExperience(prev.experience) : prev.experience),
               documents: {
                 ...(prev.documents || {}),
                 resume: data.resume || prev.documents?.resume || '',
@@ -480,8 +597,20 @@ const EmployeeProfile = () => {
         setIsLoaded(true);
       }
     };
+
     fetchLatestProfile();
   }, []);
+
+  // Ensure any primary qualification is continuously kept at index 0
+  useEffect(() => {
+    if (formData.qualifications && Array.isArray(formData.qualifications)) {
+      const primaryIdx = formData.qualifications.findIndex(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1));
+      if (primaryIdx > 0) {
+        const sorted = sortQualifications(formData.qualifications);
+        setFormData(prev => ({ ...prev, qualifications: sorted }));
+      }
+    }
+  }, [formData.qualifications]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -492,7 +621,7 @@ const EmployeeProfile = () => {
         try {
           const token = localStorage.getItem('employeeToken');
           if (token) {
-            await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -500,6 +629,12 @@ const EmployeeProfile = () => {
               },
               body: JSON.stringify(formData)
             });
+            const data = await res.json();
+            if (!res.ok && data && data.field === 'phone') {
+              setPhoneError(data.message || 'This phone number is already registered with another account.');
+            } else if (res.ok) {
+              setPhoneError('');
+            }
           }
         } catch (err) {
           console.error("Profile autosave error:", err);
@@ -657,8 +792,24 @@ const EmployeeProfile = () => {
     return "Uploaded Document (Click to view)";
   };
   const updateArray = (field, index, key, value) => {
-    const newArr = [...(formData[field] || [])];
-    newArr[index] = { ...newArr[index], [key]: value };
+    let newArr = [...(formData[field] || [])];
+    if (field === 'qualifications' && key === 'isPrimary') {
+      if (value) {
+        // Set all other qualifications isPrimary to false
+        newArr = newArr.map((item, i) => ({
+          ...item,
+          isPrimary: i === index
+        }));
+        // Move marked primary item to index 0 (first in order)
+        const [primaryItem] = newArr.splice(index, 1);
+        newArr.unshift(primaryItem);
+        setExpandedEduIndex(0);
+      } else {
+        newArr[index] = { ...newArr[index], isPrimary: false };
+      }
+    } else {
+      newArr[index] = { ...newArr[index], [key]: value };
+    }
     setFormData({ ...formData, [field]: newArr });
   };
   const addArrayItem = (field, defaultObj) => {
@@ -701,11 +852,11 @@ const EmployeeProfile = () => {
   };
 
   const tabs = [
-    { id: 'basic', label: 'Basic Details' },
-    { id: 'education', label: 'Education' },
-    { id: 'experience', label: 'Work Experience' },
-    { id: 'professional', label: 'Professional Overview' },
-    { id: 'documents', label: 'Documents' },
+    { id: 'basic', label: cmsConfig?.step1?.title || 'Basic Details' },
+    { id: 'education', label: cmsConfig?.step2?.title || 'Education' },
+    { id: 'experience', label: cmsConfig?.step3?.title || 'Work Experience' },
+    { id: 'professional', label: cmsConfig?.step4?.title || 'Professional Overview' },
+    { id: 'documents', label: cmsConfig?.step5?.title || 'Documents' },
     { id: 'security', label: 'Security & Password' },
   ];
 
@@ -1003,7 +1154,7 @@ const EmployeeProfile = () => {
       {/* 4. Basic Details Card */}
       <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-gray-800">Basic details</h3>
+          <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step1?.title || 'Basic details'}</h3>
           {!isEditingBasicOnMobile && (
             <button className="text-[#6B7280] hover:text-[#2563EB] transition-colors" onClick={() => setIsEditingBasicOnMobile(true)}>
               <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1016,29 +1167,69 @@ const EmployeeProfile = () => {
         {isEditingBasicOnMobile ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">First Name</label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.firstName || ''} onChange={e => setFormData({...formData, firstName: e.target.value})} />
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {getStepField('step1', 'firstName', 'First Name', 'Enter first name').label}
+                {getStepField('step1', 'firstName').isRequired && <span className="text-red-500">*</span>}
+              </label>
+              <input type="text" placeholder={getStepField('step1', 'firstName', 'First Name', 'Enter first name').placeholder} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.firstName || ''} onChange={e => setFormData({...formData, firstName: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name</label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.lastName || ''} onChange={e => setFormData({...formData, lastName: e.target.value})} />
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {getStepField('step1', 'lastName', 'Last Name', 'Enter last name').label}
+                {getStepField('step1', 'lastName').isRequired && <span className="text-red-500">*</span>}
+              </label>
+              <input type="text" placeholder={getStepField('step1', 'lastName', 'Last Name', 'Enter last name').placeholder} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.lastName || ''} onChange={e => setFormData({...formData, lastName: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number</label>
-              <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').label}
+                {getStepField('step1', 'phone').isRequired && <span className="text-red-500">*</span>}
+              </label>
+              <input 
+                type="text" 
+                placeholder={getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').placeholder}
+                className={`w-full px-4 py-3 bg-white border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                value={formData.phone || ''} 
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({...formData, phone: val});
+                  setPhoneError('');
+                  if (val.length === 10) checkPhoneAvailability(val);
+                }}
+                onBlur={() => {
+                  if (formData.phone && formData.phone.length === 10) checkPhoneAvailability(formData.phone);
+                }}
+              />
+              {phoneError && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {phoneError}
+                </p>
+              )}
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Email (Read Only)</label>
-              <input type="text" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {getStepField('step1', 'email', 'Email (Read Only)', 'Enter email address').label}
+              </label>
+              <input type="text" disabled placeholder={getStepField('step1', 'email', 'Email (Read Only)', 'Enter email address').placeholder} className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location</label>
+              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                {getStepField('step1', 'location', 'Current Location', 'Select Current Location').label}
+                {getStepField('step1', 'location').isRequired && <span className="text-red-500">*</span>}
+              </label>
               <MultiSelectLocationDropdown
-                options={currentLocationOptions}
+                options={(Array.isArray(cmsConfig?.step1?.locationCities) && cmsConfig.step1.locationCities.length > 0)
+                  ? cmsConfig.step1.locationCities
+                      .filter(c => c !== 'Anywhere in India' && c !== 'Anywhere in India/Multiple Locations')
+                      .map(loc => ({ label: loc, value: loc, displayName: loc }))
+                  : currentLocationOptions}
                 value={formData.location || ''}
                 onChange={(val) => setFormData({...formData, location: val})}
                 multiple={false}
-                placeholder="Select Current Location"
+                placeholder={getStepField('step1', 'location', 'Current Location', 'Select Current Location').placeholder}
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
               />
             </div>
@@ -1149,146 +1340,257 @@ const EmployeeProfile = () => {
     </>
   );
 
-  const handleAddEducation = (e) => {
-    e.preventDefault();
-    const qualifications = formData.qualifications || [];
-    if (qualifications.length > 0) {
-      const lastEdu = qualifications[qualifications.length - 1];
-      let isValid = true;
-      const errors = {};
-      if (!lastEdu.educationType) {
-        isValid = false;
-        errors.educationType = true;
-      } else {
-        const isSchool = lastEdu.educationType === '10th' || lastEdu.educationType === '12th';
-        if (isSchool) {
-          if (!lastEdu.board) errors.board = true;
-          if (!lastEdu.endYear) errors.endYear = true;
-          if (!lastEdu.schoolMedium) errors.schoolMedium = true;
-          if (!lastEdu.percentage) errors.percentage = true;
-        } else {
-          if (!lastEdu.university) errors.university = true;
-          if (!lastEdu.course) errors.course = true;
-          if (!lastEdu.courseType) errors.courseType = true;
-          if (!lastEdu.startYear) errors.startYear = true;
-          if (!lastEdu.endYear) errors.endYear = true;
-          if (lastEdu.gradingSystem && lastEdu.gradingSystem !== 'Not Applicable' && !lastEdu.percentage) errors.percentage = true;
+  const scrollToTarget = (targetId) => {
+    setTimeout(() => {
+      let targetEl = targetId ? document.getElementById(targetId) : null;
+      if (!targetEl && targetId) {
+        targetEl = document.querySelector(`[id="${targetId}"]`);
+      }
+      if (!targetEl) {
+        targetEl = document.querySelector('.border-red-500, .ring-red-500, [aria-invalid="true"]');
+      }
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const inputEl = targetEl.tagName === 'INPUT' || targetEl.tagName === 'SELECT' || targetEl.tagName === 'TEXTAREA'
+          ? targetEl
+          : targetEl.querySelector('input, select, textarea, button');
+        if (inputEl) {
+          inputEl.focus({ preventScroll: true });
         }
-        if (Object.keys(errors).length > 0) isValid = false;
       }
-      setEduFieldErrors(errors);
-      if (!isValid) {
-        setEduError('Fill details');
-        return;
+    }, 120);
+  };
+
+  const validateEducationData = (targetIdx = null) => {
+    const qualifications = formData.qualifications || [];
+    if (qualifications.length === 0) return { isValid: true };
+    const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
+    const isPercentageRequired = cmsConfig?.step2?.fields?.percentage?.isRequired !== false;
+
+    const indicesToCheck = (targetIdx !== null && targetIdx !== undefined && targetIdx >= 0) 
+      ? [targetIdx] 
+      : Array.from({ length: qualifications.length }, (_, i) => i);
+
+    for (const eduIdx of indicesToCheck) {
+      const currentEdu = qualifications[eduIdx];
+      if (!currentEdu) continue;
+      const errors = {};
+      let hasError = false;
+      let firstMissingId = null;
+
+      if (!currentEdu.educationType) {
+        errors.educationType = true;
+        hasError = true;
+        firstMissingId = `field-edu-type-${eduIdx}`;
+      } else {
+        const currentEduConfig = eduData[currentEdu.educationType];
+        const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (currentEdu.educationType === '10th' || currentEdu.educationType === '12th');
+        if (isSchool) {
+          if (!currentEdu.board) { errors.board = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-board-${eduIdx}`; }
+          if (!currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
+          if (!currentEdu.schoolMedium) { errors.schoolMedium = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-schoolMedium-${eduIdx}`; }
+          if (isPercentageRequired && !currentEdu.percentage) { errors.percentage = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`; }
+        } else {
+          if (!currentEdu.university) { errors.university = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-university-${eduIdx}`; }
+          if (!currentEdu.course) { errors.course = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-course-${eduIdx}`; }
+          if (!currentEdu.courseType) { errors.courseType = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-courseType-${eduIdx}`; }
+          if (!currentEdu.startYear) { errors.startYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-startYear-${eduIdx}`; }
+          if (!currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
+          if (isPercentageRequired && currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable' && !currentEdu.percentage) {
+            errors.percentage = true;
+            hasError = true;
+            if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+          }
+        }
       }
+
+      if (hasError) {
+        return {
+          isValid: false,
+          eduIdx,
+          errors,
+          targetFieldId: firstMissingId
+        };
+      }
+    }
+    return { isValid: true };
+  };
+
+  const handleAddEducation = (e) => {
+    if (e) e.preventDefault();
+    const result = validateEducationData();
+    if (!result.isValid) {
+      setExpandedEduIndex(result.eduIdx);
+      setEduFieldErrors(result.errors);
+      setEduError('Fill details');
+      scrollToTarget(result.targetFieldId);
+      return;
     }
     setEduError('');
     setEduFieldErrors({});
-    setExpandedEduIndex(qualifications.length);
+    const newIdx = (formData.qualifications || []).length;
+    setExpandedEduIndex(newIdx);
     addArrayItem('qualifications', { educationType: '', board: '', endYear: '', schoolMedium: '', percentage: '', university: '', course: '', startYear: '', gradingSystem: '', isPrimary: false });
+    scrollToTarget(`field-edu-type-${newIdx}`);
   };
 
   const handleSaveEducation = (e) => {
     if (e) e.preventDefault();
-    const qualifications = formData.qualifications || [];
-    if (qualifications.length > 0 && expandedEduIndex >= 0 && expandedEduIndex < qualifications.length) {
-      const currentEdu = qualifications[expandedEduIndex];
-      let isValid = true;
-      const errors = {};
-      if (!currentEdu.educationType) {
-        isValid = false;
-        errors.educationType = true;
-      } else {
-        const isSchool = currentEdu.educationType === '10th' || currentEdu.educationType === '12th';
-        if (isSchool) {
-          if (!currentEdu.board) errors.board = true;
-          if (!currentEdu.endYear) errors.endYear = true;
-          if (!currentEdu.schoolMedium) errors.schoolMedium = true;
-          if (!currentEdu.percentage) errors.percentage = true;
-        } else {
-          if (!currentEdu.university) errors.university = true;
-          if (!currentEdu.course) errors.course = true;
-          if (!currentEdu.courseType) errors.courseType = true;
-          if (!currentEdu.startYear) errors.startYear = true;
-          if (!currentEdu.endYear) errors.endYear = true;
-          if (currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable' && !currentEdu.percentage) errors.percentage = true;
-        }
-        if (Object.keys(errors).length > 0) isValid = false;
-      }
-      setEduFieldErrors(errors);
-      if (!isValid) {
-        setEduError('Fill details');
-        return;
-      }
+    const result = validateEducationData(expandedEduIndex >= 0 ? expandedEduIndex : null);
+    if (!result.isValid) {
+      setExpandedEduIndex(result.eduIdx);
+      setEduFieldErrors(result.errors);
+      setEduError('Fill details');
+      scrollToTarget(result.targetFieldId);
+      return;
     }
+    let updatedQuals = sortQualifications([...(formData.qualifications || [])]);
+    const nextFormData = { ...formData, qualifications: updatedQuals };
+    setFormData(nextFormData);
+    localStorage.setItem('userProfile', JSON.stringify(nextFormData));
+
     setEduError('');
     setEduFieldErrors({});
     setExpandedEduIndex(-1);
   };
 
-  const handleAddExperience = (e) => {
-    if (e) e.preventDefault();
+  const getStepField = (stepKey, fieldKey, defaultLabel, defaultPlaceholder, defaultRequired = true) => {
+    const field = cmsConfig?.[stepKey]?.fields?.[fieldKey];
+    return {
+      label: field?.label || defaultLabel,
+      placeholder: field?.placeholder || defaultPlaceholder,
+      isRequired: field?.isRequired !== undefined ? field.isRequired : defaultRequired
+    };
+  };
+
+  const validateExperienceData = (targetIdx = null) => {
+    if (formData.isFresher === true) return { isValid: true };
     const experience = formData.experience || [];
-    if (experience.length > 0) {
-      const lastExp = experience[experience.length - 1];
-      let isValid = true;
+    if (experience.length === 0) return { isValid: true };
+
+    const fCompany = getStepField('step3', 'companyName', 'Company Name', 'Enter company name', true);
+    const fJobTitle = getStepField('step3', 'jobTitle', 'Job Title / Role', 'Enter job title', true);
+    const fEmpType = getStepField('step3', 'employmentType', 'Employment Type', 'Select employment type', true);
+    const fJoining = getStepField('step3', 'joiningDate', 'Joining Date', 'Select month & year', true);
+    const fLeaving = getStepField('step3', 'leavingDate', 'Leaving Date', 'Select month & year', true);
+    const fRoleDesc = getStepField('step3', 'roleDescription', 'Roles & Responsibilities', 'Briefly describe your roles & responsibilities', false);
+
+    const indicesToCheck = (targetIdx !== null && targetIdx !== undefined && targetIdx >= 0)
+      ? [targetIdx]
+      : Array.from({ length: experience.length }, (_, i) => i);
+
+    for (const cIdx of indicesToCheck) {
+      const exp = experience[cIdx];
+      if (!exp) continue;
       const errors = { roles: [] };
-      if (!lastExp.companyName) {
-        isValid = false;
+      let hasError = false;
+      let firstMissingId = null;
+      let firstInvalidRoleIdx = 0;
+
+      if (fCompany.isRequired && !exp.companyName?.trim()) {
         errors.companyName = true;
+        hasError = true;
+        firstMissingId = `field-exp-company-${cIdx}`;
       }
-      if (lastExp.roles) {
-        lastExp.roles.forEach((role, idx) => {
+
+      if (exp.roles && exp.roles.length > 0) {
+        exp.roles.forEach((role, rIdx) => {
           const roleErrors = {};
-          if (!role.jobTitle) { isValid = false; roleErrors.jobTitle = true; }
-          if (!role.employmentType) { isValid = false; roleErrors.employmentType = true; }
-          if (!role.joiningDate) { isValid = false; roleErrors.joiningDate = true; }
-          if (!role.currentCompany && !role.leavingDate) { isValid = false; roleErrors.leavingDate = true; }
-          errors.roles[idx] = roleErrors;
+          if (fJobTitle.isRequired && !role.jobTitle?.trim()) {
+            roleErrors.jobTitle = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-jobTitle-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fEmpType.isRequired && !role.employmentType) {
+            roleErrors.employmentType = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-empType-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fJoining.isRequired && !role.joiningDate) {
+            roleErrors.joiningDate = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-joiningDate-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fLeaving.isRequired && !role.currentCompany && !role.leavingDate) {
+            roleErrors.leavingDate = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-leavingDate-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          if (fRoleDesc.isRequired && !role.roleDescription?.trim()) {
+            roleErrors.roleDescription = true;
+            hasError = true;
+            if (!firstMissingId) {
+              firstMissingId = `field-exp-roleDesc-${cIdx}-${rIdx}`;
+              firstInvalidRoleIdx = rIdx;
+            }
+          }
+          errors.roles[rIdx] = roleErrors;
         });
       }
-      setExpFieldErrors(errors);
-      if (!isValid) {
-        setExpError('Fill details');
-        return;
+
+      if (hasError) {
+        return {
+          isValid: false,
+          cIdx,
+          rIdx: firstInvalidRoleIdx,
+          errors,
+          targetFieldId: firstMissingId
+        };
       }
+    }
+
+    return { isValid: true };
+  };
+
+  const handleAddExperience = (e) => {
+    if (e) e.preventDefault();
+    const result = validateExperienceData();
+    if (!result.isValid) {
+      setExpandedExpIndex(result.cIdx);
+      setExpandedRoleIndex(result.rIdx);
+      setExpFieldErrors(result.errors);
+      setExpError('Fill details');
+      scrollToTarget(result.targetFieldId);
+      return;
     }
     setExpError('');
     setExpFieldErrors({});
-    setExpandedExpIndex(experience.length);
+    const newIdx = (formData.experience || []).length;
+    setExpandedExpIndex(newIdx);
     setExpandedRoleIndex(0);
     addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] });
+    scrollToTarget(`field-exp-company-${newIdx}`);
   };
 
   const handleSaveExperience = (e) => {
     if (e) e.preventDefault();
-    const experience = formData.experience || [];
-    if (experience.length > 0 && expandedExpIndex >= 0 && expandedExpIndex < experience.length) {
-      const currentExp = experience[expandedExpIndex];
-      let isValid = true;
-      const errors = { roles: [] };
-      if (!currentExp.companyName) {
-        isValid = false;
-        errors.companyName = true;
-      }
-      if (currentExp.roles) {
-        currentExp.roles.forEach((role, idx) => {
-          const roleErrors = {};
-          if (!role.jobTitle) { isValid = false; roleErrors.jobTitle = true; }
-          if (!role.employmentType) { isValid = false; roleErrors.employmentType = true; }
-          if (!role.joiningDate) { isValid = false; roleErrors.joiningDate = true; }
-          if (!role.currentCompany && !role.leavingDate) { isValid = false; roleErrors.leavingDate = true; }
-          errors.roles[idx] = roleErrors;
-        });
-      }
-      setExpFieldErrors(errors);
-      if (!isValid) {
-        setExpError('Fill details');
-        return;
-      }
+    const result = validateExperienceData(expandedExpIndex >= 0 ? expandedExpIndex : null);
+    if (!result.isValid) {
+      setExpandedExpIndex(result.cIdx);
+      setExpandedRoleIndex(result.rIdx);
+      setExpFieldErrors(result.errors);
+      setExpError('Fill details');
+      scrollToTarget(result.targetFieldId);
+      return;
     }
     setExpError('');
     setExpFieldErrors({});
+    const sorted = sortExperience(formData.experience || []);
+    const nextFormData = { ...formData, experience: sorted };
+    setFormData(nextFormData);
+    localStorage.setItem('userProfile', JSON.stringify(nextFormData));
     setExpandedExpIndex(-1);
   };
 
@@ -1606,41 +1908,84 @@ const EmployeeProfile = () => {
                 {/* Continuous Sections */}
                 <section id="basic" className="hidden md:block scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
               <div className="mb-6 pb-2 border-b border-gray-100">
-                <h3 className="text-xl font-bold text-gray-800">Basic Details</h3>
+                <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step1?.title || 'Basic Details'}</h3>
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">First Name</label>
-                  <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.firstName || ''} onChange={e => setFormData({...formData, firstName: e.target.value})} />
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                    {getStepField('step1', 'firstName', 'First Name', 'Enter first name').label}
+                    {getStepField('step1', 'firstName').isRequired && <span className="text-red-500">*</span>}
+                  </label>
+                  <input type="text" placeholder={getStepField('step1', 'firstName', 'First Name', 'Enter first name').placeholder} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.firstName || ''} onChange={e => setFormData({...formData, firstName: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Last Name</label>
-                  <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.lastName || ''} onChange={e => setFormData({...formData, lastName: e.target.value})} />
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                    {getStepField('step1', 'lastName', 'Last Name', 'Enter last name').label}
+                    {getStepField('step1', 'lastName').isRequired && <span className="text-red-500">*</span>}
+                  </label>
+                  <input type="text" placeholder={getStepField('step1', 'lastName', 'Last Name', 'Enter last name').placeholder} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.lastName || ''} onChange={e => setFormData({...formData, lastName: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Phone Number</label>
-                  <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                    {getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').label}
+                    {getStepField('step1', 'phone').isRequired && <span className="text-red-500">*</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder={getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').placeholder}
+                    className={`w-full px-4 py-3 bg-white border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                    value={formData.phone || ''} 
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({...formData, phone: val});
+                      setPhoneError('');
+                      if (val.length === 10) checkPhoneAvailability(val);
+                    }}
+                    onBlur={() => {
+                      if (formData.phone && formData.phone.length === 10) checkPhoneAvailability(formData.phone);
+                    }}
+                  />
+                  {phoneError && (
+                    <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {phoneError}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Email (Read Only)</label>
-                  <input type="text" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                    {getStepField('step1', 'email', 'Email (Read Only)', 'Enter email address').label}
+                  </label>
+                  <input type="text" disabled placeholder={getStepField('step1', 'email', 'Email (Read Only)', 'Enter email address').placeholder} className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Location</label>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                    {getStepField('step1', 'location', 'Current Location', 'Select Current Location').label}
+                    {getStepField('step1', 'location').isRequired && <span className="text-red-500">*</span>}
+                  </label>
                   <MultiSelectLocationDropdown
-                    options={currentLocationOptions}
+                    options={(Array.isArray(cmsConfig?.step1?.locationCities) && cmsConfig.step1.locationCities.length > 0)
+                      ? cmsConfig.step1.locationCities
+                          .filter(c => c !== 'Anywhere in India' && c !== 'Anywhere in India/Multiple Locations')
+                          .map(loc => ({ label: loc, value: loc, displayName: loc }))
+                      : currentLocationOptions}
                     value={formData.location || ''}
                     onChange={(val) => setFormData({...formData, location: val})}
                     multiple={false}
-                    placeholder="Select Current Location"
+                    placeholder={getStepField('step1', 'location', 'Current Location', 'Select Current Location').placeholder}
                     className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Brief about yourself</label>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                    {getStepField('step1', 'brief', 'Brief about yourself', 'I am a passionate professional...').label}
+                    {getStepField('step1', 'brief').isRequired && <span className="text-red-500">*</span>}
+                  </label>
                   <textarea 
                     rows="3"
-                    placeholder="I am a passionate professional..."
+                    placeholder={getStepField('step1', 'brief', 'Brief about yourself', 'I am a passionate professional...').placeholder}
                     className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all custom-scrollbar" 
                     value={formData.brief || ''} 
                     onChange={e => setFormData({...formData, brief: e.target.value})} 
@@ -1652,20 +1997,22 @@ const EmployeeProfile = () => {
               <section id="education" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
                 <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
                   <div>
-                    <h3 className="text-xl font-bold text-gray-800">Education</h3>
-                    <p className="text-sm text-gray-500 mt-1">Details like course, university, and more, help recruiters identify your educational background</p>
+                    <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step2?.title || 'Education'}</h3>
+                    <p className="text-sm text-gray-500 mt-1">{cmsConfig?.step2?.subtitle || 'Details like course, university, and more, help recruiters identify your educational background'}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     {eduError && <span className="text-red-500 text-xs font-medium">{eduError}</span>}
                     <button onClick={handleAddEducation} className="text-green-500 hover:text-green-600 font-semibold text-sm">
-                      Add +
+                      {cmsConfig?.step2?.addBtnText || 'Add +'}
                     </button>
                   </div>
                 </div>
                 
                 <div className="space-y-6">
-                  {(formData.qualifications || []).map((q, idx) => {
-                    const isSchool = q.educationType === '10th' || q.educationType === '12th';
+                  {sortQualifications(formData.qualifications || []).map((q, idx) => {
+                    const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
+                    const currentEduConfig = eduData[q.educationType];
+                    const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (q.educationType === '10th' || q.educationType === '12th');
                     const isHigher = q.educationType && !isSchool;
                     
                     if (expandedEduIndex !== idx) {
@@ -1674,7 +2021,7 @@ const EmployeeProfile = () => {
                           <div className="flex items-center gap-2">
                             <h4 className="font-bold text-gray-900 text-[15px]">
                               {isHigher ? (q.course || q.educationType || 'Higher Education') : 
-                               isSchool ? (q.educationType === '12th' ? 'Class XII' : 'Class X') : 
+                               isSchool ? (q.educationType === '12th' ? 'Class XII' : q.educationType === '10th' ? 'Class X' : (q.board || q.educationType)) : 
                                (q.educationType || 'Education')}
                             </h4>
                             {q.isPrimary && (
@@ -1713,115 +2060,152 @@ const EmployeeProfile = () => {
                         </button>
                         
                         <div className="space-y-6 pt-6 px-4 pb-[140px] md:pt-2 md:px-0 md:pb-0 flex-1">
-                          <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-1.5">Education</label>
+                          <div id={`field-edu-type-${idx}`}>
+                            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                              {getStepField('step2', 'educationType', 'Education', 'Select education type').label}
+                              {getStepField('step2', 'educationType').isRequired && <span className="text-red-500">*</span>}
+                            </label>
                             <CustomDropdown
-                              options={educationTypeOptions}
+                              options={Object.keys(eduData).map(k => ({ value: k, label: k }))}
                               value={q.educationType || ''}
                               onChange={val => {
                                 updateArray('qualifications', idx, 'educationType', val);
                                 setEduFieldErrors({...eduFieldErrors, educationType: false});
                                 if (val) setEduError('');
                               }}
-                              placeholder="Select education type"
+                              placeholder={getStepField('step2', 'educationType', 'Education', 'Select education type').placeholder}
                               error={eduFieldErrors.educationType || (!!eduError && !q.educationType)}
                             />
                           </div>
 
                           {isSchool && (
                             <>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Board</label>
+                              <div id={`field-edu-board-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'board', 'Board', 'Select board').label}
+                                  {getStepField('step2', 'board').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <CustomDropdown 
-                                  options={boardOptions}
+                                  options={(currentEduConfig?.options && currentEduConfig.options.length > 0)
+                                    ? currentEduConfig.options.map(b => ({ value: b, label: b }))
+                                    : boardOptions}
                                   value={q.board || ''}
                                   onChange={val => { updateArray('qualifications', idx, 'board', val); setEduFieldErrors({...eduFieldErrors, board: false}); }}
-                                  placeholder="Select board"
+                                  placeholder={getStepField('step2', 'board', 'Board', 'Select board').placeholder}
                                   error={eduFieldErrors.board}
                                 />
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Passing out year</label>
+                              <div id={`field-edu-endYear-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').label}
+                                  {getStepField('step2', 'endYear').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                  <option value="">Select passing out year</option>
+                                  <option value="">{getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder}</option>
                                   {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
                                     <option key={year} value={year}>{year}</option>
                                   ))}
                                 </select>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">School medium</label>
+                              <div id={`field-edu-schoolMedium-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').label}
+                                  {getStepField('step2', 'schoolMedium').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.schoolMedium ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.schoolMedium || ''} onChange={e => { updateArray('qualifications', idx, 'schoolMedium', e.target.value); setEduFieldErrors({...eduFieldErrors, schoolMedium: false}); }}>
-                                  <option value="">Select medium</option>
-                                  <option value="English">English</option>
-                                  <option value="Hindi">Hindi</option>
-                                  <option value="Other">Other</option>
+                                  <option value="">{getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').placeholder}</option>
+                                  {(cmsConfig?.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map((opt, oIdx) => (
+                                    <option key={oIdx} value={opt}>{opt}</option>
+                                  ))}
                                 </select>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks</label>
-                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="% marks of 100 maximum" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
+                              <div id={`field-edu-percentage-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').label} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
+                                </label>
+                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder={getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').placeholder} value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
                               </div>
                             </>
                           )}
 
                           {isHigher && (
                             <>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">University/Institute</label>
+                              <div id={`field-edu-university-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'university', 'University / Institute', 'Search global university/institute...').label}
+                                  {getStepField('step2', 'university').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <InstituteAutocomplete 
                                   value={q.university || ''}
                                   onChange={val => { updateArray('qualifications', idx, 'university', val); setEduFieldErrors({...eduFieldErrors, university: false}); }}
-                                  placeholder="Search global university/institute..."
+                                  placeholder={getStepField('step2', 'university', 'University / Institute', 'Search global university/institute...').placeholder}
                                   className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400`}
                                 />
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course</label>
+                              <div id={`field-edu-course-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  {getStepField('step2', 'course', 'Course', 'Select course').label}
+                                  {getStepField('step2', 'course').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <CustomDropdown
                                   options={
-                                    q.educationType === 'Masters/Post-Graduation' ? [...postgradCourses, ...doctoralAndOtherCourses] :
-                                    q.educationType === 'Accounting Degree' ? accountingDegrees :
-                                    q.educationType === 'Post Graduate Accounting & Finance' ? postGradAccountingDegrees :
-                                    q.educationType === 'Professional Qualification' ? professionalQualifications :
-                                    q.educationType === 'Accounting Certification' ? accountingCertifications :
-                                    q.educationType === 'Diploma' ? diplomaCourses :
-                                    q.educationType === 'Accounting Software' ? accountingSoftwareCourses :
-                                    q.educationType === 'Taxation' ? taxationCourses :
-                                    q.educationType === 'Audit' ? auditCourses :
-                                    q.educationType === 'Finance' ? financeCourses :
-                                    q.educationType === 'International Accounting' ? internationalAccountingCourses :
-                                    [...undergradCourses, ...doctoralAndOtherCourses]
+                                    (currentEduConfig?.options && currentEduConfig.options.length > 0)
+                                      ? currentEduConfig.options.map(c => ({ value: c, label: c }))
+                                      : (
+                                        q.educationType === 'Masters/Post-Graduation' ? [...postgradCourses, ...doctoralAndOtherCourses] :
+                                        q.educationType === 'Accounting Degree' ? accountingDegrees :
+                                        q.educationType === 'Post Graduate Accounting & Finance' ? postGradAccountingDegrees :
+                                        q.educationType === 'Professional Qualification' ? professionalQualifications :
+                                        q.educationType === 'Accounting Certification' ? accountingCertifications :
+                                        q.educationType === 'Diploma' ? diplomaCourses :
+                                        q.educationType === 'Accounting Software' ? accountingSoftwareCourses :
+                                        q.educationType === 'Taxation' ? taxationCourses :
+                                        q.educationType === 'Audit' ? auditCourses :
+                                        q.educationType === 'Finance' ? financeCourses :
+                                        q.educationType === 'International Accounting' ? internationalAccountingCourses :
+                                        [...undergradCourses, ...doctoralAndOtherCourses]
+                                      )
                                   }
                                   value={q.course || ''}
                                   onChange={val => { updateArray('qualifications', idx, 'course', val); setEduFieldErrors({...eduFieldErrors, course: false}); }}
-                                  placeholder="Select course"
+                                  placeholder={getStepField('step2', 'course', 'Course', 'Select course').placeholder}
                                   error={eduFieldErrors.course}
                                 />
                               </div>
-                              <div>
-                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>Course type</label>
+                              <div id={`field-edu-courseType-${idx}`}>
+                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>
+                                  {getStepField('step2', 'courseType', 'Course type', 'Select course type').label}
+                                  {getStepField('step2', 'courseType').isRequired && <span className="text-red-500">*</span>}
+                                </label>
                                 <div className="flex flex-wrap items-center gap-6">
-                                  <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Full time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Full time'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
-                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Full time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Full time</span>
-                                  </label>
-                                  <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Part time" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Part time'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
-                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Part time' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Part time</span>
-                                  </label>
-                                  <label className="flex items-center cursor-pointer group">
-                                    <input type="radio" name={`courseType-${idx}`} value="Correspondence/Distance learning" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={q.courseType === 'Correspondence/Distance learning'} onChange={(e) => { updateArray('qualifications', idx, 'courseType', e.target.value); setEduFieldErrors({...eduFieldErrors, courseType: false}); }} />
-                                    <span className={`ml-2.5 text-[15px] ${q.courseType === 'Correspondence/Distance learning' ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Correspondence/Distance learning</span>
-                                  </label>
+                                  {(cmsConfig?.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS).map((ct) => (
+                                    <label key={ct} className="flex items-center cursor-pointer group">
+                                      <input 
+                                        type="radio" 
+                                        name={`courseType-${idx}`} 
+                                        value={ct} 
+                                        className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" 
+                                        checked={q.courseType === ct} 
+                                        onChange={(e) => { 
+                                          updateArray('qualifications', idx, 'courseType', e.target.value); 
+                                          setEduFieldErrors({...eduFieldErrors, courseType: false}); 
+                                        }} 
+                                      />
+                                      <span className={`ml-2.5 text-[15px] ${q.courseType === ct ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>
+                                        {ct}
+                                      </span>
+                                    </label>
+                                  ))}
                                 </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Course duration</label>
+                              <div id={`field-edu-startYear-${idx}`}>
+                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                  Course duration {(getStepField('step2', 'startYear').isRequired || getStepField('step2', 'endYear').isRequired) && <span className="text-red-500">*</span>}
+                                </label>
                                 <div className="flex items-center gap-4">
                                   <div className="flex-1">
                                     <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.startYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.startYear || ''} onChange={e => { updateArray('qualifications', idx, 'startYear', e.target.value); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}>
-                                      <option value="">Starting year</option>
+                                      <option value="">{getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder}</option>
                                       {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => (
                                         <option key={year} value={year}>{year}</option>
                                       ))}
@@ -1830,7 +2214,7 @@ const EmployeeProfile = () => {
                                   <span className="font-bold text-gray-900">To</span>
                                   <div className="flex-1">
                                     <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                      <option value="">Ending year</option>
+                                      <option value="">{getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder}</option>
                                       {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
                                         <option key={year} value={year}>{year}</option>
                                       ))}
@@ -1838,28 +2222,59 @@ const EmployeeProfile = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Grading system</label>
-                                <CustomDropdown
-                                  options={gradingSystemOptions}
-                                  value={q.gradingSystem || ''}
-                                  onChange={val => updateArray('qualifications', idx, 'gradingSystem', val)}
-                                  placeholder="Select grading system"
-                                />
-                              </div>
-                              {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
-                                <div>
-                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Marks</label>
-                                  <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder="Enter grade or marks" value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
-                                </div>
-                              )}
+                              {(() => {
+                                const currentGradingSystems = normalizeGradingSystems(cmsConfig?.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
+                                const selectedGradingObj = currentGradingSystems.find(g => g.name === q.gradingSystem);
+                                const dynamicMarksLabel = selectedGradingObj?.label || 'Marks';
+                                const dynamicMarksPlaceholder = selectedGradingObj?.placeholder || 'Enter grade or marks';
+
+                                return (
+                                  <>
+                                    <div>
+                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                                        {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).label}
+                                        {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                                      </label>
+                                      <CustomDropdown
+                                        options={currentGradingSystems.map(gs => ({ value: gs.name, label: gs.name }))}
+                                        value={q.gradingSystem || ''}
+                                        onChange={val => updateArray('qualifications', idx, 'gradingSystem', val)}
+                                        placeholder={getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).placeholder}
+                                      />
+                                    </div>
+                                    {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
+                                      <div>
+                                        <label className={`block text-sm font-bold ${eduFieldErrors.percentage ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
+                                          {dynamicMarksLabel} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input 
+                                          type="text" 
+                                          className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                          placeholder={dynamicMarksPlaceholder} 
+                                          value={q.percentage || ''} 
+                                          onChange={e => { 
+                                            updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
+                                            setEduFieldErrors({...eduFieldErrors, percentage: false}); 
+                                          }} 
+                                        />
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </>
                           )}
                           
-                          {q.educationType && (
+                          {q.educationType && !q.isPrimary && (
                             <div className="flex items-center pt-2 border-t border-gray-100 mt-4 pb-2">
                               <input type="checkbox" id={`primary-edu-${idx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
-                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium">Mark this as my primary education</label>
+                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium cursor-pointer">Mark this as my primary education</label>
+                            </div>
+                          )}
+                          {q.educationType && q.isPrimary && (
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-4 pb-2 text-xs font-bold text-green-700">
+                              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                              <span>Primary Education</span>
                             </div>
                           )}
 
@@ -1903,28 +2318,53 @@ const EmployeeProfile = () => {
               <section id="experience" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
               <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800">Work Experience</h3>
+                  <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step3?.title || 'Work Experience'}</h3>
+                  {cmsConfig?.step3?.subtitle && (
+                    <p className="text-xs text-gray-500 mt-0.5">{cmsConfig.step3.subtitle}</p>
+                  )}
                 </div>
                 {formData.isFresher !== true && (
                   <div className="flex items-center gap-3">
                     {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
                     <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm whitespace-nowrap">
-                      Add +
+                      {cmsConfig?.step3?.addBtnText || 'Add +'}
                     </button>
                   </div>
                 )}
               </div>
               <div className="space-y-6">
                       <div className="flex flex-col items-start gap-3 mb-6">
-                        <label className="text-sm font-medium text-gray-700">Are you a Fresher?</label>
+                        <label className="text-sm font-medium text-gray-700">{cmsConfig?.step3?.fresherLabel || 'Are you a Fresher?'}</label>
                         <div className="flex items-center gap-6">
                           <label className="flex items-center cursor-pointer group">
                             <input type="radio" name="isFresher_profile" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
-                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>Yes, I am a Fresher</span>
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>I am a Fresher</span>
                           </label>
                           <label className="flex items-center cursor-pointer group">
-                            <input type="radio" name="isFresher_profile" value="no" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === false} onChange={() => setFormData({...formData, isFresher: false})} />
-                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>No, I have experience</span>
+                            <input 
+                              type="radio" 
+                              name="isFresher_profile" 
+                              value="no" 
+                              className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" 
+                              checked={formData.isFresher === false} 
+                              onChange={() => {
+                                const isExpEmpty = !formData.experience || formData.experience.length === 0;
+                                if (isExpEmpty) {
+                                  setExpandedExpIndex(0);
+                                  setFormData({
+                                    ...formData,
+                                    isFresher: false,
+                                    experience: [{ companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] }]
+                                  });
+                                } else {
+                                  if (expandedExpIndex < 0) {
+                                    setExpandedExpIndex(0);
+                                  }
+                                  setFormData({...formData, isFresher: false});
+                                }
+                              }} 
+                            />
+                            <span className={`ml-2.5 text-[15px] ${formData.isFresher === false ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>I have experience</span>
                           </label>
                         </div>
                       </div>
@@ -1982,179 +2422,228 @@ const EmployeeProfile = () => {
                                 
                                 <div className="space-y-4 pt-6 px-4 pb-[140px] md:pt-0 md:px-0 md:pb-0 flex-1">
                                   <h4 className="hidden md:block font-semibold text-gray-700 pr-8">Company {cIdx + 1}</h4>
-                                <div>
-                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Company Name</label>
-                                  <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={exp.companyName || ''} onChange={e => {
-                                    const newExp = [...(formData.experience || [])];
-                                    newExp[cIdx].companyName = e.target.value;
-                                    setFormData({...formData, experience: newExp});
-                                    setExpFieldErrors({...expFieldErrors, companyName: false});
-                                  }} />
-                                </div>
-                                <div className="relative border-l-2 border-green-500 ml-3 mt-8 space-y-8 pb-4">
-                                  {(exp.roles || []).map((role, rIdx) => {
-                                    const isRoleExpanded = expandedRoleIndex === rIdx;
-                                    
-                                    return (
-                                    <div key={rIdx} className="relative pl-6">
-                                      <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-green-500 border-4 border-gray-50 shadow-sm"></div>
-                                      
-                                      <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative group">
-                                        
-                                        {/* Header Row (Always visible) */}
-                                        <div 
-                                          className={`p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors ${isRoleExpanded ? 'bg-gray-50' : ''}`}
-                                          onClick={() => setExpandedRoleIndex(isRoleExpanded ? -1 : rIdx)}
-                                        >
-                                          <div>
-                                            <h5 className="font-bold text-gray-900">{role.jobTitle || `Role ${rIdx + 1}`}</h5>
-                                            <p className="text-sm text-gray-500 mt-1">{role.employmentType || 'Employment Type'}</p>
-                                          </div>
-                                          <svg className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isRoleExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                        </div>
+                                {(() => {
+                                  const fCompany = getStepField('step3', 'companyName', 'Company Name', 'Enter or search company name...', true);
+                                  const fJobTitle = getStepField('step3', 'jobTitle', 'Job Title', 'Enter or search job title...', true);
+                                  const fEmpType = getStepField('step3', 'employmentType', 'Employment Type', 'Select', true);
+                                  const fJoining = getStepField('step3', 'joiningDate', 'Joining', 'Select joining date', true);
+                                  const fLeaving = getStepField('step3', 'leavingDate', 'Leaving', 'Select leaving date', true);
+                                  const fCurrent = getStepField('step3', 'currentCompany', 'Current role', '', false);
+                                  const fRoleDesc = getStepField('step3', 'roleDescription', 'Roles & Responsibilities', 'Briefly describe your roles & responsibilities', false);
+                                  const fNotice = getStepField('step3', 'noticePeriod', 'Notice Period', 'Select', false);
 
-                                        {/* Animated Body */}
-                                        <div className={`grid transition-all duration-300 ease-in-out ${isRoleExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                                          <div className="overflow-hidden min-h-0">
-                                            <div className="p-6 border-t border-gray-100 space-y-6 relative bg-white">
-                                              <button onClick={(e) => {
-                                                e.stopPropagation();
-                                                const newExp = [...(formData.experience || [])];
-                                                newExp[cIdx].roles.splice(rIdx, 1);
-                                                setFormData({...formData, experience: newExp});
-                                              }} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors hidden md:block group-hover:block z-10">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                              </button>
+                                  return (
+                                    <>
+                                      <div id={`field-exp-company-${cIdx}`}>
+                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">{fCompany.label} {fCompany.isRequired && <span className="text-red-500">*</span>}</label>
+                                        <CompanyAutocomplete 
+                                          value={exp.companyName || ''} 
+                                          className={`w-full px-4 py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`}
+                                          onChange={val => {
+                                            const newExp = [...(formData.experience || [])];
+                                            newExp[cIdx].companyName = val;
+                                            setFormData({...formData, experience: newExp});
+                                            setExpFieldErrors({...expFieldErrors, companyName: false});
+                                          }} 
+                                          placeholder={fCompany.placeholder || "Enter or search company name..."}
+                                        />
+                                      </div>
+                                      <div className="relative border-l-2 border-green-500 ml-3 mt-8 space-y-8 pb-4">
+                                        {(exp.roles || []).map((role, rIdx) => {
+                                          const isRoleExpanded = expandedRoleIndex === rIdx;
+                                          
+                                          return (
+                                          <div key={rIdx} className="relative pl-6">
+                                            <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-green-500 border-4 border-gray-50 shadow-sm"></div>
+                                            
+                                            <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative group">
                                               
-                                              <div>
-                                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Job Title</label>
-                                                <input type="text" className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.jobTitle || ''} onChange={e => {
-                                                  const newExp = [...(formData.experience || [])];
-                                                  newExp[cIdx].roles[rIdx].jobTitle = e.target.value;
-                                                  setFormData({...formData, experience: newExp});
-                                                  if (expFieldErrors.roles?.[rIdx]?.jobTitle) {
-                                                    const newErrors = {...expFieldErrors};
-                                                    newErrors.roles[rIdx].jobTitle = false;
-                                                    setExpFieldErrors(newErrors);
-                                                  }
-                                                }} />
-                                              </div>
-                                              <div>
-                                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Employment Type</label>
-                                                <CustomDropdown
-                                                  options={employmentTypeOptions}
-                                                  value={role.employmentType || ''}
-                                                  onChange={val => {
-                                                    const newExp = [...(formData.experience || [])];
-                                                    newExp[cIdx].roles[rIdx].employmentType = val;
-                                                    setFormData({...formData, experience: newExp});
-                                                    if (expFieldErrors.roles?.[rIdx]?.employmentType) {
-                                                      const newErrors = {...expFieldErrors};
-                                                      newErrors.roles[rIdx].employmentType = false;
-                                                      setExpFieldErrors(newErrors);
-                                                    }
-                                                  }}
-                                                  placeholder="Select"
-                                                  error={expFieldErrors.roles?.[rIdx]?.employmentType}
-                                                />
-                                              </div>
-                                              <div className="flex items-center mt-6">
-                                                <input type="checkbox" id={`current-${cIdx}-${rIdx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500 mr-3" checked={role.currentCompany || false} onChange={e => {
-                                                  const newExp = [...(formData.experience || [])];
-                                                  newExp[cIdx].roles[rIdx].currentCompany = e.target.checked;
-                                                  if (e.target.checked) newExp[cIdx].roles[rIdx].leavingDate = '';
-                                                  setFormData({...formData, experience: newExp});
-                                                }} />
-                                                <label htmlFor={`current-${cIdx}-${rIdx}`} className="text-sm font-bold text-gray-900">Current role</label>
-                                              </div>
-                                              <div className="space-y-6">
+                                              {/* Header Row (Always visible) */}
+                                              <div 
+                                                className={`p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors ${isRoleExpanded ? 'bg-gray-50' : ''}`}
+                                                onClick={() => setExpandedRoleIndex(isRoleExpanded ? -1 : rIdx)}
+                                              >
                                                 <div>
-                                                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Joining</label>
-                                                  <div className={`${expFieldErrors.roles?.[rIdx]?.joiningDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
-                                                    <CustomMonthPicker
-                                                      value={role.joiningDate || ''}
-                                                      onChange={val => {
-                                                        const newExp = [...(formData.experience || [])];
-                                                        newExp[cIdx].roles[rIdx].joiningDate = val;
-                                                        setFormData({...formData, experience: newExp});
-                                                        if (expFieldErrors.roles?.[rIdx]?.joiningDate) {
-                                                          const newErrors = {...expFieldErrors};
-                                                          newErrors.roles[rIdx].joiningDate = false;
-                                                          setExpFieldErrors(newErrors);
-                                                        }
-                                                      }}
-                                                      placeholder="Select joining date"
-                                                    />
-                                                  </div>
+                                                  <h5 className="font-bold text-gray-900">{role.jobTitle || `Role ${rIdx + 1}`}</h5>
+                                                  <p className="text-sm text-gray-500 mt-1">{role.employmentType || 'Employment Type'}</p>
                                                 </div>
-                                                {!role.currentCompany && (
-                                                  <div>
-                                                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Leaving</label>
-                                                    <div className={`${expFieldErrors.roles?.[rIdx]?.leavingDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
-                                                      <CustomMonthPicker
-                                                        value={role.leavingDate || ''}
+                                                <svg className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isRoleExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                              </div>
+
+                                              {/* Animated Body */}
+                                              <div className={`grid transition-all duration-300 ease-in-out ${isRoleExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                                <div className="overflow-hidden min-h-0">
+                                                  <div className="p-6 border-t border-gray-100 space-y-6 relative bg-white">
+                                                    <button onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      const newExp = [...(formData.experience || [])];
+                                                      newExp[cIdx].roles.splice(rIdx, 1);
+                                                      setFormData({...formData, experience: newExp});
+                                                    }} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors hidden md:block group-hover:block z-10">
+                                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                    
+                                                    <div id={`field-exp-jobTitle-${cIdx}-${rIdx}`}>
+                                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">{fJobTitle.label} {fJobTitle.isRequired && <span className="text-red-500">*</span>}</label>
+                                                      <JobTitleAutocomplete 
+                                                        value={role.jobTitle || ''} 
+                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`}
                                                         onChange={val => {
                                                           const newExp = [...(formData.experience || [])];
-                                                          newExp[cIdx].roles[rIdx].leavingDate = val;
+                                                          newExp[cIdx].roles[rIdx].jobTitle = val;
                                                           setFormData({...formData, experience: newExp});
-                                                          if (expFieldErrors.roles?.[rIdx]?.leavingDate) {
+                                                          if (expFieldErrors.roles?.[rIdx]?.jobTitle) {
                                                             const newErrors = {...expFieldErrors};
-                                                            newErrors.roles[rIdx].leavingDate = false;
+                                                            newErrors.roles[rIdx].jobTitle = false;
+                                                            setExpFieldErrors(newErrors);
+                                                          }
+                                                        }} 
+                                                        placeholder={fJobTitle.placeholder || "Enter or search job title..."}
+                                                      />
+                                                    </div>
+                                                    <div id={`field-exp-empType-${cIdx}-${rIdx}`}>
+                                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">{fEmpType.label} {fEmpType.isRequired && <span className="text-red-500">*</span>}</label>
+                                                      <CustomDropdown
+                                                        options={(cmsConfig?.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS).map(opt => ({ value: opt, label: opt }))}
+                                                        value={role.employmentType || ''}
+                                                        onChange={val => {
+                                                          const newExp = [...(formData.experience || [])];
+                                                          newExp[cIdx].roles[rIdx].employmentType = val;
+                                                          setFormData({...formData, experience: newExp});
+                                                          if (expFieldErrors.roles?.[rIdx]?.employmentType) {
+                                                            const newErrors = {...expFieldErrors};
+                                                            newErrors.roles[rIdx].employmentType = false;
                                                             setExpFieldErrors(newErrors);
                                                           }
                                                         }}
-                                                        placeholder="Select leaving date"
+                                                        placeholder={fEmpType.placeholder || "Select"}
+                                                        error={expFieldErrors.roles?.[rIdx]?.employmentType}
+                                                      />
+                                                    </div>
+                                                    <div className="flex items-center mt-6">
+                                                      <input 
+                                                        type="checkbox" 
+                                                        id={`current-${cIdx}-${rIdx}`} 
+                                                        className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500 mr-3 cursor-pointer" 
+                                                        checked={role.currentCompany || false} 
+                                                        onChange={e => {
+                                                          const isChecked = e.target.checked;
+                                                          const newExp = (formData.experience || []).map((expItem, compI) => ({
+                                                            ...expItem,
+                                                            roles: (expItem.roles || []).map((rItem, roleI) => ({
+                                                              ...rItem,
+                                                              currentCompany: (compI === cIdx && roleI === rIdx) ? isChecked : false,
+                                                              leavingDate: (compI === cIdx && roleI === rIdx && isChecked) ? '' : rItem.leavingDate
+                                                            }))
+                                                          }));
+                                                          setFormData({...formData, experience: newExp});
+                                                        }} 
+                                                      />
+                                                      <label htmlFor={`current-${cIdx}-${rIdx}`} className="text-sm font-bold text-gray-900 cursor-pointer">
+                                                        {fCurrent.label || 'Currently working here'}
+                                                      </label>
+                                                    </div>
+                                                    <div className="space-y-6">
+                                                      <div id={`field-exp-joiningDate-${cIdx}-${rIdx}`}>
+                                                        <label className="block text-sm font-bold text-gray-900 mb-1.5">{fJoining.label} {fJoining.isRequired && <span className="text-red-500">*</span>}</label>
+                                                        <div className={`${expFieldErrors.roles?.[rIdx]?.joiningDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
+                                                          <CustomMonthPicker
+                                                            value={role.joiningDate || ''}
+                                                            onChange={val => {
+                                                              const newExp = [...(formData.experience || [])];
+                                                              newExp[cIdx].roles[rIdx].joiningDate = val;
+                                                              setFormData({...formData, experience: newExp});
+                                                              if (expFieldErrors.roles?.[rIdx]?.joiningDate) {
+                                                                const newErrors = {...expFieldErrors};
+                                                                newErrors.roles[rIdx].joiningDate = false;
+                                                                setExpFieldErrors(newErrors);
+                                                              }
+                                                            }}
+                                                            placeholder={fJoining.placeholder || "Select joining date"}
+                                                          />
+                                                        </div>
+                                                      </div>
+                                                      {!role.currentCompany && (
+                                                        <div id={`field-exp-leavingDate-${cIdx}-${rIdx}`}>
+                                                          <label className="block text-sm font-bold text-gray-900 mb-1.5">{fLeaving.label} {fLeaving.isRequired && <span className="text-red-500">*</span>}</label>
+                                                          <div className={`${expFieldErrors.roles?.[rIdx]?.leavingDate ? 'rounded-xl ring-1 ring-red-500 border-red-500' : ''}`}>
+                                                            <CustomMonthPicker
+                                                              value={role.leavingDate || ''}
+                                                              onChange={val => {
+                                                                const newExp = [...(formData.experience || [])];
+                                                                newExp[cIdx].roles[rIdx].leavingDate = val;
+                                                                setFormData({...formData, experience: newExp});
+                                                                if (expFieldErrors.roles?.[rIdx]?.leavingDate) {
+                                                                  const newErrors = {...expFieldErrors};
+                                                                  newErrors.roles[rIdx].leavingDate = false;
+                                                                  setExpFieldErrors(newErrors);
+                                                                }
+                                                              }}
+                                                              placeholder={fLeaving.placeholder || "Select leaving date"}
+                                                            />
+                                                          </div>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    <div className="col-span-2" id={`field-exp-roleDesc-${cIdx}-${rIdx}`}>
+                                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">{fRoleDesc.label} {fRoleDesc.isRequired && <span className="text-red-500">*</span>}</label>
+                                                      <textarea 
+                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.roleDescription ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 h-24 resize-none outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                                        placeholder={fRoleDesc.placeholder || "Briefly describe your roles & responsibilities"}
+                                                        value={role.roleDescription || ''} 
+                                                        onChange={e => {
+                                                          const newExp = [...(formData.experience || [])];
+                                                          newExp[cIdx].roles[rIdx].roleDescription = e.target.value;
+                                                          setFormData({...formData, experience: newExp});
+                                                          if (expFieldErrors.roles?.[rIdx]?.roleDescription) {
+                                                            const newErrors = {...expFieldErrors};
+                                                            if (newErrors.roles?.[rIdx]) newErrors.roles[rIdx].roleDescription = false;
+                                                            setExpFieldErrors(newErrors);
+                                                          }
+                                                        }} 
                                                       />
                                                     </div>
                                                   </div>
-                                                )}
-                                              </div>
-                                              <div className="col-span-2">
-                                                <label className="block text-sm font-bold text-gray-900 mb-1.5">Role Description</label>
-                                                <textarea className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 h-24 resize-none outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={role.roleDescription || ''} onChange={e => {
-                                                  const newExp = [...(formData.experience || [])];
-                                                  newExp[cIdx].roles[rIdx].roleDescription = e.target.value;
-                                                  setFormData({...formData, experience: newExp});
-                                                }} />
+                                                </div>
                                               </div>
                                             </div>
                                           </div>
+                                        )})}
+
+                                        <div className="relative pl-6">
+                                          <div className="absolute -left-[7px] top-2 w-3 h-3 rounded-full bg-gray-300 border-2 border-gray-50"></div>
+                                          <button type="button" onClick={() => {
+                                            const newExp = [...(formData.experience || [])];
+                                            newExp[cIdx].roles.push({ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' });
+                                            setFormData({...formData, experience: newExp});
+                                            setExpandedRoleIndex(newExp[cIdx].roles.length - 1);
+                                          }} className="flex items-center gap-1 text-sm font-bold text-green-600 hover:text-green-700 transition-colors">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                            Add Role
+                                          </button>
                                         </div>
                                       </div>
-                                    </div>
-                                  )})}
 
-                                  <div className="relative pl-6">
-                                    <div className="absolute -left-[7px] top-2 w-3 h-3 rounded-full bg-gray-300 border-2 border-gray-50"></div>
-                                    <button type="button" onClick={() => {
-                                      const newExp = [...(formData.experience || [])];
-                                      newExp[cIdx].roles.push({ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' });
-                                      setFormData({...formData, experience: newExp});
-                                      setExpandedRoleIndex(newExp[cIdx].roles.length - 1);
-                                    }} className="flex items-center gap-1 text-sm font-bold text-green-600 hover:text-green-700 transition-colors">
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                                      Add Role
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {hasCurrentRole && (
-                                  <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Notice Period</label>
-                                    <div className="w-full md:w-1/2">
-                                      <CustomDropdown
-                                        options={noticePeriodOptions}
-                                        value={exp.noticePeriod || ''}
-                                        onChange={val => {
-                                          const newExp = [...(formData.experience || [])];
-                                          newExp[cIdx].noticePeriod = val;
-                                          setFormData({...formData, experience: newExp});
-                                        }}
-                                        placeholder="Select"
-                                      />
-                                    </div>
-                                  </div>
-                                )}
+                                      {hasCurrentRole && (
+                                        <div className="mt-6 pt-6 border-t border-gray-200">
+                                          <label className="block text-sm font-bold text-gray-900 mb-1.5">{fNotice.label} {fNotice.isRequired && <span className="text-red-500">*</span>}</label>
+                                          <div className="w-full md:w-1/2">
+                                            <CustomDropdown
+                                              options={(cmsConfig?.step3?.noticePeriodOptions || cmsConfig?.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS).map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt))}
+                                              value={exp.noticePeriod || ''}
+                                              onChange={val => {
+                                                const newExp = [...(formData.experience || [])];
+                                                newExp[cIdx].noticePeriod = val;
+                                                setFormData({...formData, experience: newExp});
+                                              }}
+                                              placeholder={fNotice.placeholder || "Select"}
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                                   {/* Mobile Save Button */}
                                   <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-[130] flex flex-col gap-3">
                                      <button 
@@ -2183,7 +2672,7 @@ const EmployeeProfile = () => {
                           
                           <div className="pt-4">
                             <button onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                              Add +
+                              {cmsConfig?.step3?.addBtnText || 'Add +'}
                             </button>
                           </div>
                         </div>
@@ -2195,7 +2684,7 @@ const EmployeeProfile = () => {
                 {/* Mobile Header (Read Mode) */}
                 {!isEditingProfOverviewMobile && (
                   <div className="flex justify-between items-center md:hidden">
-                    <h3 className="text-xl font-bold text-gray-800">Professional Overview</h3>
+                    <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step4?.title || 'Professional Overview'}</h3>
                     <button className="text-[#6B7280] hover:text-[#2563EB] transition-colors" onClick={() => setIsEditingProfOverviewMobile(true)}>
                       <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -2207,7 +2696,7 @@ const EmployeeProfile = () => {
                 {/* Mobile Header (Edit Mode) */}
                 {isEditingProfOverviewMobile && (
                   <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-[130] shadow-sm">
-                    <h2 className="text-[18px] font-bold text-gray-900">Edit Professional Overview</h2>
+                    <h2 className="text-[18px] font-bold text-gray-900">Edit {cmsConfig?.step4?.title || 'Professional Overview'}</h2>
                     <button onClick={() => setIsEditingProfOverviewMobile(false)} className="text-gray-900 p-2 -mr-2">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -2216,50 +2705,58 @@ const EmployeeProfile = () => {
 
                 {/* Desktop Header */}
                 <div className="hidden md:block mb-6 pb-2 border-b border-gray-100">
-                  <h3 className="text-xl font-bold text-gray-800">Professional Overview</h3>
+                  <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step4?.title || 'Professional Overview'}</h3>
+                  {cmsConfig?.step4?.subtitle && (
+                    <p className="text-xs text-gray-500 mt-0.5">{cmsConfig.step4.subtitle}</p>
+                  )}
                 </div>
                 
                 <div className={`grid-cols-1 md:grid-cols-2 gap-6 ${isEditingProfOverviewMobile ? 'grid p-4 pb-24 md:p-0' : 'hidden md:grid'}`}>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Function</label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                      {getStepField('step1', 'industry', 'Function', 'Select Function').label}
+                      {getStepField('step1', 'industry').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
                     <CustomDropdown
-                      options={[
-                        'IT & Software', 'Finance & Accounts', 'Healthcare',
-                        'Manufacturing', 'Marketing', 'Sales', 'HR', 'Other'
-                      ].sort().map(ind => ({ value: ind, label: ind }))}
+                      options={(() => {
+                        const functionsMap = (cmsConfig?.step1?.functionsData && Object.keys(cmsConfig.step1.functionsData).length > 0)
+                          ? cmsConfig.step1.functionsData
+                          : DEFAULT_FUNCTIONS_DATA;
+                        return Object.keys(functionsMap).map(ind => ({ value: ind, label: ind }));
+                      })()}
                       value={formData.industry || ''}
                       onChange={val => {
                         setFormData({...formData, industry: val, designation: ''});
                       }}
-                      placeholder="Select Function"
+                      placeholder={getStepField('step1', 'industry', 'Function', 'Select Function').placeholder}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Current Designation</label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                      {getStepField('step1', 'designation', 'Current Designation', 'Search or type designation').label}
+                      {getStepField('step1', 'designation').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
                     <CustomDropdown
                       options={(() => {
-                        const rolesByIndustry = {
-                          'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
-                          'Finance & Accounts': ["Accountant", "Senior Accountant", "Financial Analyst", "Finance Manager", "Auditor", "Tax Consultant", "Investment Banker", "Chartered Accountant (CA)"],
-                          'Healthcare': ["Doctor", "Nurse", "Pharmacist", "Medical Representative", "Healthcare Administrator", "Lab Technician", "Physiotherapist", "Medical Coder"],
-                          'Manufacturing': ["Production Engineer", "Quality Analyst", "Plant Manager", "Maintenance Engineer", "Supply Chain Manager", "Safety Officer", "Mechanical Engineer"],
-                          'Marketing': ["Marketing Executive", "Digital Marketer", "Marketing Manager", "SEO Specialist", "Content Writer", "Social Media Manager", "Brand Manager"],
-                          'Sales': ["Sales Executive", "Sales Manager", "Business Development Executive", "Business Development Manager", "Account Manager", "Area Sales Manager", "Retail Store Manager"],
-                          'HR': ["HR Executive", "HR Manager", "Recruiter", "Talent Acquisition Specialist", "Payroll Executive", "Training & Development Manager", "HR Generalist"]
-                        };
-                        if (formData.industry && rolesByIndustry[formData.industry]) {
-                          return [...rolesByIndustry[formData.industry], "Other"].map(role => ({ value: role, label: role }));
+                        const functionsMap = (cmsConfig?.step1?.functionsData && Object.keys(cmsConfig.step1.functionsData).length > 0)
+                          ? cmsConfig.step1.functionsData
+                          : DEFAULT_FUNCTIONS_DATA;
+                        if (formData.industry && functionsMap[formData.industry]) {
+                          return [...functionsMap[formData.industry], "Other"].map(role => ({ value: role, label: role }));
                         }
-                        const allRoles = [...new Set(Object.values(rolesByIndustry).flat()), "Product Manager", "Project Manager", "Business Analyst", "Operations Manager", "Other"];
+                        const allRoles = [...new Set(Object.values(functionsMap).flat()), "Product Manager", "Project Manager", "Business Analyst", "Operations Manager", "Other"];
                         return allRoles.sort().map(role => ({ value: role, label: role }));
                       })()}
                       value={formData.designation || ''}
                       onChange={val => setFormData({...formData, designation: val})}
-                      placeholder="Search or type designation"
+                      placeholder={getStepField('step1', 'designation', 'Current Designation', 'Search or type designation').placeholder}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Preferred Location</label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                      {getStepField('step1', 'preferredLocation', 'Preferred Location', 'Search Locations').label}
+                      {getStepField('step1', 'preferredLocation').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
                     {(formData.preferredLocation ? formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean) : []).length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-2">
                         {formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean).map(loc => (
@@ -2275,24 +2772,40 @@ const EmployeeProfile = () => {
                       </div>
                     )}
                     <MultiSelectLocationDropdown
-                      options={preferredLocationOptions}
+                      options={(Array.isArray(cmsConfig?.step1?.locationCities) && cmsConfig.step1.locationCities.length > 0)
+                        ? cmsConfig.step1.locationCities.map(loc => ({ label: loc, value: loc, displayName: loc }))
+                        : preferredLocationOptions}
                       value={formData.preferredLocation || ''}
                       onChange={(val) => setFormData({...formData, preferredLocation: val})}
-                      placeholder="Search Locations"
+                      placeholder={getStepField('step1', 'preferredLocation', 'Preferred Location', 'Search Locations').placeholder}
                       className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all placeholder-gray-400"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">LinkedIn Profile URL</label>
-                    <input type="text" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={p.linkedinUrl || ''} onChange={e => setP('linkedinUrl', e.target.value)} />
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                      {getStepField('step4', 'linkedinUrl', 'LinkedIn Profile URL', 'https://linkedin.com/in/...').label}
+                      {getStepField('step4', 'linkedinUrl').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder={getStepField('step4', 'linkedinUrl', 'LinkedIn Profile URL', 'https://linkedin.com/in/...').placeholder}
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" 
+                      value={p.linkedinUrl || ''} 
+                      onChange={e => setP('linkedinUrl', e.target.value)} 
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Total Experience</label>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                      {getStepField('step1', 'totalExperience', 'Total Experience', 'Select Total Experience').label}
+                      {getStepField('step1', 'totalExperience').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
                     <CustomDropdown
-                      options={experienceOptions}
+                      options={(Array.isArray(cmsConfig?.step1?.experienceOptions) && cmsConfig.step1.experienceOptions.length > 0)
+                        ? cmsConfig.step1.experienceOptions.map(item => ({ value: item, label: item }))
+                        : experienceOptions}
                       value={formData.totalExperience || ''}
                       onChange={val => setFormData({...formData, totalExperience: val})}
-                      placeholder="Select Total Experience"
+                      placeholder={getStepField('step1', 'totalExperience', 'Total Experience', 'Select Total Experience').placeholder}
                     />
                   </div>
                   <div className="col-span-1 md:col-span-1 mt-2">
@@ -2318,32 +2831,104 @@ const EmployeeProfile = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                        {p.salaryType === 'Monthly' ? 'Monthly Salary' : p.salaryType === 'Hourly' ? 'Hourly Salary' : 'Annual Salary'}
-                      </label>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                            {p.salaryType === 'Monthly'
+                              ? (getStepField('step4', 'currentSalary', 'Current Annual CTC').label ? getStepField('step4', 'currentSalary', 'Current Annual CTC').label.replace(/Annual CTC|Annual Salary|Annual/gi, 'Monthly CTC') : 'Current Monthly CTC')
+                              : (getStepField('step4', 'currentSalary', 'Current Annual CTC').label || 'Current Annual CTC')}
+                            {getStepField('step4', 'currentSalary').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                          </label>
                           <input 
                             type="text" 
-                            placeholder={p.salaryType === 'Monthly' ? `${getCurrencySymbol(p.currency)}40,000` : `${getCurrencySymbol(p.currency)}5,00,000`}
+                            placeholder={p.salaryType === 'Monthly'
+                              ? (getStepField('step4', 'currentSalary', 'Current Annual CTC', `e.g. ${getCurrencySymbol(p.currency)}40,000`).placeholder ? getStepField('step4', 'currentSalary', 'Current Annual CTC', `e.g. ${getCurrencySymbol(p.currency)}40,000`).placeholder.replace(/5,00,000|500000/g, '40,000') : `e.g. ${getCurrencySymbol(p.currency)}40,000`)
+                              : (getStepField('step4', 'currentSalary', 'Current Annual CTC', `e.g. ${getCurrencySymbol(p.currency)}5,00,000`).placeholder || `e.g. ${getCurrencySymbol(p.currency)}5,00,000`)}
                             value={p.currentSalary || ''}
                             onChange={(e) => setP('currentSalary', formatIndianNumber(e.target.value))}
                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                           />
-                          <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">Current</p>
                         </div>
                         <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                            {p.salaryType === 'Monthly'
+                              ? (getStepField('step4', 'expectedSalary', 'Expected Annual CTC').label ? getStepField('step4', 'expectedSalary', 'Expected Annual CTC').label.replace(/Annual CTC|Annual Salary|Annual/gi, 'Monthly CTC') : 'Expected Monthly CTC')
+                              : (getStepField('step4', 'expectedSalary', 'Expected Annual CTC').label || 'Expected Annual CTC')}
+                            {getStepField('step4', 'expectedSalary').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                          </label>
                           <input 
                             type="text" 
-                            placeholder={p.salaryType === 'Monthly' ? `${getCurrencySymbol(p.currency)}60,000` : `${getCurrencySymbol(p.currency)}8,00,000`}
+                            placeholder={p.salaryType === 'Monthly'
+                              ? (getStepField('step4', 'expectedSalary', 'Expected Annual CTC', `e.g. ${getCurrencySymbol(p.currency)}60,000`).placeholder ? getStepField('step4', 'expectedSalary', 'Expected Annual CTC', `e.g. ${getCurrencySymbol(p.currency)}60,000`).placeholder.replace(/7,50,000|750000|8,00,000|800000/g, '60,000') : `e.g. ${getCurrencySymbol(p.currency)}60,000`)
+                              : (getStepField('step4', 'expectedSalary', 'Expected Annual CTC', `e.g. ${getCurrencySymbol(p.currency)}7,50,000`).placeholder || `e.g. ${getCurrencySymbol(p.currency)}7,50,000`)}
                             value={p.expectedSalary || ''}
                             onChange={(e) => setP('expectedSalary', formatIndianNumber(e.target.value))}
                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                           />
-                          <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">Expected</p>
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Merged Skills inside Professional Overview */}
+                  <div className="col-span-1 md:col-span-2 mt-2 pt-6 border-t border-gray-100">
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">
+                      {getStepField('step4', 'skills', 'Skills', 'Search or select a skill to add...').label}
+                      {getStepField('step4', 'skills').isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []).map(skill => (
+                        <span key={skill} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-[13px] font-bold border border-green-100 flex items-center gap-1.5 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-sm" onClick={() => removeSkill(skill)} title="Click to remove">
+                          {skill} <span className="text-[10px] bg-green-200/50 text-green-800 rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-200 hover:text-red-800 transition-colors">✕</span>
+                        </span>
+                      ))}
+                    </div>
+                    <CustomDropdown
+                      options={(() => {
+                        if (Array.isArray(cmsConfig?.step4?.skillsOptions) && cmsConfig.step4.skillsOptions.length > 0) {
+                          return cmsConfig.step4.skillsOptions.map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt));
+                        }
+                        return allSkillsOptions;
+                      })()}
+                      value=""
+                      onChange={val => {
+                        if (val) {
+                          const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()) : [];
+                          if (!currentSkills.includes(val)) {
+                            currentSkills.push(val);
+                            setP('skills', currentSkills.join(', '));
+                          }
+                        }
+                      }}
+                      placeholder={getStepField('step4', 'skills', 'Skills', 'Search or select a skill to add...').placeholder}
+                    />
+                    {(() => {
+                      const suggested = getSuggestedSkills(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []);
+                      if (suggested.length === 0) return null;
+                      return (
+                        <div className="mt-5">
+                          <p className="text-[13px] text-gray-500 font-medium mb-3">Based on your current selection</p>
+                          <div className="flex flex-wrap gap-2">
+                            {suggested.map(suggestion => (
+                              <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => {
+                                  const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()) : [];
+                                  if (!currentSkills.includes(suggestion)) {
+                                    currentSkills.push(suggestion);
+                                    setP('skills', currentSkills.join(', '));
+                                  }
+                                }}
+                                className="px-4 py-2 bg-white text-[#64748B] rounded-full text-[13px] font-medium border border-gray-200 hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all flex items-center gap-1 shadow-sm"
+                              >
+                                {suggestion} <span className="text-lg leading-none font-normal">+</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -2360,114 +2945,24 @@ const EmployeeProfile = () => {
                 )}
               </section>
 
-              <section id="skills" className={`scroll-mt-40 bg-white shadow-sm md:border md:border-gray-200 md:rounded-2xl md:p-8 ${isEditingSkillsMobile ? 'fixed inset-0 z-[120] rounded-none border-none p-0 overflow-y-auto' : 'border border-gray-100 rounded-[20px] p-6 mt-4 md:mt-8'}`}>
-                {/* Mobile Header (Read Mode) */}
-                {!isEditingSkillsMobile && (
-                  <div className="flex justify-between items-center md:hidden">
-                    <h3 className="text-xl font-bold text-gray-800">Skills</h3>
-                    <button className="text-[#6B7280] hover:text-[#2563EB] transition-colors" onClick={() => setIsEditingSkillsMobile(true)}>
-                      <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {/* Mobile Header (Edit Mode) */}
-                {isEditingSkillsMobile && (
-                  <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-[130] shadow-sm">
-                    <h2 className="text-[18px] font-bold text-gray-900">Edit Skills</h2>
-                    <button onClick={() => setIsEditingSkillsMobile(false)} className="text-gray-900 p-2 -mr-2">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                )}
-
-                {/* Desktop Header */}
-                <div className="hidden md:block mb-6 pb-2 border-b border-gray-100">
-                  <h3 className="text-xl font-bold text-gray-800">Skills</h3>
-                </div>
-                
-                <div className={`${isEditingSkillsMobile ? 'block p-4 pb-24 md:p-0' : 'hidden md:block'}`}>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Add Skills</label>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []).map(skill => (
-                        <span key={skill} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-[13px] font-bold border border-green-100 flex items-center gap-1.5 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-sm" onClick={() => removeSkill(skill)} title="Click to remove">
-                          {skill} <span className="text-[10px] bg-green-200/50 text-green-800 rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-200 hover:text-red-800 transition-colors">✕</span>
-                        </span>
-                      ))}
-                    </div>
-                    <CustomDropdown
-                      options={allSkillsOptions}
-                      value=""
-                      onChange={val => {
-                        if (val) {
-                          const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()) : [];
-                          if (!currentSkills.includes(val)) {
-                            currentSkills.push(val);
-                            setP('skills', currentSkills.join(', '));
-                          }
-                        }
-                      }}
-                      placeholder="Search or select a skill to add..."
-                    />
-                      {(() => {
-                          const suggested = getSuggestedSkills(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []);
-                          if (suggested.length === 0) return null;
-                          return (
-                            <div className="mt-5">
-                              <p className="text-[13px] text-gray-500 font-medium mb-3">Based on your current selection</p>
-                              <div className="flex flex-wrap gap-2">
-                                {suggested.map(suggestion => (
-                                  <button
-                                    key={suggestion}
-                                    type="button"
-                                    onClick={() => {
-                                      const currentSkills = p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : [];
-                                      if (!currentSkills.includes(suggestion)) {
-                                        currentSkills.push(suggestion);
-                                        setP('skills', currentSkills.join(', '));
-                                      }
-                                    }}
-                                    className="px-4 py-2 bg-white text-[#64748B] rounded-full text-[13px] font-medium border border-gray-200 hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all flex items-center gap-1 shadow-sm"
-                                  >
-                                    {suggestion} <span className="text-lg leading-none font-normal">+</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                    </div>
-                </div>
-
-                {/* Mobile Save Button (Edit Mode) */}
-                {isEditingSkillsMobile && (
-                  <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-[130]">
-                    <button 
-                      onClick={() => setIsEditingSkillsMobile(false)}
-                      className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-full shadow-md transition-colors text-[15px]"
-                    >
-                      Save
-                    </button>
-                  </div>
-                )}
-              </section>
-
               <section id="documents" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
               <div className="mb-6 pb-2 border-b border-gray-100">
-                <h3 className="text-xl font-bold text-gray-800">Documents & Media</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Manage your introductory video, resume, and cover letter.</p>
+                <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step5?.title || 'Documents & Media'}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{cmsConfig?.step5?.subtitle || 'Manage your introductory video, resume, and cover letter.'}</p>
               </div>
               <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Resume Upload */}
                       <div className="p-4 border border-gray-200 rounded-xl">
-                        <label className="block text-sm font-bold text-gray-900 mb-3">Upload Resume</label>
+                        <label className="block text-sm font-bold text-gray-900 mb-3">
+                          {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).label}
+                          {getStepField('step5', 'resume', '', '', true).isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                        </label>
                         <input key={docs.resume ? 'resume-has' : 'resume-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
                         {docError.resume && <p className="text-xs text-red-500 mt-2 font-medium">{docError.resume}</p>}
-                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+                        <p className="text-xs text-black mt-2 font-medium">
+                          {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB').placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
+                        </p>
                         {docs.resume && (
                           <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -2507,12 +3002,18 @@ const EmployeeProfile = () => {
                       {/* Cover Letter Upload */}
                       <div className="p-4 border border-gray-200 rounded-xl">
                         <label className="flex items-center justify-between text-sm font-bold text-gray-900 mb-3">
-                          <span>Upload Cover Letter</span>
-                          <span className="text-gray-400 font-medium text-xs">(Optional)</span>
+                          <span>{getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').label}</span>
+                          {!getStepField('step5', 'coverLetter', '', '', false).isRequired ? (
+                            <span className="text-gray-400 font-medium text-xs">(Optional)</span>
+                          ) : (
+                            <span className="text-red-500 font-bold ml-0.5">*</span>
+                          )}
                         </label>
                         <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'coverLetter')} />
                         {docError.coverLetter && <p className="text-xs text-red-500 mt-2 font-medium">{docError.coverLetter}</p>}
-                        <p className="text-xs text-black mt-2 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+                        <p className="text-xs text-black mt-2 font-medium">
+                          {getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
+                        </p>
                         {docs.coverLetter && (
                           <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -2555,9 +3056,16 @@ const EmployeeProfile = () => {
                           <div>
                             <label className="block text-sm font-bold text-gray-900 flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                              Introductory Video <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                              {getStepField('step5', 'introVideo', 'Introductory Video', 'Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.').label}
+                              {!getStepField('step5', 'introVideo', '', '', false).isRequired ? (
+                                <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                              ) : (
+                                <span className="text-red-500 font-bold ml-0.5">*</span>
+                              )}
                             </label>
-                            <p className="text-xs text-gray-500 mt-0.5">Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {getStepField('step5', 'introVideo', 'Introductory Video', 'Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.').placeholder}
+                            </p>
                           </div>
                           <div className="flex bg-gray-200/80 p-1 rounded-xl text-xs font-semibold self-start">
                             <button

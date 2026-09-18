@@ -48,6 +48,10 @@ app.use('/api/homepage', require('./routes/homepageRoutes'));
 app.use('/api/footer', require('./routes/footerRoutes'));
 app.use('/api/mux', require('./routes/muxRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/education', require('./routes/educationRoutes'));
+app.use('/api/institutions', require('./routes/institutionRoutes'));
+app.use('/api/occupations', require('./routes/occupationRoutes'));
+app.use('/api/companies', require('./routes/companyRoutes'));
 
 // Root health check endpoint
 app.get('/', (req, res) => {

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const CustomMonthPicker = ({ value, onChange, placeholder = "Select Month & Year" }) => {
   // value is expected to be in "YYYY-MM" format
   const [isOpen, setIsOpen] = useState(false);
   const [isSelectingYear, setIsSelectingYear] = useState(false);
+  const containerRef = useRef(null);
   
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -16,6 +17,21 @@ const CustomMonthPicker = ({ value, onChange, placeholder = "Select Month & Year
     { value: '05', label: 'May' }, { value: '06', label: 'Jun' }, { value: '07', label: 'Jul' }, { value: '08', label: 'Aug' },
     { value: '09', label: 'Sep' }, { value: '10', label: 'Oct' }, { value: '11', label: 'Nov' }, { value: '12', label: 'Dec' }
   ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setIsSelectingYear(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (value) {
@@ -67,7 +83,7 @@ const CustomMonthPicker = ({ value, onChange, placeholder = "Select Month & Year
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={containerRef}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200'} rounded-xl flex justify-between items-center cursor-pointer hover:border-green-500 transition-all`}
@@ -81,9 +97,7 @@ const CustomMonthPicker = ({ value, onChange, placeholder = "Select Month & Year
       </div>
 
       {isOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute top-[calc(100%+4px)] left-0 z-[200] bg-white border border-gray-200 shadow-lg rounded-sm w-[280px] p-2 animate-in fade-in duration-200 zoom-in-95">
+        <div className="absolute top-[calc(100%+4px)] left-0 z-[200] bg-white border border-gray-200 shadow-lg rounded-sm w-[280px] p-2 animate-in fade-in duration-200 zoom-in-95">
             {/* Header */}
             <div className="flex justify-between items-center p-2 mb-2">
               <button type="button" onClick={handlePrev} className="text-gray-500 hover:text-gray-700 px-2 cursor-pointer">
@@ -154,7 +168,6 @@ const CustomMonthPicker = ({ value, onChange, placeholder = "Select Month & Year
               </div>
             )}
           </div>
-        </>
       )}
     </div>
   );

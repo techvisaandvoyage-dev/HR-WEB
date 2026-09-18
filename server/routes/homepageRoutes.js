@@ -40,7 +40,7 @@ router.put('/', async (req, res) => {
     const updated = await HomepageConfig.findOneAndUpdate(
       {},
       { $set: updateDoc },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     );
     res.json({ success: true, data: updated });
   } catch (error) {
