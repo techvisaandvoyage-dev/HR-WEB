@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ImageCropperModal from '../common/ImageCropperModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
 import CustomDropdown from '../common/CustomDropdown';
@@ -459,7 +459,63 @@ const currencyOptions = [
 
 const EmployeeProfile = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('basic');
+  const location = useLocation();
+  const isProgrammaticScrollRef = useRef(false);
+  const scrollTimeoutRef = useRef(null);
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state?.tab === 'security' || location.search.includes('tab=security') || location.hash === '#security') {
+      return 'security';
+    }
+    return location.state?.tab || 'basic';
+  });
+
+  const handleTabClick = (tabId) => {
+    isProgrammaticScrollRef.current = true;
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    setActiveTab(tabId);
+    if (tabId === 'security') {
+      scrollToSecurity();
+    } else {
+      setTimeout(() => {
+        document.getElementById(tabId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 30);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 850);
+  };
+
+  const scrollToSecurity = () => {
+    const performScroll = () => {
+      const el = document.getElementById('security');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return true;
+      }
+      return false;
+    };
+    performScroll();
+    requestAnimationFrame(performScroll);
+    setTimeout(performScroll, 50);
+    setTimeout(performScroll, 150);
+    setTimeout(performScroll, 300);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'security') {
+      scrollToSecurity();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (location.state?.tab === 'security' || location.search.includes('tab=security') || location.hash === '#security') {
+      setActiveTab('security');
+      scrollToSecurity();
+    } else if (location.state?.tab && location.state.tab !== 'security') {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state, location.search, location.hash]);
   const [expandedEduIndex, setExpandedEduIndex] = useState(-1);
   const [expandedExpIndex, setExpandedExpIndex] = useState(-1);
   const [expandedRoleIndex, setExpandedRoleIndex] = useState(0);
@@ -865,13 +921,14 @@ const EmployeeProfile = () => {
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (isProgrammaticScrollRef.current) return;
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setActiveTab(entry.target.id);
           }
         });
       },
-      { rootMargin: '-20% 0px -80% 0px' }
+      { rootMargin: '-20% 0px -70% 0px' }
     );
 
     tabs.filter(tab => tab.id !== 'security').forEach(tab => {
@@ -1123,7 +1180,7 @@ const EmployeeProfile = () => {
       <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
         <button
           type="button"
-          onClick={() => setActiveTab('basic')}
+          onClick={() => handleTabClick('basic')}
           className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
             activeTab !== 'security'
               ? 'bg-white text-gray-900 shadow-xs'
@@ -1134,7 +1191,7 @@ const EmployeeProfile = () => {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('security')}
+          onClick={() => handleTabClick('security')}
           className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
             activeTab === 'security'
               ? 'bg-white text-emerald-700 shadow-xs'
@@ -1853,12 +1910,7 @@ const EmployeeProfile = () => {
               {tabs.filter(t => t.id !== 'security').map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setTimeout(() => {
-                      document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 50);
-                  }}
+                  onClick={() => handleTabClick(tab.id)}
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-between transition-all duration-150 ${
                     activeTab === tab.id
                       ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/80 shadow-xs'
@@ -1877,7 +1929,7 @@ const EmployeeProfile = () => {
               </p>
               <button
                 type="button"
-                onClick={() => setActiveTab('security')}
+                onClick={() => handleTabClick('security')}
                 className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-between transition-all duration-150 ${
                   activeTab === 'security'
                     ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/80 shadow-xs'

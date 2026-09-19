@@ -59,7 +59,7 @@ const JobCardsEditor = ({ data, onChange, onSave, isSaving }) => {
                   )}
                 </h3>
                 <p className="text-xs font-semibold text-gray-500 mt-1">
-                  {(jobCards.subtextTemplate || 'Showing {count} jobs').replace('{count}', jobCards.initialCount || 6)}
+                  {(jobCards.subtextTemplate || 'Showing {count} jobs').replace('{count}', jobCards.initialCount ?? 6)}
                 </p>
               </div>
 
@@ -85,7 +85,7 @@ const JobCardsEditor = ({ data, onChange, onSave, isSaving }) => {
               ))}
             </div>
             <div className="text-center mt-3 text-[11px] text-gray-400 font-medium">
-              Showing first {jobCards.initialCount || 6} jobs on homepage load
+              Showing first {jobCards.initialCount ?? 6} jobs on homepage load
             </div>
           </div>
         </div>
@@ -159,10 +159,11 @@ const JobCardsEditor = ({ data, onChange, onSave, isSaving }) => {
                 Initial Cards Count on Page Load
               </label>
               <select
-                value={jobCards.initialCount || 6}
+                value={jobCards.initialCount ?? 6}
                 onChange={(e) => handleFieldChange('initialCount', Number(e.target.value))}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 font-medium cursor-pointer"
               >
+                <option value={0}>0 Jobs</option>
                 <option value={3}>3 Jobs (1 row)</option>
                 <option value={6}>6 Jobs (2 rows - Recommended)</option>
                 <option value={9}>9 Jobs (3 rows)</option>

@@ -53,12 +53,38 @@ const EyeIcon = ({ visible }) => (
 );
 
 const AccountSecuritySection = ({ userEmail }) => {
-  const [securityData, setSecurityData] = useState({
-    hasPassword: false,
-    isGoogleConnected: false,
-    email: userEmail || '',
-    authProvider: 'local',
-    loading: true
+  const [securityData, setSecurityData] = useState(() => {
+    try {
+      const cached = localStorage.getItem('employee_security_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return {
+          hasPassword: !!parsed.hasPassword,
+          isGoogleConnected: parsed.isGoogleConnected !== undefined ? parsed.isGoogleConnected : true,
+          email: parsed.email || userEmail || '',
+          authProvider: parsed.authProvider || 'google',
+          loading: false
+        };
+      }
+      const profile = localStorage.getItem('userProfile');
+      if (profile) {
+        const p = JSON.parse(profile);
+        return {
+          hasPassword: !!p.hasPassword,
+          isGoogleConnected: p.authProvider === 'google' || p.isGoogleConnected !== false,
+          email: p.email || userEmail || '',
+          authProvider: p.authProvider || 'google',
+          loading: false
+        };
+      }
+    } catch (e) {}
+    return {
+      hasPassword: false,
+      isGoogleConnected: true,
+      email: userEmail || '',
+      authProvider: 'google',
+      loading: false
+    };
   });
 
   const [isSetModalOpen, setIsSetModalOpen] = useState(false);
@@ -135,6 +161,7 @@ const AccountSecuritySection = ({ userEmail }) => {
       });
       const data = await res.json();
       if (data.success) {
+        localStorage.setItem('employee_security_cache', JSON.stringify(data));
         setSecurityData({
           hasPassword: data.hasPassword,
           isGoogleConnected: data.isGoogleConnected,
@@ -411,7 +438,7 @@ const AccountSecuritySection = ({ userEmail }) => {
   const displayEmail = securityData.email || userEmail || 'your email';
 
   return (
-    <section id="security" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-6 sm:p-8">
+    <section id="security" className="scroll-mt-24 bg-white border border-gray-200 rounded-2xl shadow-sm p-6 sm:p-8">
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-gray-100 gap-2">
         <div>
@@ -538,7 +565,7 @@ const AccountSecuritySection = ({ userEmail }) => {
 
         {/* Informative Guidance Banner for Google Users */}
         {securityData.isGoogleConnected && !securityData.hasPassword && (
-          <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl flex items-start gap-3 text-xs text-blue-900 leading-relaxed">
+          <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl flex items-start gap-3 text-xs text-blue-900 leading-relaxed transition-all duration-300 animate-in fade-in">
             <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

@@ -51,14 +51,16 @@ function App() {
   const [visibleJobsCount, setVisibleJobsCount] = useState(6);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (!location.state?.tab && !location.hash) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
     const isEmployerRoute = location.pathname.startsWith('/employer');
     if (isEmployerRoute && localStorage.getItem('employerToken')) {
       setUserRole('employer');
     } else if (!isEmployerRoute && localStorage.getItem('employeeToken')) {
       setUserRole('employee');
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.state]);
 
   // Fetch dynamic CMS homepage configuration
   useEffect(() => {
@@ -68,7 +70,7 @@ function App() {
         const json = await res.json();
         if (json.success && json.data) {
           setHomepageConfig(json.data);
-          if (json.data.jobCards?.initialCount) {
+          if (json.data.jobCards?.initialCount !== undefined && json.data.jobCards?.initialCount !== null) {
             setVisibleJobsCount(json.data.jobCards.initialCount);
           }
         }
@@ -620,9 +622,9 @@ function App() {
               >
                 {homepageConfig?.jobCards?.viewAllButtonText || 'View All Jobs'} &rarr;
               </button>
-            ) : filteredHomepageJobs.length > (homepageConfig?.jobCards?.initialCount || 6) ? (
+            ) : filteredHomepageJobs.length > (homepageConfig?.jobCards?.initialCount ?? 6) ? (
               <button 
-                onClick={() => setVisibleJobsCount(homepageConfig?.jobCards?.initialCount || 6)}
+                onClick={() => setVisibleJobsCount(homepageConfig?.jobCards?.initialCount ?? 6)}
                 className="border border-gray-200 text-gray-600 rounded-full px-5 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
               >
                 Show Less &uarr;
@@ -727,6 +729,10 @@ function App() {
 
         <Route 
           path="/profile" 
+          element={isLoggedIn && userRole === 'employee' ? <EmployeeProfile /> : <Navigate to="/" />} 
+        />
+        <Route 
+          path="/employee/profile" 
           element={isLoggedIn && userRole === 'employee' ? <EmployeeProfile /> : <Navigate to="/" />} 
         />
 

@@ -269,7 +269,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
                   <button 
                     onClick={() => {
                       setIsDropdownOpen(false);
-                      navigate('/profile');
+                      navigate('/profile?tab=basic', { state: { tab: 'basic', ts: Date.now() } });
                     }}
                     className="w-full text-left px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors"
                   >
@@ -281,10 +281,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
                   <button 
                     onClick={() => {
                       setIsDropdownOpen(false);
-                      navigate('/profile');
-                      setTimeout(() => {
-                        document.getElementById('security')?.scrollIntoView({ behavior: 'smooth' });
-                      }, 200);
+                      navigate('/profile?tab=security', { state: { tab: 'security', ts: Date.now() } });
                     }}
                     className="w-full text-left px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors"
                   >
