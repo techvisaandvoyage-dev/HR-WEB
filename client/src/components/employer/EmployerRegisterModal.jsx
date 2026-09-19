@@ -159,7 +159,8 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/google`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employer/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id_token: idToken }),
@@ -171,6 +172,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
           // New user -> Go directly to Step 2 (Company Details)!
           setFullName(data.fullName || '');
           setEmail(data.email || '');
+          setIsGoogleAuth(true);
           setStep(2);
         } else {
           onLoginSuccess?.(data);
@@ -353,7 +355,8 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
         headers['Authorization'] = `Bearer ${localStorage.getItem('employerToken')}`;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/register`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/employer/auth/register`, {
         method: 'POST',
         headers,
         body: JSON.stringify({

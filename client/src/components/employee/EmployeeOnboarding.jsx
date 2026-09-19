@@ -369,6 +369,8 @@ const EmployeeOnboarding = () => {
   const [eduFieldErrors, setEduFieldErrors] = useState({});
   const [skillInput, setSkillInput] = useState('');
   const [showStep1Errors, setShowStep1Errors] = useState(false);
+  const [showStep4Errors, setShowStep4Errors] = useState(false);
+  const [showStep5Errors, setShowStep5Errors] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingType, setUploadingType] = useState(null);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
@@ -617,7 +619,7 @@ const EmployeeOnboarding = () => {
 
       const fNameErr = isReq('firstName', true) && !formData.firstName?.trim();
       const lNameErr = isReq('lastName', false) && !formData.lastName?.trim();
-      const phoneErr = isReq('phone', true) && !formData.phone?.trim();
+      const phoneErr = isReq('phone', true) && (!formData.phone?.trim() || formData.phone.trim().length < 10);
       const industryErr = isReq('industry', true) && !formData.industry?.trim();
       const desigErr = isReq('designation', true) && !formData.designation?.trim();
       const expErr = isReq('totalExperience', true) && !formData.totalExperience?.trim();
@@ -660,9 +662,11 @@ const EmployeeOnboarding = () => {
     if (currentStep === 2) {
       const result = validateEducationData(expandedEduIndex >= 0 ? expandedEduIndex : null);
       if (!result.isValid) {
-        setExpandedEduIndex(result.eduIdx);
-        setEduFieldErrors(result.errors);
-        setEduError('Fill details');
+        if (result.eduIdx !== undefined && result.eduIdx >= 0) {
+          setExpandedEduIndex(result.eduIdx);
+        }
+        setEduFieldErrors(result.errors || {});
+        setEduError(result.message || 'Please fill all required education fields (*)');
         scrollToFirstError(result.targetFieldId);
         return;
       }
@@ -673,10 +677,12 @@ const EmployeeOnboarding = () => {
     if (currentStep === 3) {
       const result = validateExperienceData(expandedExpIndex >= 0 ? expandedExpIndex : null);
       if (!result.isValid) {
-        setExpandedExpIndex(result.cIdx);
-        setExpandedRoleIndex(result.rIdx);
-        setExpFieldErrors(result.errors);
-        setExpError('Fill details');
+        if (result.cIdx !== undefined && result.cIdx >= 0) {
+          setExpandedExpIndex(result.cIdx);
+          setExpandedRoleIndex(result.rIdx || 0);
+        }
+        setExpFieldErrors(result.errors || {});
+        setExpError(result.message || 'Please fill all required work experience fields (*)');
         scrollToFirstError(result.targetFieldId);
         return;
       }
@@ -684,7 +690,38 @@ const EmployeeOnboarding = () => {
       setExpFieldErrors({});
       setExpandedExpIndex(-1);
     }
+    if (currentStep === 4) {
+      const p = formData.professionalDetails || {};
+      const fLinkedin = getStepField('step4', 'linkedinUrl', 'LinkedIn Profile', 'https://linkedin.com/in/...', false);
+      const fSalaryType = getStepField('step4', 'salaryType', 'Salary Type', 'Select salary type', false);
+      const fCurrency = getStepField('step4', 'currency', 'Currency', 'Select currency', false);
+      const fCurrentSalary = getStepField('step4', 'currentSalary', 'Current Annual CTC', 'e.g. 5,00,000', false);
+      const fExpectedSalary = getStepField('step4', 'expectedSalary', 'Expected Annual CTC', 'e.g. 7,50,000', false);
+      const fSkills = getStepField('step4', 'skills', 'Key Skills', 'Type skill and press Enter (e.g., React, Node.js)', false);
+
+      const linkedinErr = fLinkedin.isRequired && !p.linkedinUrl?.trim();
+      const salaryTypeErr = fSalaryType.isRequired && !p.salaryType?.trim();
+      const currencyErr = fCurrency.isRequired && !p.currency?.trim();
+      const currentSalaryErr = fCurrentSalary.isRequired && !p.currentSalary?.trim();
+      const expectedSalaryErr = fExpectedSalary.isRequired && !p.expectedSalary?.trim();
+      const skillsList = p.skills ? p.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const skillsErr = fSkills.isRequired && skillsList.length === 0;
+
+      if (linkedinErr || salaryTypeErr || currencyErr || currentSalaryErr || expectedSalaryErr || skillsErr) {
+        setShowStep4Errors(true);
+        const firstErrId = linkedinErr ? 'field-linkedinUrl'
+          : salaryTypeErr ? 'field-salaryType'
+          : currencyErr ? 'field-currency'
+          : currentSalaryErr ? 'field-currentSalary'
+          : expectedSalaryErr ? 'field-expectedSalary'
+          : 'field-skills';
+        scrollToFirstError(firstErrId);
+        return;
+      }
+      setShowStep4Errors(false);
+    }
     if (currentStep === 5) {
+      const docs = formData.documents || {};
       const fResume = getStepField('step5', 'resume', 'Upload Resume', '', true);
       const fCoverLetter = getStepField('step5', 'coverLetter', 'Upload Cover Letter', '', false);
       const fIntroVideo = getStepField('step5', 'introVideo', 'Introductory Video', '', false);
@@ -694,13 +731,12 @@ const EmployeeOnboarding = () => {
       const videoErr = fIntroVideo.isRequired && !docs.introVideo;
 
       if (resumeErr || coverErr || videoErr) {
+        setShowStep5Errors(true);
         const firstDocErrId = resumeErr ? 'field-resume' : coverErr ? 'field-coverLetter' : 'field-introVideo';
         scrollToFirstError(firstDocErrId);
         return;
       }
-    }
-    if (currentStep === 4) {
-      // No validation required for Professional Overview
+      setShowStep5Errors(false);
     }
 
     saveToBackend();
@@ -717,6 +753,107 @@ const EmployeeOnboarding = () => {
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (isSubmitting) return;
+
+    // Comprehensive validation check before final submission
+    const step1Fields = cmsConfig?.step1?.fields;
+    const isReq1 = (key, defaultReq) => step1Fields?.[key]?.isRequired !== undefined ? step1Fields[key].isRequired : defaultReq;
+    const fNameErr = isReq1('firstName', true) && !formData.firstName?.trim();
+    const lNameErr = isReq1('lastName', false) && !formData.lastName?.trim();
+    const phoneErr = isReq1('phone', true) && (!formData.phone?.trim() || formData.phone.trim().length < 10);
+    const industryErr = isReq1('industry', true) && !formData.industry?.trim();
+    const desigErr = isReq1('designation', true) && !formData.designation?.trim();
+    const expErr = isReq1('totalExperience', true) && !formData.totalExperience?.trim();
+    const locErr = isReq1('location', true) && !formData.location?.trim();
+    const prefLocErr = isReq1('preferredLocation', false) && !formData.preferredLocation?.trim();
+    const briefErr = isReq1('brief', false) && !formData.brief?.trim();
+
+    if (fNameErr || lNameErr || phoneErr || industryErr || desigErr || expErr || locErr || prefLocErr || briefErr || phoneError) {
+      setCurrentStep(1);
+      setShowStep1Errors(true);
+      const firstErrId = fNameErr ? 'field-firstName'
+        : lNameErr ? 'field-lastName'
+        : (phoneErr || phoneError) ? 'field-phone'
+        : industryErr ? 'field-industry'
+        : desigErr ? 'field-designation'
+        : expErr ? 'field-totalExperience'
+        : locErr ? 'field-location'
+        : prefLocErr ? 'field-preferredLocation'
+        : 'field-brief';
+      scrollToFirstError(firstErrId);
+      return;
+    }
+
+    const eduRes = validateEducationData();
+    if (!eduRes.isValid) {
+      setCurrentStep(2);
+      if (eduRes.eduIdx !== undefined && eduRes.eduIdx >= 0) {
+        setExpandedEduIndex(eduRes.eduIdx);
+      }
+      setEduFieldErrors(eduRes.errors || {});
+      setEduError(eduRes.message || 'Please fill all required education fields (*)');
+      scrollToFirstError(eduRes.targetFieldId);
+      return;
+    }
+
+    const expRes = validateExperienceData();
+    if (!expRes.isValid) {
+      setCurrentStep(3);
+      if (expRes.cIdx !== undefined && expRes.cIdx >= 0) {
+        setExpandedExpIndex(expRes.cIdx);
+        setExpandedRoleIndex(expRes.rIdx || 0);
+      }
+      setExpFieldErrors(expRes.errors || {});
+      setExpError(expRes.message || 'Please fill all required work experience fields (*)');
+      scrollToFirstError(expRes.targetFieldId);
+      return;
+    }
+
+    const p = formData.professionalDetails || {};
+    const fLinkedin = getStepField('step4', 'linkedinUrl', 'LinkedIn Profile', 'https://linkedin.com/in/...', false);
+    const fSalaryType = getStepField('step4', 'salaryType', 'Salary Type', 'Select salary type', false);
+    const fCurrency = getStepField('step4', 'currency', 'Currency', 'Select currency', false);
+    const fCurrentSalary = getStepField('step4', 'currentSalary', 'Current Annual CTC', 'e.g. 5,00,000', false);
+    const fExpectedSalary = getStepField('step4', 'expectedSalary', 'Expected Annual CTC', 'e.g. 7,50,000', false);
+    const fSkills = getStepField('step4', 'skills', 'Key Skills', 'Type skill and press Enter (e.g., React, Node.js)', false);
+
+    const s4LinkedinErr = fLinkedin.isRequired && !p.linkedinUrl?.trim();
+    const s4SalaryTypeErr = fSalaryType.isRequired && !p.salaryType?.trim();
+    const s4CurrencyErr = fCurrency.isRequired && !p.currency?.trim();
+    const s4CurrentSalaryErr = fCurrentSalary.isRequired && !p.currentSalary?.trim();
+    const s4ExpectedSalaryErr = fExpectedSalary.isRequired && !p.expectedSalary?.trim();
+    const skillsList = p.skills ? p.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const s4SkillsErr = fSkills.isRequired && skillsList.length === 0;
+
+    if (s4LinkedinErr || s4SalaryTypeErr || s4CurrencyErr || s4CurrentSalaryErr || s4ExpectedSalaryErr || s4SkillsErr) {
+      setCurrentStep(4);
+      setShowStep4Errors(true);
+      const firstErrId = s4LinkedinErr ? 'field-linkedinUrl'
+        : s4SalaryTypeErr ? 'field-salaryType'
+        : s4CurrencyErr ? 'field-currency'
+        : s4CurrentSalaryErr ? 'field-currentSalary'
+        : s4ExpectedSalaryErr ? 'field-expectedSalary'
+        : 'field-skills';
+      scrollToFirstError(firstErrId);
+      return;
+    }
+
+    const docs = formData.documents || {};
+    const fResume = getStepField('step5', 'resume', 'Upload Resume', '', true);
+    const fCoverLetter = getStepField('step5', 'coverLetter', 'Upload Cover Letter', '', false);
+    const fIntroVideo = getStepField('step5', 'introVideo', 'Introductory Video', '', false);
+
+    const s5ResumeErr = fResume.isRequired && !docs.resume;
+    const s5CoverErr = fCoverLetter.isRequired && !docs.coverLetter;
+    const s5VideoErr = fIntroVideo.isRequired && !docs.introVideo;
+
+    if (s5ResumeErr || s5CoverErr || s5VideoErr) {
+      setCurrentStep(5);
+      setShowStep5Errors(true);
+      const firstDocErrId = s5ResumeErr ? 'field-resume' : s5CoverErr ? 'field-coverLetter' : 'field-introVideo';
+      scrollToFirstError(firstDocErrId);
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -733,7 +870,6 @@ const EmployeeOnboarding = () => {
         
         if (response.ok) {
           const data = await response.json();
-          // Update local storage with the returned profile just to be safe
           localStorage.setItem('userProfile', JSON.stringify(data.profile));
         } else {
           console.error("Failed to save profile to database");
@@ -842,22 +978,38 @@ const EmployeeOnboarding = () => {
               {fFirstName.label} {fFirstName.isRequired && <span className="text-red-500">*</span>}
             </label>
             <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fFirstName.isRequired && !formData.firstName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fFirstName.placeholder} value={formData.firstName || ''} onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} />
+            {showStep1Errors && fFirstName.isRequired && !formData.firstName && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please enter {fFirstName.label || 'first name'}
+              </p>
+            )}
           </div>
           <div id="field-lastName">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fLastName.label} {fLastName.isRequired && <span className="text-red-500">*</span>}
             </label>
             <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLastName.isRequired && !formData.lastName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fLastName.placeholder} value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
+            {showStep1Errors && fLastName.isRequired && !formData.lastName && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please enter {fLastName.label || 'last name'}
+              </p>
+            )}
           </div>
           <div id="field-phone">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fPhone.label} {fPhone.isRequired && <span className="text-red-500">*</span>}
             </label>
             <div className="flex">
-              <span className={`px-4 py-3 border border-r-0 ${((showStep1Errors && fPhone.isRequired && !formData.phone) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-l-xl bg-gray-50 text-gray-500 font-semibold`}>+91</span>
+              <span className={`px-4 py-3 border border-r-0 ${((showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10)) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-l-xl bg-gray-50 text-gray-500 font-semibold`}>+91</span>
               <input 
                 type="text" 
-                className={`w-full px-4 py-3 bg-white border ${((showStep1Errors && fPhone.isRequired && !formData.phone) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+                className={`w-full px-4 py-3 bg-white border ${((showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10)) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
                 placeholder={fPhone.placeholder} 
                 value={formData.phone || ''} 
                 onChange={e => { 
@@ -876,6 +1028,14 @@ const EmployeeOnboarding = () => {
                 }}
               />
             </div>
+            {showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10) && !phoneError && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please enter a valid 10-digit mobile number
+              </p>
+            )}
             {phoneError && (
               <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -917,6 +1077,14 @@ const EmployeeOnboarding = () => {
               placeholder={fIndustry.placeholder}
               error={showStep1Errors && fIndustry.isRequired && !formData.industry}
             />
+            {showStep1Errors && fIndustry.isRequired && !formData.industry && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please select {fIndustry.label || 'Function'}
+              </p>
+            )}
           </div>
           <div id="field-designation">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -948,6 +1116,14 @@ const EmployeeOnboarding = () => {
               placeholder={fDesignation.placeholder}
               error={showStep1Errors && fDesignation.isRequired && !formData.designation}
             />
+            {showStep1Errors && fDesignation.isRequired && !formData.designation && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please select {fDesignation.label || 'Designation'}
+              </p>
+            )}
           </div>
           <div id="field-totalExperience">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -969,6 +1145,14 @@ const EmployeeOnboarding = () => {
               placeholder={fTotalExp.placeholder}
               error={showStep1Errors && fTotalExp.isRequired && !formData.totalExperience}
             />
+            {showStep1Errors && fTotalExp.isRequired && !formData.totalExperience && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please select {fTotalExp.label || 'Total Experience'}
+              </p>
+            )}
           </div>
           <div id="field-location">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -989,6 +1173,14 @@ const EmployeeOnboarding = () => {
               placeholder={fLocation.placeholder}
               className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLocation.isRequired && !formData.location ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
             />
+            {showStep1Errors && fLocation.isRequired && !formData.location && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please select {fLocation.label || 'Current Location'}
+              </p>
+            )}
           </div>
           <div id="field-preferredLocation" className="col-span-2 sm:col-span-1">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -1026,6 +1218,14 @@ const EmployeeOnboarding = () => {
               placeholder={fPreferredLocation.placeholder}
               className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
             />
+            {showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please select {fPreferredLocation.label || 'Preferred Location'}
+              </p>
+            )}
           </div>
           <div id="field-brief" className="col-span-2">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -1038,6 +1238,14 @@ const EmployeeOnboarding = () => {
               value={formData.brief || ''} 
               onChange={e => setFormData({...formData, brief: e.target.value})} 
             ></textarea>
+            {showStep1Errors && fBrief.isRequired && !formData.brief && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please enter {fBrief.label || 'brief about yourself'}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -1350,6 +1558,14 @@ const EmployeeOnboarding = () => {
                                 ));
                               })()}
                             </select>
+                            {eduFieldErrors.educationType && (
+                              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                Please select education type
+                              </p>
+                            )}
                           </div>
 
                           {isSchool && (
@@ -1373,6 +1589,14 @@ const EmployeeOnboarding = () => {
                                     ));
                                   })()}
                                 </select>
+                                {eduFieldErrors.board && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please select board
+                                  </p>
+                                )}
                               </div>
                               <div id={`field-edu-endYear-${idx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -1384,6 +1608,14 @@ const EmployeeOnboarding = () => {
                                     <option key={year} value={year}>{year}</option>
                                   ))}
                                 </select>
+                                {eduFieldErrors.endYear && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please select passing out year
+                                  </p>
+                                )}
                               </div>
                               <div id={`field-edu-schoolMedium-${idx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -1395,12 +1627,28 @@ const EmployeeOnboarding = () => {
                                     <option key={oIdx} value={opt}>{opt}</option>
                                   ))}
                                 </select>
+                                {eduFieldErrors.schoolMedium && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please select school medium
+                                  </p>
+                                )}
                               </div>
                               <div id={`field-edu-percentage-${idx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
                                   {getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').label} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
                                 </label>
                                 <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder={getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').placeholder || '% marks of 100 maximum'} value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
+                                {eduFieldErrors.percentage && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please enter marks / percentage
+                                  </p>
+                                )}
                               </div>
                             </>
                           )}
@@ -1420,6 +1668,14 @@ const EmployeeOnboarding = () => {
                                   placeholder={getStepField('step2', 'university', 'University / Institute', 'Search or enter university/institute...').placeholder || 'Search or enter university/institute...'} 
                                   className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
                                 />
+                                {eduFieldErrors.university && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please enter or select university / institute
+                                  </p>
+                                )}
                               </div>
                               <div id={`field-edu-course-${idx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -1467,6 +1723,14 @@ const EmployeeOnboarding = () => {
                                     }
                                   })()}
                                 </select>
+                                {eduFieldErrors.course && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please select course
+                                  </p>
+                                )}
                               </div>
                               <div id={`field-edu-courseType-${idx}`}>
                                 <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>
@@ -1492,6 +1756,14 @@ const EmployeeOnboarding = () => {
                                     </label>
                                   ))}
                                 </div>
+                                {eduFieldErrors.courseType && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please select course type
+                                  </p>
+                                )}
                               </div>
                               <div id={`field-edu-startYear-${idx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -1512,6 +1784,14 @@ const EmployeeOnboarding = () => {
                                     ))}
                                   </select>
                                 </div>
+                                {(eduFieldErrors.startYear || eduFieldErrors.endYear) && (
+                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Please select starting and ending year
+                                  </p>
+                                )}
                               </div>
                               {(() => {
                                 const currentGradingSystems = normalizeGradingSystems(cmsConfig?.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
@@ -1552,6 +1832,14 @@ const EmployeeOnboarding = () => {
                                             setEduFieldErrors({...eduFieldErrors, percentage: false}); 
                                           }} 
                                         />
+                                        {eduFieldErrors.percentage && (
+                                          <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                            Please enter {dynamicMarksLabel}
+                                          </p>
+                                        )}
                                       </div>
                                     )}
                                   </>
@@ -1721,6 +2009,14 @@ const EmployeeOnboarding = () => {
                                           }} 
                                           placeholder={fCompany.placeholder || "Enter or search company name..."}
                                         />
+                                        {expFieldErrors.companyName && (
+                                          <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                            Please enter or search company name
+                                          </p>
+                                        )}
                                       </div>
                                       <div className="relative border-l-2 border-green-500 ml-3 mt-8 space-y-8 pb-4">
                                         {(exp.roles || []).map((role, rIdx) => {
@@ -1774,6 +2070,14 @@ const EmployeeOnboarding = () => {
                                                         }} 
                                                         placeholder={fJobTitle.placeholder || "Enter or search job title..."}
                                                       />
+                                                      {expFieldErrors.roles?.[rIdx]?.jobTitle && (
+                                                        <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                          </svg>
+                                                          Please enter or search job title
+                                                        </p>
+                                                      )}
                                                     </div>
                                                     <div id={`field-exp-empType-${cIdx}-${rIdx}`}>
                                                       <label className="block text-sm font-bold text-gray-900 mb-1.5">{fEmpType.label} {fEmpType.isRequired && <span className="text-red-500">*</span>}</label>
@@ -1792,6 +2096,14 @@ const EmployeeOnboarding = () => {
                                                           <option key={oIdx} value={opt}>{opt}</option>
                                                         ))}
                                                       </select>
+                                                      {expFieldErrors.roles?.[rIdx]?.employmentType && (
+                                                        <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                          </svg>
+                                                          Please select employment type
+                                                        </p>
+                                                      )}
                                                     </div>
                                                     <div className="flex items-center">
                                                       <input 
@@ -1804,13 +2116,13 @@ const EmployeeOnboarding = () => {
                                                           const newExp = (formData.experience || []).map((expItem, compI) => ({
                                                             ...expItem,
                                                             roles: (expItem.roles || []).map((rItem, roleI) => ({
-                                                              ...rItem,
-                                                              currentCompany: (compI === cIdx && roleI === rIdx) ? isChecked : false,
-                                                              leavingDate: (compI === cIdx && roleI === rIdx && isChecked) ? '' : rItem.leavingDate
-                                                            }))
-                                                          }));
-                                                          setFormData({ ...formData, experience: newExp });
-                                                        }} 
+                                                            ...rItem,
+                                                            currentCompany: (compI === cIdx && roleI === rIdx) ? isChecked : false,
+                                                            leavingDate: (compI === cIdx && roleI === rIdx && isChecked) ? '' : rItem.leavingDate
+                                                          }))
+                                                        }));
+                                                        setFormData({ ...formData, experience: newExp });
+                                                      }} 
                                                       />
                                                       <label htmlFor={`current-${cIdx}-${rIdx}`} className="text-sm font-bold text-gray-900 cursor-pointer">
                                                         {fCurrent.label || 'Currently working here'}
@@ -1835,6 +2147,14 @@ const EmployeeOnboarding = () => {
                                                             placeholder={fJoining.placeholder || "Select joining date"}
                                                           />
                                                         </div>
+                                                        {expFieldErrors.roles?.[rIdx]?.joiningDate && (
+                                                          <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                            </svg>
+                                                            Please select joining date
+                                                          </p>
+                                                        )}
                                                       </div>
                                                       {!role.currentCompany && (
                                                         <div id={`field-exp-leavingDate-${cIdx}-${rIdx}`}>
@@ -1855,6 +2175,14 @@ const EmployeeOnboarding = () => {
                                                               placeholder={fLeaving.placeholder || "Select leaving date"}
                                                             />
                                                           </div>
+                                                          {expFieldErrors.roles?.[rIdx]?.leavingDate && (
+                                                            <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                                              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                              </svg>
+                                                              Please select leaving date
+                                                            </p>
+                                                          )}
                                                         </div>
                                                       )}
                                                     </div>
@@ -1875,6 +2203,14 @@ const EmployeeOnboarding = () => {
                                                           }
                                                         }} 
                                                       />
+                                                      {expFieldErrors.roles?.[rIdx]?.roleDescription && (
+                                                        <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                                          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                          </svg>
+                                                          Please describe your roles & responsibilities
+                                                        </p>
+                                                      )}
                                                     </div>
                                                   </div>
                                                 </div>
@@ -1899,7 +2235,7 @@ const EmployeeOnboarding = () => {
                                     </div>
 
                                     {hasCurrentRole && (
-                                      <div className="mt-6 pt-6 border-t border-gray-200">
+                                      <div className="mt-6 pt-6 border-t border-gray-200" id={`field-exp-noticePeriod-${cIdx}`}>
                                         <label className="block text-sm font-bold text-gray-900 mb-1.5">{fNotice.label} {fNotice.isRequired && <span className="text-red-500">*</span>}</label>
                                         <select className={`w-1/2 px-4 py-3 bg-white border ${expFieldErrors.noticePeriod ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={exp.noticePeriod || ''} onChange={e => {
                                           const newExp = [...(formData.experience || [])];
@@ -1914,6 +2250,14 @@ const EmployeeOnboarding = () => {
                                             <option key={optIdx} value={opt}>{opt}</option>
                                           ))}
                                         </select>
+                                        {expFieldErrors.noticePeriod && (
+                                          <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                            Please select notice period
+                                          </p>
+                                        )}
                                       </div>
                                     )}
                                   </>
@@ -1971,6 +2315,8 @@ const EmployeeOnboarding = () => {
       ? (fExpectedSalary.placeholder ? fExpectedSalary.placeholder.replace(/7,50,000|750000|8,00,000|800000/g, '60,000') : `e.g. ${getCurrencySymbol(p.currency)}60,000`)
       : (fExpectedSalary.placeholder || `e.g. ${getCurrencySymbol(p.currency)}7,50,000`);
 
+    const skillsList = p.skills ? p.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+
     return (
       <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
         <div className="mb-6 pb-2 border-b border-gray-100">
@@ -1978,70 +2324,133 @@ const EmployeeOnboarding = () => {
           {s4Subtitle && <p className="text-sm text-gray-500 mt-1">{s4Subtitle}</p>}
         </div>
         <div className="grid grid-cols-2 gap-6">
-          <div className="col-span-2">
+          <div className="col-span-2" id="field-linkedinUrl">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fLinkedin.label} {fLinkedin.isRequired && <span className="text-red-500">*</span>}
             </label>
             <input 
               type="url" 
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" 
+              className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fLinkedin.isRequired && !p.linkedinUrl ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
               placeholder={fLinkedin.placeholder || 'https://linkedin.com/in/...'}
               value={p.linkedinUrl || ''} 
-              onChange={e => setP('linkedinUrl', e.target.value)} 
+              onChange={e => {
+                setP('linkedinUrl', e.target.value);
+                if (showStep4Errors) setShowStep4Errors(false);
+              }} 
             />
+            {showStep4Errors && fLinkedin.isRequired && !p.linkedinUrl && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please enter {fLinkedin.label || 'LinkedIn Profile URL'}
+              </p>
+            )}
           </div>
           
           <div className="col-span-2 grid grid-cols-2 gap-6">
-            <div>
+            <div id="field-salaryType">
               <label className="block text-sm font-bold text-gray-900 mb-1.5">
                 {fSalaryType.label || 'Salary Type'} {fSalaryType.isRequired && <span className="text-red-500">*</span>}
               </label>
-              <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer" value={p.salaryType || 'Yearly'} onChange={e => setP('salaryType', e.target.value)}>
+              <select 
+                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fSalaryType.isRequired && !p.salaryType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer`} 
+                value={p.salaryType || 'Yearly'} 
+                onChange={e => {
+                  setP('salaryType', e.target.value);
+                  if (showStep4Errors) setShowStep4Errors(false);
+                }}
+              >
                 <option value="Yearly">Yearly</option>
                 <option value="Monthly">Monthly</option>
               </select>
+              {showStep4Errors && fSalaryType.isRequired && !p.salaryType && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Please select {fSalaryType.label || 'Salary Type'}
+                </p>
+              )}
             </div>
-            <div>
+            <div id="field-currency">
               <label className="block text-sm font-bold text-gray-900 mb-1.5">
                 {fCurrency.label || 'Currency'} {fCurrency.isRequired && <span className="text-red-500">*</span>}
               </label>
-              <select className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer" value={p.currency || 'INR'} onChange={e => setP('currency', e.target.value)}>
+              <select 
+                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fCurrency.isRequired && !p.currency ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer`} 
+                value={p.currency || 'INR'} 
+                onChange={e => {
+                  setP('currency', e.target.value);
+                  if (showStep4Errors) setShowStep4Errors(false);
+                }}
+              >
                 <option value="INR">INR (₹)</option>
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
               </select>
+              {showStep4Errors && fCurrency.isRequired && !p.currency && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Please select {fCurrency.label || 'Currency'}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="col-span-2 grid grid-cols-2 gap-6">
-            <div>
+            <div id="field-currentSalary">
               <label className="block text-sm font-bold text-gray-900 mb-1.5">
                 {currentSalaryDisplayLabel} {fCurrentSalary.isRequired && <span className="text-red-500">*</span>}
               </label>
               <input 
                 type="text" 
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" 
+                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fCurrentSalary.isRequired && !p.currentSalary ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
                 placeholder={currentSalaryDisplayPlaceholder} 
                 value={p.currentSalary || ''} 
-                onChange={e => setP('currentSalary', formatIndianNumber(e.target.value))} 
+                onChange={e => {
+                  setP('currentSalary', formatIndianNumber(e.target.value));
+                  if (showStep4Errors) setShowStep4Errors(false);
+                }} 
               />
+              {showStep4Errors && fCurrentSalary.isRequired && !p.currentSalary && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Please enter {currentSalaryDisplayLabel}
+                </p>
+              )}
             </div>
-            <div>
+            <div id="field-expectedSalary">
               <label className="block text-sm font-bold text-gray-900 mb-1.5">
                 {expectedSalaryDisplayLabel} {fExpectedSalary.isRequired && <span className="text-red-500">*</span>}
               </label>
               <input 
                 type="text" 
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" 
+                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fExpectedSalary.isRequired && !p.expectedSalary ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
                 placeholder={expectedSalaryDisplayPlaceholder} 
                 value={p.expectedSalary || ''} 
-                onChange={e => setP('expectedSalary', formatIndianNumber(e.target.value))} 
+                onChange={e => {
+                  setP('expectedSalary', formatIndianNumber(e.target.value));
+                  if (showStep4Errors) setShowStep4Errors(false);
+                }} 
               />
+              {showStep4Errors && fExpectedSalary.isRequired && !p.expectedSalary && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Please enter {expectedSalaryDisplayLabel}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="col-span-2">
+          <div className="col-span-2" id="field-skills">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fSkills.label} {fSkills.isRequired && <span className="text-red-500">*</span>}
             </label>
@@ -2066,11 +2475,21 @@ const EmployeeOnboarding = () => {
                   if (!currentSkills.includes(val)) {
                     currentSkills.push(val);
                     setFormData({...formData, professionalDetails: {...p, skills: currentSkills.join(', ')}});
+                    if (showStep4Errors) setShowStep4Errors(false);
                   }
                 }
               }}
               placeholder={fSkills.placeholder || "Search or select a skill to add..."}
+              error={showStep4Errors && fSkills.isRequired && skillsList.length === 0}
             />
+            {showStep4Errors && fSkills.isRequired && skillsList.length === 0 && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please add at least one {fSkills.label || 'Key Skill'}
+              </p>
+            )}
             {(() => {
               const suggested = getSuggestedSkills(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []);
               if (suggested.length === 0) return null;
@@ -2087,6 +2506,7 @@ const EmployeeOnboarding = () => {
                           if (!currentSkills.includes(suggestion)) {
                             currentSkills.push(suggestion);
                             setFormData({...formData, professionalDetails: {...p, skills: currentSkills.join(', ')}});
+                            if (showStep4Errors) setShowStep4Errors(false);
                           }
                         }}
                         className="px-4 py-2 bg-white text-[#64748B] rounded-full text-[13px] font-medium border border-gray-200 hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all flex items-center gap-1 shadow-sm"
@@ -2149,14 +2569,17 @@ const EmployeeOnboarding = () => {
           const muxResult = await uploadVideoToMux(file, (p) => setVideoUploadProgress(p));
           if (muxResult.isMux && muxResult.streamUrl) {
             setDoc('introVideo', muxResult.streamUrl);
+            if (showStep5Errors) setShowStep5Errors(false);
             return;
           }
           // Fallback to Firebase Storage if Mux is not configured
           const downloadURL = await uploadFileToStorage(file, 'intro-videos', (p) => setVideoUploadProgress(p));
           setDoc('introVideo', downloadURL);
+          if (showStep5Errors) setShowStep5Errors(false);
         } else {
           const downloadURL = await uploadFileToStorage(file, 'resumes');
           setDoc(type, downloadURL);
+          if (showStep5Errors) setShowStep5Errors(false);
         }
       } catch (error) {
         console.error("Upload error:", error);
@@ -2175,6 +2598,7 @@ const EmployeeOnboarding = () => {
       }
       setDocError(prev => ({...prev, introVideo: ''}));
       setDoc('introVideo', videoLink.trim());
+      if (showStep5Errors) setShowStep5Errors(false);
     };
 
     const getFileName = (url) => {
@@ -2205,7 +2629,7 @@ const EmployeeOnboarding = () => {
           {/* 1 & 2: Side-by-Side Resume & Cover Letter Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Resume Upload Card */}
-            <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-2xs space-y-3">
+            <div id="field-resume" className={`p-5 border ${showStep5Errors && fResume.isRequired && !docs.resume ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-2xl bg-white shadow-2xs space-y-3 transition-all`}>
               <label className="block text-sm font-bold text-gray-900">
                 {fResume.label || 'Upload Resume'} {fResume.isRequired && <span className="text-red-500">*</span>}
               </label>
@@ -2220,6 +2644,14 @@ const EmployeeOnboarding = () => {
               </div>
               <p className="text-xs text-gray-700 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
               {docError.resume && <p className="text-xs text-red-500 font-medium">{docError.resume}</p>}
+              {showStep5Errors && fResume.isRequired && !docs.resume && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Please upload your {fResume.label || 'Resume'}
+                </p>
+              )}
               {docs.resume && (
                 <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -2255,7 +2687,7 @@ const EmployeeOnboarding = () => {
             </div>
 
             {/* Cover Letter Upload Card */}
-            <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-2xs space-y-3">
+            <div id="field-coverLetter" className={`p-5 border ${showStep5Errors && fCoverLetter.isRequired && !docs.coverLetter ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-2xl bg-white shadow-2xs space-y-3 transition-all`}>
               <label className="flex items-center justify-between text-sm font-bold text-gray-900">
                 <span>{fCoverLetter.label || 'Upload Cover Letter'}</span>
                 {!fCoverLetter.isRequired ? (
@@ -2275,6 +2707,14 @@ const EmployeeOnboarding = () => {
               </div>
               <p className="text-xs text-gray-700 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
               {docError.coverLetter && <p className="text-xs text-red-500 font-medium">{docError.coverLetter}</p>}
+              {showStep5Errors && fCoverLetter.isRequired && !docs.coverLetter && (
+                <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Please upload your {fCoverLetter.label || 'Cover Letter'}
+                </p>
+              )}
               {docs.coverLetter && (
                 <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
@@ -2311,7 +2751,7 @@ const EmployeeOnboarding = () => {
           </div>
 
           {/* 3: Introductory Video Card */}
-          <div className="p-6 border border-emerald-200 rounded-2xl bg-white shadow-2xs space-y-4">
+          <div id="field-introVideo" className={`p-6 border ${showStep5Errors && fIntroVideo.isRequired && !docs.introVideo ? 'border-red-500 ring-1 ring-red-500' : 'border-emerald-200'} rounded-2xl bg-white shadow-2xs space-y-4 transition-all`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
@@ -2338,9 +2778,18 @@ const EmployeeOnboarding = () => {
               </div>
             </div>
 
+            {showStep5Errors && fIntroVideo.isRequired && !docs.introVideo && (
+              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Please upload or attach your {fIntroVideo.label || 'Introductory Video'}
+              </p>
+            )}
+
             {/* Mode 1: File Upload */}
             {videoMode === 'upload' && !docs.introVideo && (
-              <div className={`p-6 border-2 border-dashed ${isUploading && uploadingType === 'introVideo' ? 'border-emerald-400 bg-emerald-50/40' : 'border-gray-300'} rounded-2xl bg-white text-center hover:border-emerald-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[140px]`}>
+              <div className={`p-6 border-2 border-dashed ${isUploading && uploadingType === 'introVideo' ? 'border-emerald-400 bg-emerald-50/40' : (showStep5Errors && fIntroVideo.isRequired && !docs.introVideo ? 'border-red-400 bg-red-50/30' : 'border-gray-300')} rounded-2xl bg-white text-center hover:border-emerald-400 transition-all cursor-pointer relative group flex flex-col items-center justify-center min-h-[140px]`}>
                 <input 
                   type="file" 
                   disabled={isUploading} 

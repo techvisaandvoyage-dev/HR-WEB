@@ -144,7 +144,8 @@ exports.register = async (req, res) => {
       // Existing Google user completing Company Details
       if (fullName) employer.fullName = fullName;
       if (accountType) employer.accountType = accountType;
-      if (password) employer.password = password;
+      if (mobile) employer.mobile = mobile;
+      if (password && String(password).trim() !== '') employer.password = password;
       if (hiringFor) employer.hiringFor = hiringFor;
       employer.companyName = companyName;
       employer.industry = industry;
@@ -156,10 +157,24 @@ exports.register = async (req, res) => {
       await employer.save();
     } else {
       // Create new user
-      employer = await Employer.create({
-        mobile, accountType, fullName, email: cleanEmail, password,
-        hiringFor, companyName, industry, employees, designation, location, aboutCompany, website
-      });
+      const createData = {
+        mobile: mobile || '',
+        accountType: accountType || 'company',
+        fullName,
+        email: cleanEmail,
+        hiringFor,
+        companyName,
+        industry,
+        employees,
+        designation,
+        location,
+        aboutCompany,
+        website
+      };
+      if (password && String(password).trim() !== '') {
+        createData.password = password;
+      }
+      employer = await Employer.create(createData);
     }
 
     if (employer) {
@@ -514,7 +529,7 @@ exports.googleAuth = async (req, res) => {
     }
 
     const decodedToken = await verifyIdToken(id_token);
-    const { email, name } = decodedToken;
+    const { email, name, sub, uid } = decodedToken;
 
     if (!email) {
       return res.status(400).json({ message: 'Email not found in Google account' });
@@ -557,6 +572,7 @@ exports.googleAuth = async (req, res) => {
       token: generateToken(employer._id)
     });
   } catch (error) {
+    console.error('Employer Google Auth Error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

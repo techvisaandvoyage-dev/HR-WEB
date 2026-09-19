@@ -96,7 +96,8 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/google`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employer/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id_token: idToken })
@@ -113,13 +114,15 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
           onLoginSuccess?.(data);
         }
       } else {
-        setError(data.message || 'Google login failed');
-        setErrors({ google: data.message || 'Google login failed' });
+        const errorMsg = data.message || 'Google login failed';
+        setError(errorMsg);
+        setErrors({ general: errorMsg });
       }
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
-        setError(err.message || 'Google login failed');
-        setErrors({ google: err.message || 'Google login failed' });
+        const errorMsg = err.message || 'Google login failed';
+        setError(errorMsg);
+        setErrors({ general: errorMsg });
       }
     } finally {
       setLoading(false);
