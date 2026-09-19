@@ -10,7 +10,7 @@ import TypographySectionEditor from './components/TypographySectionEditor';
  * Main orchestrator for Homepage CMS with 2-tier sub-navigation sidebar,
  * managing Logo, Typography & Fonts, Hero, Search Bar, and Job Cards configurations.
  */
-const VALID_SECTIONS = ['logo', 'typography', 'hero', 'search', 'jobCards'];
+const VALID_SECTIONS = ['logo', 'hero', 'search', 'jobCards']; // 'typography' temporarily hidden
 
 const HomepageCMS = () => {
   const [activeSection, setActiveSectionState] = useState(() => {
@@ -119,19 +119,19 @@ const HomepageCMS = () => {
           }));
         }
       } catch (err) {
-        console.error('Error fetching homepage CMS data:', err);
+        console.error('Error loading homepage config:', err);
       } finally {
         setIsLoading(false);
       }
     };
     fetchConfig();
-  }, [API_URL]);
+  }, []);
 
   // Handler for updating child section state
-  const handleSectionChange = (sectionKey, updatedSectionData) => {
+  const handleSectionChange = (sectionKey, newSectionData) => {
     setCmsData(prev => ({
       ...prev,
-      [sectionKey]: updatedSectionData
+      [sectionKey]: newSectionData
     }));
   };
 
@@ -153,7 +153,7 @@ const HomepageCMS = () => {
 
       const json = await res.json();
       if (json.success) {
-        setSaveSuccessMessage('Homepage & Typography settings saved successfully!');
+        setSaveSuccessMessage('Homepage settings saved successfully!');
         setTimeout(() => setSaveSuccessMessage(''), 4000);
       } else {
         setSaveErrorMessage(json.message || 'Failed to save changes.');
@@ -177,6 +177,7 @@ const HomepageCMS = () => {
         </svg>
       )
     },
+    /* Typography & Fonts temporarily hidden - do not remove code
     {
       id: 'typography',
       label: 'Typography & Fonts',
@@ -186,6 +187,7 @@ const HomepageCMS = () => {
         </svg>
       )
     },
+    */
     {
       id: 'hero',
       label: 'Hero Section',
@@ -315,6 +317,7 @@ const HomepageCMS = () => {
             />
           )}
 
+          {/* Typography & Fonts editor temporarily hidden - do not delete code
           {activeSection === 'typography' && (
             <TypographySectionEditor
               data={cmsData}
@@ -323,6 +326,7 @@ const HomepageCMS = () => {
               isSaving={isSaving}
             />
           )}
+          */}
 
           {activeSection === 'hero' && (
             <HeroSectionEditor
