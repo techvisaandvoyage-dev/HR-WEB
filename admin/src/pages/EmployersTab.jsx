@@ -48,6 +48,8 @@ import {
   FolderPlus
 } from 'lucide-react';
 
+import EmployerPostJobEditor, { DEFAULT_EMPLOYER_POST_JOB_CONFIG } from './homepage-cms/components/EmployerPostJobEditor';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const DEFAULT_EMPLOYER_INDUSTRIES_DATA = {
@@ -341,9 +343,9 @@ export default function EmployersTab() {
   const [activeSection, setActiveSectionState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sec = params.get('section');
-    if (sec && ['auth', 'overview'].includes(sec)) return sec;
+    if (sec && ['auth', 'post-job', 'overview'].includes(sec)) return sec;
     const saved = localStorage.getItem('adminEmployerSection');
-    if (saved && ['auth', 'overview'].includes(saved)) return saved;
+    if (saved && ['auth', 'post-job', 'overview'].includes(saved)) return saved;
     return 'auth';
   });
 
@@ -554,7 +556,7 @@ export default function EmployersTab() {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const sec = params.get('section');
-      if (sec && ['auth', 'overview'].includes(sec)) {
+      if (sec && ['auth', 'post-job', 'overview'].includes(sec)) {
         setActiveSectionState(sec);
       }
       const sub = params.get('authSub');
@@ -1128,6 +1130,7 @@ export default function EmployersTab() {
   // Sidebar Sections
   const sidebarSections = [
     { id: 'auth', label: 'Authentication', icon: ShieldCheck },
+    { id: 'post-job', label: 'Post a Job', icon: Briefcase },
     { id: 'overview', label: 'Overview & Directory', icon: LayoutDashboard }
   ];
 
@@ -2380,7 +2383,20 @@ export default function EmployersTab() {
         )}
 
         {/* ========================================================================= */}
-        {/* 2. OVERVIEW & DIRECTORY SECTION                                           */}
+        {/* 2. POST A JOB CMS & CONTROLS SECTION                                      */}
+        {/* ========================================================================= */}
+        {activeSection === 'post-job' && (
+          <EmployerPostJobEditor
+            registerConfig={registerConfig}
+            loginConfig={loginConfig}
+            onSaveSuccess={() => {
+              showToast('Post a Job CMS settings updated successfully!');
+            }}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 3. OVERVIEW & DIRECTORY SECTION                                           */}
         {/* ========================================================================= */}
         {activeSection === 'overview' && (
           <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">

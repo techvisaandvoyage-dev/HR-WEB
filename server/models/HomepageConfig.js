@@ -80,6 +80,10 @@ const homepageConfigSchema = new mongoose.Schema({
   employerLogin: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  employerPostJob: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true,
