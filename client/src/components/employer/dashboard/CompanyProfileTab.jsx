@@ -143,6 +143,40 @@ const CompanyProfileTab = () => {
     }
   };
 
+  const convertImageToBase64 = (file, maxWidth = 500, maxHeight = 500) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.88));
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleLogoFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -161,23 +195,40 @@ const CompanyProfileTab = () => {
       setUploadingLogo(true);
       setUploadProgress(0);
 
-      const downloadURL = await uploadFileToStorage(file, 'employer_logos', (progress) => {
-        setUploadProgress(progress);
-      });
+      let finalLogoUrl = '';
 
-      setCompanyData(prev => ({ ...prev, companyLogo: downloadURL }));
+      // Try uploading to Firebase Storage first
+      try {
+        finalLogoUrl = await uploadFileToStorage(file, 'employer_logos', (progress) => {
+          setUploadProgress(progress);
+        });
+      } catch (firebaseErr) {
+        console.warn('Firebase storage upload failed, falling back to optimized direct upload:', firebaseErr);
+        // Fallback: Convert to compressed Base64 data URL
+        finalLogoUrl = await convertImageToBase64(file);
+      }
 
-      // Immediately persist logo update to backend
+      if (!finalLogoUrl) {
+        throw new Error('Could not process image file');
+      }
+
+      setCompanyData(prev => ({ ...prev, companyLogo: finalLogoUrl }));
+
+      // Immediately persist logo update to backend database
       const token = localStorage.getItem('employerToken');
       if (token) {
-        await fetch(`${apiUrl}/api/employer/auth/update`, {
+        const res = await fetch(`${apiUrl}/api/employer/auth/update`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ companyLogo: downloadURL })
+          body: JSON.stringify({ companyLogo: finalLogoUrl })
         });
+        const resData = await res.json();
+        if (!resData.success) {
+          throw new Error(resData.message || 'Failed to save logo to database');
+        }
       }
 
       showToast('Logo uploaded and saved successfully!');
