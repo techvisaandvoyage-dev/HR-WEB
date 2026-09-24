@@ -111,6 +111,29 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
     ];
   }, [industry, cmsConfig]);
 
+  const getFieldConfig = (stepKey, fieldKey, defaultLabel, defaultPlaceholder, defaultRequired = true) => {
+    const fieldData = cmsConfig?.[stepKey]?.fields?.[fieldKey];
+    return {
+      label: fieldData?.label || defaultLabel,
+      placeholder: fieldData?.placeholder || defaultPlaceholder,
+      isRequired: fieldData?.isRequired !== undefined ? fieldData.isRequired : defaultRequired
+    };
+  };
+
+  const fullNameCfg = getFieldConfig('step1', 'fullName', 'Full Name / Contact Person', 'e.g. John Doe', true);
+  const emailCfg = getFieldConfig('step1', 'email', 'Official Email ID', 'name@company.com', true);
+  const mobileCfg = getFieldConfig('step1', 'mobile', 'Mobile Number', 'e.g. 9876543210', true);
+  const passwordCfg = getFieldConfig('step1', 'password', 'Create Password', 'Enter strong password', true);
+  const confirmPasswordCfg = getFieldConfig('step1', 'confirmPassword', 'Confirm Password', 'Re-enter password', true);
+
+  const companyNameCfg = getFieldConfig('step2', 'companyName', 'Company / Business Name', 'Enter registered company or organization name', true);
+  const industryCfg = getFieldConfig('step2', 'industry', 'Industry Domain', 'Select Industry', true);
+  const employeesCfg = getFieldConfig('step2', 'employees', 'Company Size (Employees)', 'Select Number of Employees', true);
+  const designationCfg = getFieldConfig('step2', 'designation', 'Your Designation / Role', 'Select designation', true);
+  const locationCfg = getFieldConfig('step2', 'location', 'Headquarters / Primary Location', 'Select City / Location', true);
+  const aboutCompanyCfg = getFieldConfig('step2', 'aboutCompany', 'About Company', 'Briefly describe what your organization does...', false);
+  const websiteCfg = getFieldConfig('step2', 'website', 'Company Website', 'https://yourcompany.com (optional)', false);
+
   // Resend OTP countdown
   useEffect(() => {
     let interval = null;
@@ -240,15 +263,27 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
     if (e) e.preventDefault();
 
     const newErrors = {};
-    if (!fullName.trim()) newErrors.fullName = 'Full name is required';
-    if (!email.trim()) newErrors.email = 'Official email ID is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) newErrors.email = 'Please enter a valid email address';
+    if (fullNameCfg.isRequired && !fullName.trim()) newErrors.fullName = `${fullNameCfg.label} is required`;
+    
+    if (emailCfg.isRequired && !email.trim()) {
+      newErrors.email = `${emailCfg.label} is required`;
+    } else if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
 
-    if (!mobile.trim()) newErrors.mobile = 'Mobile number is required';
-    else if (!/^[0-9]{10}$/.test(mobile.trim())) newErrors.mobile = 'Please enter a valid 10-digit mobile number';
+    if (mobileCfg.isRequired && !mobile.trim()) {
+      newErrors.mobile = `${mobileCfg.label} is required`;
+    } else if (mobile.trim() && !/^[0-9]{10}$/.test(mobile.trim())) {
+      newErrors.mobile = 'Please enter a valid 10-digit mobile number';
+    }
 
-    if (!password) newErrors.password = 'Password is required';
-    if (!confirmPassword) newErrors.confirmPassword = 'Confirm password is required';
+    if (passwordCfg.isRequired && !password) {
+      newErrors.password = `${passwordCfg.label} is required`;
+    }
+
+    if (confirmPasswordCfg.isRequired && !confirmPassword) {
+      newErrors.confirmPassword = `${confirmPasswordCfg.label} is required`;
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -383,12 +418,13 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
     e.preventDefault();
 
     const newErrors = {};
-    if (!companyName.trim()) newErrors.companyName = 'Company name is required';
-    if (!industry) newErrors.industry = 'Industry is required';
-    if (!employees) newErrors.employees = 'Number of employees is required';
-    if (!designation) newErrors.designation = 'Designation is required';
-    if (!location) newErrors.location = 'Location is required';
-    if (!aboutCompany.trim()) newErrors.aboutCompany = 'About company is required';
+    if (companyNameCfg.isRequired && !companyName.trim()) newErrors.companyName = `${companyNameCfg.label} is required`;
+    if (industryCfg.isRequired && !industry) newErrors.industry = `${industryCfg.label} is required`;
+    if (employeesCfg.isRequired && !employees) newErrors.employees = `${employeesCfg.label} is required`;
+    if (designationCfg.isRequired && !designation) newErrors.designation = `${designationCfg.label} is required`;
+    if (locationCfg.isRequired && !location) newErrors.location = `${locationCfg.label} is required`;
+    if (aboutCompanyCfg.isRequired && !aboutCompany.trim()) newErrors.aboutCompany = `${aboutCompanyCfg.label} is required`;
+    if (websiteCfg.isRequired && !website.trim()) newErrors.website = `${websiteCfg.label} is required`;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -569,7 +605,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Full Name */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        {cmsConfig?.step1?.fields?.fullName?.label || 'Full Name / Contact Person'} <span className="text-red-500">*</span>
+                        {fullNameCfg.label} {fullNameCfg.isRequired && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="text"
@@ -578,7 +614,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           setFullName(e.target.value);
                           if (errors.fullName) setErrors({ ...errors, fullName: '' });
                         }}
-                        placeholder={cmsConfig?.step1?.fields?.fullName?.placeholder || 'e.g. John Doe'}
+                        placeholder={fullNameCfg.placeholder}
                         className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                           errors.fullName
                             ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -598,7 +634,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Email Input */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        {cmsConfig?.step1?.fields?.email?.label || 'Official Email ID'} <span className="text-red-500">*</span>
+                        {emailCfg.label} {emailCfg.isRequired && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="email"
@@ -607,7 +643,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           setEmail(e.target.value);
                           if (errors.email) setErrors({ ...errors, email: '' });
                         }}
-                        placeholder={cmsConfig?.step1?.fields?.email?.placeholder || 'e.g. hr@company.com'}
+                        placeholder={emailCfg.placeholder}
                         className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                           errors.email
                             ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -627,7 +663,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Mobile Number Input */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        {cmsConfig?.step1?.fields?.mobile?.label || 'Mobile Number'} <span className="text-red-500">*</span>
+                        {mobileCfg.label} {mobileCfg.isRequired && <span className="text-red-500">*</span>}
                       </label>
                       <input
                         type="tel"
@@ -638,7 +674,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           if (val.length <= 10) setMobile(val);
                           if (errors.mobile) setErrors({ ...errors, mobile: '' });
                         }}
-                        placeholder={cmsConfig?.step1?.fields?.mobile?.placeholder || 'e.g. 9876543210'}
+                        placeholder={mobileCfg.placeholder}
                         className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                           errors.mobile
                             ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -658,7 +694,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Password Input */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        {cmsConfig?.step1?.fields?.password?.label || 'Create Password'} <span className="text-red-500">*</span>
+                        {passwordCfg.label} {passwordCfg.isRequired && <span className="text-red-500">*</span>}
                       </label>
                       <div className="relative">
                         <input
@@ -668,7 +704,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                             setPassword(e.target.value);
                             if (errors.password) setErrors({ ...errors, password: '' });
                           }}
-                          placeholder={cmsConfig?.step1?.fields?.password?.placeholder || 'Enter strong password'}
+                          placeholder={passwordCfg.placeholder}
                           className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm pr-12 ${
                             errors.password
                               ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -730,7 +766,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Confirm Password Input */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        {cmsConfig?.step1?.fields?.confirmPassword?.label || 'Confirm Password'} <span className="text-red-500">*</span>
+                        {confirmPasswordCfg.label} {confirmPasswordCfg.isRequired && <span className="text-red-500">*</span>}
                       </label>
                       <div className="relative">
                         <input
@@ -979,7 +1015,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Company Name */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      {cmsConfig?.step2?.fields?.companyName?.label || 'Company / Organization Name'} <span className="text-red-500">*</span>
+                      {companyNameCfg.label} {companyNameCfg.isRequired && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="text"
@@ -988,7 +1024,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setCompanyName(e.target.value);
                         if (errors.companyName) setErrors({ ...errors, companyName: '' });
                       }}
-                      placeholder={cmsConfig?.step2?.fields?.companyName?.placeholder || 'e.g. Acme Innovations Pvt Ltd'}
+                      placeholder={companyNameCfg.placeholder}
                       className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                         errors.companyName
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -1008,7 +1044,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Industry */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      {cmsConfig?.step2?.fields?.industry?.label || 'Industry Domain'} <span className="text-red-500">*</span>
+                      {industryCfg.label} {industryCfg.isRequired && <span className="text-red-500">*</span>}
                     </label>
                     <CustomDropdown
                       options={industryOptions}
@@ -1020,7 +1056,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         if (errors.industry) setErrors({ ...errors, industry: '' });
                         if (errors.designation) setErrors(prev => ({ ...prev, designation: '' }));
                       }}
-                      placeholder={cmsConfig?.step2?.fields?.industry?.placeholder || 'Select Industry'}
+                      placeholder={industryCfg.placeholder}
                     />
                     {errors.industry && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1035,7 +1071,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Employees Range */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      {cmsConfig?.step2?.fields?.employees?.label || 'Company Size (Employees)'} <span className="text-red-500">*</span>
+                      {employeesCfg.label} {employeesCfg.isRequired && <span className="text-red-500">*</span>}
                     </label>
                     <CustomDropdown
                       options={employeeOptions}
@@ -1044,7 +1080,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setEmployees(val);
                         if (errors.employees) setErrors({ ...errors, employees: '' });
                       }}
-                      placeholder={cmsConfig?.step2?.fields?.employees?.placeholder || 'Select Number of Employees'}
+                      placeholder={employeesCfg.placeholder}
                     />
                     {errors.employees && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1059,7 +1095,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Designation — changes based on selected industry */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      {cmsConfig?.step2?.fields?.designation?.label || 'Your Designation / Role'} <span className="text-red-500">*</span>
+                      {designationCfg.label} {designationCfg.isRequired && <span className="text-red-500">*</span>}
                     </label>
                     {!industry && (
                       <p className="text-xs text-gray-400 mb-1">Select an industry first to see relevant designations</p>
@@ -1071,7 +1107,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setDesignation(val);
                         if (errors.designation) setErrors({ ...errors, designation: '' });
                       }}
-                      placeholder={industry ? `Select your role in ${industry}` : (cmsConfig?.step2?.fields?.designation?.placeholder || 'Select designation')}
+                      placeholder={industry ? `Select your role in ${industry}` : (designationCfg.placeholder || 'Select designation')}
                     />
                     {errors.designation && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1086,7 +1122,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Location */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      {cmsConfig?.step2?.fields?.location?.label || 'Headquarters / Primary Location'} <span className="text-red-500">*</span>
+                      {locationCfg.label} {locationCfg.isRequired && <span className="text-red-500">*</span>}
                     </label>
                     <MultiSelectLocationDropdown
                       options={currentLocationOptions}
@@ -1096,7 +1132,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         if (errors.location) setErrors({ ...errors, location: '' });
                       }}
                       multiple={false}
-                      placeholder={cmsConfig?.step2?.fields?.location?.placeholder || 'Select City / Location'}
+                      placeholder={locationCfg.placeholder}
                       className={`w-full px-5 py-3.5 rounded-2xl border ${
                         errors.location
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -1116,7 +1152,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* About Company */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      {cmsConfig?.step2?.fields?.aboutCompany?.label || 'About Company'} <span className="text-red-500">*</span>
+                      {aboutCompanyCfg.label} {aboutCompanyCfg.isRequired && <span className="text-red-500">*</span>}
                     </label>
                     <textarea
                       value={aboutCompany}
@@ -1124,7 +1160,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setAboutCompany(e.target.value);
                         if (errors.aboutCompany) setErrors({ ...errors, aboutCompany: '' });
                       }}
-                      placeholder={cmsConfig?.step2?.fields?.aboutCompany?.placeholder || 'Briefly describe what your organization does...'}
+                      placeholder={aboutCompanyCfg.placeholder}
                       rows="3"
                       className={`w-full px-5 py-3.5 rounded-2xl border outline-none transition-all placeholder-gray-400 resize-none text-sm ${
                         errors.aboutCompany
@@ -1145,15 +1181,23 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Website */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      {cmsConfig?.step2?.fields?.website?.label || 'Company Website (Optional)'}
+                      {websiteCfg.label} {websiteCfg.isRequired && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="text"
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
-                      placeholder={cmsConfig?.step2?.fields?.website?.placeholder || 'https://example.com'}
+                      placeholder={websiteCfg.placeholder}
                       className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400 text-sm"
                     />
+                    {errors.website && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.website}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
