@@ -30,6 +30,11 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
       icon: Users
     },
     {
+      id: 'employers',
+      label: 'Employers',
+      icon: Building2
+    },
+    {
       id: 'footer',
       label: 'Footer & Icons',
       icon: SlidersHorizontal
@@ -38,11 +43,6 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
       id: 'overview',
       label: 'Overview',
       icon: LayoutDashboard
-    },
-    {
-      id: 'employers',
-      label: 'Employers',
-      icon: Building2
     }
   ];
 
