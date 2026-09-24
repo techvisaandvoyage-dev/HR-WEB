@@ -448,8 +448,15 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
 
         <div className="p-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold text-palette-900">Employer Login</h2>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-palette-900">
+              {cmsConfig?.modalTitle || 'Welcome to Employer Portal'}
+            </h2>
+            {cmsConfig?.modalSubtitle && (
+              <p className="text-xs text-gray-500 mt-1">
+                {cmsConfig.modalSubtitle}
+              </p>
+            )}
           </div>
 
           {loginMethod === 'forgot' ? (
@@ -725,12 +732,14 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                Continue with Google
+                {cmsConfig?.googleBtnText || 'Continue with Google'}
               </button>
 
               <div className="flex items-center gap-4 mb-5">
                 <div className="h-px bg-gray-200 flex-1"></div>
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Or with email</span>
+                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                  {cmsConfig?.dividerText || 'Or with email'}
+                </span>
                 <div className="h-px bg-gray-200 flex-1"></div>
               </div>
 
@@ -756,7 +765,9 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                 
                 {/* Email Input */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Email ID <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-gray-900">
+                    {cmsConfig?.fields?.email?.label || 'Email ID'} <span className="text-red-500">*</span>
+                  </label>
                   <input 
                     type="text" 
                     value={email}
@@ -765,7 +776,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                       setErrors((prev) => ({ ...prev, email: '', general: '' }));
                       setError('');
                     }}
-                    placeholder="Enter your registered Email ID"
+                    placeholder={cmsConfig?.fields?.email?.placeholder || 'Enter your registered Email ID'}
                     className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                   />
                   {errors.email && (
@@ -780,7 +791,9 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
 
                 {/* Password Input */}
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-bold text-gray-900">Password <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold text-gray-900">
+                    {cmsConfig?.fields?.password?.label || 'Password'} <span className="text-red-500">*</span>
+                  </label>
                   <div className="relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
@@ -790,7 +803,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                         setErrors((prev) => ({ ...prev, password: '', general: '', isApiError: false }));
                         setError('');
                       }}
-                      placeholder="•••••••••"
+                      placeholder={cmsConfig?.fields?.password?.placeholder || '•••••••••'}
                       className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all tracking-widest placeholder-gray-400 pr-16 ${errors.password ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 bg-gray-50 focus:bg-white focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                     />
                     <button 
@@ -820,7 +833,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   )}
                   <div className="flex justify-end pt-1">
                     <button type="button" onClick={() => setLoginMethod('forgot')} className="text-sm font-semibold text-palette-400 hover:text-palette-900 transition-colors">
-                      Forgot Password?
+                      {cmsConfig?.forgotPasswordText || 'Forgot Password?'}
                     </button>
                   </div>
                 </div>
@@ -831,7 +844,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   disabled={loading}
                   className="w-full py-3.5 bg-palette-900 hover:bg-palette-400 text-white font-bold rounded-full shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Logging in...' : 'Login'}
+                  {loading ? 'Logging in...' : (cmsConfig?.submitBtnText || 'Sign In')}
                 </button>
               </form>
 
@@ -841,7 +854,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   onClick={() => setLoginMethod('otp')}
                   className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
                 >
-                  Use OTP to Login
+                  {cmsConfig?.otpBtnText || 'Use OTP to Login'}
                 </button>
               </div>
             </>
@@ -995,13 +1008,24 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
           {onRegisterClick && (
             <div className="mt-8 text-center">
               <p className="text-gray-600 text-sm">
-                Don't have an account?{' '}
-                <button 
-                  onClick={onRegisterClick}
-                  className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
-                >
-                  Register for free
-                </button>
+                {cmsConfig?.registerCtaText ? (
+                  <button 
+                    onClick={onRegisterClick}
+                    className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                  >
+                    {cmsConfig.registerCtaText}
+                  </button>
+                ) : (
+                  <>
+                    Don't have an employer account?{' '}
+                    <button 
+                      onClick={onRegisterClick}
+                      className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                    >
+                      Register now
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           )}

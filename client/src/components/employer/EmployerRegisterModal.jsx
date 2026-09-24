@@ -495,12 +495,12 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
               <>
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">
-                    {showOtpBox ? 'Verify Email Address' : 'Create Employer Account'}
+                    {showOtpBox ? 'Verify Email Address' : (cmsConfig?.modalTitle || 'Create Employer Account')}
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
                     {showOtpBox
                       ? `We sent a 4-digit code to ${email}`
-                      : 'Register to find qualified talent and post job on sahijob.com'}
+                      : (cmsConfig?.modalSubtitle || 'Register to find qualified talent and post job on sahijob.com')}
                   </p>
                 </div>
 
@@ -531,12 +531,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                         />
                       </svg>
-                      Continue with Google
+                      {cmsConfig?.googleBtnText || 'Continue with Google'}
                     </button>
 
                     <div className="flex items-center gap-4 mb-5">
                       <div className="h-px bg-gray-200 flex-1"></div>
-                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Or with email</span>
+                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                        {cmsConfig?.dividerText || 'Or continue with email'}
+                      </span>
                       <div className="h-px bg-gray-200 flex-1"></div>
                     </div>
                   </>
@@ -567,7 +569,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Full Name */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        Full Name / Contact Person <span className="text-red-500">*</span>
+                        {cmsConfig?.step1?.fields?.fullName?.label || 'Full Name / Contact Person'} <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -576,7 +578,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           setFullName(e.target.value);
                           if (errors.fullName) setErrors({ ...errors, fullName: '' });
                         }}
-                        placeholder="e.g. John Doe"
+                        placeholder={cmsConfig?.step1?.fields?.fullName?.placeholder || 'e.g. John Doe'}
                         className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                           errors.fullName
                             ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -656,7 +658,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Password Input */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        Create Password <span className="text-red-500">*</span>
+                        {cmsConfig?.step1?.fields?.password?.label || 'Create Password'} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
@@ -666,7 +668,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                             setPassword(e.target.value);
                             if (errors.password) setErrors({ ...errors, password: '' });
                           }}
-                          placeholder="Enter strong password"
+                          placeholder={cmsConfig?.step1?.fields?.password?.placeholder || 'Enter strong password'}
                           className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm pr-12 ${
                             errors.password
                               ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -728,7 +730,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                     {/* Confirm Password Input */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
-                        Confirm Password <span className="text-red-500">*</span>
+                        {cmsConfig?.step1?.fields?.confirmPassword?.label || 'Confirm Password'} <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
@@ -738,7 +740,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                             setConfirmPassword(e.target.value);
                             if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
                           }}
-                          placeholder="Re-enter password"
+                          placeholder={cmsConfig?.step1?.fields?.confirmPassword?.placeholder || 'Re-enter password'}
                           className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm pr-12 ${
                             errors.confirmPassword
                               ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -782,7 +784,13 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                           className="mt-1 w-4 h-4 text-palette-900 rounded border-gray-300 focus:ring-palette-400 accent-palette-900"
                         />
                         <span className="text-xs text-gray-600 leading-relaxed">
-                          I agree to the <a href="/page/privacy-policy" target="_blank" className="text-palette-400 hover:underline font-semibold">Privacy Policy</a> and <a href="/page/terms-of-service" target="_blank" className="text-palette-400 hover:underline font-semibold">Terms &amp; Conditions</a>
+                          {cmsConfig?.termsText ? (
+                            <span>{cmsConfig.termsText}</span>
+                          ) : (
+                            <>
+                              I agree to the <a href="/page/privacy-policy" target="_blank" className="text-palette-400 hover:underline font-semibold">Privacy Policy</a> and <a href="/page/terms-of-service" target="_blank" className="text-palette-400 hover:underline font-semibold">Terms &amp; Conditions</a>
+                            </>
+                          )}
                         </span>
                       </label>
                     </div>
@@ -792,7 +800,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                       disabled={loading}
                       className="w-full py-3.5 bg-palette-900 hover:bg-palette-400 text-white font-bold rounded-full shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
                     >
-                      {loading ? 'Sending verification code...' : 'Continue & Verify Email'}
+                      {loading ? 'Sending verification code...' : (cmsConfig?.submitBtnText || 'Continue & Verify Email')}
                     </button>
                   </form>
                 ) : (
@@ -971,7 +979,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Company Name */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      Company / Organization Name <span className="text-red-500">*</span>
+                      {cmsConfig?.step2?.fields?.companyName?.label || 'Company / Organization Name'} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -980,7 +988,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setCompanyName(e.target.value);
                         if (errors.companyName) setErrors({ ...errors, companyName: '' });
                       }}
-                      placeholder="e.g. Acme Innovations Pvt Ltd"
+                      placeholder={cmsConfig?.step2?.fields?.companyName?.placeholder || 'e.g. Acme Innovations Pvt Ltd'}
                       className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                         errors.companyName
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -1000,7 +1008,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Industry */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      Industry Domain <span className="text-red-500">*</span>
+                      {cmsConfig?.step2?.fields?.industry?.label || 'Industry Domain'} <span className="text-red-500">*</span>
                     </label>
                     <CustomDropdown
                       options={industryOptions}
@@ -1012,7 +1020,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         if (errors.industry) setErrors({ ...errors, industry: '' });
                         if (errors.designation) setErrors(prev => ({ ...prev, designation: '' }));
                       }}
-                      placeholder="Select Industry"
+                      placeholder={cmsConfig?.step2?.fields?.industry?.placeholder || 'Select Industry'}
                     />
                     {errors.industry && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1027,7 +1035,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Employees Range */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      Company Size (Employees) <span className="text-red-500">*</span>
+                      {cmsConfig?.step2?.fields?.employees?.label || 'Company Size (Employees)'} <span className="text-red-500">*</span>
                     </label>
                     <CustomDropdown
                       options={employeeOptions}
@@ -1036,7 +1044,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setEmployees(val);
                         if (errors.employees) setErrors({ ...errors, employees: '' });
                       }}
-                      placeholder="Select Number of Employees"
+                      placeholder={cmsConfig?.step2?.fields?.employees?.placeholder || 'Select Number of Employees'}
                     />
                     {errors.employees && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1051,7 +1059,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Designation — changes based on selected industry */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      Your Designation / Role <span className="text-red-500">*</span>
+                      {cmsConfig?.step2?.fields?.designation?.label || 'Your Designation / Role'} <span className="text-red-500">*</span>
                     </label>
                     {!industry && (
                       <p className="text-xs text-gray-400 mb-1">Select an industry first to see relevant designations</p>
@@ -1063,7 +1071,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setDesignation(val);
                         if (errors.designation) setErrors({ ...errors, designation: '' });
                       }}
-                      placeholder={industry ? `Select your role in ${industry}` : 'Select designation'}
+                      placeholder={industry ? `Select your role in ${industry}` : (cmsConfig?.step2?.fields?.designation?.placeholder || 'Select designation')}
                     />
                     {errors.designation && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1078,7 +1086,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* Location */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      Headquarters / Primary Location <span className="text-red-500">*</span>
+                      {cmsConfig?.step2?.fields?.location?.label || 'Headquarters / Primary Location'} <span className="text-red-500">*</span>
                     </label>
                     <MultiSelectLocationDropdown
                       options={currentLocationOptions}
@@ -1088,7 +1096,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         if (errors.location) setErrors({ ...errors, location: '' });
                       }}
                       multiple={false}
-                      placeholder="Select City / Location"
+                      placeholder={cmsConfig?.step2?.fields?.location?.placeholder || 'Select City / Location'}
                       className={`w-full px-5 py-3.5 rounded-2xl border ${
                         errors.location
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
@@ -1108,7 +1116,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   {/* About Company */}
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-900">
-                      About Company <span className="text-red-500">*</span>
+                      {cmsConfig?.step2?.fields?.aboutCompany?.label || 'About Company'} <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       value={aboutCompany}
@@ -1116,7 +1124,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                         setAboutCompany(e.target.value);
                         if (errors.aboutCompany) setErrors({ ...errors, aboutCompany: '' });
                       }}
-                      placeholder="Briefly describe what your organization does..."
+                      placeholder={cmsConfig?.step2?.fields?.aboutCompany?.placeholder || 'Briefly describe what your organization does...'}
                       rows="3"
                       className={`w-full px-5 py-3.5 rounded-2xl border outline-none transition-all placeholder-gray-400 resize-none text-sm ${
                         errors.aboutCompany
@@ -1136,12 +1144,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
 
                   {/* Website */}
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-900">Company Website (Optional)</label>
+                    <label className="block text-sm font-bold text-gray-900">
+                      {cmsConfig?.step2?.fields?.website?.label || 'Company Website (Optional)'}
+                    </label>
                     <input
                       type="text"
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
-                      placeholder="https://example.com"
+                      placeholder={cmsConfig?.step2?.fields?.website?.placeholder || 'https://example.com'}
                       className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all placeholder-gray-400 text-sm"
                     />
                   </div>
@@ -1160,7 +1170,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                       disabled={loading}
                       className="w-2/3 py-3.5 bg-palette-900 hover:bg-palette-400 text-white font-bold rounded-full shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-60 text-sm"
                     >
-                      {loading ? 'Creating account...' : 'Complete Registration'}
+                      {loading ? 'Creating account...' : (cmsConfig?.finalSubmitBtnText || 'Complete Registration')}
                     </button>
                   </div>
                 </form>
