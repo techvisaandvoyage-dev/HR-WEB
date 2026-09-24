@@ -61,7 +61,7 @@ const DashboardOverview = ({ employerProfile, employerName, jobs = [], candidate
           </Link>
           <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm cursor-pointer overflow-hidden" title={displayName}>
             {employerProfile?.companyLogo ? (
-              <img src={employerProfile.companyLogo} alt={displayName} className="w-full h-full object-contain p-0.5" />
+              <img src={employerProfile.companyLogo} alt={displayName} className="w-full h-full object-cover" />
             ) : (
               displayInitial
             )}

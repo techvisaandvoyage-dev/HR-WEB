@@ -98,7 +98,44 @@ export const DEFAULT_POST_JOB_CURRENCIES = [
   { code: 'INR', label: 'INR (₹)', symbol: '₹' },
   { code: 'USD', label: 'USD ($)', symbol: '$' },
   { code: 'EUR', label: 'EUR (€)', symbol: '€' },
-  { code: 'GBP', label: 'GBP (£)', symbol: '£' }
+  { code: 'GBP', label: 'GBP (£)', symbol: '£' },
+  { code: 'AED', label: 'AED (د.إ)', symbol: 'د.إ' },
+  { code: 'AUD', label: 'AUD (A$)', symbol: 'A$' },
+  { code: 'CAD', label: 'CAD (C$)', symbol: 'C$' },
+  { code: 'SGD', label: 'SGD (S$)', symbol: 'S$' },
+  { code: 'CHF', label: 'CHF (CHF)', symbol: 'CHF' },
+  { code: 'CNY', label: 'CNY (¥)', symbol: '¥' },
+  { code: 'JPY', label: 'JPY (¥)', symbol: '¥' },
+  { code: 'NZD', label: 'NZD (NZ$)', symbol: 'NZ$' },
+  { code: 'ZAR', label: 'ZAR (R)', symbol: 'R' },
+  { code: 'BRL', label: 'BRL (R$)', symbol: 'R$' },
+  { code: 'RUB', label: 'RUB (₽)', symbol: '₽' },
+  { code: 'KRW', label: 'KRW (₩)', symbol: '₩' },
+  { code: 'SEK', label: 'SEK (kr)', symbol: 'kr' },
+  { code: 'NOK', label: 'NOK (kr)', symbol: 'kr' },
+  { code: 'MXN', label: 'MXN ($)', symbol: '$' },
+  { code: 'HKD', label: 'HKD (HK$)', symbol: 'HK$' },
+  { code: 'TRY', label: 'TRY (₺)', symbol: '₺' },
+  { code: 'SAR', label: 'SAR (﷼)', symbol: '﷼' },
+  { code: 'MYR', label: 'MYR (RM)', symbol: 'RM' },
+  { code: 'IDR', label: 'IDR (Rp)', symbol: 'Rp' },
+  { code: 'THB', label: 'THB (฿)', symbol: '฿' },
+  { code: 'PHP', label: 'PHP (₱)', symbol: '₱' },
+  { code: 'VND', label: 'VND (₫)', symbol: '₫' },
+  { code: 'EGP', label: 'EGP (E£)', symbol: 'E£' },
+  { code: 'NGN', label: 'NGN (₦)', symbol: '₦' },
+  { code: 'ARS', label: 'ARS ($)', symbol: '$' },
+  { code: 'COP', label: 'COP ($)', symbol: '$' },
+  { code: 'CLP', label: 'CLP ($)', symbol: '$' },
+  { code: 'PEN', label: 'PEN (S/)', symbol: 'S/' },
+  { code: 'ILS', label: 'ILS (₪)', symbol: '₪' },
+  { code: 'KWD', label: 'KWD (د.ك)', symbol: 'د.ك' },
+  { code: 'QAR', label: 'QAR (﷼)', symbol: '﷼' },
+  { code: 'BHD', label: 'BHD (.د.ب)', symbol: '.د.ب' },
+  { code: 'OMR', label: 'OMR (ر.ع.)', symbol: 'ر.ع.' },
+  { code: 'PKR', label: 'PKR (₨)', symbol: '₨' },
+  { code: 'BDT', label: 'BDT (৳)', symbol: '৳' },
+  { code: 'LKR', label: 'LKR (₨)', symbol: '₨' }
 ];
 
 export const DEFAULT_POST_JOB_SCREENING_QUESTIONS = [
@@ -156,7 +193,7 @@ export const DEFAULT_EMPLOYER_POST_JOB_CONFIG = {
   step3: {
     stepTitle: 'Salary & Requirements',
     stepNumberText: '3',
-    sectionTitle: 'Compensation',
+    sectionTitle: 'Salary Type',
     salaryTypeLabel: 'Salary Type',
     currencyLabel: 'Currency',
     yearlySalaryLabel: 'Annual Salary',
@@ -210,7 +247,23 @@ export const DEFAULT_EMPLOYER_POST_JOB_CONFIG = {
 };
 
 export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, loginConfig }) {
-  const [activeStep, setActiveStep] = useState(1);
+  const [activeStep, setActiveStepState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('admin_employer_post_job_step');
+      const num = parseInt(saved, 10);
+      return (num >= 1 && num <= 5) ? num : 1;
+    } catch (e) {
+      return 1;
+    }
+  });
+
+  const setActiveStep = (step) => {
+    setActiveStepState(step);
+    try {
+      localStorage.setItem('admin_employer_post_job_step', String(step));
+    } catch (e) {}
+  };
+
   const [postJobConfig, setPostJobConfig] = useState(DEFAULT_EMPLOYER_POST_JOB_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -768,6 +821,86 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
     await handleSavePostJobConfig(updated);
   };
 
+  const handleOpenSalaryTypesModal = () => {
+    setSalaryTypesModalList([...(postJobConfig.step3?.salaryTypeOptions || DEFAULT_POST_JOB_SALARY_TYPES)]);
+    setNewSalaryTypeInput('');
+    setSalaryTypeError('');
+    setIsSalaryTypesModalOpen(true);
+  };
+
+  const handleAddSalaryTypeOption = () => {
+    const trimmed = newSalaryTypeInput.trim();
+    if (!trimmed) return;
+    if (salaryTypesModalList.some(item => item.toLowerCase() === trimmed.toLowerCase())) {
+      setSalaryTypeError('This salary type already exists');
+      return;
+    }
+    setSalaryTypesModalList(prev => [...prev, trimmed]);
+    setNewSalaryTypeInput('');
+    setSalaryTypeError('');
+  };
+
+  const handleDeleteSalaryTypeOption = (idx) => {
+    if (salaryTypesModalList.length <= 1) return;
+    setSalaryTypesModalList(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveSalaryTypesModal = async () => {
+    const updated = {
+      ...postJobConfig,
+      step3: { ...postJobConfig.step3, salaryTypeOptions: salaryTypesModalList }
+    };
+    setPostJobConfig(updated);
+    setIsSalaryTypesModalOpen(false);
+    await handleSavePostJobConfig(updated);
+  };
+
+  const handleOpenCurrenciesModal = () => {
+    setCurrenciesModalList([...(postJobConfig.step3?.currencyOptions || DEFAULT_POST_JOB_CURRENCIES)]);
+    setNewCurrencyCode('');
+    setNewCurrencyLabel('');
+    setNewCurrencySymbol('');
+    setCurrencyError('');
+    setIsCurrenciesModalOpen(true);
+  };
+
+  const handleAddCurrencyOption = () => {
+    const code = newCurrencyCode.trim().toUpperCase();
+    const label = newCurrencyLabel.trim();
+    const symbol = newCurrencySymbol.trim();
+    
+    if (!code || !label || !symbol) {
+      setCurrencyError('All fields are required');
+      return;
+    }
+    
+    if (currenciesModalList.some(item => item.code.toUpperCase() === code)) {
+      setCurrencyError('This currency code already exists');
+      return;
+    }
+    
+    setCurrenciesModalList(prev => [...prev, { code, label, symbol }]);
+    setNewCurrencyCode('');
+    setNewCurrencyLabel('');
+    setNewCurrencySymbol('');
+    setCurrencyError('');
+  };
+
+  const handleDeleteCurrencyOption = (idx) => {
+    if (currenciesModalList.length <= 1) return;
+    setCurrenciesModalList(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveCurrenciesModal = async () => {
+    const updated = {
+      ...postJobConfig,
+      step3: { ...postJobConfig.step3, currencyOptions: currenciesModalList }
+    };
+    setPostJobConfig(updated);
+    setIsCurrenciesModalOpen(false);
+    await handleSavePostJobConfig(updated);
+  };
+
   const stepsList = [
     { id: 1, stepNumber: 'Step 1', title: postJobConfig.step1?.stepTitle || 'Job Details', icon: Briefcase },
     { id: 2, stepNumber: 'Step 2', title: postJobConfig.step2?.stepTitle || 'Job Description', icon: FileText },
@@ -879,9 +1012,9 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
           <Sparkles className="w-4 h-4 text-emerald-600" />
           Global Page Header & Navigation Button Texts
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Page Title</label>
+            <label className="block font-bold text-gray-700 mb-1">Page Title (New Job)</label>
             <input
               type="text"
               value={postJobConfig.header?.title || ''}
@@ -890,7 +1023,37 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
             />
           </div>
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Next Button Text</label>
+            <label className="block font-bold text-gray-700 mb-1">Page Subtitle (New Job)</label>
+            <input
+              type="text"
+              value={postJobConfig.header?.subtitle || ''}
+              onChange={(e) => handleHeaderChange('subtitle', e.target.value)}
+              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">Edit Job Page Title</label>
+            <input
+              type="text"
+              value={postJobConfig.header?.editTitle || ''}
+              onChange={(e) => handleHeaderChange('editTitle', e.target.value)}
+              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">Edit Job Page Subtitle</label>
+            <input
+              type="text"
+              value={postJobConfig.header?.editSubtitle || ''}
+              onChange={(e) => handleHeaderChange('editSubtitle', e.target.value)}
+              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs pt-2 border-t border-gray-100">
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">"Continue" Button</label>
             <input
               type="text"
               value={postJobConfig.buttons?.continueBtnText || ''}
@@ -899,11 +1062,38 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
             />
           </div>
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Submit Button Text</label>
+            <label className="block font-bold text-gray-700 mb-1">"Back" Button</label>
+            <input
+              type="text"
+              value={postJobConfig.buttons?.backBtnText || ''}
+              onChange={(e) => handleButtonsChange('backBtnText', e.target.value)}
+              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">"Edit" Button (Preview)</label>
+            <input
+              type="text"
+              value={postJobConfig.buttons?.editBtnText || ''}
+              onChange={(e) => handleButtonsChange('editBtnText', e.target.value)}
+              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">"Publish Job" Button</label>
             <input
               type="text"
               value={postJobConfig.buttons?.publishBtnText || ''}
               onChange={(e) => handleButtonsChange('publishBtnText', e.target.value)}
+              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">"Update Job" Button</label>
+            <input
+              type="text"
+              value={postJobConfig.buttons?.updateBtnText || ''}
+              onChange={(e) => handleButtonsChange('updateBtnText', e.target.value)}
               className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-emerald-500"
             />
           </div>
@@ -1258,28 +1448,10 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
                 />
               </div>
 
-              {/* Compensation Settings Box */}
+              {/* Salary Type Settings Box */}
               <div className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-gray-900">Compensation Header & Disclaimer</span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleOpenSalaryTypesModal}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
-                    >
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Edit Salary Types</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenCurrenciesModal}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
-                    >
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Edit Currencies</span>
-                    </button>
-                  </div>
+                  <span className="text-xs font-extrabold text-gray-900">Salary Type Header & Disclaimer</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1298,6 +1470,42 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
                       type="text"
                       value={postJobConfig.step3?.salaryDisclaimer || 'This salary will be shown to candidates on the job listing.'}
                       onChange={(e) => handleStep3PropChange('salaryDisclaimer', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Currency Label</label>
+                    <input
+                      type="text"
+                      value={postJobConfig.step3?.currencyLabel || 'Currency'}
+                      onChange={(e) => handleStep3PropChange('currencyLabel', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Annual Salary Label</label>
+                    <input
+                      type="text"
+                      value={postJobConfig.step3?.yearlySalaryLabel || 'Annual Salary'}
+                      onChange={(e) => handleStep3PropChange('yearlySalaryLabel', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Minimum Placeholder</label>
+                    <input
+                      type="text"
+                      value={postJobConfig.step3?.minSalaryPlaceholder || 'write the amount in LPA'}
+                      onChange={(e) => handleStep3PropChange('minSalaryPlaceholder', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Maximum Placeholder</label>
+                    <input
+                      type="text"
+                      value={postJobConfig.step3?.maxSalaryPlaceholder || 'write the amount in LPA'}
+                      onChange={(e) => handleStep3PropChange('maxSalaryPlaceholder', e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -2371,15 +2579,6 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
                       <option value="Short Text">Short Text</option>
                     </select>
                   </div>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={newScreeningQuestionRequired}
-                      onChange={(e) => setNewScreeningQuestionRequired(e.target.checked)}
-                      className="w-4 h-4 accent-emerald-600 rounded"
-                    />
-                    <span>Required by default</span>
-                  </label>
                   <button
                     type="button"
                     onClick={handleAddScreeningTemplate}
@@ -2420,18 +2619,6 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
                       />
                       <div className="flex items-center gap-3 text-[11px]">
                         <span className="text-gray-500">Type: <b>{item.type}</b></span>
-                        <label className="flex items-center gap-1 cursor-pointer text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={item.required}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setScreeningTemplatesModalList(prev => prev.map((it, i) => i === idx ? { ...it, required: checked } : it));
-                            }}
-                            className="w-3.5 h-3.5 accent-emerald-600"
-                          />
-                          <span>Required</span>
-                        </label>
                       </div>
                     </div>
                     <button

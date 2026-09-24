@@ -231,7 +231,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         <div key={job.id} onClick={() => { setMobileSearchTerm(job.title); setShowMobileSuggestions(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
                           <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600 text-xs shrink-0 overflow-hidden border border-gray-100">
                             {(job.companyLogo || job.employerId?.companyLogo) ? (
-                              <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                              <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
                             ) : (
                               job.companyInitial
                             )}
@@ -325,7 +325,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                     <div className="flex gap-2">
                       <div className="w-8 h-8 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-xs shrink-0 overflow-hidden border border-gray-100">
                         {(job.companyLogo || job.employerId?.companyLogo) ? (
-                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
                         ) : (
                           job.companyInitial
                         )}
@@ -397,7 +397,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         <div className="flex gap-3">
                           <div className="w-12 h-12 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-lg shrink-0 overflow-hidden border border-gray-200">
                             {(selectedJob.companyLogo || selectedJob.employerId?.companyLogo) ? (
-                              <img src={selectedJob.companyLogo || selectedJob.employerId?.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-0.5" />
+                              <img src={selectedJob.companyLogo || selectedJob.employerId?.companyLogo} alt={selectedJob.company} className="w-full h-full object-cover" />
                             ) : (
                               selectedJob.companyInitial
                             )}
@@ -464,7 +464,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                               <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0 overflow-hidden">
                                   {(selectedJob.employerId?.companyLogo || selectedJob.companyLogo) ? (
-                                    <img src={selectedJob.employerId?.companyLogo || selectedJob.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-1" />
+                                    <img src={selectedJob.employerId?.companyLogo || selectedJob.companyLogo} alt={selectedJob.company} className="w-full h-full object-cover" />
                                   ) : (
                                     selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')
                                   )}
@@ -517,7 +517,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-gray-50 rounded-lg font-bold text-gray-800 flex items-center justify-center text-xl shrink-0 overflow-hidden border border-gray-200">
                             {(selectedJob.companyLogo || selectedJob.employerId?.companyLogo) ? (
-                              <img src={selectedJob.companyLogo || selectedJob.employerId?.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-0.5" />
+                              <img src={selectedJob.companyLogo || selectedJob.employerId?.companyLogo} alt={selectedJob.company} className="w-full h-full object-cover" />
                             ) : (
                               selectedJob.companyInitial
                             )}
@@ -560,7 +560,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                               <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0 overflow-hidden">
                                   {(selectedJob.employerId?.companyLogo || selectedJob.companyLogo) ? (
-                                    <img src={selectedJob.employerId?.companyLogo || selectedJob.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-1" />
+                                    <img src={selectedJob.employerId?.companyLogo || selectedJob.companyLogo} alt={selectedJob.company} className="w-full h-full object-cover" />
                                   ) : (
                                     selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')
                                   )}

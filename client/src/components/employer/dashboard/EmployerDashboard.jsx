@@ -119,7 +119,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
             >
               <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-sm flex items-center justify-center shrink-0 overflow-hidden border border-gray-200">
                 {employerProfile.companyLogo ? (
-                  <img src={employerProfile.companyLogo} alt={displayName} className="w-full h-full object-contain p-0.5 bg-white" />
+                  <img src={employerProfile.companyLogo} alt={displayName} className="w-full h-full object-cover bg-white" />
                 ) : (
                   displayInitial
                 )}

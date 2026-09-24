@@ -436,11 +436,11 @@ const CompanyProfileTab = () => {
                       {/* Logo preview or initial box */}
                       <div className="relative group shrink-0">
                         {companyData.companyLogo ? (
-                          <div className="w-14 h-14 rounded-xl border border-gray-200 bg-white p-1 shadow-sm flex items-center justify-center overflow-hidden">
+                          <div className="w-14 h-14 rounded-xl border border-gray-200 bg-white shadow-sm flex items-center justify-center overflow-hidden">
                             <img 
                               src={companyData.companyLogo} 
                               alt={companyData.companyName || 'Company Logo'} 
-                              className="w-full h-full object-contain"
+                              className="w-full h-full object-cover"
                             />
                           </div>
                         ) : (

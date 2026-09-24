@@ -133,7 +133,7 @@ const MyJobs = ({ jobs = [] }) => {
                   <div key={job.id} onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id } })} className={`py-6 border-b border-gray-200 flex flex-col md:flex-row md:items-start gap-4 hover:bg-gray-50 transition-colors -mx-4 px-4 rounded-xl group ${job.status === 'Closed' ? 'cursor-default opacity-80' : 'cursor-pointer'}`}>
                     <div className="hidden md:flex w-12 h-12 bg-gray-100 rounded-lg items-center justify-center flex-shrink-0 text-gray-600 border border-gray-200 font-bold overflow-hidden">
                       {(job.companyLogo || job.employerId?.companyLogo) ? (
-                        <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                        <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
                       ) : (
                         job.companyInitial
                       )}
@@ -194,7 +194,7 @@ const MyJobs = ({ jobs = [] }) => {
                     <div className="hidden md:flex w-12 h-12 items-center justify-center flex-shrink-0">
                       <div className="w-10 h-10 bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-600 overflow-hidden shadow-sm">
                         {(job.companyLogo || job.employerId?.companyLogo) ? (
-                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
                         ) : (
                           job.companyInitial
                         )}

@@ -1929,9 +1929,9 @@ const p = formData.professionalDetails || {};
             {/* Header info */}
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200 flex items-center justify-center text-base overflow-hidden">
+                <div className="w-10 h-10 bg-green-50 text-green-700 font-bold rounded-full border border-green-200 flex items-center justify-center text-base overflow-hidden">
                   {(job.companyLogo || job.employerId?.companyLogo) ? (
-                    <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                    <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
                   ) : (
                     job.companyInitial || (job.company ? job.company.charAt(0).toUpperCase() : 'J')
                   )}

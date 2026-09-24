@@ -26,25 +26,25 @@ const toPlain = (val) => {
 // PUT update homepage configuration
 router.put('/', async (req, res) => {
   try {
-    const updateDoc = {};
-    if (req.body.logo !== undefined) updateDoc.logo = req.body.logo;
-    if (req.body.hero !== undefined) updateDoc.hero = req.body.hero;
-    if (req.body.searchBar !== undefined) updateDoc.searchBar = req.body.searchBar;
-    if (req.body.jobCards !== undefined) updateDoc.jobCards = req.body.jobCards;
-    if (req.body.typography !== undefined) updateDoc.typography = req.body.typography;
-    if (req.body.customFontsLibrary !== undefined) updateDoc.customFontsLibrary = req.body.customFontsLibrary;
-    if (req.body.employeeRegister !== undefined) updateDoc.employeeRegister = req.body.employeeRegister;
-    if (req.body.employeeLogin !== undefined) updateDoc.employeeLogin = req.body.employeeLogin;
-    if (req.body.employeeOnboarding !== undefined) updateDoc.employeeOnboarding = req.body.employeeOnboarding;
-    if (req.body.employerRegister !== undefined) updateDoc.employerRegister = req.body.employerRegister;
-    if (req.body.employerLogin !== undefined) updateDoc.employerLogin = req.body.employerLogin;
-    if (req.body.employerPostJob !== undefined) updateDoc.employerPostJob = req.body.employerPostJob;
+    let config = await HomepageConfig.findOne();
+    if (!config) {
+      config = new HomepageConfig(req.body);
+    } else {
+      if (req.body.logo !== undefined) { config.logo = req.body.logo; config.markModified('logo'); }
+      if (req.body.hero !== undefined) { config.hero = req.body.hero; config.markModified('hero'); }
+      if (req.body.searchBar !== undefined) { config.searchBar = req.body.searchBar; config.markModified('searchBar'); }
+      if (req.body.jobCards !== undefined) { config.jobCards = req.body.jobCards; config.markModified('jobCards'); }
+      if (req.body.typography !== undefined) { config.typography = req.body.typography; config.markModified('typography'); }
+      if (req.body.customFontsLibrary !== undefined) { config.customFontsLibrary = req.body.customFontsLibrary; config.markModified('customFontsLibrary'); }
+      if (req.body.employeeRegister !== undefined) { config.employeeRegister = req.body.employeeRegister; config.markModified('employeeRegister'); }
+      if (req.body.employeeLogin !== undefined) { config.employeeLogin = req.body.employeeLogin; config.markModified('employeeLogin'); }
+      if (req.body.employeeOnboarding !== undefined) { config.employeeOnboarding = req.body.employeeOnboarding; config.markModified('employeeOnboarding'); }
+      if (req.body.employerRegister !== undefined) { config.employerRegister = req.body.employerRegister; config.markModified('employerRegister'); }
+      if (req.body.employerLogin !== undefined) { config.employerLogin = req.body.employerLogin; config.markModified('employerLogin'); }
+      if (req.body.employerPostJob !== undefined) { config.employerPostJob = req.body.employerPostJob; config.markModified('employerPostJob'); }
+    }
 
-    const updated = await HomepageConfig.findOneAndUpdate(
-      {},
-      { $set: updateDoc },
-      { returnDocument: 'after', upsert: true }
-    );
+    const updated = await config.save();
     res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error updating homepage config:', error);

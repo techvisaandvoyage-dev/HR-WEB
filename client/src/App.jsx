@@ -557,9 +557,9 @@ function App() {
                 <div className="absolute top-[110%] left-0 w-[120%] bg-white rounded-2xl shadow-xl border border-palette-100 py-2 z-[100] max-h-64 overflow-y-auto text-left">
                   {filteredHomepageJobs.length > 0 ? filteredHomepageJobs.slice(0, 5).map(job => (
                     <div key={job.id} onClick={() => { setSearchJobTitle(job.title); setShowSuggestions(false); }} className="px-5 py-3 hover:bg-palette-50 cursor-pointer flex items-center gap-4 border-b border-palette-50 last:border-0 transition-colors">
-                      <div className="w-10 h-10 bg-palette-100 rounded-xl flex items-center justify-center font-bold text-palette-900 text-sm shrink-0 overflow-hidden border border-palette-100">
+                      <div className="w-10 h-10 bg-palette-100 rounded-full flex items-center justify-center font-bold text-palette-900 text-sm shrink-0 overflow-hidden border border-palette-100">
                         {(job.companyLogo || job.employerId?.companyLogo) ? (
-                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
                         ) : (
                           job.companyInitial
                         )}
@@ -643,9 +643,9 @@ function App() {
             {filteredHomepageJobs.slice(0, visibleJobsCount).map(job => (
               <div key={job.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col">
                 <div className="flex items-start gap-4 mb-5">
-                  <div className="w-14 h-14 bg-green-50 rounded-xl flex items-center justify-center font-bold text-green-800 text-2xl flex-shrink-0 overflow-hidden border border-gray-100">
+                  <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center font-bold text-green-800 text-2xl flex-shrink-0 overflow-hidden border border-gray-100">
                     {(job.companyLogo || job.employerId?.companyLogo) ? (
-                      <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-1" />
+                      <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
                     ) : (
                       job.companyInitial || job.company.charAt(0)
                     )}
@@ -693,7 +693,17 @@ function App() {
                     </svg>
                     <div>
                       <span className="text-gray-500 text-[11px] uppercase tracking-wider font-semibold block mb-0.5">Salary</span>
-                      <span className="font-bold text-gray-900 text-sm">{job.salary || 'Not specified'}</span>
+                      <span className="font-bold text-gray-900 text-sm">
+                        {job.salary 
+                          ? job.salary
+                              .replace(/lacs\s*pa/gi, 'PA')
+                              .replace(/lac\s*pa/gi, 'PA')
+                              .replace(/lpa/gi, 'PA')
+                              .replace(/per\s*month/gi, 'PM')
+                              .replace(/per\s*hour/gi, 'PH')
+                              .trim()
+                          : 'Not specified'}
+                      </span>
                     </div>
                   </div>
                   <button onClick={() => setIsEmployeeLoginOpen(true)} className="text-sm font-bold text-green-700 hover:text-green-800 transition-colors flex items-center gap-1 cursor-pointer">
