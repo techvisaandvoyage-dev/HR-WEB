@@ -83,91 +83,91 @@ const CustomMonthPicker = ({ value, onChange, placeholder = "Select Month & Year
   };
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div className={`relative w-full ${isOpen ? 'z-30' : 'z-0'}`} ref={containerRef}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200'} rounded-xl flex justify-between items-center cursor-pointer hover:border-green-500 transition-all`}
+        className={`w-full px-4 py-3 bg-white border ${isOpen ? 'border-green-500 ring-1 ring-green-500' : 'border-gray-200'} rounded-xl flex justify-between items-center cursor-pointer hover:border-green-500 transition-all shadow-sm`}
       >
         <span className={displayValue ? 'text-gray-900 font-medium' : 'text-[#9CA3AF]'}>
           {displayValue || placeholder}
         </span>
-        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </div>
 
       {isOpen && (
-        <div className="absolute top-[calc(100%+4px)] left-0 z-[200] bg-white border border-gray-200 shadow-lg rounded-sm w-[280px] p-2 animate-in fade-in duration-200 zoom-in-95">
-            {/* Header */}
-            <div className="flex justify-between items-center p-2 mb-2">
-              <button type="button" onClick={handlePrev} className="text-gray-500 hover:text-gray-700 px-2 cursor-pointer">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-              </button>
-              
-              <button 
-                type="button" 
-                onClick={(e) => { e.stopPropagation(); setIsSelectingYear(!isSelectingYear); }}
-                className="text-gray-600 text-[15px] font-medium hover:text-green-600 transition-colors cursor-pointer"
-              >
-                {isSelectingYear ? `${yearViewStart} - ${yearViewStart + 11}` : selectedYear}
-              </button>
+        <div className="absolute top-[calc(100%+6px)] left-0 z-[200] bg-white border border-gray-100 shadow-2xl rounded-2xl w-[290px] p-3 animate-in fade-in duration-150 zoom-in-95">
+          {/* Header */}
+          <div className="flex justify-between items-center px-2 py-1.5 mb-2.5 border-b border-gray-100">
+            <button type="button" onClick={handlePrev} className="p-1 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            
+            <button 
+              type="button" 
+              onClick={(e) => { e.stopPropagation(); setIsSelectingYear(!isSelectingYear); }}
+              className="text-gray-800 text-[15px] font-bold hover:text-green-600 transition-colors cursor-pointer px-2 py-0.5 rounded-lg hover:bg-green-50"
+            >
+              {isSelectingYear ? `${yearViewStart} - ${yearViewStart + 11}` : selectedYear}
+            </button>
 
-              <button type="button" onClick={handleNext} className="text-gray-500 hover:text-gray-700 px-2 cursor-pointer">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-              </button>
-            </div>
-
-            {/* Grid */}
-            {isSelectingYear ? (
-              <div className="grid grid-cols-4 gap-y-4 gap-x-2 px-1 pb-3">
-                {Array.from({ length: 12 }).map((_, i) => {
-                  const y = yearViewStart + i;
-                  const isSelected = selectedYear === y;
-                  return (
-                    <button
-                      key={y}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedYear(y);
-                        setIsSelectingYear(false);
-                      }}
-                      className={`py-2 text-[14px] rounded-md transition-colors ${
-                        isSelected 
-                          ? 'bg-[#27ae60] text-white shadow-sm' 
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {y}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 gap-y-4 gap-x-2 px-1 pb-3">
-                {months.map(m => {
-                  const isSelected = selectedMonth === m.value && selectedYear === (value ? parseInt(value.split('-')[0]) : null);
-                  return (
-                    <button
-                      key={m.value}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMonthSelect(m.value);
-                      }}
-                      className={`py-2 text-[14px] rounded-md transition-colors ${
-                        isSelected
-                          ? 'bg-[#27ae60] text-white shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <button type="button" onClick={handleNext} className="p-1 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
           </div>
+
+          {/* Grid */}
+          {isSelectingYear ? (
+            <div className="grid grid-cols-4 gap-2 px-0.5 pb-1">
+              {Array.from({ length: 12 }).map((_, i) => {
+                const y = yearViewStart + i;
+                const isSelected = selectedYear === y;
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedYear(y);
+                      setIsSelectingYear(false);
+                    }}
+                    className={`py-2 text-[13px] font-medium rounded-xl transition-all cursor-pointer ${
+                      isSelected 
+                        ? 'bg-green-600 text-white shadow-md font-bold' 
+                        : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
+                    }`}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-2 px-0.5 pb-1">
+              {months.map(m => {
+                const isSelected = selectedMonth === m.value && selectedYear === (value ? parseInt(value.split('-')[0]) : null);
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMonthSelect(m.value);
+                    }}
+                    className={`py-2.5 text-[13px] font-medium rounded-xl transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-green-600 text-white shadow-md font-bold'
+                        : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

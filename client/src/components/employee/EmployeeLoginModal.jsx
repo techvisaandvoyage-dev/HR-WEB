@@ -58,6 +58,15 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('employeeToken', data.token);
+        if (data.isOnboardingCompleted) {
+          localStorage.setItem('hasProfile', 'true');
+          localStorage.removeItem('onboardingCurrentStep');
+        } else {
+          localStorage.setItem('hasProfile', 'false');
+          if (data.onboardingStep) {
+            localStorage.setItem('onboardingCurrentStep', data.onboardingStep.toString());
+          }
+        }
         onLoginSuccess?.(data);
       } else {
         setErrors({ google: data.message || 'Google login failed' });
@@ -178,43 +187,41 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       } else {
         localStorage.setItem('employeeToken', data.token);
         
-        // Initialize profile with logged in data or profile from DB
-        let newProfile = {};
-        if (data.profile) {
-          newProfile = data.profile;
+        let newProfile = data.profile || {
+          firstName: data.name ? data.name.split(' ')[0] : '',
+          lastName: data.name && data.name.split(' ').length > 1 ? data.name.split(' ').slice(1).join(' ') : '',
+          phone: data.mobile || '',
+          email: data.email || '',
+          brief: '',
+          avatar: '',
+          qualifications: [],
+          isFresher: true,
+          experience: [],
+          professionalDetails: {
+            currentDesignation: '',
+            currentSalary: '',
+            expectedSalary: '',
+            currentLocation: data.location || '',
+            preferredLocations: '',
+            linkedinUrl: '',
+            majorAchievements: '',
+            skills: ''
+          }
+        };
+
+        if (data.isOnboardingCompleted) {
           localStorage.setItem('hasProfile', 'true');
+          localStorage.removeItem('onboardingCurrentStep');
         } else {
-          const nameParts = data.name ? data.name.split(' ') : [''];
-          const firstName = nameParts[0];
-          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-          
-          newProfile = {
-            firstName: firstName,
-            lastName: lastName,
-            phone: data.mobile || '',
-            email: data.email || '',
-            brief: '',
-            avatar: '',
-            qualifications: [],
-            isFresher: true,
-            experience: [],
-            professionalDetails: {
-              currentDesignation: '',
-              currentSalary: '',
-              expectedSalary: '',
-              currentLocation: data.location || '',
-              preferredLocations: '',
-              linkedinUrl: '',
-              majorAchievements: '',
-              skills: ''
-            }
-          };
           localStorage.setItem('hasProfile', 'false');
+          if (data.onboardingStep) {
+            localStorage.setItem('onboardingCurrentStep', data.onboardingStep.toString());
+          }
         }
         
         localStorage.setItem('userProfile', JSON.stringify(newProfile));
         
-        onLoginSuccess?.();
+        onLoginSuccess?.(data);
       }
     } catch (err) {
       setErrors({ general: 'Server error, please try again later' });
@@ -305,36 +312,36 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       } else {
         localStorage.setItem('employeeToken', data.token);
 
-        let newProfile = {};
-        if (data.profile) {
-          newProfile = data.profile;
-          localStorage.setItem('hasProfile', 'true');
-        } else {
-          const nameParts = data.name ? data.name.split(' ') : [''];
-          const firstName = nameParts[0];
-          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        let newProfile = data.profile || {
+          firstName: data.name ? data.name.split(' ')[0] : '',
+          lastName: data.name && data.name.split(' ').length > 1 ? data.name.split(' ').slice(1).join(' ') : '',
+          phone: data.mobile || '',
+          email: data.email || '',
+          brief: '',
+          avatar: '',
+          qualifications: [],
+          isFresher: true,
+          experience: [],
+          professionalDetails: {
+            currentDesignation: '',
+            currentSalary: '',
+            expectedSalary: '',
+            currentLocation: data.location || '',
+            preferredLocations: '',
+            linkedinUrl: '',
+            majorAchievements: '',
+            skills: ''
+          }
+        };
 
-          newProfile = {
-            firstName: firstName,
-            lastName: lastName,
-            phone: data.mobile || '',
-            email: data.email || '',
-            brief: '',
-            avatar: '',
-            qualifications: [],
-            isFresher: true,
-            experience: [],
-            professionalDetails: {
-              currentDesignation: '',
-              currentSalary: '',
-              expectedSalary: '',
-              currentLocation: data.location || '',
-              preferredLocations: '',
-              linkedinUrl: '',
-              majorAchievements: '',
-              skills: ''
-            }
-          };
+        if (data.isOnboardingCompleted) {
+          localStorage.setItem('hasProfile', 'true');
+          localStorage.removeItem('onboardingCurrentStep');
+        } else {
+          localStorage.setItem('hasProfile', 'false');
+          if (data.onboardingStep) {
+            localStorage.setItem('onboardingCurrentStep', data.onboardingStep.toString());
+          }
         }
 
         localStorage.setItem('userProfile', JSON.stringify(newProfile));

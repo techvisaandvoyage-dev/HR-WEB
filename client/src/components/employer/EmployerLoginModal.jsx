@@ -22,6 +22,25 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
   const [successMessage, setSuccessMessage] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
   const [errors, setErrors] = useState({});
+  const [cmsConfig, setCmsConfig] = useState(null);
+
+  // Fetch Employer Login CMS config
+  useEffect(() => {
+    const fetchCmsConfig = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
+        const data = await res.json();
+        if (data.success && data.data?.employerLogin) {
+          setCmsConfig(data.data.employerLogin);
+        }
+      } catch (err) {
+        console.error('Error fetching employer login CMS config:', err);
+      }
+    };
+    if (isOpen) {
+      fetchCmsConfig();
+    }
+  }, [isOpen]);
 
   // Countdown timer for Resend OTP
   useEffect(() => {

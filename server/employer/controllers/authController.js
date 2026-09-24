@@ -288,35 +288,44 @@ exports.updateProfile = async (req, res) => {
   try {
     const { 
       fullName, mobile, companyName, industry, employees, 
-      designation, location, aboutCompany, website, hiringFor
+      designation, location, aboutCompany, website, hiringFor, companyLogo, logo
     } = req.body;
 
-    const employer = await Employer.findById(req.user.id);
+    const updateData = {};
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (mobile !== undefined) updateData.mobile = mobile;
+    if (companyName !== undefined) updateData.companyName = companyName;
+    if (industry !== undefined) updateData.industry = industry;
+    if (employees !== undefined) updateData.employees = employees;
+    if (designation !== undefined) updateData.designation = designation;
+    if (location !== undefined) updateData.location = location;
+    if (aboutCompany !== undefined) updateData.aboutCompany = aboutCompany;
+    if (website !== undefined) updateData.website = website;
+    if (hiringFor !== undefined) updateData.hiringFor = hiringFor;
+    
+    // Support companyLogo and logo
+    if (companyLogo !== undefined) {
+      updateData.companyLogo = companyLogo;
+    } else if (logo !== undefined) {
+      updateData.companyLogo = logo;
+    }
+
+    const employer = await Employer.findByIdAndUpdate(
+      req.user.id,
+      { $set: updateData },
+      { new: true, runValidators: false }
+    );
 
     if (!employer) {
       return res.status(404).json({ success: false, message: 'Employer not found' });
     }
-
-    // Update fields
-    if (fullName) employer.fullName = fullName;
-    if (mobile) employer.mobile = mobile;
-    if (companyName) employer.companyName = companyName;
-    if (industry) employer.industry = industry;
-    if (employees) employer.employees = employees;
-    if (designation) employer.designation = designation;
-    if (location) employer.location = location;
-    if (aboutCompany !== undefined) employer.aboutCompany = aboutCompany;
-    if (website !== undefined) employer.website = website;
-    if (hiringFor) employer.hiringFor = hiringFor;
-
-    await employer.save();
 
     res.status(200).json({
       success: true,
       data: employer
     });
   } catch (error) {
-    console.error(error);
+    console.error('Update employer profile error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

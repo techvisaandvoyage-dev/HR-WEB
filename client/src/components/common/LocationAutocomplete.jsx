@@ -40,7 +40,7 @@ const LocationAutocomplete = ({
     setIsLoading(true);
     const fetchLocations = async () => {
       try {
-        const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=pk.7314b93604200f3007d3b610030e6f1b&q=${encodeURIComponent(query)}&limit=8&tag=place:city,place:town,place:village,place:state&countrycodes=in`);
+        const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=pk.7314b93604200f3007d3b610030e6f1b&q=${encodeURIComponent(query)}&limit=15&tag=place:city,place:town,place:village,place:state,place:suburb,place:hamlet&countrycodes=in`);
         const data = await res.json();
         if (Array.isArray(data)) {
           setApiSuggestions(data);
@@ -54,7 +54,7 @@ const LocationAutocomplete = ({
       }
     };
 
-    const debounceTimer = setTimeout(fetchLocations, 250);
+    const debounceTimer = setTimeout(fetchLocations, 200);
     return () => clearTimeout(debounceTimer);
   }, [query]);
 
@@ -68,11 +68,31 @@ const LocationAutocomplete = ({
     };
 
     if (item.address) {
-      const city = cleanTerm(item.address.city || item.address.town || item.address.village || item.address.county || item.name);
-      const state = cleanTerm(item.address.state);
+      const place = cleanTerm(
+        item.display_place || 
+        item.address.name || 
+        item.address.village || 
+        item.address.hamlet || 
+        item.address.town || 
+        item.address.city || 
+        item.address.suburb || 
+        item.name || 
+        ''
+      );
+      const district = cleanTerm(item.address.county || item.address.state_district || item.address.district || '');
+      const state = cleanTerm(item.address.state || item.address.country || '');
+
       const parts = [];
-      if (city) parts.push(city);
-      if (state && state.toLowerCase() !== city.toLowerCase()) parts.push(state);
+      if (place) {
+        if (district && district.toLowerCase() !== place.toLowerCase() && district.toLowerCase() !== state.toLowerCase()) {
+          parts.push(`${place} (${district})`);
+        } else {
+          parts.push(place);
+        }
+      }
+      if (state && state.toLowerCase() !== place.toLowerCase()) {
+        parts.push(state);
+      }
       if (parts.length > 0) return parts.join(', ');
     }
     

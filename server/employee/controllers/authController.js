@@ -124,6 +124,10 @@ const registerEmployee = async (req, res) => {
         email: employee.email,
         mobile: employee.mobile,
         location: employee.location,
+        isNewUser: true,
+        isOnboardingCompleted: false,
+        onboardingStep: 1,
+        hasProfile: false,
         token: generateToken(employee._id)
       });
     } else {
@@ -186,6 +190,11 @@ const loginEmployee = async (req, res) => {
 
     await Employee.findByIdAndUpdate(employee._id, { lastLogin: new Date() });
 
+    const isCompleted = employee.isOnboardingCompleted !== undefined 
+      ? Boolean(employee.isOnboardingCompleted) 
+      : Boolean(employee.designation || employee.resume || (employee.qualifications && employee.qualifications.length > 0));
+    const currentOnboardingStep = employee.onboardingStep || 1;
+
     res.json({
       success: true,
       _id: employee.id,
@@ -193,6 +202,9 @@ const loginEmployee = async (req, res) => {
       email: employee.email,
       mobile: employee.mobile,
       location: employee.location,
+      isOnboardingCompleted: isCompleted,
+      onboardingStep: currentOnboardingStep,
+      hasProfile: isCompleted,
       token: generateToken(employee._id),
       profile: {
         firstName: employee.name ? employee.name.split(' ')[0] : '',
@@ -330,12 +342,20 @@ const verifyLoginOtp = async (req, res) => {
 
     await Employee.findByIdAndUpdate(employee._id, { lastLogin: new Date() });
 
+    const isCompleted = employee.isOnboardingCompleted !== undefined 
+      ? Boolean(employee.isOnboardingCompleted) 
+      : Boolean(employee.designation || employee.resume || (employee.qualifications && employee.qualifications.length > 0));
+    const currentOnboardingStep = employee.onboardingStep || 1;
+
     res.json({
       _id: employee.id,
       name: employee.name,
       email: employee.email,
       mobile: employee.mobile,
       location: employee.location,
+      isOnboardingCompleted: isCompleted,
+      onboardingStep: currentOnboardingStep,
+      hasProfile: isCompleted,
       token: generateToken(employee._id),
       profile: {
         firstName: employee.name ? employee.name.split(' ')[0] : '',
@@ -621,6 +641,8 @@ const googleAuth = async (req, res) => {
         location: '',
         googleId: sub || uid || '',
         authProvider: 'google',
+        isOnboardingCompleted: false,
+        onboardingStep: 1,
       });
     } else if (!employee.googleId) {
       employee.googleId = sub || uid || '';
@@ -632,9 +654,17 @@ const googleAuth = async (req, res) => {
       await employee.save();
     }
 
+    const isCompleted = employee.isOnboardingCompleted !== undefined 
+      ? Boolean(employee.isOnboardingCompleted) 
+      : Boolean(employee.designation || employee.resume || (employee.qualifications && employee.qualifications.length > 0));
+    const currentOnboardingStep = employee.onboardingStep || 1;
+
     res.json({
       success: true,
-      isNewUser,
+      isNewUser: isNewUser || !isCompleted,
+      isOnboardingCompleted: isCompleted,
+      onboardingStep: currentOnboardingStep,
+      hasProfile: isCompleted,
       _id: employee._id,
       name: employee.name,
       email: employee.email,

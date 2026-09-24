@@ -1,16 +1,39 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const CustomDropdown = ({ options, value, onChange, placeholder = "Select option", error = false }) => {
+const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select option", error = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Normalize options so both strings and objects are safely supported without crashes
+  const safeOptions = (Array.isArray(options) ? options : []).map(opt => {
+    if (typeof opt === 'string' || typeof opt === 'number') {
+      return { value: String(opt), label: String(opt), keywords: [], isGroupLabel: false };
+    }
+    if (!opt || typeof opt !== 'object') {
+      return { value: '', label: '', keywords: [], isGroupLabel: false };
+    }
+    return {
+      value: opt.value !== undefined ? String(opt.value) : (opt.label ? String(opt.label) : ''),
+      label: opt.label !== undefined ? String(opt.label) : (opt.value ? String(opt.value) : ''),
+      keywords: Array.isArray(opt.keywords) ? opt.keywords : [],
+      isGroupLabel: Boolean(opt.isGroupLabel)
+    };
+  });
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         if (isOpen && searchTerm.trim() !== '') {
-          const exactMatch = options.find(opt => opt.label.toLowerCase() === searchTerm.trim().toLowerCase() && !opt.isGroupLabel);
+          const searchLower = searchTerm.trim().toLowerCase();
+          const exactMatch = safeOptions.find(opt => 
+            !opt.isGroupLabel && (
+              opt.label.toLowerCase() === searchLower || 
+              opt.value.toLowerCase() === searchLower ||
+              opt.keywords.some(k => k.toLowerCase() === searchLower)
+            )
+          );
           if (exactMatch) {
             onChange(exactMatch.value);
           }
@@ -21,7 +44,7 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, searchTerm, onChange]);
+  }, [isOpen, searchTerm, onChange, safeOptions]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -29,12 +52,40 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
     }
   }, [isOpen]);
 
-  const selectedOption = options.find(opt => opt.value === value);
+  const cleanStr = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const searchClean = cleanStr(searchTerm);
+  const searchTokens = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
 
-  // Filter options based on search term
-  const filteredOptions = options.filter(opt => {
+  const selectedOption = safeOptions.find(opt => String(opt.value) === String(value) && !opt.isGroupLabel);
+
+  // Filter options based on search term (label, value, keywords, aliases, cleaned matches)
+  const filteredOptions = safeOptions.filter(opt => {
     if (opt.isGroupLabel) return true;
-    return opt.label.toLowerCase().includes(searchTerm.toLowerCase());
+    const labelStr = opt.label.toLowerCase();
+    const valueStr = opt.value.toLowerCase();
+    const keywordsStr = opt.keywords.join(' ').toLowerCase();
+
+    // 1. Direct contains check
+    if (labelStr.includes(searchTerm.toLowerCase()) || 
+        valueStr.includes(searchTerm.toLowerCase()) || 
+        keywordsStr.includes(searchTerm.toLowerCase())) {
+      return true;
+    }
+
+    // 2. Cleaned / stripped match (e.g., "u.p." or "up board" matches "UPMSP")
+    const combinedClean = cleanStr(opt.label) + ' ' + cleanStr(opt.value) + ' ' + cleanStr(keywordsStr);
+    if (searchClean && combinedClean.includes(searchClean)) {
+      return true;
+    }
+
+    // 3. Multi-token match (all words in search term present across fields)
+    if (searchTokens.length > 1) {
+      const combinedAll = labelStr + ' ' + valueStr + ' ' + keywordsStr;
+      const allTokensMatch = searchTokens.every(tok => combinedAll.includes(tok));
+      if (allTokensMatch) return true;
+    }
+
+    return false;
   });
 
   return (
@@ -54,7 +105,12 @@ const CustomDropdown = ({ options, value, onChange, placeholder = "Select option
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   if (searchTerm.trim() !== '') {
-                    onChange(searchTerm.trim());
+                    const firstMatch = filteredOptions.find(opt => !opt.isGroupLabel);
+                    if (firstMatch) {
+                      onChange(firstMatch.value);
+                    } else {
+                      onChange(searchTerm.trim());
+                    }
                     setIsOpen(false);
                     setSearchTerm('');
                   }

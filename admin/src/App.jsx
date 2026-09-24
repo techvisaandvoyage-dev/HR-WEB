@@ -32,7 +32,7 @@ function App() {
     params.set('tab', newTab);
     
     // Clean up specific sub-keys when changing main tabs
-    if (newTab !== 'employees') {
+    if (newTab !== 'employees' && newTab !== 'employers') {
       params.delete('section');
       params.delete('step');
       params.delete('authSub');
@@ -91,14 +91,10 @@ function App() {
         </div>
       )}
       {activeTab === 'employees' && (
-        <div className="flex-1 w-full h-full overflow-y-auto">
-          <EmployeesTab />
-        </div>
+        <EmployeesTab />
       )}
       {activeTab === 'employers' && (
-        <div className="flex-1 w-full h-full overflow-y-auto">
-          <EmployersTab />
-        </div>
+        <EmployersTab />
       )}
     </AdminLayout>
   );

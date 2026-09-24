@@ -229,8 +229,12 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                     <div className="absolute top-[110%] left-0 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[100] max-h-64 overflow-y-auto">
                       {filteredMobileJobs.length > 0 ? filteredMobileJobs.slice(0, 5).map(job => (
                         <div key={job.id} onClick={() => { setMobileSearchTerm(job.title); setShowMobileSuggestions(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
-                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600 text-xs shrink-0">
-                            {job.companyInitial}
+                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600 text-xs shrink-0 overflow-hidden border border-gray-100">
+                            {(job.companyLogo || job.employerId?.companyLogo) ? (
+                              <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                            ) : (
+                              job.companyInitial
+                            )}
                           </div>
                           <div>
                             <div className="font-semibold text-gray-900 text-sm">{job.title}</div>
@@ -319,8 +323,12 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex gap-2">
-                      <div className="w-8 h-8 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-xs">
-                        {job.companyInitial}
+                      <div className="w-8 h-8 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-xs shrink-0 overflow-hidden border border-gray-100">
+                        {(job.companyLogo || job.employerId?.companyLogo) ? (
+                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                        ) : (
+                          job.companyInitial
+                        )}
                       </div>
                       <div>
                         <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-1">
@@ -387,8 +395,12 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                     <div className="hidden md:block">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex gap-3">
-                          <div className="w-12 h-12 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-lg">
-                            {selectedJob.companyInitial}
+                          <div className="w-12 h-12 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-lg shrink-0 overflow-hidden border border-gray-200">
+                            {(selectedJob.companyLogo || selectedJob.employerId?.companyLogo) ? (
+                              <img src={selectedJob.companyLogo || selectedJob.employerId?.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-0.5" />
+                            ) : (
+                              selectedJob.companyInitial
+                            )}
                           </div>
                           <div>
                             <h2 className="text-xl font-semibold text-gray-900">{selectedJob.company}</h2>
@@ -450,8 +462,12 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                             <div className="mb-4">
                               <h3 className="text-sm text-gray-500 font-medium mb-3">Posted by</h3>
                               <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0">
-                                  {selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')}
+                                <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0 overflow-hidden">
+                                  {(selectedJob.employerId?.companyLogo || selectedJob.companyLogo) ? (
+                                    <img src={selectedJob.employerId?.companyLogo || selectedJob.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-1" />
+                                  ) : (
+                                    selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')
+                                  )}
                                 </div>
                                 <div>
                                   <h4 className="text-base font-bold text-gray-900">{selectedJob.employerId?.fullName || 'Recruiter'}</h4>
@@ -499,8 +515,12 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                     <div className="md:hidden">
                       <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gray-50 rounded-lg font-bold text-gray-800 flex items-center justify-center text-xl">
-                            {selectedJob.companyInitial}
+                          <div className="w-12 h-12 bg-gray-50 rounded-lg font-bold text-gray-800 flex items-center justify-center text-xl shrink-0 overflow-hidden border border-gray-200">
+                            {(selectedJob.companyLogo || selectedJob.employerId?.companyLogo) ? (
+                              <img src={selectedJob.companyLogo || selectedJob.employerId?.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-0.5" />
+                            ) : (
+                              selectedJob.companyInitial
+                            )}
                           </div>
                           <div>
                             <h2 className="text-xl font-medium text-gray-900">{selectedJob.company}</h2>
@@ -538,8 +558,12 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                             <div className="mb-4">
                               <h3 className="text-sm text-gray-500 font-medium mb-3">Posted by</h3>
                               <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0">
-                                  {selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')}
+                                <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-gray-600 shadow-sm shrink-0 overflow-hidden">
+                                  {(selectedJob.employerId?.companyLogo || selectedJob.companyLogo) ? (
+                                    <img src={selectedJob.employerId?.companyLogo || selectedJob.companyLogo} alt={selectedJob.company} className="w-full h-full object-contain p-1" />
+                                  ) : (
+                                    selectedJob.employerId?.companyName ? selectedJob.employerId.companyName.substring(0, 2).toUpperCase() : (selectedJob.companyInitial || 'HR')
+                                  )}
                                 </div>
                                 <div>
                                   <h4 className="text-base font-bold text-gray-900">{selectedJob.employerId?.fullName || 'Recruiter'}</h4>

@@ -36,6 +36,8 @@ router.put('/', async (req, res) => {
     if (req.body.employeeRegister !== undefined) updateDoc.employeeRegister = req.body.employeeRegister;
     if (req.body.employeeLogin !== undefined) updateDoc.employeeLogin = req.body.employeeLogin;
     if (req.body.employeeOnboarding !== undefined) updateDoc.employeeOnboarding = req.body.employeeOnboarding;
+    if (req.body.employerRegister !== undefined) updateDoc.employerRegister = req.body.employerRegister;
+    if (req.body.employerLogin !== undefined) updateDoc.employerLogin = req.body.employerLogin;
 
     const updated = await HomepageConfig.findOneAndUpdate(
       {},

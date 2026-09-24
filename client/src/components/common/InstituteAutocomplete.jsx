@@ -87,14 +87,14 @@ const InstituteAutocomplete = ({
     }
   }, []);
 
-  // Debounced search on query changes
+  // Debounced search on query changes (starting from 1 char)
   useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     const q = query.trim();
-    if (q.length < 2) {
+    if (!q) {
       setSuggestions([]);
       setNextCursor(null);
       setIsLoading(false);
@@ -103,7 +103,7 @@ const InstituteAutocomplete = ({
 
     debounceTimerRef.current = setTimeout(() => {
       fetchInstitutions(query, null, false);
-    }, 300);
+    }, 100);
 
     return () => {
       if (debounceTimerRef.current) {
@@ -121,12 +121,69 @@ const InstituteAutocomplete = ({
     }
   };
 
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  const getFullDisplayString = (item) => {
+    if (typeof item === 'string') return item;
+    const name = (item.name || '').trim();
+    const acronymPart = item.acronym && !name.includes(`(${item.acronym})`) && !name.includes(item.acronym)
+      ? ` (${item.acronym})`
+      : '';
+    
+    // Construct location parts (City, State, Country if foreign)
+    const locParts = [];
+    const city = (item.city || '').trim();
+    const state = (item.state || item.region || '').trim();
+    const country = (item.country || '').trim();
+
+    if (city) {
+      locParts.push(city);
+    }
+    if (state && (!city || city.toLowerCase() !== state.toLowerCase())) {
+      locParts.push(state);
+    }
+    if (country && country !== 'India' && country !== 'IN' && !locParts.includes(country)) {
+      locParts.push(country);
+    }
+
+    const locStr = locParts.length > 0 ? `, ${locParts.join(', ')}` : '';
+    return `${name}${acronymPart}${locStr}`;
+  };
+
   const handleSelect = (item) => {
-    const name = typeof item === 'string' ? item : item.name;
-    setQuery(name);
+    const fullStr = getFullDisplayString(item);
+    setQuery(fullStr);
     setIsOpen(false);
+    setActiveIndex(-1);
     if (onChange) {
-      onChange(name);
+      onChange(fullStr);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (!isOpen || suggestions.length === 0) {
+      if (e.key === 'Enter') {
+        setIsOpen(false);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && activeIndex < suggestions.length) {
+        handleSelect(suggestions[activeIndex]);
+      } else {
+        setIsOpen(false);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setActiveIndex(-1);
     }
   };
 
@@ -138,12 +195,24 @@ const InstituteAutocomplete = ({
     }
   };
 
-  // Helper to get formatted badge type
-  const getTypeBadge = (item) => {
-    if (item.sector === 'K12') return { label: 'School', color: 'bg-amber-50 text-amber-700 border-amber-200' };
-    if (item.type && item.type.toLowerCase().includes('university')) return { label: 'University', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-    if (item.type && item.type.toLowerCase().includes('college')) return { label: 'College', color: 'bg-blue-50 text-blue-700 border-blue-200' };
-    return { label: item.type || 'Postsecondary', color: 'bg-purple-50 text-purple-700 border-purple-200' };
+  // Helper to highlight matching text prefixes in bold (matching Naukri/Indeed style)
+  const renderHighlightedText = (text, searchStr) => {
+    if (!searchStr || !searchStr.trim()) return <span>{text}</span>;
+    const qTrim = searchStr.trim().toLowerCase();
+    const idx = text.toLowerCase().indexOf(qTrim);
+    if (idx === -1) return <span>{text}</span>;
+
+    const before = text.substring(0, idx);
+    const match = text.substring(idx, idx + qTrim.length);
+    const after = text.substring(idx + qTrim.length);
+
+    return (
+      <span>
+        {before}
+        <strong className="font-extrabold text-gray-900">{match}</strong>
+        <span className="font-normal text-gray-700">{after}</span>
+      </span>
+    );
   };
 
   return (
@@ -152,75 +221,49 @@ const InstituteAutocomplete = ({
         type="text"
         value={query}
         onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
         onFocus={() => {
-          if (query.trim().length >= 2 || suggestions.length > 0) setIsOpen(true);
+          if (query.trim().length >= 1 || suggestions.length > 0) setIsOpen(true);
         }}
         placeholder={placeholder}
         className={className}
         autoComplete="off"
       />
 
-      {isOpen && query.trim().length >= 2 && (
-        <div className="absolute z-[200] w-full mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto custom-scrollbar animate-in fade-in duration-150">
+      {isOpen && query.trim().length >= 1 && (
+        <div className="absolute z-[200] w-full mt-1.5 bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto custom-scrollbar animate-in fade-in duration-150 py-1">
           {/* Results List */}
           <div className="divide-y divide-gray-50">
             {suggestions.length > 0 ? (
               <>
                 {suggestions.map((item, index) => {
-                  const badge = getTypeBadge(item);
-                  const locationParts = [item.city, item.region, item.country].filter(Boolean);
-                  const locationStr = locationParts.join(', ');
+                  const fullDisplay = getFullDisplayString(item);
+                  const isSelected = activeIndex === index;
 
                   return (
                     <div 
                       key={item.id || index}
                       onClick={() => handleSelect(item)}
-                      className="px-4 py-3 cursor-pointer hover:bg-emerald-50/70 transition-colors flex justify-between items-center gap-4 text-left group"
+                      onMouseEnter={() => setActiveIndex(index)}
+                      className={`px-4 py-2.5 cursor-pointer transition-colors flex items-center justify-between text-left group ${
+                        isSelected ? 'bg-emerald-50 text-emerald-950' : 'hover:bg-gray-50'
+                      }`}
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-gray-900 text-sm group-hover:text-emerald-800 transition-colors truncate">
-                            {item.name}
-                          </p>
-                          {item.acronym && (
-                            <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded">
-                              {item.acronym}
-                            </span>
-                          )}
-                          <span className={`px-2 py-0.5 border text-[10px] font-semibold rounded-full shrink-0 ${badge.color}`}>
-                            {badge.label}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                          {locationStr && (
-                            <span className="truncate">
-                              📍 {locationStr}
-                            </span>
-                          )}
-                          {item.website && (
-                            <span className="text-[10px] text-gray-400 font-mono truncate hidden sm:inline">
-                              • {item.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
-                            </span>
-                          )}
-                        </div>
+                      <div className="text-[14px] text-gray-800 truncate flex-1 pr-2">
+                        {renderHighlightedText(fullDisplay, query)}
                       </div>
-
-                      <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Select
-                      </span>
                     </div>
                   );
                 })}
 
                 {/* Load More Pagination */}
                 {nextCursor && (
-                  <div className="p-2.5 text-center bg-gray-50/50">
+                  <div className="p-2 text-center bg-gray-50/50">
                     <button
                       type="button"
                       onClick={handleLoadMore}
                       disabled={isLoadingMore}
-                      className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white hover:bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 transition-all cursor-pointer disabled:opacity-50 shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 transition-all cursor-pointer disabled:opacity-50 shadow-2xs"
                     >
                       {isLoadingMore ? (
                         <>
@@ -235,17 +278,17 @@ const InstituteAutocomplete = ({
                 )}
               </>
             ) : isLoading ? (
-              <div className="px-4 py-6 text-xs text-gray-500 font-medium text-center flex items-center justify-center gap-2">
-                <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                <span>Searching universities & institutes...</span>
+              <div className="px-4 py-5 text-xs text-gray-500 font-medium text-center flex items-center justify-center gap-2">
+                <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                <span>Searching universities & colleges...</span>
               </div>
             ) : errorMessage ? (
-              <div className="px-4 py-4 text-xs text-red-500 text-center">
+              <div className="px-4 py-3 text-xs text-red-500 text-center">
                 {errorMessage}
               </div>
             ) : (
-              <div className="px-4 py-4 text-xs text-gray-500 text-center">
-                No matching institutions found in directory. You can press Enter or continue with <span className="font-bold text-gray-800">"{query}"</span>
+              <div className="px-4 py-3.5 text-xs text-gray-500 text-center">
+                Press Enter or continue typing <span className="font-bold text-gray-800">"{query}"</span>
               </div>
             )}
           </div>

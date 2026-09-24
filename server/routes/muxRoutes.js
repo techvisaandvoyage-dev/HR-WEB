@@ -64,11 +64,29 @@ router.get('/asset/:uploadId', async (req, res) => {
 
     if (upload.asset_id) {
       const asset = await mux.video.assets.retrieve(upload.asset_id);
+
+      // Backend validation: Check if video duration exceeds 3 minutes (180 seconds)
+      if (asset.duration && asset.duration > 180) {
+        try {
+          await mux.video.assets.delete(upload.asset_id);
+        } catch (delErr) {
+          console.warn('Failed to delete oversized duration asset:', delErr);
+        }
+        const mins = Math.floor(asset.duration / 60);
+        const secs = Math.round(asset.duration % 60);
+        return res.status(400).json({
+          success: false,
+          status: 'errored',
+          message: `Video length (${mins}m ${secs}s) exceeds the 3-minute limit. Please upload a video under 3 minutes.`
+        });
+      }
+
       const playbackId = asset.playback_ids && asset.playback_ids[0] ? asset.playback_ids[0].id : null;
       
       return res.json({
         success: true,
         status: asset.status,
+        duration: asset.duration,
         assetId: upload.asset_id,
         playbackId: playbackId,
         streamUrl: playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null,

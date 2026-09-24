@@ -8,7 +8,7 @@ exports.createJob = async (req, res) => {
   try {
     const employerId = req.user.id;
     let {
-      company, companyInitial, title, location, salary, employerProvided,
+      company, companyInitial, companyLogo, title, location, salary, employerProvided,
       easyApply, qualifications, details, screeningQuestions
     } = req.body;
 
@@ -18,11 +18,15 @@ exports.createJob = async (req, res) => {
     if (!companyInitial) {
       companyInitial = company ? company.charAt(0).toUpperCase() : 'C';
     }
+    if (!companyLogo && req.user && req.user.companyLogo) {
+      companyLogo = req.user.companyLogo;
+    }
 
     const job = await Job.create({
       employerId,
       company,
       companyInitial,
+      companyLogo,
       title,
       location,
       salary,
@@ -65,7 +69,7 @@ exports.updateJob = async (req, res) => {
     }
 
     let {
-      company, companyInitial, title, location, salary, employerProvided,
+      company, companyInitial, companyLogo, title, location, salary, employerProvided,
       easyApply, qualifications, details, screeningQuestions
     } = req.body;
 
@@ -75,10 +79,14 @@ exports.updateJob = async (req, res) => {
     if (!companyInitial) {
       companyInitial = company ? company.charAt(0).toUpperCase() : 'C';
     }
+    if (companyLogo === undefined && req.user && req.user.companyLogo) {
+      companyLogo = req.user.companyLogo;
+    }
 
     Object.assign(job, {
       company,
       companyInitial,
+      ...(companyLogo !== undefined ? { companyLogo } : {}),
       title,
       location,
       salary,

@@ -31,6 +31,10 @@ const EmployerSchema = new mongoose.Schema({
   },
   
   // Company details (Step 3)
+  companyLogo: {
+    type: String,
+    default: ''
+  },
   hiringFor: {
     type: String,
     enum: ['your_company', 'consultant'],

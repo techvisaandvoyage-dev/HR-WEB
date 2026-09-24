@@ -7,6 +7,7 @@ import { currentLocationOptions, preferredLocationOptions } from '../../data/pre
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
+import { compressFileIfNeeded } from '../../utils/fileCompressor';
 import VideoPlayer from '../common/VideoPlayer';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
@@ -20,8 +21,53 @@ const formatMonthYear = (dateStr) => {
   return `${monthsList[parseInt(month, 10) - 1]} ${year}`;
 };
 
-const getCurrencySymbol = (currencyCode) => {
-  const symbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$', SGD: '$', AED: 'د.إ' };
+export const DEFAULT_CURRENCY_OPTIONS = [
+  { value: 'INR', label: 'INR (₹)' },
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+  { value: 'AED', label: 'AED (د.إ)' },
+  { value: 'CAD', label: 'CAD ($)' },
+  { value: 'AUD', label: 'AUD ($)' },
+  { value: 'SGD', label: 'SGD ($)' },
+  { value: 'SAR', label: 'SAR (﷼)' },
+  { value: 'QAR', label: 'QAR (﷼)' },
+  { value: 'OMR', label: 'OMR (﷼)' },
+  { value: 'KWD', label: 'KWD (د.ك)' },
+  { value: 'BHD', label: 'BHD (.د.ب)' },
+  { value: 'JPY', label: 'JPY (¥)' },
+  { value: 'CNY', label: 'CNY (¥)' },
+  { value: 'CHF', label: 'CHF (Fr)' },
+  { value: 'HKD', label: 'HKD ($)' },
+  { value: 'NZD', label: 'NZD ($)' },
+  { value: 'MYR', label: 'MYR (RM)' },
+  { value: 'ZAR', label: 'ZAR (R)' },
+  { value: 'THB', label: 'THB (฿)' },
+  { value: 'PHP', label: 'PHP (₱)' },
+  { value: 'IDR', label: 'IDR (Rp)' },
+  { value: 'VND', label: 'VND (₫)' },
+  { value: 'BRL', label: 'BRL (R$)' },
+  { value: 'RUB', label: 'RUB (₽)' },
+  { value: 'KRW', label: 'KRW (₩)' },
+  { value: 'TRY', label: 'TRY (₺)' },
+  { value: 'MXN', label: 'MXN ($)' },
+  { value: 'EGP', label: 'EGP (E£)' },
+  { value: 'LKR', label: 'LKR (Rs)' },
+  { value: 'PKR', label: 'PKR (Rs)' },
+  { value: 'BDT', label: 'BDT (৳)' },
+  { value: 'NPR', label: 'NPR (Rs)' }
+];
+
+export const getCurrencySymbol = (currencyCode) => {
+  const symbols = {
+    INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ',
+    CAD: '$', AUD: '$', SGD: '$', SAR: '﷼', QAR: '﷼',
+    OMR: '﷼', KWD: 'د.ك', BHD: '.د.ب', JPY: '¥', CNY: '¥',
+    CHF: 'Fr', HKD: '$', NZD: '$', MYR: 'RM', ZAR: 'R',
+    THB: '฿', PHP: '₱', IDR: 'Rp', VND: '₫', BRL: 'R$',
+    RUB: '₽', KRW: '₩', TRY: '₺', MXN: '$', EGP: 'E£',
+    LKR: 'Rs', PKR: 'Rs', BDT: '৳', NPR: 'Rs'
+  };
   return symbols[currencyCode || 'INR'] || '₹';
 };
 
@@ -36,6 +82,49 @@ const formatIndianNumber = (val) => {
   }
   return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
 };
+
+export const DEFAULT_BOARD_OPTIONS = [
+  { label: '----- Central & National Boards -----', isGroupLabel: true },
+  { value: 'CBSE', label: 'CBSE (Central Board of Secondary Education)', keywords: ['cbse', 'central board', 'delhi cbse', 'all india', 'aissee', 'aissce', 'ncert'] },
+  { value: 'ICSE / ISC', label: 'ICSE / ISC (Council for the Indian School Certificate Examinations - CISCE)', keywords: ['icse', 'isc', 'cisce', 'council', '10th icse', '12th isc'] },
+  { value: 'NIOS', label: 'NIOS (National Institute of Open Schooling)', keywords: ['nios', 'open school', 'national open board', 'distance'] },
+  { value: 'IB', label: 'IB (International Baccalaureate)', keywords: ['ib', 'international baccalaureate', 'ibdp', 'myp', 'pyp'] },
+  { value: 'Cambridge', label: 'Cambridge International (IGCSE / A-Levels / O-Levels)', keywords: ['cambridge', 'igcse', 'cie', 'caie', 'a levels', 'o levels'] },
+  
+  { label: '----- State Boards (India) -----', isGroupLabel: true },
+  { value: 'Uttar Pradesh Board (UPMSP / UP Board)', label: 'UP Board (UPMSP - Uttar Pradesh Madhyamik Shiksha Parishad)', keywords: ['up', 'up board', 'upmsp', 'uttar pradesh', 'allahabad board', 'prayagraj board', 'high school', 'intermediate', 'upboard'] },
+  { value: 'Bihar Board (BSEB)', label: 'Bihar Board (BSEB - Bihar School Examination Board)', keywords: ['bihar', 'bseb', 'bihar board', 'patna board', 'matric', 'inter', 'bseb patna', 'br'] },
+  { value: 'Maharashtra Board (MSBSHSE)', label: 'Maharashtra Board (MSBSHSE - Maharashtra State Board)', keywords: ['maharashtra', 'msbshse', 'maha board', 'ssc', 'hsc', 'pune board', 'mumbai board', 'mh'] },
+  { value: 'Rajasthan Board (RBSE / BSER)', label: 'Rajasthan Board (RBSE / BSER - Ajmer Board)', keywords: ['rajasthan', 'rbse', 'bser', 'raj board', 'ajmer board', 'rbse ajmer', 'rj'] },
+  { value: 'Madhya Pradesh Board (MPBSE)', label: 'MP Board (MPBSE - Madhya Pradesh Board of Secondary Education)', keywords: ['mp', 'mp board', 'mpbse', 'madhya pradesh', 'bhopal board'] },
+  { value: 'Gujarat Board (GSEB / GSHSEB)', label: 'Gujarat Board (GSEB - Gujarat Secondary & Higher Secondary Education Board)', keywords: ['gujarat', 'gseb', 'gshseb', 'gujarat board', 'gandhinagar board', 'gj'] },
+  { value: 'Haryana Board (HBSE / BSEH)', label: 'Haryana Board (HBSE / BSEH - Board of School Education Haryana)', keywords: ['haryana', 'hbse', 'bseh', 'haryana board', 'bhiwani board', 'hr'] },
+  { value: 'Delhi Board (DBSE)', label: 'Delhi Board (DBSE - Delhi Board of School Education)', keywords: ['delhi', 'dbse', 'delhi board', 'dl'] },
+  { value: 'Jharkhand Board (JAC)', label: 'Jharkhand Board (JAC - Jharkhand Academic Council)', keywords: ['jharkhand', 'jac', 'jharkhand board', 'ranchi board', 'jac ranchi', 'jh'] },
+  { value: 'Karnataka Board (KSEEB / KSEAB)', label: 'Karnataka Board (KSEEB / KSEAB - Karnataka School Examination Board)', keywords: ['karnataka', 'kseeb', 'kseab', 'dpue', 'puc', 'sslc', 'bangalore board', 'ka'] },
+  { value: 'Punjab Board (PSEB)', label: 'Punjab Board (PSEB - Punjab School Education Board)', keywords: ['punjab', 'pseb', 'punjab board', 'mohali board', 'pb'] },
+  { value: 'West Bengal Board (WBBSE / WBCHSE)', label: 'West Bengal Board (WBBSE / WBCHSE - Madhyamik / HS)', keywords: ['west bengal', 'bengal', 'wb', 'wbbse', 'wbchse', 'madhyamik', 'hs', 'kolkata board'] },
+  { value: 'Tamil Nadu Board (TNDGE)', label: 'Tamil Nadu Board (TNDGE - Directorate of Government Examinations)', keywords: ['tamil nadu', 'tn', 'tndge', 'samacheer', 'sslc', 'hsc', 'chennai board', 'tn board'] },
+  { value: 'Telangana Board (TSBIE / BSE)', label: 'Telangana Board (TSBIE / BSE - Telangana State Board)', keywords: ['telangana', 'ts', 'tsbie', 'bse telangana', 'inter ts', 'hyderabad board', 'telangana board'] },
+  { value: 'Andhra Pradesh Board (BSEAP / BIEAP)', label: 'Andhra Pradesh Board (BSEAP / BIEAP - AP Board)', keywords: ['andhra pradesh', 'ap', 'bseap', 'bieap', 'inter ap', 'andhra board', 'ap board'] },
+  { value: 'Kerala Board (KBPE / DHSE)', label: 'Kerala Board (KBPE / DHSE - Kerala Board of Public Examinations)', keywords: ['kerala', 'kbpe', 'dhse', 'sslc kerala', 'plus two', 'kl', 'kerala board'] },
+  { value: 'Odisha Board (BSE / CHSE)', label: 'Odisha Board (BSE / CHSE - Board of Secondary Education Odisha)', keywords: ['odisha', 'orissa', 'bse odisha', 'chse odisha', 'cuttack board', 'od', 'or'] },
+  { value: 'Assam Board (SEBA / AHSEC)', label: 'Assam Board (SEBA / AHSEC - Board of Secondary Education Assam)', keywords: ['assam', 'seba', 'ahsec', 'guwahati board', 'as', 'assam board'] },
+  { value: 'Chhattisgarh Board (CGBSE)', label: 'Chhattisgarh Board (CGBSE - CG Board Raipur)', keywords: ['chhattisgarh', 'cgbse', 'cg board', 'raipur board', 'cg'] },
+  { value: 'Himachal Pradesh Board (HPBOSE)', label: 'Himachal Pradesh Board (HPBOSE - Dharamshala Board)', keywords: ['himachal', 'hp', 'hpbse', 'hpbose', 'dharamshala board', 'hp board'] },
+  { value: 'Jammu & Kashmir Board (JKBOSE)', label: 'Jammu & Kashmir Board (JKBOSE - J&K State Board)', keywords: ['jammu', 'kashmir', 'j&k', 'jkbose', 'srinagar board', 'jammu board', 'jk'] },
+  { value: 'Uttarakhand Board (UBSE)', label: 'Uttarakhand Board (UBSE - Uttarakhand Board of School Education)', keywords: ['uttarakhand', 'uk', 'ubse', 'ramnagar board', 'ua', 'uk board'] },
+  { value: 'Goa Board (GBSHSE)', label: 'Goa Board (GBSHSE - Goa Board of Secondary & Higher Secondary Education)', keywords: ['goa', 'gbshse', 'goa board', 'ga'] },
+  { value: 'Manipur Board (BOSEM / COHSEM)', label: 'Manipur Board (BOSEM / COHSEM - Board of Secondary Education Manipur)', keywords: ['manipur', 'bosem', 'cohsem', 'imphal', 'mn'] },
+  { value: 'Meghalaya Board (MBOSE)', label: 'Meghalaya Board (MBOSE - Meghalaya Board of School Education)', keywords: ['meghalaya', 'mbose', 'shillong board', 'ml'] },
+  { value: 'Mizoram Board (MBSE)', label: 'Mizoram Board (MBSE - Mizoram Board of School Education)', keywords: ['mizoram', 'mbse', 'aizawl board', 'mz'] },
+  { value: 'Nagaland Board (NBSE)', label: 'Nagaland Board (NBSE - Nagaland Board of School Education)', keywords: ['nagaland', 'nbse', 'kohima board', 'nl'] },
+  { value: 'Tripura Board (TBSE)', label: 'Tripura Board (TBSE - Tripura Board of Secondary Education)', keywords: ['tripura', 'tbse', 'agartala board', 'tr'] },
+  { value: 'Arunachal Pradesh State Board', label: 'Arunachal Pradesh State Board of Secondary Education', keywords: ['arunachal', 'arunachal pradesh', 'itanagar', 'ar'] },
+  { value: 'Sikkim Board', label: 'Sikkim Board of Secondary Education', keywords: ['sikkim', 'gangtok', 'sk'] },
+  { value: 'Other State Board', label: 'Other State Board', keywords: ['state board', 'other state'] },
+  { value: 'Other Board', label: 'Other Recognized Board', keywords: ['other', 'recognized', 'open board'] }
+];
 
 export const sortQualifications = (quals) => {
   if (!Array.isArray(quals)) return [];
@@ -69,22 +158,92 @@ export const sortExperience = (expList) => {
   return arr;
 };
 
+export const DEFAULT_GRADUATION_COURSES = [
+  'B.Tech / B.E. (Bachelor of Technology / Engineering)',
+  'B.Com (Bachelor of Commerce)',
+  'B.Com (Hons.)',
+  'B.Com in Accounting & Finance (BAF)',
+  'B.Com in Banking & Insurance (BBI)',
+  'B.Com in Financial Markets (BFM)',
+  'B.Sc (Bachelor of Science)',
+  'B.Sc in Computer Science',
+  'B.Sc in Information Technology (IT)',
+  'B.Sc in Nursing',
+  'B.Sc in Agriculture',
+  'B.Sc in Biotechnology',
+  'BCA (Bachelor of Computer Applications)',
+  'BBA (Bachelor of Business Administration)',
+  'BMS (Bachelor of Management Studies)',
+  'B.A (Bachelor of Arts)',
+  'B.A (Hons.) in Economics',
+  'B.A (Hons.) in English',
+  'B.A (Hons.) in Psychology',
+  'LLB (Bachelor of Legislative Law - 3 Years)',
+  'Integrated B.A. LL.B / B.Com. LL.B / BBA. LL.B',
+  'B.Pharm (Bachelor of Pharmacy)',
+  'Pharm.D (Doctor of Pharmacy)',
+  'MBBS (Bachelor of Medicine, Bachelor of Surgery)',
+  'BDS (Bachelor of Dental Surgery)',
+  'BPT (Bachelor of Physiotherapy)',
+  'BAMS / BHMS / BUMS (Ayurveda / Homeopathy)',
+  'B.Des (Bachelor of Design)',
+  'B.Arch (Bachelor of Architecture)',
+  'B.Ed (Bachelor of Education)',
+  'BHM (Bachelor of Hotel Management)',
+  'B.Voc (Bachelor of Vocation)',
+  'Diploma in Engineering / Polytechnic',
+  'Diploma in Pharmacy (D.Pharm)',
+  'General Nursing and Midwifery (GNM)',
+  'ITI Certification',
+  'Other Bachelor Degree / Diploma'
+];
+
+export const DEFAULT_MASTERS_COURSES = [
+  'MBA (Master of Business Administration)',
+  'PGDM (Post Graduate Diploma in Management)',
+  'Executive MBA / PGPM',
+  'M.Com (Master of Commerce)',
+  'M.Com in Accounting & Finance',
+  'M.Tech / M.E. (Master of Technology / Engineering)',
+  'MCA (Master of Computer Applications)',
+  'M.Sc (Master of Science)',
+  'M.Sc in Computer Science / IT',
+  'M.Sc in Data Science / AI / ML',
+  'M.Sc in Biotechnology / Microbiology',
+  'M.Sc in Nursing',
+  'M.A (Master of Arts)',
+  'M.A in Economics',
+  'M.A in Psychology',
+  'M.A in English',
+  'LLM (Master of Laws)',
+  'M.Pharm (Master of Pharmacy)',
+  'MD / MS (Doctor of Medicine / Master of Surgery)',
+  'MDS (Master of Dental Surgery)',
+  'MPT (Master of Physiotherapy)',
+  'M.Des (Master of Design)',
+  'M.Arch (Master of Architecture)',
+  'M.Ed (Master of Education)',
+  'MS (Master of Science - Global / Tech)',
+  'Ph.D. / Doctorate',
+  'Other Master / Post Graduate Degree'
+];
+
 export const DEFAULT_EDUCATION_DATA = {
   '10th': {
     category: 'school',
-    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+    options: DEFAULT_BOARD_OPTIONS.filter(b => !b.isGroupLabel).map(b => b.value)
   },
   '12th': {
     category: 'school',
-    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+    options: DEFAULT_BOARD_OPTIONS.filter(b => !b.isGroupLabel).map(b => b.value)
   },
   'Graduation/Diploma': {
     category: 'higher',
-    options: ['B.Tech/B.E.', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA', 'B.Des', 'Diploma in Engineering', 'Polytechnic', 'Other']
+    options: [...DEFAULT_GRADUATION_COURSES]
   },
   'Masters/Post-Graduation': {
     category: 'higher',
-    options: ['M.Tech/M.E.', 'M.Sc', 'M.Com', 'M.A', 'MBA/PGDM', 'MCA', 'M.Des', 'MS', 'Other']
+    options: [...DEFAULT_MASTERS_COURSES]
   },
   'Accounting Degree': {
     category: 'higher',
@@ -210,6 +369,61 @@ export const normalizeGradingSystems = (list) => {
       placeholder: item.placeholder || 'Enter grade or marks'
     };
   });
+};
+
+export const getGradingValidation = (gradingSystem = '', value = '') => {
+  if (!gradingSystem || gradingSystem === 'Not Applicable') return { isValid: true };
+  if (value === undefined || value === null || String(value).trim() === '') return { isValid: true };
+
+  const num = parseFloat(value);
+  if (isNaN(num)) {
+    return { isValid: false, message: 'Please enter a valid number' };
+  }
+  if (num < 0) {
+    return { isValid: false, message: 'Value cannot be negative' };
+  }
+
+  const str = String(gradingSystem).toLowerCase();
+  
+  if (str.includes('scale 4') || str.includes('out of 4')) {
+    if (num > 4) {
+      return { isValid: false, message: 'Grade cannot be greater than 4 (e.g. 3.5, 4.0)', max: 4 };
+    }
+  } else if (str.includes('scale 10') || str.includes('out of 10')) {
+    if (num > 10) {
+      return { isValid: false, message: 'Grade cannot be greater than 10 (e.g. 8.5, 10.0)', max: 10 };
+    }
+  } else if (str.includes('scale 5') || str.includes('out of 5')) {
+    if (num > 5) {
+      return { isValid: false, message: 'Grade cannot be greater than 5', max: 5 };
+    }
+  } else if (str.includes('scale 7') || str.includes('out of 7')) {
+    if (num > 7) {
+      return { isValid: false, message: 'Grade cannot be greater than 7', max: 7 };
+    }
+  } else if (str.includes('scale 8') || str.includes('out of 8')) {
+    if (num > 8) {
+      return { isValid: false, message: 'Grade cannot be greater than 8', max: 8 };
+    }
+  } else if (str.includes('scale 9') || str.includes('out of 9')) {
+    if (num > 9) {
+      return { isValid: false, message: 'Grade cannot be greater than 9', max: 9 };
+    }
+  } else if (str.includes('100') || str.includes('percentage') || str.includes('%')) {
+    if (num > 100) {
+      return { isValid: false, message: 'Percentage cannot be greater than 100%', max: 100 };
+    }
+  } else {
+    const match = str.match(/(?:scale\s*|out of\s*)(\d+(\.\d+)?)/i);
+    if (match && match[1]) {
+      const maxVal = parseFloat(match[1]);
+      if (!isNaN(maxVal) && maxVal > 0 && num > maxVal) {
+        return { isValid: false, message: `Grade cannot be greater than ${maxVal}`, max: maxVal };
+      }
+    }
+  }
+
+  return { isValid: true };
 };
 
 const diplomaCourses = [
@@ -346,6 +560,7 @@ const EmployeeOnboarding = () => {
       const params = new URLSearchParams(window.location.search);
       params.set('step', validStep.toString());
       window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      saveToBackend({ ...formData, onboardingStep: validStep });
       return validStep;
     });
   };
@@ -449,9 +664,15 @@ const EmployeeOnboarding = () => {
 
   const getStepField = (stepKey, fieldKey, defaultLabel, defaultPlaceholder, defaultRequired = true) => {
     const field = cmsConfig?.[stepKey]?.fields?.[fieldKey];
+    let ph = field?.placeholder;
+    if (stepKey === 'step5' && (fieldKey === 'resume' || fieldKey === 'coverLetter')) {
+      if (!ph || ph.includes('5MB') || ph.includes('5mb') || ph === 'Upload Cover Letter (PDF/DOCX)' || ph === 'Upload PDF or DOCX (Max 5MB)' || ph.toLowerCase().includes('pdf or docx') || ph.toLowerCase().includes('cover letter (pdf/docx)')) {
+        ph = defaultPlaceholder || 'Supported Formats: doc, docx, pdf, upto 300KB';
+      }
+    }
     return {
       label: field?.label || defaultLabel,
-      placeholder: field?.placeholder || defaultPlaceholder,
+      placeholder: ph || defaultPlaceholder,
       isRequired: field?.isRequired !== undefined ? field.isRequired : defaultRequired
     };
   };
@@ -543,6 +764,13 @@ const EmployeeOnboarding = () => {
         
         // Profile controller directly returns the object, or a message on error
         if (res.ok && data && !data.message) {
+          if (data.onboardingStep && data.onboardingStep >= 1 && data.onboardingStep <= 6) {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.get('step')) {
+              setCurrentStepState(data.onboardingStep);
+              localStorage.setItem('onboardingCurrentStep', data.onboardingStep.toString());
+            }
+          }
           setFormData(prev => {
             const next = {
               ...prev,
@@ -620,18 +848,20 @@ const EmployeeOnboarding = () => {
       const fNameErr = isReq('firstName', true) && !formData.firstName?.trim();
       const lNameErr = isReq('lastName', false) && !formData.lastName?.trim();
       const phoneErr = isReq('phone', true) && (!formData.phone?.trim() || formData.phone.trim().length < 10);
+      const emailErr = isReq('email', false) && !formData.email?.trim();
       const industryErr = isReq('industry', true) && !formData.industry?.trim();
       const desigErr = isReq('designation', true) && !formData.designation?.trim();
       const expErr = isReq('totalExperience', true) && !formData.totalExperience?.trim();
       const locErr = isReq('location', true) && !formData.location?.trim();
-      const prefLocErr = isReq('preferredLocation', false) && !formData.preferredLocation?.trim();
+      const prefLocErr = isReq('preferredLocation', false) && (!formData.preferredLocation || (typeof formData.preferredLocation === 'string' && !formData.preferredLocation.trim()) || (Array.isArray(formData.preferredLocation) && formData.preferredLocation.length === 0));
       const briefErr = isReq('brief', false) && !formData.brief?.trim();
 
-      if (fNameErr || lNameErr || phoneErr || industryErr || desigErr || expErr || locErr || prefLocErr || briefErr) {
+      if (fNameErr || lNameErr || phoneErr || emailErr || industryErr || desigErr || expErr || locErr || prefLocErr || briefErr) {
         setShowStep1Errors(true);
         const firstErrId = fNameErr ? 'field-firstName'
           : lNameErr ? 'field-lastName'
           : phoneErr ? 'field-phone'
+          : emailErr ? 'field-email'
           : industryErr ? 'field-industry'
           : desigErr ? 'field-designation'
           : expErr ? 'field-totalExperience'
@@ -699,12 +929,15 @@ const EmployeeOnboarding = () => {
       const fExpectedSalary = getStepField('step4', 'expectedSalary', 'Expected Annual CTC', 'e.g. 7,50,000', false);
       const fSkills = getStepField('step4', 'skills', 'Key Skills', 'Type skill and press Enter (e.g., React, Node.js)', false);
 
+      const effectiveSalaryType = (p.salaryType !== undefined && p.salaryType !== '') ? p.salaryType : 'Yearly';
+      const effectiveCurrency = (p.currency !== undefined && p.currency !== '') ? p.currency : 'INR';
+
       const linkedinErr = fLinkedin.isRequired && !p.linkedinUrl?.trim();
-      const salaryTypeErr = fSalaryType.isRequired && !p.salaryType?.trim();
-      const currencyErr = fCurrency.isRequired && !p.currency?.trim();
+      const salaryTypeErr = fSalaryType.isRequired && !effectiveSalaryType?.trim();
+      const currencyErr = fCurrency.isRequired && !effectiveCurrency?.trim();
       const currentSalaryErr = fCurrentSalary.isRequired && !p.currentSalary?.trim();
       const expectedSalaryErr = fExpectedSalary.isRequired && !p.expectedSalary?.trim();
-      const skillsList = p.skills ? p.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const skillsList = p.skills ? (typeof p.skills === 'string' ? p.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(p.skills) ? p.skills : [])) : [];
       const skillsErr = fSkills.isRequired && skillsList.length === 0;
 
       if (linkedinErr || salaryTypeErr || currencyErr || currentSalaryErr || expectedSalaryErr || skillsErr) {
@@ -816,12 +1049,15 @@ const EmployeeOnboarding = () => {
     const fExpectedSalary = getStepField('step4', 'expectedSalary', 'Expected Annual CTC', 'e.g. 7,50,000', false);
     const fSkills = getStepField('step4', 'skills', 'Key Skills', 'Type skill and press Enter (e.g., React, Node.js)', false);
 
+    const effectiveSalaryType = (p.salaryType !== undefined && p.salaryType !== '') ? p.salaryType : 'Yearly';
+    const effectiveCurrency = (p.currency !== undefined && p.currency !== '') ? p.currency : 'INR';
+
     const s4LinkedinErr = fLinkedin.isRequired && !p.linkedinUrl?.trim();
-    const s4SalaryTypeErr = fSalaryType.isRequired && !p.salaryType?.trim();
-    const s4CurrencyErr = fCurrency.isRequired && !p.currency?.trim();
+    const s4SalaryTypeErr = fSalaryType.isRequired && !effectiveSalaryType?.trim();
+    const s4CurrencyErr = fCurrency.isRequired && !effectiveCurrency?.trim();
     const s4CurrentSalaryErr = fCurrentSalary.isRequired && !p.currentSalary?.trim();
     const s4ExpectedSalaryErr = fExpectedSalary.isRequired && !p.expectedSalary?.trim();
-    const skillsList = p.skills ? p.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const skillsList = p.skills ? (typeof p.skills === 'string' ? p.skills.split(',').map(s => s.trim()).filter(Boolean) : (Array.isArray(p.skills) ? p.skills : [])) : [];
     const s4SkillsErr = fSkills.isRequired && skillsList.length === 0;
 
     if (s4LinkedinErr || s4SalaryTypeErr || s4CurrencyErr || s4CurrentSalaryErr || s4ExpectedSalaryErr || s4SkillsErr) {
@@ -865,7 +1101,7 @@ const EmployeeOnboarding = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(formData)
+          body: JSON.stringify({ ...formData, isOnboardingCompleted: true, onboardingStep: 6 })
         });
         
         if (response.ok) {
@@ -1254,9 +1490,25 @@ const EmployeeOnboarding = () => {
 
   const validateEducationData = (targetIdx = null) => {
     const qualifications = formData.qualifications || [];
-    if (qualifications.length === 0) return { isValid: true };
     const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
-    const isPercentageRequired = cmsConfig?.step2?.fields?.percentage?.isRequired !== false;
+    const isEduTypeRequired = cmsConfig?.step2?.fields?.educationType?.isRequired !== false;
+    const isUnivRequired = cmsConfig?.step2?.fields?.university?.isRequired !== false;
+    const isCourseRequired = cmsConfig?.step2?.fields?.course?.isRequired !== false;
+    const isMediumRequired = cmsConfig?.step2?.fields?.schoolMedium?.isRequired !== false;
+    const isCourseTypeRequired = cmsConfig?.step2?.fields?.courseType?.isRequired !== false;
+    const isDurationRequired = cmsConfig?.step2?.fields?.duration?.isRequired !== false;
+    const isPercentageRequired = cmsConfig?.step2?.fields?.percentage?.isRequired !== false || cmsConfig?.step2?.fields?.gradingSystem?.isRequired !== false;
+
+    if (qualifications.length === 0) {
+      if (isEduTypeRequired) {
+        return {
+          isValid: false,
+          message: 'Please add your education qualifications',
+          targetFieldId: 'onboarding-add-edu-btn'
+        };
+      }
+      return { isValid: true };
+    }
 
     const indicesToCheck = (targetIdx !== null && targetIdx !== undefined && targetIdx >= 0) 
       ? [targetIdx] 
@@ -1269,28 +1521,46 @@ const EmployeeOnboarding = () => {
       let hasError = false;
       let firstMissingId = null;
 
-      if (!currentEdu.educationType) {
+      if (isEduTypeRequired && !currentEdu.educationType) {
         errors.educationType = true;
         hasError = true;
         firstMissingId = `field-edu-type-${eduIdx}`;
-      } else {
+      } else if (currentEdu.educationType) {
         const currentEduConfig = eduData[currentEdu.educationType];
         const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (currentEdu.educationType === '10th' || currentEdu.educationType === '12th');
         if (isSchool) {
           if (!currentEdu.board) { errors.board = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-board-${eduIdx}`; }
-          if (!currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
-          if (!currentEdu.schoolMedium) { errors.schoolMedium = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-schoolMedium-${eduIdx}`; }
-          if (isPercentageRequired && !currentEdu.percentage) { errors.percentage = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`; }
-        } else {
-          if (!currentEdu.university) { errors.university = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-university-${eduIdx}`; }
-          if (!currentEdu.course) { errors.course = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-course-${eduIdx}`; }
-          if (!currentEdu.courseType) { errors.courseType = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-courseType-${eduIdx}`; }
-          if (!currentEdu.startYear) { errors.startYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-startYear-${eduIdx}`; }
-          if (!currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
-          if (isPercentageRequired && currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable' && !currentEdu.percentage) {
+          if (isDurationRequired && !currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
+          if (isMediumRequired && !currentEdu.schoolMedium) { errors.schoolMedium = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-schoolMedium-${eduIdx}`; }
+          if (isPercentageRequired && !currentEdu.percentage) {
             errors.percentage = true;
             hasError = true;
             if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+          } else if (currentEdu.percentage) {
+            const num = parseFloat(currentEdu.percentage);
+            if (num > 100 || num < 0) {
+              errors.percentage = 'Marks / Percentage cannot be greater than 100%';
+              hasError = true;
+              if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+            }
+          }
+        } else {
+          if (isUnivRequired && !currentEdu.university) { errors.university = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-university-${eduIdx}`; }
+          if (isCourseRequired && !currentEdu.course) { errors.course = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-course-${eduIdx}`; }
+          if (isCourseTypeRequired && !currentEdu.courseType) { errors.courseType = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-courseType-${eduIdx}`; }
+          if (isDurationRequired && !currentEdu.startYear) { errors.startYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-startYear-${eduIdx}`; }
+          if (isDurationRequired && !currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
+          if (isPercentageRequired && (!currentEdu.gradingSystem || (currentEdu.gradingSystem !== 'Not Applicable' && !currentEdu.percentage))) {
+            errors.percentage = true;
+            hasError = true;
+            if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+          } else if (currentEdu.percentage && currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable') {
+            const gradeValidation = getGradingValidation(currentEdu.gradingSystem, currentEdu.percentage);
+            if (!gradeValidation.isValid) {
+              errors.percentage = gradeValidation.message;
+              hasError = true;
+              if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+            }
           }
         }
       }
@@ -1356,6 +1626,7 @@ const EmployeeOnboarding = () => {
     const fJoining = getStepField('step3', 'joiningDate', 'Joining Date', 'Select month & year', true);
     const fLeaving = getStepField('step3', 'leavingDate', 'Leaving Date', 'Select month & year', true);
     const fRoleDesc = getStepField('step3', 'roleDescription', 'Roles & Responsibilities', 'Briefly describe your roles & responsibilities', false);
+    const fNotice = getStepField('step3', 'noticePeriod', 'Notice Period', 'Select notice period', false);
 
     const indicesToCheck = (targetIdx !== null && targetIdx !== undefined && targetIdx >= 0)
       ? [targetIdx]
@@ -1373,6 +1644,12 @@ const EmployeeOnboarding = () => {
         errors.companyName = true;
         hasError = true;
         firstMissingId = `field-exp-company-${cIdx}`;
+      }
+
+      if (fNotice.isRequired && !exp.noticePeriod?.trim()) {
+        errors.noticePeriod = true;
+        hasError = true;
+        if (!firstMissingId) firstMissingId = `field-exp-notice-${cIdx}`;
       }
 
       if (exp.roles && exp.roles.length > 0) {
@@ -1541,23 +1818,17 @@ const EmployeeOnboarding = () => {
                         <div className="space-y-6 pt-2">
                           <div id={`field-edu-type-${idx}`}>
                             <label className="block text-sm font-bold text-gray-900 mb-1.5">Education <span className="text-red-500">*</span></label>
-                            <select 
-                              className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.educationType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
-                              value={q.educationType || ''} 
-                              onChange={e => {
-                                updateArray('qualifications', idx, 'educationType', e.target.value);
+                            <CustomDropdown
+                              options={Object.keys(eduData).map(t => ({ value: t, label: t }))}
+                              value={q.educationType || ''}
+                              onChange={val => {
+                                updateArray('qualifications', idx, 'educationType', val);
                                 setEduFieldErrors({...eduFieldErrors, educationType: false});
-                                if (e.target.value) setEduError('');
+                                if (val) setEduError('');
                               }}
-                            >
-                              <option value="">Select education type</option>
-                              {(() => {
-                                const list = Object.keys(eduData).map(t => ({ value: t, label: t }));
-                                return list.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ));
-                              })()}
-                            </select>
+                              placeholder="Select education type"
+                              error={eduFieldErrors.educationType}
+                            />
                             {eduFieldErrors.educationType && (
                               <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1574,21 +1845,18 @@ const EmployeeOnboarding = () => {
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
                                   {getStepField('step2', 'board', 'Board', 'Select board').label} {getStepField('step2', 'board').isRequired && <span className="text-red-500">*</span>}
                                 </label>
-                                <select 
-                                  className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.board ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
-                                  value={q.board || ''} 
-                                  onChange={e => { updateArray('qualifications', idx, 'board', e.target.value); setEduFieldErrors({...eduFieldErrors, board: false}); }}
-                                >
-                                  <option value="">{getStepField('step2', 'board', 'Board', 'Select board').placeholder || 'Select board'}</option>
-                                  {(() => {
-                                    const boardList = (currentEduConfig?.options && currentEduConfig.options.length > 0)
-                                      ? currentEduConfig.options
-                                      : ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board'];
-                                    return boardList.map(b => (
-                                      <option key={b} value={b}>{b}</option>
-                                    ));
-                                  })()}
-                                </select>
+                                <CustomDropdown
+                                  options={(currentEduConfig?.options && currentEduConfig.options.length > 10)
+                                    ? currentEduConfig.options.map(b => (typeof b === 'string' ? { value: b, label: b } : b))
+                                    : DEFAULT_BOARD_OPTIONS}
+                                  value={q.board || ''}
+                                  onChange={val => {
+                                    updateArray('qualifications', idx, 'board', val);
+                                    setEduFieldErrors({...eduFieldErrors, board: false});
+                                  }}
+                                  placeholder={getStepField('step2', 'board', 'Board', 'Select board').placeholder || 'Select board'}
+                                  error={eduFieldErrors.board}
+                                />
                                 {eduFieldErrors.board && (
                                   <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                                     <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1602,12 +1870,16 @@ const EmployeeOnboarding = () => {
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
                                   {getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').label} {getStepField('step2', 'endYear').isRequired && <span className="text-red-500">*</span>}
                                 </label>
-                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                  <option value="">{getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder || 'Select passing out year'}</option>
-                                  {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
-                                    <option key={year} value={year}>{year}</option>
-                                  ))}
-                                </select>
+                                <CustomDropdown
+                                  options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => ({ value: String(year), label: String(year) }))}
+                                  value={q.endYear ? String(q.endYear) : ''}
+                                  onChange={val => {
+                                    updateArray('qualifications', idx, 'endYear', val);
+                                    setEduFieldErrors({...eduFieldErrors, endYear: false});
+                                  }}
+                                  placeholder={getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder || 'Select passing out year'}
+                                  error={eduFieldErrors.endYear}
+                                />
                                 {eduFieldErrors.endYear && (
                                   <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                                     <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1621,12 +1893,16 @@ const EmployeeOnboarding = () => {
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
                                   {getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').label} {getStepField('step2', 'schoolMedium').isRequired && <span className="text-red-500">*</span>}
                                 </label>
-                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.schoolMedium ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.schoolMedium || ''} onChange={e => { updateArray('qualifications', idx, 'schoolMedium', e.target.value); setEduFieldErrors({...eduFieldErrors, schoolMedium: false}); }}>
-                                  <option value="">{getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').placeholder || 'Select medium'}</option>
-                                  {(cmsConfig?.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map((opt, oIdx) => (
-                                    <option key={oIdx} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
+                                <CustomDropdown
+                                  options={(cmsConfig?.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt))}
+                                  value={q.schoolMedium || ''}
+                                  onChange={val => {
+                                    updateArray('qualifications', idx, 'schoolMedium', val);
+                                    setEduFieldErrors({...eduFieldErrors, schoolMedium: false});
+                                  }}
+                                  placeholder={getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').placeholder || 'Select medium'}
+                                  error={eduFieldErrors.schoolMedium}
+                                />
                                 {eduFieldErrors.schoolMedium && (
                                   <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                                     <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1636,20 +1912,40 @@ const EmployeeOnboarding = () => {
                                   </p>
                                 )}
                               </div>
-                              <div id={`field-edu-percentage-${idx}`}>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                  {getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').label} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
-                                </label>
-                                <input type="text" className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} placeholder={getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').placeholder || '% marks of 100 maximum'} value={q.percentage || ''} onChange={e => { updateArray('qualifications', idx, 'percentage', e.target.value.replace(/\D/g, '')); setEduFieldErrors({...eduFieldErrors, percentage: false}); }} />
-                                {eduFieldErrors.percentage && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please enter marks / percentage
-                                  </p>
-                                )}
-                              </div>
+                              {(() => {
+                                const numMarks = parseFloat(q.percentage);
+                                const isOver100 = !isNaN(numMarks) && numMarks > 100;
+                                const hasMarksError = eduFieldErrors.percentage || isOver100;
+                                const marksErrorMsg = isOver100 
+                                  ? 'Marks / Percentage cannot be greater than 100%' 
+                                  : (typeof eduFieldErrors.percentage === 'string' ? eduFieldErrors.percentage : 'Please enter marks / percentage');
+
+                                return (
+                                  <div id={`field-edu-percentage-${idx}`}>
+                                    <label className={`block text-sm font-bold ${hasMarksError ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
+                                      {getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').label} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
+                                    </label>
+                                    <input 
+                                      type="text" 
+                                      className={`w-full px-4 py-3 bg-white border ${hasMarksError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                      placeholder={getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').placeholder || '% marks of 100 maximum'} 
+                                      value={q.percentage || ''} 
+                                      onChange={e => { 
+                                        updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
+                                        setEduFieldErrors({...eduFieldErrors, percentage: false}); 
+                                      }} 
+                                    />
+                                    {hasMarksError && (
+                                      <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                        {marksErrorMsg}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </>
                           )}
 
@@ -1681,17 +1977,10 @@ const EmployeeOnboarding = () => {
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
                                   {getStepField('step2', 'course', 'Course', 'Select course').label} {getStepField('step2', 'course').isRequired && <span className="text-red-500">*</span>}
                                 </label>
-                                <select 
-                                  className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.course ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
-                                  value={q.course || ''} 
-                                  onChange={e => { updateArray('qualifications', idx, 'course', e.target.value); setEduFieldErrors({...eduFieldErrors, course: false}); }}
-                                >
-                                  <option value="">{getStepField('step2', 'course', 'Course', 'Select course').placeholder || 'Select course'}</option>
-                                  {(() => {
+                                <CustomDropdown
+                                  options={(() => {
                                     if (currentEduConfig?.options && currentEduConfig.options.length > 0) {
-                                      return currentEduConfig.options.map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                      ));
+                                      return currentEduConfig.options.map(c => (typeof c === 'string' ? { value: c, label: c } : c));
                                     }
                                     const opts = q.educationType === 'Accounting Degree' ? accountingDegrees :
                                       q.educationType === 'Post Graduate Accounting & Finance' ? postGradAccountingDegrees :
@@ -1706,23 +1995,28 @@ const EmployeeOnboarding = () => {
                                       null;
                                       
                                     if (opts) {
-                                      return opts.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>);
+                                      return opts.map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt));
                                     } else {
-                                      return (
-                                        <>
-                                          <option value="B.Tech/B.E.">B.Tech/B.E.</option>
-                                          <option value="B.Sc">B.Sc</option>
-                                          <option value="B.Com">B.Com</option>
-                                          <option value="B.A">B.A</option>
-                                          <option value="BBA">BBA</option>
-                                          <option value="M.Tech/M.E.">M.Tech/M.E.</option>
-                                          <option value="MBA/PGDM">MBA/PGDM</option>
-                                          <option value="MCA">MCA</option>
-                                        </>
-                                      );
+                                      return [
+                                        { value: "B.Tech/B.E.", label: "B.Tech/B.E." },
+                                        { value: "B.Sc", label: "B.Sc" },
+                                        { value: "B.Com", label: "B.Com" },
+                                        { value: "B.A", label: "B.A" },
+                                        { value: "BBA", label: "BBA" },
+                                        { value: "M.Tech/M.E.", label: "M.Tech/M.E." },
+                                        { value: "MBA/PGDM", label: "MBA/PGDM" },
+                                        { value: "MCA", label: "MCA" }
+                                      ];
                                     }
                                   })()}
-                                </select>
+                                  value={q.course || ''}
+                                  onChange={val => {
+                                    updateArray('qualifications', idx, 'course', val);
+                                    setEduFieldErrors({...eduFieldErrors, course: false});
+                                  }}
+                                  placeholder={getStepField('step2', 'course', 'Course', 'Select course').placeholder || 'Select course'}
+                                  error={eduFieldErrors.course}
+                                />
                                 {eduFieldErrors.course && (
                                   <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                                     <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1770,19 +2064,31 @@ const EmployeeOnboarding = () => {
                                   Course duration {(getStepField('step2', 'startYear').isRequired || getStepField('step2', 'endYear').isRequired) && <span className="text-red-500">*</span>}
                                 </label>
                                 <div className="flex items-center gap-4">
-                                  <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.startYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.startYear || ''} onChange={e => { updateArray('qualifications', idx, 'startYear', e.target.value); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}>
-                                    <option value="">{getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder || 'Starting year'}</option>
-                                    {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => (
-                                      <option key={year} value={year}>{year}</option>
-                                    ))}
-                                  </select>
+                                  <div className="flex-1">
+                                    <CustomDropdown
+                                      options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => ({ value: String(year), label: String(year) }))}
+                                      value={q.startYear ? String(q.startYear) : ''}
+                                      onChange={val => {
+                                        updateArray('qualifications', idx, 'startYear', val);
+                                        setEduFieldErrors({...eduFieldErrors, startYear: false});
+                                      }}
+                                      placeholder={getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder || 'Starting year'}
+                                      error={eduFieldErrors.startYear}
+                                    />
+                                  </div>
                                   <span className="font-bold text-gray-900">To</span>
-                                  <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                    <option value="">{getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder || 'Ending year'}</option>
-                                    {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
-                                      <option key={year} value={year}>{year}</option>
-                                    ))}
-                                  </select>
+                                  <div className="flex-1">
+                                    <CustomDropdown
+                                      options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => ({ value: String(year), label: String(year) }))}
+                                      value={q.endYear ? String(q.endYear) : ''}
+                                      onChange={val => {
+                                        updateArray('qualifications', idx, 'endYear', val);
+                                        setEduFieldErrors({...eduFieldErrors, endYear: false});
+                                      }}
+                                      placeholder={getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder || 'Ending year'}
+                                      error={eduFieldErrors.endYear}
+                                    />
+                                  </div>
                                 </div>
                                 {(eduFieldErrors.startYear || eduFieldErrors.endYear) && (
                                   <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
@@ -1806,42 +2112,46 @@ const EmployeeOnboarding = () => {
                                         {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).label}
                                         {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
                                       </label>
-                                      <select 
-                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" 
+                                      <CustomDropdown 
+                                        options={currentGradingSystems.map((gs) => ({ value: gs.name, label: gs.name }))}
                                         value={q.gradingSystem || ''} 
-                                        onChange={e => updateArray('qualifications', idx, 'gradingSystem', e.target.value)}
-                                      >
-                                        <option value="">{getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).placeholder || 'Select grading system'}</option>
-                                        {currentGradingSystems.map((gs) => (
-                                          <option key={gs.name} value={gs.name}>{gs.name}</option>
-                                        ))}
-                                      </select>
+                                        onChange={val => updateArray('qualifications', idx, 'gradingSystem', val)}
+                                        placeholder={getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).placeholder || 'Select grading system'}
+                                      />
                                     </div>
-                                    {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
-                                      <div>
-                                        <label className={`block text-sm font-bold ${eduFieldErrors.percentage ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
-                                          {dynamicMarksLabel} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
-                                        </label>
-                                        <input 
-                                          type="text" 
-                                          className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
-                                          placeholder={dynamicMarksPlaceholder} 
-                                          value={q.percentage || ''} 
-                                          onChange={e => { 
-                                            updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
-                                            setEduFieldErrors({...eduFieldErrors, percentage: false}); 
-                                          }} 
-                                        />
-                                        {eduFieldErrors.percentage && (
-                                          <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                            Please enter {dynamicMarksLabel}
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
+                                    {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (() => {
+                                      const gradeValidation = getGradingValidation(q.gradingSystem, q.percentage);
+                                      const hasGradeError = eduFieldErrors.percentage || (!gradeValidation.isValid && q.percentage);
+                                      const gradeErrorMsg = !gradeValidation.isValid 
+                                        ? gradeValidation.message 
+                                        : (typeof eduFieldErrors.percentage === 'string' ? eduFieldErrors.percentage : `Please enter ${dynamicMarksLabel}`);
+
+                                      return (
+                                        <div>
+                                          <label className={`block text-sm font-bold ${hasGradeError ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
+                                            {dynamicMarksLabel} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
+                                          </label>
+                                          <input 
+                                            type="text" 
+                                            className={`w-full px-4 py-3 bg-white border ${hasGradeError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                            placeholder={dynamicMarksPlaceholder} 
+                                            value={q.percentage || ''} 
+                                            onChange={e => { 
+                                              updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
+                                              setEduFieldErrors({...eduFieldErrors, percentage: false}); 
+                                            }} 
+                                          />
+                                          {hasGradeError && (
+                                            <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                              </svg>
+                                              {gradeErrorMsg}
+                                            </p>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
                                   </>
                                 );
                               })()}
@@ -1966,7 +2276,7 @@ const EmployeeOnboarding = () => {
                                           )}
                                         </div>
                                         <p className="text-gray-500 text-sm mt-0.5">
-                                          {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}
+                                          {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}{role.currentCompany && exp.noticePeriod ? ` | Notice: ${exp.noticePeriod}` : ''}
                                         </p>
                                         {role.roleDescription && (
                                           <p className="text-gray-600 text-sm mt-2">{role.roleDescription}</p>
@@ -2051,7 +2361,7 @@ const EmployeeOnboarding = () => {
 
                                               {/* Animated Body */}
                                               <div className={`grid transition-all duration-300 ease-in-out ${isRoleExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                                                <div className="overflow-hidden min-h-0">
+                                                <div className={`${isRoleExpanded ? 'overflow-visible' : 'overflow-hidden'} min-h-0`}>
                                                   <div className="p-6 border-t border-gray-100 space-y-6 bg-white rounded-b-xl">
                                                     <div id={`field-exp-jobTitle-${cIdx}-${rIdx}`}>
                                                       <label className="block text-sm font-bold text-gray-900 mb-1.5">{fJobTitle.label} {fJobTitle.isRequired && <span className="text-red-500">*</span>}</label>
@@ -2081,21 +2391,22 @@ const EmployeeOnboarding = () => {
                                                     </div>
                                                     <div id={`field-exp-empType-${cIdx}-${rIdx}`}>
                                                       <label className="block text-sm font-bold text-gray-900 mb-1.5">{fEmpType.label} {fEmpType.isRequired && <span className="text-red-500">*</span>}</label>
-                                                      <select className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.employmentType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.employmentType || ''} onChange={e => {
-                                                        const newExp = [...(formData.experience || [])];
-                                                        newExp[cIdx].roles[rIdx].employmentType = e.target.value;
-                                                        setFormData({...formData, experience: newExp});
-                                                        if (expFieldErrors.roles?.[rIdx]?.employmentType) {
-                                                          const newErrors = {...expFieldErrors};
-                                                          newErrors.roles[rIdx].employmentType = false;
-                                                          setExpFieldErrors(newErrors);
-                                                        }
-                                                      }}>
-                                                        <option value="">{fEmpType.placeholder || 'Select'}</option>
-                                                        {(cmsConfig?.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS).map((opt, oIdx) => (
-                                                          <option key={oIdx} value={opt}>{opt}</option>
-                                                        ))}
-                                                      </select>
+                                                      <CustomDropdown
+                                                        options={(cmsConfig?.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS).map(opt => ({ value: typeof opt === 'string' ? opt : opt.value, label: typeof opt === 'string' ? opt : opt.label }))}
+                                                        value={role.employmentType || ''}
+                                                        onChange={val => {
+                                                          const newExp = [...(formData.experience || [])];
+                                                          newExp[cIdx].roles[rIdx].employmentType = val;
+                                                          setFormData({...formData, experience: newExp});
+                                                          if (expFieldErrors.roles?.[rIdx]?.employmentType) {
+                                                            const newErrors = {...expFieldErrors};
+                                                            newErrors.roles[rIdx].employmentType = false;
+                                                            setExpFieldErrors(newErrors);
+                                                          }
+                                                        }}
+                                                        placeholder={fEmpType.placeholder || "Select employment type"}
+                                                        error={expFieldErrors.roles?.[rIdx]?.employmentType}
+                                                      />
                                                       {expFieldErrors.roles?.[rIdx]?.employmentType && (
                                                         <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                                                           <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -2237,19 +2548,22 @@ const EmployeeOnboarding = () => {
                                     {hasCurrentRole && (
                                       <div className="mt-6 pt-6 border-t border-gray-200" id={`field-exp-noticePeriod-${cIdx}`}>
                                         <label className="block text-sm font-bold text-gray-900 mb-1.5">{fNotice.label} {fNotice.isRequired && <span className="text-red-500">*</span>}</label>
-                                        <select className={`w-1/2 px-4 py-3 bg-white border ${expFieldErrors.noticePeriod ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={exp.noticePeriod || ''} onChange={e => {
-                                          const newExp = [...(formData.experience || [])];
-                                          newExp[cIdx].noticePeriod = e.target.value;
-                                          setFormData({...formData, experience: newExp});
-                                          if (expFieldErrors.noticePeriod) {
-                                            setExpFieldErrors({...expFieldErrors, noticePeriod: false});
-                                          }
-                                        }}>
-                                          <option value="">{fNotice.placeholder || 'Select'}</option>
-                                          {(cmsConfig?.step3?.noticePeriodOptions || cmsConfig?.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS).map((opt, optIdx) => (
-                                            <option key={optIdx} value={opt}>{opt}</option>
-                                          ))}
-                                        </select>
+                                        <div className="w-full md:w-1/2">
+                                          <CustomDropdown
+                                            options={(cmsConfig?.step3?.noticePeriodOptions || cmsConfig?.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS).map(opt => ({ value: typeof opt === 'string' ? opt : opt.value, label: typeof opt === 'string' ? opt : opt.label }))}
+                                            value={exp.noticePeriod || ''}
+                                            onChange={val => {
+                                              const newExp = [...(formData.experience || [])];
+                                              newExp[cIdx].noticePeriod = val;
+                                              setFormData({...formData, experience: newExp});
+                                              if (expFieldErrors.noticePeriod) {
+                                                setExpFieldErrors({...expFieldErrors, noticePeriod: false});
+                                              }
+                                            }}
+                                            placeholder={fNotice.placeholder || "Select notice period"}
+                                            error={expFieldErrors.noticePeriod}
+                                          />
+                                        </div>
                                         {expFieldErrors.noticePeriod && (
                                           <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                                             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -2385,10 +2699,9 @@ const EmployeeOnboarding = () => {
                   if (showStep4Errors) setShowStep4Errors(false);
                 }}
               >
-                <option value="INR">INR (₹)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
+                {DEFAULT_CURRENCY_OPTIONS.map((curr) => (
+                  <option key={curr.value} value={curr.value}>{curr.label}</option>
+                ))}
               </select>
               {showStep4Errors && fCurrency.isRequired && !p.currency && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
@@ -2529,25 +2842,73 @@ const EmployeeOnboarding = () => {
     const setDoc = (field, val) => setFormData({...formData, documents: {...docs, [field]: val}});
 
     const handleFileUpload = async (e, type) => {
-      const file = e.target.files[0];
+      let file = e.target.files[0];
       if (!file) return;
 
       setDocError(prev => ({...prev, [type]: ''}));
+      setIsUploading(true);
+      setUploadingType(type);
+      if (type === 'introVideo') setVideoUploadProgress(0);
 
-      // Size limits: 100MB for video, 300KB for docs
+      // Size limits: 200MB for video, 300KB for docs
       if (type === 'introVideo') {
-        const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+        const MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200MB
         if (file.size > MAX_VIDEO_SIZE) {
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
           setDocError(prev => ({
             ...prev,
-            introVideo: `Video file size (${fileSizeMB}MB) exceeds the 100MB limit. Videos over 100MB are not supported. Please choose a smaller video.`
+            introVideo: `Video file size (${fileSizeMB}MB) exceeds the 200MB limit. Videos over 200MB are not supported. Please choose a smaller video.`
           }));
           e.target.value = '';
+          setIsUploading(false);
+          setUploadingType(null);
           return;
+        }
+
+        // Check video duration (Max 3 minutes / 180 seconds)
+        try {
+          const duration = await new Promise((resolve) => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            const url = URL.createObjectURL(file);
+            video.src = url;
+            video.onloadedmetadata = () => {
+              URL.revokeObjectURL(url);
+              resolve(video.duration || 0);
+            };
+            video.onerror = () => {
+              URL.revokeObjectURL(url);
+              resolve(0);
+            };
+          });
+
+          const MAX_VIDEO_DURATION = 180; // 3 minutes in seconds
+          if (duration > MAX_VIDEO_DURATION) {
+            const mins = Math.floor(duration / 60);
+            const secs = Math.round(duration % 60);
+            const durationText = `${mins} min${mins > 1 ? 's' : ''}${secs > 0 ? ` ${secs} sec` : ''}`;
+            setDocError(prev => ({
+              ...prev,
+              introVideo: `Video length (${durationText}) exceeds the 3-minute limit. Please upload a video under 3 minutes.`
+            }));
+            e.target.value = '';
+            setIsUploading(false);
+            setUploadingType(null);
+            return;
+          }
+        } catch (err) {
+          console.warn('Could not read video duration metadata:', err);
         }
       } else {
         const MAX_DOC_SIZE = 300 * 1024; // 300KB
+        // Automatically attempt progressive compression on oversized document/image
+        if (file.size > MAX_DOC_SIZE) {
+          try {
+            file = await compressFileIfNeeded(file, MAX_DOC_SIZE);
+          } catch (cErr) {
+            console.warn("Auto compression error/skipped:", cErr);
+          }
+        }
         if (file.size > MAX_DOC_SIZE) {
           const fileSizeKB = (file.size / 1024).toFixed(1);
           setDocError(prev => ({
@@ -2555,13 +2916,11 @@ const EmployeeOnboarding = () => {
             [type]: `File size (${fileSizeKB}KB) exceeds the 300KB limit. Please upload a smaller document.`
           }));
           e.target.value = '';
+          setIsUploading(false);
+          setUploadingType(null);
           return;
         }
       }
-
-      setIsUploading(true);
-      setUploadingType(type);
-      if (type === 'introVideo') setVideoUploadProgress(0);
 
       try {
         if (type === 'introVideo') {
@@ -2613,10 +2972,21 @@ const EmployeeOnboarding = () => {
     };
 
     const s5Title = cmsConfig?.step5?.title || 'Documents & Media';
-    const s5Subtitle = cmsConfig?.step5?.subtitle || 'Upload your introductory video and documents to stand out to employers.';
-    const fResume = getStepField('step5', 'resume', 'Upload Resume', 'PDF, DOC, DOCX, RTF (Max: 300KB)', true);
-    const fCoverLetter = getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'PDF, DOC, DOCX, RTF (Max: 300KB)', false);
-    const fIntroVideo = getStepField('step5', 'introVideo', 'Introductory Video', '1–2 min video introduction. MP4, MOV, WebM (Max: 100MB) or link.', false);
+    const s5Subtitle = cmsConfig?.step5?.subtitle || 'Upload your resume, cover letter, and introductory video';
+    const fResume = getStepField('step5', 'resume', 'Resume (PDF/DOCX)', 'Supported Formats: doc, docx, pdf, upto 300KB', true);
+    const fCoverLetter = getStepField('step5', 'coverLetter', 'Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB', false);
+    const fIntroVideo = getStepField('step5', 'introVideo', 'Introductory Video', 'Upload MP4/MOV or attach video link', false);
+
+    const vCfg = cmsConfig?.step5?.videoConfig || {};
+    const videoSectionTitle = vCfg.sectionTitle || fIntroVideo.label || 'Introductory Video';
+    const videoSectionSubtitle = vCfg.sectionSubtitle || fIntroVideo.placeholder || 'Upload MP4/MOV or attach video link';
+    const uploadTabLabel = vCfg.uploadTabLabel || 'Upload File';
+    const linkTabLabel = vCfg.linkTabLabel || 'Paste Link';
+    const uploadDropzoneTitle = vCfg.uploadDropzoneTitle || 'Click or drag video to upload';
+    const uploadDropzoneSubtitle = vCfg.uploadDropzoneSubtitle || 'MP4, MOV, WebM up to 200MB (Max 3 mins)';
+    const linkInputPlaceholder = vCfg.linkInputPlaceholder || 'e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link';
+    const linkAttachButtonText = vCfg.linkAttachButtonText || 'Attach';
+    const linkHelpText = vCfg.linkHelpText || 'Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.';
 
     return (
       <div className="space-y-6 animate-fade-in pb-1">
@@ -2642,7 +3012,16 @@ const EmployeeOnboarding = () => {
                   onChange={e => handleFileUpload(e, 'resume')} 
                 />
               </div>
-              <p className="text-xs text-gray-700 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+              <p className="text-xs text-gray-700 font-medium">{fResume.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}</p>
+              {isUploading && uploadingType === 'resume' && (
+                <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
+                  </span>
+                  <span>Uploading {fResume.label || 'Resume'}...</span>
+                </div>
+              )}
               {docError.resume && <p className="text-xs text-red-500 font-medium">{docError.resume}</p>}
               {showStep5Errors && fResume.isRequired && !docs.resume && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
@@ -2690,11 +3069,7 @@ const EmployeeOnboarding = () => {
             <div id="field-coverLetter" className={`p-5 border ${showStep5Errors && fCoverLetter.isRequired && !docs.coverLetter ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-2xl bg-white shadow-2xs space-y-3 transition-all`}>
               <label className="flex items-center justify-between text-sm font-bold text-gray-900">
                 <span>{fCoverLetter.label || 'Upload Cover Letter'}</span>
-                {!fCoverLetter.isRequired ? (
-                  <span className="text-gray-400 font-medium text-xs">(Optional)</span>
-                ) : (
-                  <span className="text-red-500 font-bold ml-1">*</span>
-                )}
+                {fCoverLetter.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
               </label>
               <div>
                 <input 
@@ -2705,7 +3080,16 @@ const EmployeeOnboarding = () => {
                   onChange={e => handleFileUpload(e, 'coverLetter')} 
                 />
               </div>
-              <p className="text-xs text-gray-700 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
+              <p className="text-xs text-gray-700 font-medium">{fCoverLetter.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}</p>
+              {isUploading && uploadingType === 'coverLetter' && (
+                <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
+                  </span>
+                  <span>Uploading {fCoverLetter.label || 'Cover Letter'}...</span>
+                </div>
+              )}
               {docError.coverLetter && <p className="text-xs text-red-500 font-medium">{docError.coverLetter}</p>}
               {showStep5Errors && fCoverLetter.isRequired && !docs.coverLetter && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
@@ -2756,9 +3140,9 @@ const EmployeeOnboarding = () => {
               <div>
                 <label className="text-sm font-bold text-gray-900 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                  {fIntroVideo.label || 'Introductory Video'} {!fIntroVideo.isRequired ? <span className="text-gray-400 font-normal text-xs">(Optional)</span> : <span className="text-red-500 font-bold ml-1">*</span>}
+                  {videoSectionTitle} {fIntroVideo.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
                 </label>
-                <p className="text-xs text-gray-500 mt-0.5">Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.</p>
+                <p className="text-xs text-gray-500 mt-0.5">{videoSectionSubtitle}</p>
               </div>
               <div className="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold self-start">
                 <button
@@ -2766,14 +3150,14 @@ const EmployeeOnboarding = () => {
                   onClick={() => setVideoMode('upload')}
                   className={`px-3 py-1 rounded-lg transition-all ${videoMode === 'upload' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
                 >
-                  Upload File
+                  {uploadTabLabel}
                 </button>
                 <button
                   type="button"
                   onClick={() => setVideoMode('link')}
                   className={`px-3 py-1 rounded-lg transition-all ${videoMode === 'link' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'}`}
                 >
-                  Paste Link
+                  {linkTabLabel}
                 </button>
               </div>
             </div>
@@ -2783,7 +3167,7 @@ const EmployeeOnboarding = () => {
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                Please upload or attach your {fIntroVideo.label || 'Introductory Video'}
+                Please upload or attach your {videoSectionTitle}
               </p>
             )}
 
@@ -2810,9 +3194,9 @@ const EmployeeOnboarding = () => {
                   )}
                 </div>
                 <p className="text-sm font-bold text-emerald-600">
-                  {isUploading && uploadingType === 'introVideo' ? `Uploading Video (${videoUploadProgress}%)...` : 'Click or drag video to upload'}
+                  {isUploading && uploadingType === 'introVideo' ? `Uploading Video (${videoUploadProgress}%)...` : uploadDropzoneTitle}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5 font-medium">MP4, MOV, WebM up to 100MB</p>
+                <p className="text-xs text-gray-400 mt-0.5 font-medium">{uploadDropzoneSubtitle}</p>
                 
                 {isUploading && uploadingType === 'introVideo' && (
                   <div className="w-full max-w-xs mx-auto mt-3">
@@ -2830,7 +3214,7 @@ const EmployeeOnboarding = () => {
                 <div className="flex gap-2">
                   <input
                     type="url"
-                    placeholder="e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link"
+                    placeholder={linkInputPlaceholder}
                     value={videoLink}
                     onChange={(e) => setVideoLink(e.target.value)}
                     className="flex-1 px-3.5 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-green-500 font-medium"
@@ -2838,12 +3222,12 @@ const EmployeeOnboarding = () => {
                   <button
                     type="button"
                     onClick={handleAttachVideoLink}
-                    className="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors shadow-xs flex-shrink-0"
+                    className="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors shadow-xs flex-shrink-0 cursor-pointer"
                   >
-                    Attach
+                    {linkAttachButtonText}
                   </button>
                 </div>
-                <p className="text-[11px] text-gray-400">Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.</p>
+                <p className="text-[11px] text-gray-400">{linkHelpText}</p>
               </div>
             )}
 

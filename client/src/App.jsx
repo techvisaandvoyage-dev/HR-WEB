@@ -427,8 +427,11 @@ function App() {
     setUserRole('employee');
     setIsEmployeeLoginOpen(false);
     setIsEmployeeRegisterOpen(false);
-    if (data?.isNewUser) {
-      navigate('/employee/onboarding');
+
+    const isComplete = data?.isOnboardingCompleted === true || (data?.hasProfile === true && !data?.isNewUser);
+    if (!isComplete || data?.isNewUser) {
+      const stepToNavigate = data?.onboardingStep || localStorage.getItem('onboardingCurrentStep') || 1;
+      navigate(`/employee/onboarding?step=${stepToNavigate}`);
     } else {
       navigate('/employee', { state: { loggedIn: true } });
     }
@@ -554,8 +557,12 @@ function App() {
                 <div className="absolute top-[110%] left-0 w-[120%] bg-white rounded-2xl shadow-xl border border-palette-100 py-2 z-[100] max-h-64 overflow-y-auto text-left">
                   {filteredHomepageJobs.length > 0 ? filteredHomepageJobs.slice(0, 5).map(job => (
                     <div key={job.id} onClick={() => { setSearchJobTitle(job.title); setShowSuggestions(false); }} className="px-5 py-3 hover:bg-palette-50 cursor-pointer flex items-center gap-4 border-b border-palette-50 last:border-0 transition-colors">
-                      <div className="w-10 h-10 bg-palette-100 rounded-xl flex items-center justify-center font-bold text-palette-900 text-sm shrink-0">
-                        {job.companyInitial}
+                      <div className="w-10 h-10 bg-palette-100 rounded-xl flex items-center justify-center font-bold text-palette-900 text-sm shrink-0 overflow-hidden border border-palette-100">
+                        {(job.companyLogo || job.employerId?.companyLogo) ? (
+                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                        ) : (
+                          job.companyInitial
+                        )}
                       </div>
                       <div>
                         <div className="font-bold text-palette-900 text-base">{job.title}</div>
@@ -636,8 +643,12 @@ function App() {
             {filteredHomepageJobs.slice(0, visibleJobsCount).map(job => (
               <div key={job.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col">
                 <div className="flex items-start gap-4 mb-5">
-                  <div className="w-14 h-14 bg-green-50 rounded-xl flex items-center justify-center font-bold text-green-800 text-2xl flex-shrink-0">
-                    {job.companyInitial || job.company.charAt(0)}
+                  <div className="w-14 h-14 bg-green-50 rounded-xl flex items-center justify-center font-bold text-green-800 text-2xl flex-shrink-0 overflow-hidden border border-gray-100">
+                    {(job.companyLogo || job.employerId?.companyLogo) ? (
+                      <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-1" />
+                    ) : (
+                      job.companyInitial || job.company.charAt(0)
+                    )}
                   </div>
                   <div className="flex flex-col flex-1">
                     <span className="font-bold text-gray-900">{job.company}</span>

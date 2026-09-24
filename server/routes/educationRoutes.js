@@ -1,6 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { searchInstitutions, getMeta } = require('../controllers/educationController');
+const { 
+  getSchoolBoards, 
+  getCourses, 
+  searchInstitutions, 
+  getMeta 
+} = require('../controllers/educationController');
+
+// Get and search all Indian Central & State School Boards
+router.get('/boards', getSchoolBoards);
+
+// Get and search all UGC / AISHE Courses and Degrees
+router.get('/courses', getCourses);
 
 // Search institutions across K-12 and Postsecondary globally
 router.get('/search', searchInstitutions);

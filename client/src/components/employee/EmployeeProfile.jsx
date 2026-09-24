@@ -11,10 +11,11 @@ import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
+import { compressFileIfNeeded } from '../../utils/fileCompressor';
 import VideoPlayer from '../common/VideoPlayer';
 import AccountSecuritySection from './AccountSecuritySection';
 import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
-import { DEFAULT_EDUCATION_DATA, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, sortQualifications, sortExperience } from './EmployeeOnboarding';
+import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, sortQualifications, sortExperience } from './EmployeeOnboarding';
 
 const DEFAULT_FUNCTIONS_DATA = {
   'IT & Software': ["Software Engineer", "Senior Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Mobile App Developer", "DevOps Engineer", "Data Scientist", "Data Analyst", "Machine Learning Engineer", "UI/UX Designer", "QA Engineer / Tester", "Cloud Architect", "System Administrator", "Cybersecurity Analyst", "Technical Lead"],
@@ -36,7 +37,15 @@ const formatMonthYear = (dateStr) => {
 };
 
 const getCurrencySymbol = (currencyCode) => {
-  const symbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$', SGD: '$', AED: 'د.إ' };
+  const symbols = {
+    INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ',
+    CAD: '$', AUD: '$', SGD: '$', SAR: '﷼', QAR: '﷼',
+    OMR: '﷼', KWD: 'د.ك', BHD: '.د.ب', JPY: '¥', CNY: '¥',
+    CHF: 'Fr', HKD: '$', NZD: '$', MYR: 'RM', ZAR: 'R',
+    THB: '฿', PHP: '₱', IDR: 'Rp', VND: '₫', BRL: 'R$',
+    RUB: '₽', KRW: '₩', TRY: '₺', MXN: '$', EGP: 'E£',
+    LKR: 'Rs', PKR: 'Rs', BDT: '৳', NPR: 'Rs'
+  };
   return symbols[currencyCode || 'INR'] || '₹';
 };
 
@@ -151,6 +160,61 @@ export const normalizeGradingSystems = (list) => {
       placeholder: item.placeholder || 'Enter grade or marks'
     };
   });
+};
+
+export const getGradingValidation = (gradingSystem = '', value = '') => {
+  if (!gradingSystem || gradingSystem === 'Not Applicable') return { isValid: true };
+  if (value === undefined || value === null || String(value).trim() === '') return { isValid: true };
+
+  const num = parseFloat(value);
+  if (isNaN(num)) {
+    return { isValid: false, message: 'Please enter a valid number' };
+  }
+  if (num < 0) {
+    return { isValid: false, message: 'Value cannot be negative' };
+  }
+
+  const str = String(gradingSystem).toLowerCase();
+  
+  if (str.includes('scale 4') || str.includes('out of 4')) {
+    if (num > 4) {
+      return { isValid: false, message: 'Grade cannot be greater than 4 (e.g. 3.5, 4.0)', max: 4 };
+    }
+  } else if (str.includes('scale 10') || str.includes('out of 10')) {
+    if (num > 10) {
+      return { isValid: false, message: 'Grade cannot be greater than 10 (e.g. 8.5, 10.0)', max: 10 };
+    }
+  } else if (str.includes('scale 5') || str.includes('out of 5')) {
+    if (num > 5) {
+      return { isValid: false, message: 'Grade cannot be greater than 5', max: 5 };
+    }
+  } else if (str.includes('scale 7') || str.includes('out of 7')) {
+    if (num > 7) {
+      return { isValid: false, message: 'Grade cannot be greater than 7', max: 7 };
+    }
+  } else if (str.includes('scale 8') || str.includes('out of 8')) {
+    if (num > 8) {
+      return { isValid: false, message: 'Grade cannot be greater than 8', max: 8 };
+    }
+  } else if (str.includes('scale 9') || str.includes('out of 9')) {
+    if (num > 9) {
+      return { isValid: false, message: 'Grade cannot be greater than 9', max: 9 };
+    }
+  } else if (str.includes('100') || str.includes('percentage') || str.includes('%')) {
+    if (num > 100) {
+      return { isValid: false, message: 'Percentage cannot be greater than 100%', max: 100 };
+    }
+  } else {
+    const match = str.match(/(?:scale\s*|out of\s*)(\d+(\.\d+)?)/i);
+    if (match && match[1]) {
+      const maxVal = parseFloat(match[1]);
+      if (!isNaN(maxVal) && maxVal > 0 && num > maxVal) {
+        return { isValid: false, message: `Grade cannot be greater than ${maxVal}`, max: maxVal };
+      }
+    }
+  }
+
+  return { isValid: true };
 };
 
 const startYearOptions = Array.from({length: 30}, (_, i) => {
@@ -449,10 +513,36 @@ const currencyOptions = [
   { value: 'USD', label: 'USD ($)' },
   { value: 'EUR', label: 'EUR (€)' },
   { value: 'GBP', label: 'GBP (£)' },
+  { value: 'AED', label: 'AED (د.إ)' },
   { value: 'CAD', label: 'CAD ($)' },
   { value: 'AUD', label: 'AUD ($)' },
   { value: 'SGD', label: 'SGD ($)' },
-  { value: 'AED', label: 'AED (د.إ)' }
+  { value: 'SAR', label: 'SAR (﷼)' },
+  { value: 'QAR', label: 'QAR (﷼)' },
+  { value: 'OMR', label: 'OMR (﷼)' },
+  { value: 'KWD', label: 'KWD (د.ك)' },
+  { value: 'BHD', label: 'BHD (.د.ب)' },
+  { value: 'JPY', label: 'JPY (¥)' },
+  { value: 'CNY', label: 'CNY (¥)' },
+  { value: 'CHF', label: 'CHF (Fr)' },
+  { value: 'HKD', label: 'HKD ($)' },
+  { value: 'NZD', label: 'NZD ($)' },
+  { value: 'MYR', label: 'MYR (RM)' },
+  { value: 'ZAR', label: 'ZAR (R)' },
+  { value: 'THB', label: 'THB (฿)' },
+  { value: 'PHP', label: 'PHP (₱)' },
+  { value: 'IDR', label: 'IDR (Rp)' },
+  { value: 'VND', label: 'VND (₫)' },
+  { value: 'BRL', label: 'BRL (R$)' },
+  { value: 'RUB', label: 'RUB (₽)' },
+  { value: 'KRW', label: 'KRW (₩)' },
+  { value: 'TRY', label: 'TRY (₺)' },
+  { value: 'MXN', label: 'MXN ($)' },
+  { value: 'EGP', label: 'EGP (E£)' },
+  { value: 'LKR', label: 'LKR (Rs)' },
+  { value: 'PKR', label: 'PKR (Rs)' },
+  { value: 'BDT', label: 'BDT (৳)' },
+  { value: 'NPR', label: 'NPR (Rs)' }
 ];
 
 
@@ -771,25 +861,73 @@ const EmployeeProfile = () => {
   };
 
   const handleFileUpload = async (e, type) => {
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     if (!file) return;
 
     setDocError(prev => ({...prev, [type]: ''}));
+    setIsUploading(true);
+    setUploadingType(type);
+    if (type === 'introVideo') setVideoUploadProgress(0);
 
-    // Size limits: 100MB for video, 300KB for docs
+    // Size limits: 200MB for video, 300KB for docs
     if (type === 'introVideo') {
-      const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+      const MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200MB
       if (file.size > MAX_VIDEO_SIZE) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
         setDocError(prev => ({
           ...prev,
-          introVideo: `Video file size (${fileSizeMB}MB) exceeds the 100MB limit. Videos over 100MB are not supported. Please choose a smaller video.`
+          introVideo: `Video file size (${fileSizeMB}MB) exceeds the 200MB limit. Videos over 200MB are not supported. Please choose a smaller video.`
         }));
         e.target.value = '';
+        setIsUploading(false);
+        setUploadingType(null);
         return;
+      }
+
+      // Check video duration (Max 3 minutes / 180 seconds)
+      try {
+        const duration = await new Promise((resolve) => {
+          const video = document.createElement('video');
+          video.preload = 'metadata';
+          const url = URL.createObjectURL(file);
+          video.src = url;
+          video.onloadedmetadata = () => {
+            URL.revokeObjectURL(url);
+            resolve(video.duration || 0);
+          };
+          video.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(0);
+          };
+        });
+
+        const MAX_VIDEO_DURATION = 180; // 3 minutes in seconds
+        if (duration > MAX_VIDEO_DURATION) {
+          const mins = Math.floor(duration / 60);
+          const secs = Math.round(duration % 60);
+          const durationText = `${mins} min${mins > 1 ? 's' : ''}${secs > 0 ? ` ${secs} sec` : ''}`;
+          setDocError(prev => ({
+            ...prev,
+            introVideo: `Video length (${durationText}) exceeds the 3-minute limit. Please upload a video under 3 minutes.`
+          }));
+          e.target.value = '';
+          setIsUploading(false);
+          setUploadingType(null);
+          return;
+        }
+      } catch (err) {
+        console.warn('Could not read video duration metadata:', err);
       }
     } else {
       const MAX_DOC_SIZE = 300 * 1024; // 300KB
+      // Automatically attempt progressive compression on oversized document/image
+      if (file.size > MAX_DOC_SIZE) {
+        try {
+          file = await compressFileIfNeeded(file, MAX_DOC_SIZE);
+        } catch (cErr) {
+          console.warn("Auto compression error/skipped:", cErr);
+        }
+      }
       if (file.size > MAX_DOC_SIZE) {
         const fileSizeKB = (file.size / 1024).toFixed(1);
         setDocError(prev => ({
@@ -797,13 +935,11 @@ const EmployeeProfile = () => {
           [type]: `File size (${fileSizeKB}KB) exceeds the 300KB limit. Please upload a smaller document.`
         }));
         e.target.value = '';
+        setIsUploading(false);
+        setUploadingType(null);
         return;
       }
     }
-
-    setIsUploading(true);
-    setUploadingType(type);
-    if (type === 'introVideo') setVideoUploadProgress(0);
 
     try {
       if (type === 'introVideo') {
@@ -1446,7 +1582,18 @@ const EmployeeProfile = () => {
           if (!currentEdu.board) { errors.board = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-board-${eduIdx}`; }
           if (!currentEdu.endYear) { errors.endYear = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-endYear-${eduIdx}`; }
           if (!currentEdu.schoolMedium) { errors.schoolMedium = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-schoolMedium-${eduIdx}`; }
-          if (isPercentageRequired && !currentEdu.percentage) { errors.percentage = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`; }
+          if (isPercentageRequired && !currentEdu.percentage) {
+            errors.percentage = true;
+            hasError = true;
+            if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+          } else if (currentEdu.percentage) {
+            const num = parseFloat(currentEdu.percentage);
+            if (num > 100 || num < 0) {
+              errors.percentage = 'Marks / Percentage cannot be greater than 100%';
+              hasError = true;
+              if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+            }
+          }
         } else {
           if (!currentEdu.university) { errors.university = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-university-${eduIdx}`; }
           if (!currentEdu.course) { errors.course = true; hasError = true; if (!firstMissingId) firstMissingId = `field-edu-course-${eduIdx}`; }
@@ -1457,6 +1604,13 @@ const EmployeeProfile = () => {
             errors.percentage = true;
             hasError = true;
             if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+          } else if (currentEdu.percentage && currentEdu.gradingSystem && currentEdu.gradingSystem !== 'Not Applicable') {
+            const gradeValidation = getGradingValidation(currentEdu.gradingSystem, currentEdu.percentage);
+            if (!gradeValidation.isValid) {
+              errors.percentage = gradeValidation.message;
+              hasError = true;
+              if (!firstMissingId) firstMissingId = `field-edu-percentage-${eduIdx}`;
+            }
           }
         }
       }
@@ -1513,9 +1667,15 @@ const EmployeeProfile = () => {
 
   const getStepField = (stepKey, fieldKey, defaultLabel, defaultPlaceholder, defaultRequired = true) => {
     const field = cmsConfig?.[stepKey]?.fields?.[fieldKey];
+    let ph = field?.placeholder;
+    if (stepKey === 'step5' && (fieldKey === 'resume' || fieldKey === 'coverLetter')) {
+      if (!ph || ph.includes('5MB') || ph.includes('5mb') || ph === 'Upload Cover Letter (PDF/DOCX)' || ph === 'Upload PDF or DOCX (Max 5MB)' || ph.toLowerCase().includes('pdf or docx') || ph.toLowerCase().includes('cover letter (pdf/docx)')) {
+        ph = defaultPlaceholder || 'Supported Formats: doc, docx, pdf, upto 300KB';
+      }
+    }
     return {
       label: field?.label || defaultLabel,
-      placeholder: field?.placeholder || defaultPlaceholder,
+      placeholder: ph || defaultPlaceholder,
       isRequired: field?.isRequired !== undefined ? field.isRequired : defaultRequired
     };
   };
@@ -1818,9 +1978,10 @@ const EmployeeProfile = () => {
                               <option value="Yearly">Yearly</option>
                               <option value="Monthly">Monthly</option>
                             </select>
-                            <select value={p.currency || 'INR'} onChange={e => setP('currency', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500 bg-white">
-                              <option value="INR">INR (₹)</option>
-                              <option value="USD">USD ($)</option>
+                            <select value={p.currency || 'INR'} onChange={e => setP('currency', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500 bg-white cursor-pointer">
+                              {currencyOptions.map(c => (
+                                <option key={c.value} value={c.value}>{c.label}</option>
+                              ))}
                             </select>
                           </div>
                           <div className="flex gap-3">
@@ -2138,9 +2299,9 @@ const EmployeeProfile = () => {
                                   {getStepField('step2', 'board').isRequired && <span className="text-red-500">*</span>}
                                 </label>
                                 <CustomDropdown 
-                                  options={(currentEduConfig?.options && currentEduConfig.options.length > 0)
-                                    ? currentEduConfig.options.map(b => ({ value: b, label: b }))
-                                    : boardOptions}
+                                  options={(currentEduConfig?.options && currentEduConfig.options.length > 10)
+                                    ? currentEduConfig.options.map(b => (typeof b === 'string' ? { value: b, label: b } : b))
+                                    : DEFAULT_BOARD_OPTIONS}
                                   value={q.board || ''}
                                   onChange={val => { updateArray('qualifications', idx, 'board', val); setEduFieldErrors({...eduFieldErrors, board: false}); }}
                                   placeholder={getStepField('step2', 'board', 'Board', 'Select board').placeholder}
@@ -2152,24 +2313,26 @@ const EmployeeProfile = () => {
                                   {getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').label}
                                   {getStepField('step2', 'endYear').isRequired && <span className="text-red-500">*</span>}
                                 </label>
-                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                  <option value="">{getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder}</option>
-                                  {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
-                                    <option key={year} value={year}>{year}</option>
-                                  ))}
-                                </select>
+                                <CustomDropdown
+                                  options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => ({ value: String(year), label: String(year) }))}
+                                  value={q.endYear ? String(q.endYear) : ''}
+                                  onChange={val => { updateArray('qualifications', idx, 'endYear', val); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}
+                                  placeholder={getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder}
+                                  error={eduFieldErrors.endYear}
+                                />
                               </div>
                               <div id={`field-edu-schoolMedium-${idx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
                                   {getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').label}
                                   {getStepField('step2', 'schoolMedium').isRequired && <span className="text-red-500">*</span>}
                                 </label>
-                                <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.schoolMedium ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.schoolMedium || ''} onChange={e => { updateArray('qualifications', idx, 'schoolMedium', e.target.value); setEduFieldErrors({...eduFieldErrors, schoolMedium: false}); }}>
-                                  <option value="">{getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').placeholder}</option>
-                                  {(cmsConfig?.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map((opt, oIdx) => (
-                                    <option key={oIdx} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
+                                <CustomDropdown
+                                  options={(cmsConfig?.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt))}
+                                  value={q.schoolMedium || ''}
+                                  onChange={val => { updateArray('qualifications', idx, 'schoolMedium', val); setEduFieldErrors({...eduFieldErrors, schoolMedium: false}); }}
+                                  placeholder={getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').placeholder}
+                                  error={eduFieldErrors.schoolMedium}
+                                />
                               </div>
                               <div id={`field-edu-percentage-${idx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">
@@ -2256,21 +2419,23 @@ const EmployeeProfile = () => {
                                 </label>
                                 <div className="flex items-center gap-4">
                                   <div className="flex-1">
-                                    <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.startYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.startYear || ''} onChange={e => { updateArray('qualifications', idx, 'startYear', e.target.value); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}>
-                                      <option value="">{getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder}</option>
-                                      {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => (
-                                        <option key={year} value={year}>{year}</option>
-                                      ))}
-                                    </select>
+                                    <CustomDropdown
+                                      options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => ({ value: String(year), label: String(year) }))}
+                                      value={q.startYear ? String(q.startYear) : ''}
+                                      onChange={val => { updateArray('qualifications', idx, 'startYear', val); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}
+                                      placeholder={getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder}
+                                      error={eduFieldErrors.startYear}
+                                    />
                                   </div>
                                   <span className="font-bold text-gray-900">To</span>
                                   <div className="flex-1">
-                                    <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
-                                      <option value="">{getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder}</option>
-                                      {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
-                                        <option key={year} value={year}>{year}</option>
-                                      ))}
-                                    </select>
+                                    <CustomDropdown
+                                      options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => ({ value: String(year), label: String(year) }))}
+                                      value={q.endYear ? String(q.endYear) : ''}
+                                      onChange={val => { updateArray('qualifications', idx, 'endYear', val); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}
+                                      placeholder={getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder}
+                                      error={eduFieldErrors.endYear}
+                                    />
                                   </div>
                                 </div>
                               </div>
@@ -2294,23 +2459,39 @@ const EmployeeProfile = () => {
                                         placeholder={getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).placeholder}
                                       />
                                     </div>
-                                    {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (
-                                      <div>
-                                        <label className={`block text-sm font-bold ${eduFieldErrors.percentage ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
-                                          {dynamicMarksLabel} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
-                                        </label>
-                                        <input 
-                                          type="text" 
-                                          className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.percentage ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
-                                          placeholder={dynamicMarksPlaceholder} 
-                                          value={q.percentage || ''} 
-                                          onChange={e => { 
-                                            updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
-                                            setEduFieldErrors({...eduFieldErrors, percentage: false}); 
-                                          }} 
-                                        />
-                                      </div>
-                                    )}
+                                    {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (() => {
+                                      const gradeValidation = getGradingValidation(q.gradingSystem, q.percentage);
+                                      const hasGradeError = eduFieldErrors.percentage || (!gradeValidation.isValid && q.percentage);
+                                      const gradeErrorMsg = !gradeValidation.isValid 
+                                        ? gradeValidation.message 
+                                        : (typeof eduFieldErrors.percentage === 'string' ? eduFieldErrors.percentage : `Please enter ${dynamicMarksLabel}`);
+
+                                      return (
+                                        <div>
+                                          <label className={`block text-sm font-bold ${hasGradeError ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
+                                            {dynamicMarksLabel} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
+                                          </label>
+                                          <input 
+                                            type="text" 
+                                            className={`w-full px-4 py-3 bg-white border ${hasGradeError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                            placeholder={dynamicMarksPlaceholder} 
+                                            value={q.percentage || ''} 
+                                            onChange={e => { 
+                                              updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
+                                              setEduFieldErrors({...eduFieldErrors, percentage: false}); 
+                                            }} 
+                                          />
+                                          {hasGradeError && (
+                                            <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
+                                              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                              </svg>
+                                              {gradeErrorMsg}
+                                            </p>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
                                   </>
                                 );
                               })()}
@@ -2442,9 +2623,14 @@ const EmployeeProfile = () => {
                                     {(exp.roles || []).map((role, rIdx) => (
                                       <div key={rIdx} className="relative">
                                         <div className="absolute w-3 h-3 bg-green-500 rounded-full -left-[23px] top-1.5 ring-4 ring-white"></div>
-                                        <p className="font-semibold text-gray-800">{role.jobTitle || 'Job Title'}</p>
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-semibold text-gray-800">{role.jobTitle || 'Job Title'}</p>
+                                          {role.currentCompany && (
+                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-bold uppercase tracking-wider rounded-full">Current Role</span>
+                                          )}
+                                        </div>
                                         <p className="text-gray-500 text-sm mt-0.5">
-                                          {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}
+                                          {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}{role.currentCompany && exp.noticePeriod ? ` | Notice: ${exp.noticePeriod}` : ''}
                                         </p>
                                         {role.roleDescription && (
                                           <p className="text-gray-600 text-sm mt-2">{role.roleDescription}</p>
@@ -2524,7 +2710,7 @@ const EmployeeProfile = () => {
 
                                               {/* Animated Body */}
                                               <div className={`grid transition-all duration-300 ease-in-out ${isRoleExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                                                <div className="overflow-hidden min-h-0">
+                                                <div className={`${isRoleExpanded ? 'overflow-visible' : 'overflow-hidden'} min-h-0`}>
                                                   <div className="p-6 border-t border-gray-100 space-y-6 relative bg-white">
                                                     <button onClick={(e) => {
                                                       e.stopPropagation();
@@ -3002,6 +3188,20 @@ const EmployeeProfile = () => {
                 <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step5?.title || 'Documents & Media'}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">{cmsConfig?.step5?.subtitle || 'Manage your introductory video, resume, and cover letter.'}</p>
               </div>
+              {(() => {
+                const vCfg = cmsConfig?.step5?.videoConfig || {};
+                const fIntro = getStepField('step5', 'introVideo', 'Introductory Video', 'Upload MP4/MOV or attach video link', false);
+                const videoSectionTitle = vCfg.sectionTitle || fIntro.label || 'Introductory Video';
+                const videoSectionSubtitle = vCfg.sectionSubtitle || fIntro.placeholder || 'Upload MP4/MOV or attach video link';
+                const uploadTabLabel = vCfg.uploadTabLabel || 'Upload File';
+                const linkTabLabel = vCfg.linkTabLabel || 'Paste Link';
+                const uploadDropzoneTitle = vCfg.uploadDropzoneTitle || 'Click or drag video to upload';
+                const uploadDropzoneSubtitle = vCfg.uploadDropzoneSubtitle || 'MP4, MOV, WebM up to 200MB (Max 3 mins)';
+                const linkInputPlaceholder = vCfg.linkInputPlaceholder || 'e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link';
+                const linkAttachButtonText = vCfg.linkAttachButtonText || 'Attach';
+                const linkHelpText = vCfg.linkHelpText || 'Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.';
+
+                return (
               <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Resume Upload */}
@@ -3010,10 +3210,19 @@ const EmployeeProfile = () => {
                           {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).label}
                           {getStepField('step5', 'resume', '', '', true).isRequired && <span className="text-red-500 ml-0.5">*</span>}
                         </label>
-                        <input key={docs.resume ? 'resume-has' : 'resume-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
+                        <input key={docs.resume ? 'res-has' : 'res-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
+                        {isUploading && uploadingType === 'resume' && (
+                          <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse mt-2">
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
+                            </span>
+                            <span>Uploading {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).label || 'Resume'}...</span>
+                          </div>
+                        )}
                         {docError.resume && <p className="text-xs text-red-500 mt-2 font-medium">{docError.resume}</p>}
                         <p className="text-xs text-black mt-2 font-medium">
-                          {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB').placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
+                          {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
                         </p>
                         {docs.resume && (
                           <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
@@ -3038,7 +3247,7 @@ const EmployeeProfile = () => {
                               </div>
                             </div>
                             <button 
-                              type="button"
+                              type="button" 
                               onClick={() => setDoc('resume', '')} 
                               className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0" 
                               title="Remove Resume"
@@ -3051,17 +3260,24 @@ const EmployeeProfile = () => {
                         )}
                       </div>
 
-                      {/* Cover Letter Upload */}
+                       {/* Cover Letter Upload */}
                       <div className="p-4 border border-gray-200 rounded-xl">
                         <label className="flex items-center justify-between text-sm font-bold text-gray-900 mb-3">
                           <span>{getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').label}</span>
-                          {!getStepField('step5', 'coverLetter', '', '', false).isRequired ? (
-                            <span className="text-gray-400 font-medium text-xs">(Optional)</span>
-                          ) : (
+                          {getStepField('step5', 'coverLetter', '', '', false).isRequired && (
                             <span className="text-red-500 font-bold ml-0.5">*</span>
                           )}
                         </label>
                         <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'coverLetter')} />
+                        {isUploading && uploadingType === 'coverLetter' && (
+                          <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse mt-2">
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-600"></span>
+                            </span>
+                            <span>Uploading {getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').label || 'Cover Letter'}...</span>
+                          </div>
+                        )}
                         {docError.coverLetter && <p className="text-xs text-red-500 mt-2 font-medium">{docError.coverLetter}</p>}
                         <p className="text-xs text-black mt-2 font-medium">
                           {getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
@@ -3089,7 +3305,7 @@ const EmployeeProfile = () => {
                               </div>
                             </div>
                             <button 
-                              type="button"
+                              type="button" 
                               onClick={() => setDoc('coverLetter', '')} 
                               className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0" 
                               title="Remove Cover Letter"
@@ -3108,15 +3324,13 @@ const EmployeeProfile = () => {
                           <div>
                             <label className="block text-sm font-bold text-gray-900 flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                              {getStepField('step5', 'introVideo', 'Introductory Video', 'Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.').label}
-                              {!getStepField('step5', 'introVideo', '', '', false).isRequired ? (
-                                <span className="text-gray-400 font-normal text-xs">(Optional)</span>
-                              ) : (
+                              {videoSectionTitle}
+                              {fIntro.isRequired && (
                                 <span className="text-red-500 font-bold ml-0.5">*</span>
                               )}
                             </label>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              {getStepField('step5', 'introVideo', 'Introductory Video', 'Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.').placeholder}
+                              {videoSectionSubtitle}
                             </p>
                           </div>
                           <div className="flex bg-gray-200/80 p-1 rounded-xl text-xs font-semibold self-start">
@@ -3125,14 +3339,14 @@ const EmployeeProfile = () => {
                               onClick={() => setVideoProfileMode('upload')}
                               className={`px-3 py-1 rounded-lg transition-all ${videoProfileMode === 'upload' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                             >
-                              Upload File
+                              {uploadTabLabel}
                             </button>
                             <button
                               type="button"
                               onClick={() => setVideoProfileMode('link')}
                               className={`px-3 py-1 rounded-lg transition-all ${videoProfileMode === 'link' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                             >
-                              Paste Link
+                              {linkTabLabel}
                             </button>
                           </div>
                         </div>
@@ -3176,30 +3390,33 @@ const EmployeeProfile = () => {
                             ) : (
                               <>
                                 <span className="text-sm font-semibold text-emerald-600 hover:underline">
-                                  Click or drag video to upload
+                                  {uploadDropzoneTitle}
                                 </span>
-                                <p className="text-xs text-gray-500 mt-1">MP4, MOV, WebM up to 100MB</p>
+                                <p className="text-xs text-gray-500 mt-1">{uploadDropzoneSubtitle}</p>
                               </>
                             )}
                           </div>
                         )}
 
                         {videoProfileMode === 'link' && !docs.introVideo && (
-                          <div className="flex gap-2">
-                            <input
-                              type="url"
-                              placeholder="Paste YouTube, Loom, Vimeo, Drive, or Mux stream link"
-                              value={videoProfileLink}
-                              onChange={e => setVideoProfileLink(e.target.value)}
-                              className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleAttachVideoLink}
-                              className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700"
-                            >
-                              Attach
-                            </button>
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="url"
+                                placeholder={linkInputPlaceholder}
+                                value={videoProfileLink}
+                                onChange={e => setVideoProfileLink(e.target.value)}
+                                className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAttachVideoLink}
+                                className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 cursor-pointer"
+                              >
+                                {linkAttachButtonText}
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-gray-400">{linkHelpText}</p>
                           </div>
                         )}
 
@@ -3337,6 +3554,8 @@ const EmployeeProfile = () => {
                       </div>
                     </div>
                 </div>
+                );
+              })()}
               </section>
               </>
             )}

@@ -28,7 +28,9 @@ const getProfile = async (req, res) => {
         resume: employee.resume || '',
         coverLetter: employee.coverLetter || '',
         introVideo: employee.introVideo || '',
-        videoVisibility: employee.videoVisibility || 'everyone'
+        videoVisibility: employee.videoVisibility || 'everyone',
+        isOnboardingCompleted: employee.isOnboardingCompleted ?? false,
+        onboardingStep: employee.onboardingStep || 1
       });
     } else {
       res.status(404).json({ message: 'Employee not found' });
@@ -103,6 +105,9 @@ const updateProfile = async (req, res) => {
       : req.body.videoVisibility;
     if (videoVisibility !== undefined) updateData.videoVisibility = videoVisibility;
 
+    if (req.body.isOnboardingCompleted !== undefined) updateData.isOnboardingCompleted = Boolean(req.body.isOnboardingCompleted);
+    if (req.body.onboardingStep !== undefined) updateData.onboardingStep = Number(req.body.onboardingStep);
+
     const updatedEmployee = await Employee.findByIdAndUpdate(
       req.employee._id,
       { $set: updateData },
@@ -131,7 +136,9 @@ const updateProfile = async (req, res) => {
         resume: updatedEmployee.resume,
         coverLetter: updatedEmployee.coverLetter,
         introVideo: updatedEmployee.introVideo,
-        videoVisibility: updatedEmployee.videoVisibility || 'everyone'
+        videoVisibility: updatedEmployee.videoVisibility || 'everyone',
+        isOnboardingCompleted: updatedEmployee.isOnboardingCompleted ?? false,
+        onboardingStep: updatedEmployee.onboardingStep || 1
       }
     });
   } catch (error) {

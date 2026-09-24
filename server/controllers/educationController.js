@@ -1,4 +1,104 @@
 const idscuService = require('../services/idscuService');
+const { SCHOOL_BOARDS, UGC_COURSES } = require('../data/educationData');
+
+/**
+ * @route   GET /api/education/boards
+ * @desc    Get all Indian Central, State, and International School Boards with search & filtering
+ * @access  Public
+ */
+const getSchoolBoards = async (req, res) => {
+  try {
+    const { q, state, type } = req.query;
+    let filtered = SCHOOL_BOARDS;
+
+    if (state && state.trim()) {
+      const s = state.trim().toLowerCase();
+      filtered = filtered.filter(b => b.state.toLowerCase().includes(s));
+    }
+
+    if (type && type.trim()) {
+      const t = type.trim().toLowerCase();
+      filtered = filtered.filter(b => b.type.toLowerCase() === t);
+    }
+
+    if (q && q.trim()) {
+      const query = q.trim().toLowerCase();
+      filtered = filtered.filter(b => 
+        b.name.toLowerCase().includes(query) ||
+        b.code.toLowerCase().includes(query) ||
+        b.state.toLowerCase().includes(query)
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      total: filtered.length,
+      data: filtered
+    });
+  } catch (error) {
+    console.error('Error in getSchoolBoards controller:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve school boards.'
+    });
+  }
+};
+
+/**
+ * @route   GET /api/education/courses
+ * @desc    Get UGC / AISHE Courses by category, stream, or search query
+ * @access  Public
+ */
+const getCourses = async (req, res) => {
+  try {
+    const { category, q, stream } = req.query;
+
+    let coursesList = [];
+
+    if (category && UGC_COURSES[category.toLowerCase()]) {
+      coursesList = UGC_COURSES[category.toLowerCase()].map(c => ({
+        ...c,
+        category: category.toLowerCase()
+      }));
+    } else {
+      // Flatten all categories
+      Object.keys(UGC_COURSES).forEach(cat => {
+        UGC_COURSES[cat].forEach(c => {
+          coursesList.push({
+            ...c,
+            category: cat
+          });
+        });
+      });
+    }
+
+    if (stream && stream.trim()) {
+      const s = stream.trim().toLowerCase();
+      coursesList = coursesList.filter(c => c.stream.toLowerCase().includes(s));
+    }
+
+    if (q && q.trim()) {
+      const query = q.trim().toLowerCase();
+      coursesList = coursesList.filter(c => 
+        c.name.toLowerCase().includes(query) ||
+        c.stream.toLowerCase().includes(query) ||
+        c.category.toLowerCase().includes(query)
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      total: coursesList.length,
+      data: coursesList
+    });
+  } catch (error) {
+    console.error('Error in getCourses controller:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve courses.'
+    });
+  }
+};
 
 /**
  * @route   GET /api/education/search
@@ -67,6 +167,8 @@ const getMeta = async (req, res) => {
 };
 
 module.exports = {
+  getSchoolBoards,
+  getCourses,
   searchInstitutions,
   getMeta
 };

@@ -292,6 +292,296 @@ const scoreCandidate = (inst, rawQuery, normalizedQuery, queryTokens) => {
   return score;
 };
 
+const ALL_INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 
+  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 
+  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 
+  'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi', 'Chandigarh', 'Puducherry', 
+  'Jammu & Kashmir', 'Ladakh'
+];
+
+const INDIAN_CITY_STATE_MAP = {
+  // Chhattisgarh
+  'bhilai': { city: 'Bhilai', state: 'Chhattisgarh' },
+  'raipur': { city: 'Raipur', state: 'Chhattisgarh' },
+  'bilaspur': { city: 'Bilaspur', state: 'Chhattisgarh' },
+  'durg': { city: 'Durg', state: 'Chhattisgarh' },
+  'korba': { city: 'Korba', state: 'Chhattisgarh' },
+  'rajnandgaon': { city: 'Rajnandgaon', state: 'Chhattisgarh' },
+  'jagdalpur': { city: 'Jagdalpur', state: 'Chhattisgarh' },
+  'raigarh': { city: 'Raigarh', state: 'Chhattisgarh' },
+  'ambikapur': { city: 'Ambikapur', state: 'Chhattisgarh' },
+  
+  // Maharashtra
+  'mumbai': { city: 'Mumbai', state: 'Maharashtra' },
+  'pune': { city: 'Pune', state: 'Maharashtra' },
+  'nagpur': { city: 'Nagpur', state: 'Maharashtra' },
+  'nashik': { city: 'Nashik', state: 'Maharashtra' },
+  'aurangabad': { city: 'Aurangabad', state: 'Maharashtra' },
+  'chhatrapati sambhajinagar': { city: 'Chhatrapati Sambhajinagar', state: 'Maharashtra' },
+  'navi mumbai': { city: 'Navi Mumbai', state: 'Maharashtra' },
+  'thane': { city: 'Thane', state: 'Maharashtra' },
+  'kolhapur': { city: 'Kolhapur', state: 'Maharashtra' },
+  'solapur': { city: 'Solapur', state: 'Maharashtra' },
+  'amravati': { city: 'Amravati', state: 'Maharashtra' },
+  'nanded': { city: 'Nanded', state: 'Maharashtra' },
+  
+  // Karnataka
+  'bengaluru': { city: 'Bengaluru', state: 'Karnataka' },
+  'bangalore': { city: 'Bengaluru', state: 'Karnataka' },
+  'mysuru': { city: 'Mysuru', state: 'Karnataka' },
+  'mysore': { city: 'Mysuru', state: 'Karnataka' },
+  'mangalore': { city: 'Mangalore', state: 'Karnataka' },
+  'mangaluru': { city: 'Mangaluru', state: 'Karnataka' },
+  'hubli': { city: 'Hubli', state: 'Karnataka' },
+  'belgaum': { city: 'Belgaum', state: 'Karnataka' },
+  'belagavi': { city: 'Belagavi', state: 'Karnataka' },
+  'manipal': { city: 'Manipal', state: 'Karnataka' },
+  'gulbarga': { city: 'Kalaburagi', state: 'Karnataka' },
+  'kalaburagi': { city: 'Kalaburagi', state: 'Karnataka' },
+  'dharwad': { city: 'Dharwad', state: 'Karnataka' },
+  'shimoga': { city: 'Shivamogga', state: 'Karnataka' },
+
+  // Delhi NCR / UP / Haryana
+  'delhi': { city: 'Delhi', state: 'Delhi' },
+  'new delhi': { city: 'New Delhi', state: 'Delhi' },
+  'noida': { city: 'Noida', state: 'Uttar Pradesh' },
+  'greater noida': { city: 'Greater Noida', state: 'Uttar Pradesh' },
+  'ghaziabad': { city: 'Ghaziabad', state: 'Uttar Pradesh' },
+  'gurugram': { city: 'Gurugram', state: 'Haryana' },
+  'gurgaon': { city: 'Gurugram', state: 'Haryana' },
+  'faridabad': { city: 'Faridabad', state: 'Haryana' },
+
+  // Uttar Pradesh
+  'lucknow': { city: 'Lucknow', state: 'Uttar Pradesh' },
+  'kanpur': { city: 'Kanpur', state: 'Uttar Pradesh' },
+  'varanasi': { city: 'Varanasi', state: 'Uttar Pradesh' },
+  'banaras': { city: 'Varanasi', state: 'Uttar Pradesh' },
+  'kashi': { city: 'Varanasi', state: 'Uttar Pradesh' },
+  'prayagraj': { city: 'Prayagraj', state: 'Uttar Pradesh' },
+  'allahabad': { city: 'Prayagraj', state: 'Uttar Pradesh' },
+  'agra': { city: 'Agra', state: 'Uttar Pradesh' },
+  'meerut': { city: 'Meerut', state: 'Uttar Pradesh' },
+  'aligarh': { city: 'Aligarh', state: 'Uttar Pradesh' },
+  'bareilly': { city: 'Bareilly', state: 'Uttar Pradesh' },
+  'gorakhpur': { city: 'Gorakhpur', state: 'Uttar Pradesh' },
+  'jhansi': { city: 'Jhansi', state: 'Uttar Pradesh' },
+  'mathura': { city: 'Mathura', state: 'Uttar Pradesh' },
+  'moradabad': { city: 'Moradabad', state: 'Uttar Pradesh' },
+  'ayodhya': { city: 'Ayodhya', state: 'Uttar Pradesh' },
+
+  // Tamil Nadu
+  'chennai': { city: 'Chennai', state: 'Tamil Nadu' },
+  'madras': { city: 'Chennai', state: 'Tamil Nadu' },
+  'coimbatore': { city: 'Coimbatore', state: 'Tamil Nadu' },
+  'madurai': { city: 'Madurai', state: 'Tamil Nadu' },
+  'tiruchirappalli': { city: 'Tiruchirappalli', state: 'Tamil Nadu' },
+  'trichy': { city: 'Tiruchirappalli', state: 'Tamil Nadu' },
+  'salem': { city: 'Salem', state: 'Tamil Nadu' },
+  'vellore': { city: 'Vellore', state: 'Tamil Nadu' },
+  'thanjavur': { city: 'Thanjavur', state: 'Tamil Nadu' },
+  'tirunelveli': { city: 'Tirunelveli', state: 'Tamil Nadu' },
+  'erode': { city: 'Erode', state: 'Tamil Nadu' },
+
+  // Telangana
+  'hyderabad': { city: 'Hyderabad', state: 'Telangana' },
+  'secunderabad': { city: 'Secunderabad', state: 'Telangana' },
+  'warangal': { city: 'Warangal', state: 'Telangana' },
+  'nizamabad': { city: 'Nizamabad', state: 'Telangana' },
+  'karimnagar': { city: 'Karimnagar', state: 'Telangana' },
+
+  // Andhra Pradesh
+  'visakhapatnam': { city: 'Visakhapatnam', state: 'Andhra Pradesh' },
+  'vizag': { city: 'Visakhapatnam', state: 'Andhra Pradesh' },
+  'vijayawada': { city: 'Vijayawada', state: 'Andhra Pradesh' },
+  'guntur': { city: 'Guntur', state: 'Andhra Pradesh' },
+  'tirupati': { city: 'Tirupati', state: 'Andhra Pradesh' },
+  'kurnool': { city: 'Kurnool', state: 'Andhra Pradesh' },
+  'nellore': { city: 'Nellore', state: 'Andhra Pradesh' },
+  'rajahmundry': { city: 'Rajahmundry', state: 'Andhra Pradesh' },
+
+  // West Bengal
+  'kolkata': { city: 'Kolkata', state: 'West Bengal' },
+  'calcutta': { city: 'Kolkata', state: 'West Bengal' },
+  'howrah': { city: 'Howrah', state: 'West Bengal' },
+  'durgapur': { city: 'Durgapur', state: 'West Bengal' },
+  'siliguri': { city: 'Siliguri', state: 'West Bengal' },
+  'asansol': { city: 'Asansol', state: 'West Bengal' },
+  'kharagpur': { city: 'Kharagpur', state: 'West Bengal' },
+  'shantiniketan': { city: 'Shantiniketan', state: 'West Bengal' },
+
+  // Rajasthan
+  'jaipur': { city: 'Jaipur', state: 'Rajasthan' },
+  'jodhpur': { city: 'Jodhpur', state: 'Rajasthan' },
+  'kota': { city: 'Kota', state: 'Rajasthan' },
+  'udaipur': { city: 'Udaipur', state: 'Rajasthan' },
+  'bikaner': { city: 'Bikaner', state: 'Rajasthan' },
+  'ajmer': { city: 'Ajmer', state: 'Rajasthan' },
+  'pilani': { city: 'Pilani', state: 'Rajasthan' },
+  'alwar': { city: 'Alwar', state: 'Rajasthan' },
+  'bhilwara': { city: 'Bhilwara', state: 'Rajasthan' },
+
+  // Gujarat
+  'ahmedabad': { city: 'Ahmedabad', state: 'Gujarat' },
+  'surat': { city: 'Surat', state: 'Gujarat' },
+  'vadodara': { city: 'Vadodara', state: 'Gujarat' },
+  'baroda': { city: 'Vadodara', state: 'Gujarat' },
+  'rajkot': { city: 'Rajkot', state: 'Gujarat' },
+  'gandhinagar': { city: 'Gandhinagar', state: 'Gujarat' },
+  'anand': { city: 'Anand', state: 'Gujarat' },
+  'bhavnagar': { city: 'Bhavnagar', state: 'Gujarat' },
+  'jamnagar': { city: 'Jamnagar', state: 'Gujarat' },
+
+  // Bihar
+  'patna': { city: 'Patna', state: 'Bihar' },
+  'gaya': { city: 'Gaya', state: 'Bihar' },
+  'muzaffarpur': { city: 'Muzaffarpur', state: 'Bihar' },
+  'bhagalpur': { city: 'Bhagalpur', state: 'Bihar' },
+  'darbhanga': { city: 'Darbhanga', state: 'Bihar' },
+  'purnia': { city: 'Purnia', state: 'Bihar' },
+
+  // Madhya Pradesh
+  'bhopal': { city: 'Bhopal', state: 'Madhya Pradesh' },
+  'indore': { city: 'Indore', state: 'Madhya Pradesh' },
+  'jabalpur': { city: 'Jabalpur', state: 'Madhya Pradesh' },
+  'gwalior': { city: 'Gwalior', state: 'Madhya Pradesh' },
+  'ujjain': { city: 'Ujjain', state: 'Madhya Pradesh' },
+  'sagar': { city: 'Sagar', state: 'Madhya Pradesh' },
+  'rewa': { city: 'Rewa', state: 'Madhya Pradesh' },
+
+  // Punjab & Chandigarh
+  'chandigarh': { city: 'Chandigarh', state: 'Chandigarh' },
+  'mohali': { city: 'Mohali', state: 'Punjab' },
+  'ludhiana': { city: 'Ludhiana', state: 'Punjab' },
+  'amritsar': { city: 'Amritsar', state: 'Punjab' },
+  'jalandhar': { city: 'Jalandhar', state: 'Punjab' },
+  'patiala': { city: 'Patiala', state: 'Punjab' },
+  'bathinda': { city: 'Bathinda', state: 'Punjab' },
+
+  // Haryana
+  'rohtak': { city: 'Rohtak', state: 'Haryana' },
+  'panipat': { city: 'Panipat', state: 'Haryana' },
+  'kurukshetra': { city: 'Kurukshetra', state: 'Haryana' },
+  'sonipat': { city: 'Sonipat', state: 'Haryana' },
+  'hisar': { city: 'Hisar', state: 'Haryana' },
+  'ambala': { city: 'Ambala', state: 'Haryana' },
+  'karnal': { city: 'Karnal', state: 'Haryana' },
+
+  // Kerala
+  'thiruvananthapuram': { city: 'Thiruvananthapuram', state: 'Kerala' },
+  'trivandrum': { city: 'Thiruvananthapuram', state: 'Kerala' },
+  'kochi': { city: 'Kochi', state: 'Kerala' },
+  'cochin': { city: 'Kochi', state: 'Kerala' },
+  'kozhikode': { city: 'Kozhikode', state: 'Kerala' },
+  'calicut': { city: 'Kozhikode', state: 'Kerala' },
+  'thrissur': { city: 'Thrissur', state: 'Kerala' },
+  'kottayam': { city: 'Kottayam', state: 'Kerala' },
+  'kollam': { city: 'Kollam', state: 'Kerala' },
+
+  // Odisha
+  'bhubaneswar': { city: 'Bhubaneswar', state: 'Odisha' },
+  'cuttack': { city: 'Cuttack', state: 'Odisha' },
+  'rourkela': { city: 'Rourkela', state: 'Odisha' },
+  'sambalpur': { city: 'Sambalpur', state: 'Odisha' },
+  'berhampur': { city: 'Berhampur', state: 'Odisha' },
+
+  // Jharkhand
+  'ranchi': { city: 'Ranchi', state: 'Jharkhand' },
+  'jamshedpur': { city: 'Jamshedpur', state: 'Jharkhand' },
+  'dhanbad': { city: 'Dhanbad', state: 'Jharkhand' },
+  'bokaro': { city: 'Bokaro', state: 'Jharkhand' },
+  'hazaribagh': { city: 'Hazaribagh', state: 'Jharkhand' },
+
+  // Uttarakhand
+  'dehradun': { city: 'Dehradun', state: 'Uttarakhand' },
+  'haridwar': { city: 'Haridwar', state: 'Uttarakhand' },
+  'roorkee': { city: 'Roorkee', state: 'Uttarakhand' },
+  'nainital': { city: 'Nainital', state: 'Uttarakhand' },
+  'pantnagar': { city: 'Pantnagar', state: 'Uttarakhand' },
+  'rishikesh': { city: 'Rishikesh', state: 'Uttarakhand' },
+
+  // Himachal Pradesh
+  'shimla': { city: 'Shimla', state: 'Himachal Pradesh' },
+  'dharamshala': { city: 'Dharamshala', state: 'Himachal Pradesh' },
+  'solan': { city: 'Solan', state: 'Himachal Pradesh' },
+  'mandi': { city: 'Mandi', state: 'Himachal Pradesh' },
+  'hamirpur': { city: 'Hamirpur', state: 'Himachal Pradesh' },
+
+  // Assam & North East
+  'guwahati': { city: 'Guwahati', state: 'Assam' },
+  'dibrugarh': { city: 'Dibrugarh', state: 'Assam' },
+  'silchar': { city: 'Silchar', state: 'Assam' },
+  'tezpur': { city: 'Tezpur', state: 'Assam' },
+  'jorhat': { city: 'Jorhat', state: 'Assam' },
+  'shillong': { city: 'Shillong', state: 'Meghalaya' },
+  'agartala': { city: 'Agartala', state: 'Tripura' },
+  'imphal': { city: 'Imphal', state: 'Manipur' },
+  'aizawl': { city: 'Aizawl', state: 'Mizoram' },
+  'kohima': { city: 'Kohima', state: 'Nagaland' },
+  'dimapur': { city: 'Dimapur', state: 'Nagaland' },
+  'gangtok': { city: 'Gangtok', state: 'Sikkim' },
+  'itanagar': { city: 'Itanagar', state: 'Arunachal Pradesh' },
+
+  // Jammu & Kashmir
+  'srinagar': { city: 'Srinagar', state: 'Jammu & Kashmir' },
+  'jammu': { city: 'Jammu', state: 'Jammu & Kashmir' },
+
+  // Goa & Puducherry
+  'panaji': { city: 'Panaji', state: 'Goa' },
+  'goa': { city: 'Goa', state: 'Goa' },
+  'puducherry': { city: 'Puducherry', state: 'Puducherry' },
+  'pondicherry': { city: 'Puducherry', state: 'Puducherry' }
+};
+
+/**
+ * Intelligent helper to resolve city and state for any institution
+ */
+const resolveLocationDetails = (name = '', description = '', city = '', state = '', country = 'India') => {
+  let finalCity = (city || '').trim();
+  let finalState = (state || '').trim();
+  let finalCountry = (country || 'India').trim();
+
+  const combinedText = `${name} ${description} ${finalCity} ${finalState}`.toLowerCase();
+
+  // 1. Direct State Matches
+  for (const st of ALL_INDIAN_STATES) {
+    if (combinedText.includes(st.toLowerCase())) {
+      finalState = st;
+      finalCountry = 'India';
+      break;
+    }
+  }
+
+  // 2. City Dictionary Lookup
+  for (const [keyCity, mapping] of Object.entries(INDIAN_CITY_STATE_MAP)) {
+    const regex = new RegExp(`\\b${keyCity}\\b`, 'i');
+    if (regex.test(combinedText)) {
+      if (!finalCity || finalCity.toLowerCase() === finalState.toLowerCase()) {
+        finalCity = mapping.city;
+      }
+      if (!finalState) {
+        finalState = mapping.state;
+      }
+      finalCountry = 'India';
+      break;
+    }
+  }
+
+  // 3. Known special institution / group defaults
+  if (!finalState && /rungta/i.test(name)) {
+    if (!finalCity) finalCity = 'Bhilai';
+    finalState = 'Chhattisgarh';
+    finalCountry = 'India';
+  }
+
+  return {
+    city: finalCity,
+    state: finalState,
+    country: finalCountry
+  };
+};
+
 /**
  * Query Wikidata API for obscure colleges & institutions worldwide
  */
@@ -323,21 +613,10 @@ const fetchWikidataInstitutions = async (queryText) => {
       );
     }).map(item => {
       const desc = item.description || '';
-      let state = '';
-      let country = 'India';
-
-      if (desc.includes('Nagaland')) { state = 'Nagaland'; country = 'India'; }
-      else if (desc.includes('Mizoram')) { state = 'Mizoram'; country = 'India'; }
-      else if (desc.includes('Meghalaya')) { state = 'Meghalaya'; country = 'India'; }
-      else if (desc.includes('Assam')) { state = 'Assam'; country = 'India'; }
-      else if (desc.includes('Delhi')) { state = 'Delhi'; country = 'India'; }
-      else if (desc.includes('Iceland')) { country = 'Iceland'; }
-      else if (desc.includes('Liechtenstein')) { country = 'Liechtenstein'; }
-      else if (desc.includes('Andorra')) { country = 'Andorra'; }
-      else if (desc.includes('Luxembourg')) { country = 'Luxembourg'; }
+      const loc = resolveLocationDetails(item.label, desc, '', '', 'India');
 
       const type = inferInstitutionType(item.label, '');
-      const meta = generateAcronymsAndAliases(item.label, state, state);
+      const meta = generateAcronymsAndAliases(item.label, loc.city, loc.state);
 
       return {
         id: `WIKI-${item.id}`,
@@ -349,10 +628,10 @@ const fetchWikidataInstitutions = async (queryText) => {
         normalizedAcronyms: meta.normalizedAcronyms,
         type: type,
         sector: type === 'school' ? 'school' : 'higher_education',
-        country: country,
-        countryCode: country === 'India' ? 'IN' : '',
-        state: state,
-        city: state,
+        country: loc.country,
+        countryCode: loc.country === 'India' ? 'IN' : '',
+        state: loc.state,
+        city: loc.city,
         website: '',
         source: 'WIKIDATA',
         sourceId: item.id
@@ -391,8 +670,9 @@ const fetchIdscuInstitutions = async (queryText, country) => {
 
     return list.map(item => {
       const name = item.name_en || item.name_official;
+      const loc = resolveLocationDetails(name, '', item.city, item.region, item.country || 'India');
       const type = inferInstitutionType(name, item.sector);
-      const meta = generateAcronymsAndAliases(name, item.city, item.region);
+      const meta = generateAcronymsAndAliases(name, loc.city, loc.state);
 
       return {
         id: `IDSCU-${item.id}`,
@@ -404,10 +684,10 @@ const fetchIdscuInstitutions = async (queryText, country) => {
         normalizedAcronyms: meta.normalizedAcronyms,
         type: type,
         sector: item.sector === 'K12' ? 'school' : 'higher_education',
-        country: item.country || 'India',
-        countryCode: item.country_code || '',
-        state: item.region || '',
-        city: item.city || '',
+        country: loc.country,
+        countryCode: item.country_code || (loc.country === 'India' ? 'IN' : ''),
+        state: loc.state,
+        city: loc.city,
         website: item.official_website || '',
         source: 'IDSCU',
         sourceId: item.id
@@ -438,7 +718,8 @@ const fetchHipoInstitutions = async (queryText) => {
     if (!Array.isArray(list)) return [];
 
     return list.slice(0, 15).map(item => {
-      const meta = generateAcronymsAndAliases(item.name, item['state-province'], item['state-province']);
+      const loc = resolveLocationDetails(item.name, '', item['state-province'], item['state-province'], item.country || '');
+      const meta = generateAcronymsAndAliases(item.name, loc.city, loc.state);
       return {
         id: `HIPO-${item.alpha_two_code}-${normalizeText(item.name).replace(/\s+/g, '-')}`,
         name: item.name,
@@ -449,10 +730,10 @@ const fetchHipoInstitutions = async (queryText) => {
         normalizedAcronyms: meta.normalizedAcronyms,
         type: 'university',
         sector: 'higher_education',
-        country: item.country || '',
+        country: loc.country,
         countryCode: item.alpha_two_code || '',
-        state: item['state-province'] || '',
-        city: item['state-province'] || '',
+        state: loc.state,
+        city: loc.city,
         website: item.web_pages?.[0] || '',
         source: 'HIPO',
         sourceId: item.name
@@ -610,7 +891,8 @@ const searchMasterInstitutions = async (params = {}) => {
   const formattedResults = [];
 
   for (const item of paginated) {
-    const key = `${normalizeText(item.name)}|${(item.country || '').toLowerCase()}|${(item.city || item.state || '').toLowerCase()}`;
+    const loc = resolveLocationDetails(item.name, item.description || '', item.city || item.district || '', item.state || '', item.country || 'India');
+    const key = `${normalizeText(item.name)}|${(loc.country || '').toLowerCase()}|${(loc.city || loc.state || '').toLowerCase()}`;
     if (!seenMap.has(key)) {
       seenMap.set(key, true);
       formattedResults.push({
@@ -618,10 +900,10 @@ const searchMasterInstitutions = async (params = {}) => {
         name: item.name,
         type: item.type || 'college',
         sector: item.sector || 'higher_education',
-        city: item.city || item.district || '',
-        state: item.state || '',
-        country: item.country || 'India',
-        countryCode: item.countryCode || '',
+        city: loc.city || item.city || item.district || '',
+        state: loc.state || item.state || '',
+        country: loc.country || item.country || 'India',
+        countryCode: loc.country === 'India' ? 'IN' : (item.countryCode || ''),
         affiliatedUniversity: item.affiliatedUniversity || '',
         website: item.website || '',
         source: item.source || 'AISHE'

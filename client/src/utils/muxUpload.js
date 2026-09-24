@@ -9,8 +9,8 @@ import * as UpChunk from '@mux/upchunk';
  * @returns {Promise<{isMux: boolean, playbackId?: string, streamUrl?: string}>}
  */
 export const uploadVideoToMux = async (file, onProgress) => {
-  if (file && file.size > 100 * 1024 * 1024) {
-    throw new Error('Video file size exceeds the 100MB limit.');
+  if (file && file.size > 200 * 1024 * 1024) {
+    throw new Error('Video file size exceeds the 200MB limit.');
   }
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';

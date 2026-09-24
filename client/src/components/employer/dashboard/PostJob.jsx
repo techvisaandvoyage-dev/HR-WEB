@@ -34,7 +34,7 @@ const PostJob = ({ addJob, updateJob }) => {
     qualification: '', stream: '', category: '',
     screeningQuestions: []
   });
-  const [employerDetails, setEmployerDetails] = useState({ companyName: 'My Company', industry: 'Company' });
+  const [employerDetails, setEmployerDetails] = useState({ companyName: 'My Company', industry: 'Company', companyLogo: '' });
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -48,7 +48,8 @@ const PostJob = ({ addJob, updateJob }) => {
         if (data.success && data.data) {
           setEmployerDetails({
             companyName: data.data.companyName || 'My Company',
-            industry: data.data.industry || 'Company'
+            industry: data.data.industry || 'Company',
+            companyLogo: data.data.companyLogo || ''
           });
         }
       } catch (err) {
@@ -147,7 +148,7 @@ const PostJob = ({ addJob, updateJob }) => {
       </div>
 
       {/* Main Content Area */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row min-h-[600px]">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row min-h-[600px] overflow-hidden">
         
         {/* Left Column - Steps */}
         <div className="w-full md:w-64 bg-gray-50/50 border-r border-gray-100 p-8 shrink-0 rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl">
@@ -177,11 +178,11 @@ const PostJob = ({ addJob, updateJob }) => {
         </div>
 
         {/* Right Column - Form */}
-        <div className="flex-1 p-8 md:p-10 flex flex-col">
+        <div className="flex-1 min-w-0 p-8 md:p-10 flex flex-col overflow-hidden">
           
           {/* Step 1: Job Details */}
           {activeStep === 1 && (
-            <div className="flex-1 space-y-6 animate-in fade-in">
+            <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Job Title</label>
                 <input 
@@ -268,7 +269,7 @@ const PostJob = ({ addJob, updateJob }) => {
 
           {/* Step 2: Job Description */}
           {activeStep === 2 && (
-            <div className="flex-1 space-y-6 animate-in fade-in">
+            <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">About Role</label>
                 <RichTextEditor 
@@ -345,7 +346,7 @@ const PostJob = ({ addJob, updateJob }) => {
 
           {/* Step 3: Salary & Requirements */}
           {activeStep === 3 && (
-            <div className="flex-1 space-y-6 animate-in fade-in">
+            <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <h3 className="text-lg font-bold text-gray-900 mb-4 border-b border-gray-100 pb-2">Compensation</h3>
@@ -610,7 +611,7 @@ const PostJob = ({ addJob, updateJob }) => {
 
           {/* Step 4: Screening Questions */}
           {activeStep === 4 && (
-            <div className="flex-1 space-y-6 animate-in fade-in">
+            <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">Applicant Screening Questions</h3>
@@ -708,7 +709,7 @@ const PostJob = ({ addJob, updateJob }) => {
 
           {/* Step 5: Preview */}
           {activeStep === 5 && (
-            <div className="flex-1 space-y-6 animate-in fade-in">
+            <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 h-full flex flex-col">
                 <h3 className="text-xl font-bold text-gray-900 border-b border-gray-200 pb-4 mb-4">Job Preview</h3>
                 
@@ -815,6 +816,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   const jobPayload = {
                     company: employerDetails.companyName || 'Company',
                     companyInitial: (employerDetails.companyName || 'C').charAt(0).toUpperCase(),
+                    companyLogo: employerDetails.companyLogo || '',
                     title: jobData.title || 'Untitled Job',
                     location: jobData.location || 'Not specified',
                     salary: salaryValues[salaryType].min && salaryValues[salaryType].max ? (salaryType === 'Yearly' ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} Lacs PA` : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'per month' : 'per hour'}`) : 'Not specified',

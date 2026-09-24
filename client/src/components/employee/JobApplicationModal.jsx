@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import CustomDropdown from '../common/CustomDropdown';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
-import { DEFAULT_EDUCATION_DATA, DEFAULT_COURSE_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_NOTICE_PERIOD_OPTIONS, DEFAULT_GRADING_SYSTEMS, normalizeGradingSystems, sortQualifications, sortExperience } from './EmployeeOnboarding';
+import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS, DEFAULT_COURSE_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_NOTICE_PERIOD_OPTIONS, DEFAULT_GRADING_SYSTEMS, normalizeGradingSystems, sortQualifications, sortExperience } from './EmployeeOnboarding';
+import { uploadFileToStorage } from '../../utils/firebaseStorage';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -15,7 +17,15 @@ const formatMonthYear = (dateStr) => {
 };
 
 const getCurrencySymbol = (currencyCode) => {
-  const symbols = { INR: '₹', USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$', SGD: '$', AED: 'د.إ' };
+  const symbols = {
+    INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ',
+    CAD: '$', AUD: '$', SGD: '$', SAR: '﷼', QAR: '﷼',
+    OMR: '﷼', KWD: 'د.ك', BHD: '.د.ب', JPY: '¥', CNY: '¥',
+    CHF: 'Fr', HKD: '$', NZD: '$', MYR: 'RM', ZAR: 'R',
+    THB: '฿', PHP: '₱', IDR: 'Rp', VND: '₫', BRL: 'R$',
+    RUB: '₽', KRW: '₩', TRY: '₺', MXN: '$', EGP: 'E£',
+    LKR: 'Rs', PKR: 'Rs', BDT: '৳', NPR: 'Rs'
+  };
   return symbols[currencyCode || 'INR'] || '₹';
 };
 
@@ -41,6 +51,14 @@ const getProfileDesignation = (profile) => {
     || '';
 };
 
+const getProfileCompany = (profile) => {
+  if (!profile) return '';
+
+  return profile.experience?.find((experience) => experience.roles?.some((role) => role.currentCompany))?.companyName
+    || profile.experience?.[0]?.companyName
+    || '';
+};
+
 const isScreeningQuestionRequired = (question) => (
   question?.required === true || question?.required === 'true'
 );
@@ -59,6 +77,8 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   const [expFieldErrors, setExpFieldErrors] = useState({});
   const [eduError, setEduError] = useState('');
   const [eduFieldErrors, setEduFieldErrors] = useState({});
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [resumeUploadError, setResumeUploadError] = useState('');
 
   const scrollToTarget = (targetId) => {
     setTimeout(() => {
@@ -268,7 +288,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
 
   const [fastFormData, setFastFormData] = useState(() => ({
     relevantJobTitle: getProfileDesignation(formData),
-    relevantCompany: ''
+    relevantCompany: getProfileCompany(formData)
   }));
   const [screeningAnswers, setScreeningAnswers] = useState({});
   const [questionErrors, setQuestionErrors] = useState({});
@@ -290,10 +310,36 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
     }
   };
 
-  const handleDownloadResume = () => {
+  const handleDownloadResume = async () => {
     const resumeUrl = fastFormData.resume || formData.documents?.resume || formData.resume;
-    if (resumeUrl && resumeUrl.startsWith('http')) {
-      window.open(resumeUrl, '_blank');
+    if (!resumeUrl) return;
+
+    const rawName = getCleanFileName(resumeUrl) || 'Resume.pdf';
+    const fileName = rawName.toLowerCase().endsWith('.pdf') ? rawName : `${rawName}.pdf`;
+
+    if (resumeUrl.startsWith('http') || resumeUrl.startsWith('blob:') || resumeUrl.startsWith('data:')) {
+      try {
+        const response = await fetch(resumeUrl, { mode: 'cors' });
+        if (!response.ok) throw new Error('Fetch failed');
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+      } catch (err) {
+        // Fallback: direct download link
+        const link = document.createElement('a');
+        link.href = resumeUrl;
+        link.setAttribute('download', fileName);
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } else {
       alert("Resume file ready: " + (resumeUrl || 'Resume.pdf'));
     }
@@ -323,7 +369,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
           setFormData(latestProfile);
           setFastFormData({
             relevantJobTitle: getProfileDesignation(latestProfile),
-            relevantCompany: ''
+            relevantCompany: getProfileCompany(latestProfile)
           });
         }
       } catch (error) {
@@ -346,6 +392,16 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
       setIsSubmitted(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen || isResumePreviewOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen, isResumePreviewOpen]);
 
   if (!isOpen || !job) return null;
 
@@ -428,7 +484,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                   },
-                  body: JSON.stringify(formData)
+                  body: JSON.stringify({ ...formData, isOnboardingCompleted: true, onboardingStep: 6 })
                 });
               }
             } catch (err) {
@@ -675,37 +731,155 @@ const p = formData.professionalDetails || {};
     </div>
   );
 
+  const LoadingReview = () => (
+    <div className="flex-1 flex flex-col items-center justify-center min-h-[350px] animate-fade-in w-full max-w-md mx-auto py-12 text-center">
+      <div className="w-14 h-14 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-6"></div>
+      <h3 className="text-xl font-bold text-gray-900 mb-2">Preparing your application</h3>
+      <p className="text-sm text-gray-500">Reviewing your profile details before final submission...</p>
+    </div>
+  );
+
+  const FastStep1Experience = () => (
+    <div className="space-y-6 animate-fade-in max-w-md mx-auto py-8">
+      <h3 className="text-2xl font-bold text-gray-900 mb-2">Enter a job that shows relevant experience</h3>
+      <p className="text-gray-500 mb-6 text-sm">We share one job title with the employer to introduce you as a candidate.</p>
+      
+      <div className="space-y-4 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <div>
+          <label className="block text-sm font-bold text-gray-900 mb-1.5">Job title</label>
+          <input 
+            type="text" 
+            placeholder="e.g. Software Engineer"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all" 
+            value={fastFormData.relevantJobTitle || ''} 
+            onChange={e => setFastFormData({...fastFormData, relevantJobTitle: e.target.value})} 
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const FastStep2Resume = () => {
+    const handleFileChange = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      
+      if (file.size > 300 * 1024) {
+        setResumeUploadError(`File size (${(file.size / 1024).toFixed(1)}KB) exceeds 300KB limit.`);
+        return;
+      }
+      setResumeUploadError('');
+      setUploadingResume(true);
+      try {
+        const downloadURL = await uploadFileToStorage(file, 'resumes');
+        setFastFormData(prev => ({ ...prev, resume: downloadURL }));
+        setFormData(prev => ({
+          ...prev,
+          documents: { ...(prev.documents || {}), resume: downloadURL }
+        }));
+      } catch (err) {
+        console.error('Failed to upload resume in modal', err);
+        setFastFormData(prev => ({ ...prev, resume: file.name }));
+      } finally {
+        setUploadingResume(false);
+      }
+    };
+    
+    const activeResume = fastFormData.resume || formData.documents?.resume || formData.resume;
+
+    return (
+      <div className="space-y-6 animate-fade-in max-w-md mx-auto py-8">
+        <h3 className="text-2xl font-bold text-gray-900 mb-2">Add a resume</h3>
+        <p className="text-gray-500 mb-6 text-sm">Employers use your resume to review your experience and qualifications.</p>
+        
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+          {activeResume ? (
+            <div 
+              onClick={() => setIsResumePreviewOpen(true)}
+              className="flex items-center justify-between p-4 border border-green-200 rounded-xl bg-green-50/50 hover:bg-green-50 hover:border-green-300 transition-all cursor-pointer group shadow-2xs"
+            >
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-10 h-10 rounded-lg bg-green-100 text-green-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="overflow-hidden">
+                  <p className="font-bold text-gray-900 group-hover:text-green-800 transition-colors truncate text-sm">{getCleanFileName(activeResume)}</p>
+                  <p className="text-xs text-green-600 font-semibold">Attached from profile • Click to preview</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsResumePreviewOpen(true);
+                }}
+                className="text-xs font-bold text-green-700 bg-white border border-green-200 hover:bg-green-100 px-3 py-1.5 rounded-lg shrink-0 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Preview
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 border border-amber-200 rounded-xl bg-amber-50 text-amber-800 text-sm font-medium">
+              No resume attached yet. Please upload one below.
+            </div>
+          )}
+          
+          <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-5 text-center hover:bg-gray-50 transition-colors cursor-pointer group">
+             <input type="file" disabled={uploadingResume} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={handleFileChange} accept=".pdf,.doc,.docx" />
+             <p className="text-sm font-semibold text-green-600 group-hover:text-green-700">
+               {uploadingResume ? 'Uploading resume...' : (activeResume ? 'Upload a different resume' : 'Upload Resume (Max: 300KB)')}
+             </p>
+          </div>
+          {resumeUploadError && (
+            <p className="text-xs text-red-500 font-medium">{resumeUploadError}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const FastStep3Review = () => (
     <div className="space-y-6 animate-fade-in max-w-xl mx-auto py-8 pb-4">
       <h3 className="text-2xl font-bold text-gray-900 mb-2">Review your application</h3>
-      <p className="text-gray-500 mb-6">You will not be able to edit your application after you submit.</p>
+      <p className="text-gray-500 mb-6 text-sm">You will not be able to edit your application after you submit.</p>
       
       <div className="flex justify-between items-center mb-2">
         <h4 className="text-lg font-bold text-gray-900">Contact information</h4>
-        <button type="button" className="text-green-600 font-bold hover:underline">Edit</button>
+        <button type="button" onClick={() => setFastStep(1)} className="text-green-600 font-bold hover:underline text-sm">Edit</button>
       </div>
       
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4 mb-8">
         <div>
           <p className="text-sm text-gray-500 mb-1">Full name</p>
-          <p className="font-bold text-gray-900">{(formData.firstName || formData.lastName) ? `${formData.firstName} ${formData.lastName}`.trim() : 'Yash Raj Singh'}</p>
+          <p className="font-bold text-gray-900">{(formData.firstName || formData.lastName) ? `${formData.firstName || ''} ${formData.lastName || ''}`.trim() : 'Applicant'}</p>
         </div>
         <hr className="border-gray-100" />
         <div>
           <p className="text-sm text-gray-500 mb-1">Email</p>
-          <p className="font-bold text-gray-900">{formData.email || 'sonic16t@gmail.com'}</p>
+          <p className="font-bold text-gray-900">{formData.email || 'N/A'}</p>
           <p className="text-xs text-gray-500 mt-1">To reduce fraud, we may hide your contact information from the employer.</p>
         </div>
         <hr className="border-gray-100" />
         <div>
           <p className="text-sm text-gray-500 mb-1">Phone number</p>
-          <p className="font-bold text-gray-900">{formData.phone || '+91 93998 86418'}</p>
+          <p className="font-bold text-gray-900">{formData.phone ? `+91 ${formData.phone}` : 'N/A'}</p>
         </div>
-        <hr className="border-gray-100" />
-        <div>
-          <p className="text-sm text-gray-500 mb-1">City, state/territory</p>
-          <p className="font-bold text-gray-900">{formData.professionalDetails?.currentLocation || 'Champa, Chhattisgarh'}</p>
-        </div>
+        {formData.location && (
+          <>
+            <hr className="border-gray-100" />
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Location</p>
+              <p className="font-bold text-gray-900">{formData.location}</p>
+            </div>
+          </>
+        )}
       </div>
       
       <div className="flex justify-between items-center mb-2 mt-8">
@@ -771,7 +945,14 @@ const p = formData.professionalDetails || {};
 
       <div className="flex justify-between items-center mb-2 mt-8">
         <h4 className="text-lg font-bold text-gray-900">Relevant Experience</h4>
-        <button type="button" onClick={() => setFastStep(1)} className="text-green-600 font-bold hover:underline">Edit</button>
+        <button type="button" onClick={() => setFastStep(1)} className="text-green-600 font-bold hover:underline text-sm">Edit</button>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <div>
+          <p className="text-sm text-gray-500 mb-1">Job title</p>
+          <p className="font-bold text-gray-900">{fastFormData.relevantJobTitle || getProfileDesignation(formData) || 'Software Engineer'}</p>
+        </div>
       </div>
     </div>
   );
@@ -900,10 +1081,10 @@ const p = formData.professionalDetails || {};
                     <>
                       <div id={`field-modal-edu-board-${idx}`}>
                         <label className="block text-sm font-bold text-gray-900 mb-1.5">Board <span className="text-red-500">*</span></label>
-                        <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.board ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.board || ''} onChange={e => { updateArray('qualifications', idx, 'board', e.target.value); setEduFieldErrors({...eduFieldErrors, board: false}); }}>
+                        <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.board ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.board || ''} onChange={e => { updateArray('qualifications', idx, 'board', e.target.value); setEduFieldErrors({...eduFieldErrors, board: false}); }}>
                           <option value="">Select board</option>
-                          {(DEFAULT_EDUCATION_DATA[q.educationType]?.options || ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']).map(b => (
-                            <option key={b} value={b}>{b}</option>
+                          {DEFAULT_BOARD_OPTIONS.filter(b => !b.isGroupLabel).map(b => (
+                            <option key={b.value} value={b.value}>{b.label}</option>
                           ))}
                         </select>
                       </div>
@@ -1171,9 +1352,14 @@ const p = formData.professionalDetails || {};
                         {(exp.roles || []).map((role, rIdx) => (
                           <div key={rIdx} className="relative">
                             <div className="absolute w-3 h-3 bg-green-500 rounded-full -left-[23px] top-1.5 ring-4 ring-white"></div>
-                            <p className="font-semibold text-gray-800">{role.jobTitle || 'Job Title'}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-800">{role.jobTitle || 'Job Title'}</p>
+                              {role.currentCompany && (
+                                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-bold uppercase tracking-wider rounded-full">Current Role</span>
+                              )}
+                            </div>
                             <p className="text-gray-500 text-sm mt-0.5">
-                              {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}
+                              {formatMonthYear(role.joiningDate)} - {role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)} | {role.employmentType || 'Employment Type'}{role.currentCompany && exp.noticePeriod ? ` | Notice: ${exp.noticePeriod}` : ''}
                             </p>
                             {role.roleDescription && (
                               <p className="text-gray-600 text-sm mt-2">{role.roleDescription}</p>
@@ -1242,21 +1428,22 @@ const p = formData.professionalDetails || {};
                               </div>
                               <div id={`field-modal-exp-empType-${cIdx}-${rIdx}`}>
                                 <label className="block text-sm font-bold text-gray-900 mb-1.5">{cmsConfig?.step3?.fields?.employmentType?.label || 'Employment Type'} <span className="text-red-500">*</span></label>
-                                <select className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.employmentType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={role.employmentType || ''} onChange={e => {
-                                  const newExp = [...(formData.experience || [])];
-                                  newExp[cIdx].roles[rIdx].employmentType = e.target.value;
-                                  setFormData({...formData, experience: newExp});
-                                  if (expFieldErrors.roles?.[rIdx]?.employmentType) {
-                                    const updatedRoles = [...(expFieldErrors.roles || [])];
-                                    if (updatedRoles[rIdx]) updatedRoles[rIdx].employmentType = false;
-                                    setExpFieldErrors(prev => ({ ...prev, roles: updatedRoles }));
-                                  }
-                                }}>
-                                  <option value="">{cmsConfig?.step3?.fields?.employmentType?.placeholder || 'Select'}</option>
-                                  {(cmsConfig?.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS).map((opt, oIdx) => (
-                                    <option key={oIdx} value={opt}>{opt}</option>
-                                  ))}
-                                </select>
+                                <CustomDropdown
+                                  options={(cmsConfig?.step3?.employmentTypeOptions || DEFAULT_EMPLOYMENT_TYPE_OPTIONS).map(opt => ({ value: typeof opt === 'string' ? opt : opt.value, label: typeof opt === 'string' ? opt : opt.label }))}
+                                  value={role.employmentType || ''}
+                                  onChange={val => {
+                                    const newExp = [...(formData.experience || [])];
+                                    newExp[cIdx].roles[rIdx].employmentType = val;
+                                    setFormData({...formData, experience: newExp});
+                                    if (expFieldErrors.roles?.[rIdx]?.employmentType) {
+                                      const updatedRoles = [...(expFieldErrors.roles || [])];
+                                      if (updatedRoles[rIdx]) updatedRoles[rIdx].employmentType = false;
+                                      setExpFieldErrors(prev => ({ ...prev, roles: updatedRoles }));
+                                    }
+                                  }}
+                                  placeholder={cmsConfig?.step3?.fields?.employmentType?.placeholder || "Select"}
+                                  error={expFieldErrors.roles?.[rIdx]?.employmentType}
+                                />
                               </div>
                               <div className="flex items-center mt-6">
                                 <input 
@@ -1352,16 +1539,18 @@ const p = formData.professionalDetails || {};
                     {hasCurrentRole && (
                       <div className="mt-6 pt-6 border-t border-gray-200">
                         <label className="block text-sm font-bold text-gray-900 mb-1.5">{cmsConfig?.step3?.fields?.noticePeriod?.label || 'Notice Period'}</label>
-                        <select className="w-1/2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500" value={exp.noticePeriod || ''} onChange={e => {
-                          const newExp = [...(formData.experience || [])];
-                          newExp[cIdx].noticePeriod = e.target.value;
-                          setFormData({...formData, experience: newExp});
-                        }}>
-                          <option value="">{cmsConfig?.step3?.fields?.noticePeriod?.placeholder || 'Select'}</option>
-                          {(cmsConfig?.step3?.noticePeriodOptions || cmsConfig?.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS).map((opt, optIdx) => (
-                            <option key={optIdx} value={opt}>{opt}</option>
-                          ))}
-                        </select>
+                        <div className="w-full md:w-1/2">
+                          <CustomDropdown
+                            options={(cmsConfig?.step3?.noticePeriodOptions || cmsConfig?.step4?.noticePeriodOptions || DEFAULT_NOTICE_PERIOD_OPTIONS).map(opt => ({ value: typeof opt === 'string' ? opt : opt.value, label: typeof opt === 'string' ? opt : opt.label }))}
+                            value={exp.noticePeriod || ''}
+                            onChange={val => {
+                              const newExp = [...(formData.experience || [])];
+                              newExp[cIdx].noticePeriod = val;
+                              setFormData({...formData, experience: newExp});
+                            }}
+                            placeholder={cmsConfig?.step3?.fields?.noticePeriod?.placeholder || "Select"}
+                          />
+                        </div>
                       </div>
                     )}
                     <div className="flex justify-end mt-4">
@@ -1637,96 +1826,96 @@ const p = formData.professionalDetails || {};
         {/* Left Form Section */}
         <div className="w-full md:w-[60%] flex flex-col h-full bg-white relative z-10 overflow-hidden border-r border-gray-200">
           <div className="flex flex-col h-full max-w-3xl mx-auto w-full">
-          {/* Header & Progress (Hide on submit) */}
-          {!isSubmitted && (
-            <div className="pt-4 pb-4 px-6 border-b border-gray-100 flex-shrink-0">
-              <div className="flex justify-end items-center mb-3">
-                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="relative pt-1">
-                <div className="flex mb-2 items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold inline-block py-1 px-3 uppercase rounded-full text-green-700 bg-green-50">
-                      {isOldUser ? Math.round((fastStep / totalFastSteps) * 100) : Math.round((currentStep / totalSteps) * 100)}% Completed
-                    </span>
+            {/* Header & Progress (Hide on submit) */}
+            {!isSubmitted && (
+              <div className="pt-4 pb-4 px-6 border-b border-gray-100 flex-shrink-0">
+                <div className="flex justify-end items-center mb-3">
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors bg-gray-50 hover:bg-gray-100 p-2 rounded-full">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="relative pt-1">
+                  <div className="flex mb-2 items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold inline-block py-1 px-3 uppercase rounded-full text-green-700 bg-green-50">
+                        {isOldUser ? Math.round((fastStep / totalFastSteps) * 100) : Math.round((currentStep / totalSteps) * 100)}% Completed
+                      </span>
+                    </div>
+                  </div>
+                  <div className="overflow-hidden h-2 text-xs flex rounded-full bg-gray-100">
+                    <div style={{ width: `${isOldUser ? (fastStep / totalFastSteps) * 100 : (currentStep / totalSteps) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 transition-all duration-500"></div>
                   </div>
                 </div>
-                <div className="overflow-hidden h-2 text-xs flex rounded-full bg-gray-100">
-                  <div style={{ width: `${isOldUser ? (fastStep / totalFastSteps) * 100 : (currentStep / totalSteps) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 transition-all duration-500"></div>
-                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Form Body */}
-          <div className="px-6 py-4 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
-            {isSubmitted ? (
-              <SuccessScreen />
-            ) : (
-            <form id="applicationForm" onSubmit={handleSubmit} className="flex flex-col flex-1">
-              {isLoadingReview ? (
-                <LoadingReview />
-              ) : isOldUser ? (
-                <>
-                  {fastStep === 1 && FastStep1Experience()}
-                  {fastStep === 2 && FastStep2Resume()}
-                  {hasQuestions && fastStep === 3 && StepQuestions()}
-                  {fastStep === totalFastSteps && FastStep3Review()}
-                </>
+            {/* Form Body */}
+            <div className="px-6 py-4 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+              {isSubmitted ? (
+                <SuccessScreen />
               ) : (
-                <>
-                  {currentStep === 1 && Step1BasicDetails()}
-                  {currentStep === 2 && Step2Education()}
-                  {currentStep === 3 && Step3Experience()}
-                  {currentStep === 4 && Step4Professional()}
-                  {currentStep === 5 && Step5Documents()}
-                  {hasQuestions && currentStep === 6 && StepQuestions()}
-                  {currentStep === totalSteps && Step6Review()}
-                </>
-              )}
+              <form id="applicationForm" onSubmit={handleSubmit} className="flex flex-col flex-1">
+                {isLoadingReview ? (
+                  <LoadingReview />
+                ) : isOldUser ? (
+                  <>
+                    {fastStep === 1 && FastStep1Experience()}
+                    {fastStep === 2 && FastStep2Resume()}
+                    {hasQuestions && fastStep === 3 && StepQuestions()}
+                    {fastStep === totalFastSteps && FastStep3Review()}
+                  </>
+                ) : (
+                  <>
+                    {currentStep === 1 && Step1BasicDetails()}
+                    {currentStep === 2 && Step2Education()}
+                    {currentStep === 3 && Step3Experience()}
+                    {currentStep === 4 && Step4Professional()}
+                    {currentStep === 5 && Step5Documents()}
+                    {hasQuestions && currentStep === 6 && StepQuestions()}
+                    {currentStep === totalSteps && Step6Review()}
+                  </>
+                )}
 
-              {/* Footer Actions */}
-              {!isLoadingReview && (
-                <div className="mt-5 flex flex-col gap-3">
-                  {submitError && (
-                    <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm font-semibold border border-red-100 text-center mb-2">
-                      {submitError}
-                    </div>
-                  )}
-                  {(isOldUser ? fastStep < totalFastSteps : currentStep < totalSteps) ? (
-                    <button 
-                      type="button" 
-                      onClick={handleNext}
-                      className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-sm hover:bg-green-700 transition-colors"
-                    >
-                      {isOldUser ? 'Continue' : 'Save & Continue'}
-                    </button>
-                  ) : (
-                    <button 
-                      type="submit" 
-                      form="applicationForm"
-                      className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-sm hover:bg-green-700 transition-colors"
-                    >
-                      Submit Application
-                    </button>
-                  )}
-                  
-                  {(isOldUser ? fastStep > 1 : currentStep > 1) && (
-                    <button 
-                      type="button" 
-                      onClick={handleBack} 
-                      className="w-full py-3 text-gray-600 font-bold rounded-xl hover:bg-gray-50 transition-colors border border-gray-200"
-                    >
-                      Back
-                    </button>
-                  )}
-                </div>
+                {/* Footer Actions */}
+                {!isLoadingReview && (
+                  <div className="mt-5 flex flex-col gap-3">
+                    {submitError && (
+                      <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm font-semibold border border-red-100 text-center mb-2">
+                        {submitError}
+                      </div>
+                    )}
+                    {(isOldUser ? fastStep < totalFastSteps : currentStep < totalSteps) ? (
+                      <button 
+                        type="button" 
+                        onClick={handleNext}
+                        className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-sm hover:bg-green-700 transition-colors"
+                      >
+                        {isOldUser ? 'Continue' : 'Save & Continue'}
+                      </button>
+                    ) : (
+                      <button 
+                        type="submit" 
+                        form="applicationForm"
+                        className="w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-sm hover:bg-green-700 transition-colors"
+                      >
+                        Submit Application
+                      </button>
+                    )}
+                    
+                    {(isOldUser ? fastStep > 1 : currentStep > 1) && (
+                      <button 
+                        type="button" 
+                        onClick={handleBack} 
+                        className="w-full py-3 text-gray-600 font-bold rounded-xl hover:bg-gray-50 transition-colors border border-gray-200"
+                      >
+                        Back
+                      </button>
+                    )}
+                  </div>
               )}
             </form>
             )}
@@ -1740,8 +1929,12 @@ const p = formData.professionalDetails || {};
             {/* Header info */}
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200 flex items-center justify-center text-base">
-                  {job.companyInitial || (job.company ? job.company.charAt(0).toUpperCase() : 'J')}
+                <div className="w-10 h-10 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200 flex items-center justify-center text-base overflow-hidden">
+                  {(job.companyLogo || job.employerId?.companyLogo) ? (
+                    <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-contain p-0.5" />
+                  ) : (
+                    job.companyInitial || (job.company ? job.company.charAt(0).toUpperCase() : 'J')
+                  )}
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-700 text-sm">{job.company}</h3>
@@ -1828,36 +2021,40 @@ const p = formData.professionalDetails || {};
       </div>
 
       {/* Resume Preview Modal Popup */}
-      {isResumePreviewOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      {isResumePreviewOpen && createPortal(
+        <div 
+          className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          style={{ overscrollBehavior: 'contain' }}
+        >
+          {/* Backdrop */}
           <div 
-            className="fixed inset-0"
+            className="fixed inset-0 cursor-pointer"
             onClick={() => setIsResumePreviewOpen(false)}
           />
           
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200 z-10">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-200 z-10">
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50/70 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-green-50 text-green-700 border border-green-200 flex items-center justify-center font-bold">
+            <div className="flex justify-between items-center px-4 sm:px-6 py-3.5 border-b border-gray-200 bg-gray-50 shrink-0">
+              <div className="flex items-center gap-3 overflow-hidden mr-2">
+                <div className="w-10 h-10 rounded-xl bg-green-100 text-green-700 border border-green-200 flex items-center justify-center font-bold shrink-0">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-base leading-tight">
+                <div className="truncate">
+                  <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-tight truncate">
                     {getCleanFileName(fastFormData.resume || formData.documents?.resume || formData.resume)}
                   </h3>
                   <p className="text-xs text-gray-500">Resume Preview</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 {(fastFormData.resume || formData.documents?.resume || formData.resume)?.startsWith('http') && (
                   <button
                     type="button"
                     onClick={handleDownloadResume}
-                    className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    className="px-3.5 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1866,8 +2063,10 @@ const p = formData.professionalDetails || {};
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => setIsResumePreviewOpen(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+                  title="Close preview"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1876,21 +2075,28 @@ const p = formData.professionalDetails || {};
               </div>
             </div>
 
-            {/* Modal Body / PDF Viewer */}
-            <div className="flex-1 bg-gray-100 p-2 sm:p-4 overflow-hidden relative flex flex-col items-center justify-center">
+            {/* Modal Body / PDF Viewer with pure white background and clean presentation */}
+            <div className="flex-1 bg-white p-0 overflow-hidden relative flex flex-col items-center justify-center">
               {(() => {
                 const currentResume = fastFormData.resume || formData.documents?.resume || formData.resume;
-                if (currentResume && currentResume.startsWith('http')) {
+                if (currentResume && (currentResume.startsWith('http') || currentResume.startsWith('blob:') || currentResume.startsWith('data:'))) {
+                  const viewerUrl = currentResume.includes('google.com')
+                    ? currentResume 
+                    : `https://docs.google.com/viewer?url=${encodeURIComponent(currentResume)}&embedded=true`;
+
                   return (
-                    <iframe
-                      src={currentResume.includes('google.com') || currentResume.endsWith('.pdf') ? currentResume : `https://docs.google.com/viewer?url=${encodeURIComponent(currentResume)}&embedded=true`}
-                      title="Resume Preview"
-                      className="w-full h-full rounded-xl border border-gray-200 bg-white shadow-inner"
-                    />
+                    <div className="relative w-full h-full bg-white overflow-hidden">
+                      <iframe
+                        src={viewerUrl}
+                        title="Resume Preview"
+                        className="w-full h-full border-0 bg-white"
+                        style={{ border: 'none', background: '#ffffff', width: '100%', height: '100%' }}
+                      />
+                    </div>
                   );
                 }
                 return (
-                  <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center max-w-md shadow-sm">
+                  <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center max-w-md shadow-xs">
                     <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
                       <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
@@ -1903,7 +2109,8 @@ const p = formData.professionalDetails || {};
               })()}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

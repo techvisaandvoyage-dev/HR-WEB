@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import ManageJobs from './ManageJobs';
-const DashboardOverview = ({ jobs = [], candidates = [], toggleJobStatus }) => {
+const DashboardOverview = ({ employerProfile, employerName, jobs = [], candidates = [], toggleJobStatus }) => {
   const [selectedJob, setSelectedJob] = useState(null);
+
+  const displayName = employerName || employerProfile?.fullName || employerProfile?.companyName || 'Recruiter';
+  const displayInitial = ((employerProfile?.fullName || employerProfile?.companyName || displayName || 'C')[0] || 'C').toUpperCase();
 
   const chartData = [
     { name: 'Mon', apps: 12 },
@@ -44,7 +47,7 @@ const DashboardOverview = ({ jobs = [], candidates = [], toggleJobStatus }) => {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-[26px] font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            Welcome back, Recruiter! <span className="text-2xl">👋</span>
+            Welcome back, {displayName}! <span className="text-2xl">👋</span>
           </h1>
           <p className="text-gray-500 text-sm mt-1">Here's what's happening with your job posting today.</p>
         </div>
@@ -56,8 +59,12 @@ const DashboardOverview = ({ jobs = [], candidates = [], toggleJobStatus }) => {
           >
             <span className="text-lg leading-none">+</span> Post New Job
           </Link>
-          <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm cursor-pointer">
-            C
+          <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm cursor-pointer overflow-hidden" title={displayName}>
+            {employerProfile?.companyLogo ? (
+              <img src={employerProfile.companyLogo} alt={displayName} className="w-full h-full object-contain p-0.5" />
+            ) : (
+              displayInitial
+            )}
           </div>
         </div>
       </div>

@@ -72,6 +72,14 @@ const homepageConfigSchema = new mongoose.Schema({
   employeeOnboarding: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  employerRegister: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  employerLogin: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true,

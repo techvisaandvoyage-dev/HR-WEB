@@ -177,8 +177,8 @@ const AllEmployeesTab = () => {
       {/* Top Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">All Employees</h1>
-          <p className="text-gray-500 text-sm mt-1">Browse all registered employees on the platform.</p>
+          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">Candidates</h1>
+          <p className="text-gray-500 text-sm mt-1">Browse and discover qualified candidates & talent on the platform.</p>
         </div>
       </div>
 
@@ -281,19 +281,19 @@ const AllEmployeesTab = () => {
           </div>
         </div>
 
-        {/* Employees Table */}
+        {/* Candidates Table */}
         <div className="overflow-x-auto">
           {loading ? (
-            <p className="text-center text-gray-500 py-8">Loading employees...</p>
+            <p className="text-center text-gray-500 py-8">Loading candidates...</p>
           ) : error ? (
             <p className="text-center text-red-500 py-8">{error}</p>
           ) : filteredEmployees.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">No employees found.</p>
+            <p className="text-center text-gray-500 py-8">No candidates found.</p>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="text-xs text-gray-400 border-b border-gray-100">
-                  <th className="px-6 py-4 font-semibold pb-4">Employee</th>
+                  <th className="px-6 py-4 font-semibold pb-4">Candidate</th>
                   <th className="px-6 py-4 font-semibold pb-4">Role & Exp</th>
                   <th className="px-6 py-4 font-semibold pb-4">Function</th>
                   <th className="px-6 py-4 font-semibold pb-4">Phone</th>

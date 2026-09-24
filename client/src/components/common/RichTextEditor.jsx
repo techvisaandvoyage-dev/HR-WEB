@@ -43,7 +43,7 @@ const RichTextEditor = ({
   className = ''
 }) => {
   return (
-    <div className={`rich-text-editor-container rounded-xl overflow-hidden border border-gray-200 bg-white focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f]/20 transition-all ${className}`}>
+    <div className={`rich-text-editor-container w-full max-w-full rounded-xl overflow-hidden border border-gray-200 bg-white focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f]/20 transition-all ${className}`}>
       <ReactQuill
         theme="snow"
         value={value || ''}
@@ -54,6 +54,11 @@ const RichTextEditor = ({
         style={{ minHeight }}
       />
       <style>{`
+        .rich-text-editor-container {
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
         .rich-text-editor-container .ql-toolbar.ql-snow {
           border: none;
           border-bottom: 1px solid #f3f4f6;
@@ -61,17 +66,35 @@ const RichTextEditor = ({
           padding: 8px 10px;
           border-top-left-radius: 0.75rem;
           border-top-right-radius: 0.75rem;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 2px;
         }
         .rich-text-editor-container .ql-container.ql-snow {
           border: none;
           font-family: inherit;
           font-size: 14px;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
         }
         .rich-text-editor-container .ql-editor {
           min-height: ${minHeight};
           padding: 14px 16px;
           line-height: 1.6;
           color: #1f2937;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          white-space: pre-wrap;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .rich-text-editor-container .ql-editor * {
+          word-break: break-word;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+          max-width: 100%;
         }
         .rich-text-editor-container .ql-editor.ql-blank::before {
           color: #9ca3af;
@@ -117,13 +140,13 @@ const RichTextEditor = ({
         .rich-text-editor-container .ql-snow .ql-toolbar button:focus .ql-fill,
         .rich-text-editor-container .ql-snow.ql-toolbar button.ql-active .ql-fill,
         .rich-text-editor-container .ql-snow .ql-toolbar button.ql-active .ql-fill,
-        .rich-text-editor-container .ql-snow.ql-toolbar .ql-picker-label:hover .ql-fill,
         .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-label:hover .ql-fill,
-        .rich-text-editor-container .ql-snow.ql-toolbar .ql-picker-label.ql-active .ql-fill,
+        .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-label:hover .ql-fill,
         .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-label.ql-active .ql-fill,
-        .rich-text-editor-container .ql-snow.ql-toolbar .ql-picker-item:hover .ql-fill,
+        .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-label.ql-active .ql-fill,
         .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-item:hover .ql-fill,
-        .rich-text-editor-container .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-fill,
+        .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-item:hover .ql-fill,
+        .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-fill,
         .rich-text-editor-container .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-fill {
           fill: #29953f;
         }

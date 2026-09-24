@@ -28,6 +28,8 @@ import {
   SlidersHorizontal,
   GripVertical,
   X,
+  Pencil,
+  Check,
   MapPin,
   Search,
   Building2,
@@ -98,22 +100,132 @@ export const DEFAULT_LOCATION_CITIES = [
   'Goa', 'Remote', 'Dubai', 'Singapore', 'Abu Dhabi', 'London', 'USA'
 ];
 
+export const DEFAULT_SCHOOL_BOARDS = [
+  'CBSE (Central Board of Secondary Education)',
+  'ICSE / ISC (Council for the Indian School Certificate Examinations)',
+  'NIOS (National Institute of Open Schooling)',
+  'IB (International Baccalaureate)',
+  'Cambridge International (IGCSE / A-Levels)',
+  'UP Board (UPMSP - Uttar Pradesh)',
+  'Bihar Board (BSEB - Bihar)',
+  'Maharashtra Board (MSBSHSE - Maharashtra)',
+  'Rajasthan Board (RBSE / BSER - Rajasthan)',
+  'MP Board (MPBSE - Madhya Pradesh)',
+  'Gujarat Board (GSEB - Gujarat)',
+  'Haryana Board (HBSE / BSEH - Haryana)',
+  'Delhi Board (DBSE - Delhi)',
+  'Jharkhand Board (JAC - Jharkhand)',
+  'Karnataka Board (KSEEB / KSEAB - Karnataka)',
+  'Punjab Board (PSEB - Punjab)',
+  'West Bengal Board (WBBSE / WBCHSE - West Bengal)',
+  'Tamil Nadu Board (TNDGE - Tamil Nadu)',
+  'Telangana Board (TSBIE / BSE - Telangana)',
+  'Andhra Pradesh Board (BSEAP / BIEAP - Andhra Pradesh)',
+  'Kerala Board (KBPE / DHSE - Kerala)',
+  'Odisha Board (BSE / CHSE - Odisha)',
+  'Assam Board (SEBA / AHSEC - Assam)',
+  'Chhattisgarh Board (CGBSE - Chhattisgarh)',
+  'Himachal Pradesh Board (HPBOSE - Himachal Pradesh)',
+  'Jammu & Kashmir Board (JKBOSE - J&K)',
+  'Uttarakhand Board (UBSE - Uttarakhand)',
+  'Goa Board (GBSHSE - Goa)',
+  'Manipur Board (BOSEM / COHSEM - Manipur)',
+  'Meghalaya Board (MBOSE - Meghalaya)',
+  'Mizoram Board (MBSE - Mizoram)',
+  'Nagaland Board (NBSE - Nagaland)',
+  'Tripura Board (TBSE - Tripura)',
+  'Arunachal Pradesh State Board',
+  'Sikkim State Board',
+  'Other State Board',
+  'Other Board'
+];
+
+export const DEFAULT_GRADUATION_COURSES = [
+  'B.Tech / B.E. (Bachelor of Technology / Engineering)',
+  'B.Com (Bachelor of Commerce)',
+  'B.Com (Hons.)',
+  'B.Com in Accounting & Finance (BAF)',
+  'B.Com in Banking & Insurance (BBI)',
+  'B.Com in Financial Markets (BFM)',
+  'B.Sc (Bachelor of Science)',
+  'B.Sc in Computer Science',
+  'B.Sc in Information Technology (IT)',
+  'B.Sc in Nursing',
+  'B.Sc in Agriculture',
+  'B.Sc in Biotechnology',
+  'BCA (Bachelor of Computer Applications)',
+  'BBA (Bachelor of Business Administration)',
+  'BMS (Bachelor of Management Studies)',
+  'B.A (Bachelor of Arts)',
+  'B.A (Hons.) in Economics',
+  'B.A (Hons.) in English',
+  'B.A (Hons.) in Psychology',
+  'LLB (Bachelor of Legislative Law - 3 Years)',
+  'Integrated B.A. LL.B / B.Com. LL.B / BBA. LL.B',
+  'B.Pharm (Bachelor of Pharmacy)',
+  'Pharm.D (Doctor of Pharmacy)',
+  'MBBS (Bachelor of Medicine, Bachelor of Surgery)',
+  'BDS (Bachelor of Dental Surgery)',
+  'BPT (Bachelor of Physiotherapy)',
+  'BAMS / BHMS / BUMS (Ayurveda / Homeopathy)',
+  'B.Des (Bachelor of Design)',
+  'B.Arch (Bachelor of Architecture)',
+  'B.Ed (Bachelor of Education)',
+  'BHM (Bachelor of Hotel Management)',
+  'B.Voc (Bachelor of Vocation)',
+  'Diploma in Engineering / Polytechnic',
+  'Diploma in Pharmacy (D.Pharm)',
+  'General Nursing and Midwifery (GNM)',
+  'ITI Certification',
+  'Other Bachelor Degree / Diploma'
+];
+
+export const DEFAULT_MASTERS_COURSES = [
+  'MBA (Master of Business Administration)',
+  'PGDM (Post Graduate Diploma in Management)',
+  'Executive MBA / PGPM',
+  'M.Com (Master of Commerce)',
+  'M.Com in Accounting & Finance',
+  'M.Tech / M.E. (Master of Technology / Engineering)',
+  'MCA (Master of Computer Applications)',
+  'M.Sc (Master of Science)',
+  'M.Sc in Computer Science / IT',
+  'M.Sc in Data Science / AI / ML',
+  'M.Sc in Biotechnology / Microbiology',
+  'M.Sc in Nursing',
+  'M.A (Master of Arts)',
+  'M.A in Economics',
+  'M.A in Psychology',
+  'M.A in English',
+  'LLM (Master of Laws)',
+  'M.Pharm (Master of Pharmacy)',
+  'MD / MS (Doctor of Medicine / Master of Surgery)',
+  'MDS (Master of Dental Surgery)',
+  'MPT (Master of Physiotherapy)',
+  'M.Des (Master of Design)',
+  'M.Arch (Master of Architecture)',
+  'M.Ed (Master of Education)',
+  'MS (Master of Science - Global / Tech)',
+  'Ph.D. / Doctorate',
+  'Other Master / Post Graduate Degree'
+];
+
 export const DEFAULT_EDUCATION_DATA = {
   '10th': {
     category: 'school',
-    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+    options: [...DEFAULT_SCHOOL_BOARDS]
   },
   '12th': {
     category: 'school',
-    options: ['CBSE', 'ICSE', 'State Board', 'IB (International Baccalaureate)', 'NIOS', 'Other Board']
+    options: [...DEFAULT_SCHOOL_BOARDS]
   },
   'Graduation/Diploma': {
     category: 'higher',
-    options: ['B.Tech/B.E.', 'B.Sc', 'B.Com', 'B.A', 'BBA', 'BCA', 'B.Des', 'Diploma in Engineering', 'Polytechnic', 'Other']
+    options: [...DEFAULT_GRADUATION_COURSES]
   },
   'Masters/Post-Graduation': {
     category: 'higher',
-    options: ['M.Tech/M.E.', 'M.Sc', 'M.Com', 'M.A', 'MBA/PGDM', 'MCA', 'M.Des', 'MS', 'Other']
+    options: [...DEFAULT_MASTERS_COURSES]
   },
   'Accounting Degree': {
     category: 'higher',
@@ -432,6 +544,7 @@ export default function EmployeesTab() {
   const [draggedSkillIndex, setDraggedSkillIndex] = useState(null);
   const [dragOverSkillIndex, setDragOverSkillIndex] = useState(null);
   const [previewSalaryType, setPreviewSalaryType] = useState('Yearly');
+  const [previewVideoTab, setPreviewVideoTab] = useState('upload');
 
   // 1. Employee Register CMS State
   const [registerConfig, setRegisterConfig] = useState({
@@ -546,11 +659,22 @@ export default function EmployeesTab() {
     },
     step5: {
       title: 'Documents & Media',
-      subtitle: 'Manage your introductory video, resume, and cover letter.',
+      subtitle: 'Upload your resume, cover letter, and introductory video',
+      videoConfig: {
+        sectionTitle: 'Introductory Video',
+        sectionSubtitle: 'Upload MP4/MOV (Max 3 mins, 200MB) or attach video link',
+        uploadTabLabel: 'Upload File',
+        linkTabLabel: 'Paste Link',
+        uploadDropzoneTitle: 'Click or drag video to upload',
+        uploadDropzoneSubtitle: 'MP4, MOV, WebM up to 200MB (Max 3 mins)',
+        linkInputPlaceholder: 'e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link',
+        linkAttachButtonText: 'Attach',
+        linkHelpText: 'Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.'
+      },
       fields: {
-        resume: { label: 'Upload Resume', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: true },
-        coverLetter: { label: 'Upload Cover Letter', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: false },
-        introVideo: { label: 'Introductory Video', placeholder: 'Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.', isRequired: false }
+        resume: { label: 'Resume (PDF/DOCX)', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: true },
+        coverLetter: { label: 'Cover Letter', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: false },
+        introVideo: { label: 'Introductory Video', placeholder: 'Upload MP4/MOV or attach video link', isRequired: false }
       }
     },
     step6: {
@@ -609,9 +733,21 @@ export default function EmployeesTab() {
             step2: {
               ...prev.step2,
               ...(data.data.employeeOnboarding.step2 || {}),
-              educationData: (data.data.employeeOnboarding.step2?.educationData && typeof data.data.employeeOnboarding.step2.educationData === 'object' && Object.keys(data.data.employeeOnboarding.step2.educationData).length > 0)
-                ? data.data.employeeOnboarding.step2.educationData
-                : (prev.step2?.educationData || DEFAULT_EDUCATION_DATA),
+              educationData: (() => {
+                const incoming = data.data.employeeOnboarding.step2?.educationData;
+                if (incoming && typeof incoming === 'object' && Object.keys(incoming).length > 0) {
+                  const merged = { ...DEFAULT_EDUCATION_DATA, ...incoming };
+                  // If 10th or 12th has legacy 6 boards or empty, upgrade them to full DEFAULT_EDUCATION_DATA boards
+                  if (merged['10th'] && (!merged['10th'].options || merged['10th'].options.length <= 6)) {
+                    merged['10th'] = { ...merged['10th'], category: 'school', options: [...DEFAULT_SCHOOL_BOARDS] };
+                  }
+                  if (merged['12th'] && (!merged['12th'].options || merged['12th'].options.length <= 6)) {
+                    merged['12th'] = { ...merged['12th'], category: 'school', options: [...DEFAULT_SCHOOL_BOARDS] };
+                  }
+                  return merged;
+                }
+                return prev.step2?.educationData || DEFAULT_EDUCATION_DATA;
+              })(),
               educationTypes: (Array.isArray(data.data.employeeOnboarding.step2?.educationTypes) && data.data.employeeOnboarding.step2.educationTypes.length > 0)
                 ? data.data.employeeOnboarding.step2.educationTypes
                 : (prev.step2?.educationTypes || DEFAULT_EDUCATION_TYPES),
@@ -650,8 +786,41 @@ export default function EmployeesTab() {
             },
             step5: {
               ...prev.step5,
-              ...(data.data.employeeOnboarding.step5 || {}),
-              fields: { ...prev.step5.fields, ...(data.data.employeeOnboarding.step5?.fields || {}) }
+              title: data.data.employeeOnboarding.step5?.title || 'Documents & Media',
+              subtitle: data.data.employeeOnboarding.step5?.subtitle || 'Upload your resume, cover letter, and introductory video',
+              videoConfig: {
+                sectionTitle: data.data.employeeOnboarding.step5?.videoConfig?.sectionTitle || data.data.employeeOnboarding.step5?.fields?.introVideo?.label || 'Introductory Video',
+                sectionSubtitle: data.data.employeeOnboarding.step5?.videoConfig?.sectionSubtitle || (data.data.employeeOnboarding.step5?.fields?.introVideo?.placeholder && !data.data.employeeOnboarding.step5.fields.introVideo.placeholder.includes('Short video') ? data.data.employeeOnboarding.step5.fields.introVideo.placeholder : 'Upload MP4/MOV (Max 3 mins, 200MB) or attach video link'),
+                uploadTabLabel: data.data.employeeOnboarding.step5?.videoConfig?.uploadTabLabel || 'Upload File',
+                linkTabLabel: data.data.employeeOnboarding.step5?.videoConfig?.linkTabLabel || 'Paste Link',
+                uploadDropzoneTitle: data.data.employeeOnboarding.step5?.videoConfig?.uploadDropzoneTitle || 'Click or drag video to upload',
+                uploadDropzoneSubtitle: data.data.employeeOnboarding.step5?.videoConfig?.uploadDropzoneSubtitle || 'MP4, MOV, WebM up to 200MB (Max 3 mins)',
+                linkInputPlaceholder: data.data.employeeOnboarding.step5?.videoConfig?.linkInputPlaceholder || 'e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link',
+                linkAttachButtonText: data.data.employeeOnboarding.step5?.videoConfig?.linkAttachButtonText || 'Attach',
+                linkHelpText: data.data.employeeOnboarding.step5?.videoConfig?.linkHelpText || 'Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.',
+                ...(data.data.employeeOnboarding.step5?.videoConfig || {})
+              },
+              fields: {
+                resume: { 
+                  label: data.data.employeeOnboarding.step5?.fields?.resume?.label || 'Resume (PDF/DOCX)', 
+                  placeholder: (!data.data.employeeOnboarding.step5?.fields?.resume?.placeholder || data.data.employeeOnboarding.step5.fields.resume.placeholder.includes('5MB') || data.data.employeeOnboarding.step5.fields.resume.placeholder === 'Upload PDF or DOCX (Max 5MB)' || data.data.employeeOnboarding.step5.fields.resume.placeholder.toLowerCase().includes('pdf or docx')) 
+                    ? 'Supported Formats: doc, docx, pdf, upto 300KB' 
+                    : data.data.employeeOnboarding.step5.fields.resume.placeholder, 
+                  isRequired: data.data.employeeOnboarding.step5?.fields?.resume?.isRequired !== undefined ? data.data.employeeOnboarding.step5.fields.resume.isRequired : true 
+                },
+                coverLetter: { 
+                  label: data.data.employeeOnboarding.step5?.fields?.coverLetter?.label || 'Cover Letter', 
+                  placeholder: (!data.data.employeeOnboarding.step5?.fields?.coverLetter?.placeholder || data.data.employeeOnboarding.step5.fields.coverLetter.placeholder.includes('5MB') || data.data.employeeOnboarding.step5.fields.coverLetter.placeholder === 'Upload Cover Letter (PDF/DOCX)' || data.data.employeeOnboarding.step5.fields.coverLetter.placeholder.toLowerCase().includes('cover letter (pdf/docx)')) 
+                    ? 'Supported Formats: doc, docx, pdf, upto 300KB' 
+                    : data.data.employeeOnboarding.step5.fields.coverLetter.placeholder, 
+                  isRequired: data.data.employeeOnboarding.step5?.fields?.coverLetter?.isRequired !== undefined ? data.data.employeeOnboarding.step5.fields.coverLetter.isRequired : false 
+                },
+                introVideo: { 
+                  label: data.data.employeeOnboarding.step5?.fields?.introVideo?.label || 'Introductory Video', 
+                  placeholder: data.data.employeeOnboarding.step5?.fields?.introVideo?.placeholder || 'Upload MP4/MOV or attach video link', 
+                  isRequired: data.data.employeeOnboarding.step5?.fields?.introVideo?.isRequired !== undefined ? data.data.employeeOnboarding.step5.fields.introVideo.isRequired : false 
+                }
+              }
             },
             step6: {
               ...prev.step6,
@@ -1112,6 +1281,67 @@ export default function EmployeesTab() {
   };
 
   // Education Types & Linked Courses / Boards management (Step 2) Handlers
+  const [editingEduKey, setEditingEduKey] = useState(null);
+  const [editingEduName, setEditingEduName] = useState('');
+
+  const handleStartRenameEduType = (eduKey, e) => {
+    if (e) e.stopPropagation();
+    setEditingEduKey(eduKey);
+    setEditingEduName(eduKey);
+  };
+
+  const handleCancelRenameEduType = (e) => {
+    if (e) e.stopPropagation();
+    setEditingEduKey(null);
+    setEditingEduName('');
+  };
+
+  const handleSaveRenameEduType = (oldKey, e) => {
+    if (e) e.stopPropagation();
+    const trimmed = editingEduName.trim();
+    if (!trimmed || trimmed === oldKey) {
+      setEditingEduKey(null);
+      setEditingEduName('');
+      return;
+    }
+
+    setOnboardingConfig(prev => {
+      const currentEduData = prev.step2?.educationData || DEFAULT_EDUCATION_DATA;
+      const currentEduTypes = prev.step2?.educationTypes || Object.keys(currentEduData);
+
+      if (currentEduData[trimmed] && trimmed !== oldKey) {
+        alert(`An education type named "${trimmed}" already exists.`);
+        return prev;
+      }
+
+      const newEduData = {};
+      Object.keys(currentEduData).forEach(k => {
+        if (k === oldKey) {
+          newEduData[trimmed] = currentEduData[oldKey];
+        } else {
+          newEduData[k] = currentEduData[k];
+        }
+      });
+
+      const newEduTypes = currentEduTypes.map(k => k === oldKey ? trimmed : k);
+
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          educationData: newEduData,
+          educationTypes: newEduTypes
+        }
+      };
+    });
+
+    if (selectedEduType === oldKey) {
+      setSelectedEduType(trimmed);
+    }
+    setEditingEduKey(null);
+    setEditingEduName('');
+  };
+
   const handleAddEducationType = () => {
     const trimmed = newEducationType.trim();
     if (!trimmed) return;
@@ -1128,7 +1358,7 @@ export default function EmployeesTab() {
             ...currentEduData,
             [trimmed]: {
               category: newEduCategory,
-              options: []
+              options: newEduCategory === 'school' ? [...DEFAULT_SCHOOL_BOARDS] : []
             }
           },
           educationTypes: [...Object.keys(currentEduData), trimmed]
@@ -1145,6 +1375,10 @@ export default function EmployeesTab() {
       if (!currentEduData[eduKey]) return prev;
       const currentCat = currentEduData[eduKey].category || 'higher';
       const nextCat = currentCat === 'school' ? 'higher' : 'school';
+      let nextOptions = currentEduData[eduKey].options || [];
+      if (nextCat === 'school' && nextOptions.length === 0) {
+        nextOptions = [...DEFAULT_SCHOOL_BOARDS];
+      }
       return {
         ...prev,
         step2: {
@@ -1153,7 +1387,8 @@ export default function EmployeesTab() {
             ...currentEduData,
             [eduKey]: {
               ...currentEduData[eduKey],
-              category: nextCat
+              category: nextCat,
+              options: nextOptions
             }
           }
         }
@@ -1960,6 +2195,7 @@ export default function EmployeesTab() {
 
   const step2FieldKeys = [
     { key: 'educationType', title: 'Education' },
+    { key: 'board', title: 'Board' },
     { key: 'university', title: 'University / Institute' },
     { key: 'course', title: 'Course' },
     { key: 'schoolMedium', title: 'Medium' },
@@ -1989,9 +2225,9 @@ export default function EmployeesTab() {
   ];
 
   const step5FieldKeys = [
-    { key: 'resume', title: 'Upload Resume' },
-    { key: 'coverLetter', title: 'Upload Cover Letter' },
-    { key: 'introVideo', title: 'Introductory Video' }
+    { key: 'resume', title: 'Upload Resume', defaultLabel: 'Resume (PDF/DOCX)', defaultPlaceholder: 'Supported Formats: doc, docx, pdf, upto 300KB', defaultRequired: true },
+    { key: 'coverLetter', title: 'Upload Cover Letter', defaultLabel: 'Cover Letter', defaultPlaceholder: 'Supported Formats: doc, docx, pdf, upto 300KB', defaultRequired: false },
+    { key: 'introVideo', title: 'Introductory Video', defaultLabel: 'Introductory Video', defaultPlaceholder: 'Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.', defaultRequired: false }
   ];
 
   return (
@@ -3753,6 +3989,21 @@ export default function EmployeesTab() {
                                   </button>
                                 )}
 
+                                {item.key === 'board' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedEduType('10th');
+                                      setIsEducationModalOpen(true);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                                    title="Open School Boards Management Popup"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Edit School Boards</span>
+                                  </button>
+                                )}
+
                                 {item.key === 'courseType' && (
                                   <button
                                     type="button"
@@ -3992,12 +4243,16 @@ export default function EmployeesTab() {
                                   return (
                                     <div
                                       key={eduKey}
-                                      draggable
+                                      draggable={editingEduKey !== eduKey}
                                       onDragStart={(e) => handleEduDragStart(e, fIdx)}
                                       onDragOver={(e) => handleEduDragOver(e, fIdx)}
                                       onDrop={(e) => handleEduDrop(e, fIdx)}
                                       onDragEnd={handleEduDragEnd}
-                                      onClick={() => setSelectedEduType(eduKey)}
+                                      onClick={() => {
+                                        if (editingEduKey !== eduKey) {
+                                          setSelectedEduType(eduKey);
+                                        }
+                                      }}
                                       className={`relative flex items-center justify-between p-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 select-none ${
                                         isDragging
                                           ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
@@ -4013,52 +4268,103 @@ export default function EmployeesTab() {
                                         <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
                                       )}
 
-                                      <div className="flex items-center gap-1.5 truncate">
-                                        {/* Drag Handle Icon */}
-                                        <span 
-                                          className={`cursor-grab active:cursor-grabbing p-0.5 rounded transition-colors ${
-                                            isSelected ? 'text-emerald-200 hover:text-white' : 'text-gray-400 hover:text-gray-700'
-                                          }`}
-                                          title="Drag to change position"
-                                          onMouseDown={(e) => e.stopPropagation()}
+                                      {editingEduKey === eduKey ? (
+                                        <div 
+                                          className="flex items-center gap-1.5 w-full"
+                                          onClick={(e) => e.stopPropagation()}
                                         >
-                                          <GripVertical className="w-3.5 h-3.5" />
-                                        </span>
+                                          <input
+                                            type="text"
+                                            value={editingEduName}
+                                            onChange={(e) => setEditingEduName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') handleSaveRenameEduType(eduKey, e);
+                                              if (e.key === 'Escape') handleCancelRenameEduType(e);
+                                            }}
+                                            autoFocus
+                                            className="flex-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-emerald-400 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleSaveRenameEduType(eduKey, e)}
+                                            disabled={!editingEduName.trim()}
+                                            className="p-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition-colors cursor-pointer disabled:opacity-40"
+                                            title="Save name"
+                                          >
+                                            <Check className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={handleCancelRenameEduType}
+                                            className="p-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors cursor-pointer"
+                                            title="Cancel"
+                                          >
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <div className="flex items-center gap-1.5 truncate">
+                                            {/* Drag Handle Icon */}
+                                            <span 
+                                              className={`cursor-grab active:cursor-grabbing p-0.5 rounded transition-colors ${
+                                                isSelected ? 'text-emerald-200 hover:text-white' : 'text-gray-400 hover:text-gray-700'
+                                              }`}
+                                              title="Drag to change position"
+                                              onMouseDown={(e) => e.stopPropagation()}
+                                            >
+                                              <GripVertical className="w-3.5 h-3.5" />
+                                            </span>
 
-                                        <span className="truncate">{eduKey}</span>
-                                      </div>
+                                            <span className="truncate">{eduKey}</span>
+                                          </div>
 
-                                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                        {/* Category Badge */}
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${
-                                          isSelected
-                                            ? isSchool ? 'bg-amber-500 text-white' : 'bg-emerald-700 text-emerald-100'
-                                            : isSchool ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'
-                                        }`}>
-                                          {isSchool ? '🏫 Board' : '🎓 Course'}
-                                        </span>
+                                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                            {/* Category Badge */}
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                                              isSelected
+                                                ? isSchool ? 'bg-amber-500 text-white' : 'bg-emerald-700 text-emerald-100'
+                                                : isSchool ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700'
+                                            }`}>
+                                              {isSchool ? '🏫 Board' : '🎓 Course'}
+                                            </span>
 
-                                        {/* Options count */}
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                                          isSelected ? 'bg-emerald-800/80 text-emerald-100' : 'bg-gray-100 text-gray-500'
-                                        }`}>
-                                          {optCount}
-                                        </span>
+                                            {/* Options count */}
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                              isSelected ? 'bg-emerald-800/80 text-emerald-100' : 'bg-gray-100 text-gray-500'
+                                            }`}>
+                                              {optCount}
+                                            </span>
 
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteEducationType(eduKey);
-                                          }}
-                                          className={`p-1 rounded hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${
-                                            isSelected ? 'text-emerald-200' : 'text-gray-400 hover:text-red-600'
-                                          }`}
-                                          title={`Delete education type "${eduKey}"`}
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
+                                            {/* Edit Button */}
+                                            <button
+                                              type="button"
+                                              onClick={(e) => handleStartRenameEduType(eduKey, e)}
+                                              className={`p-1 rounded hover:bg-blue-500 hover:text-white transition-colors cursor-pointer ${
+                                                isSelected ? 'text-emerald-200 hover:bg-emerald-700' : 'text-gray-400 hover:text-blue-600'
+                                              }`}
+                                              title={`Edit text for "${eduKey}"`}
+                                            >
+                                              <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+
+                                            {/* Delete Button */}
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteEducationType(eduKey);
+                                              }}
+                                              className={`p-1 rounded hover:bg-red-500 hover:text-white transition-colors cursor-pointer ${
+                                                isSelected ? 'text-emerald-200' : 'text-gray-400 hover:text-red-600'
+                                              }`}
+                                              title={`Delete education type "${eduKey}"`}
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
                                     </div>
                                   );
                                 })}
@@ -4125,32 +4431,32 @@ export default function EmployeesTab() {
 
                               {/* Add Option Input */}
                               {activeKey ? (
-                                <div className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    placeholder={`Add new ${isSchoolActive ? 'Board (e.g. CBSE, ICSE, State Board)' : 'Course / Degree (e.g. B.Tech, M.Com, CA, MBA)'}...`}
-                                    value={newEduOptionName}
-                                    onChange={(e) => setNewEduOptionName(e.target.value)}
-                                    onKeyDown={(e) => { 
-                                      if (e.key === 'Enter') { 
-                                        e.preventDefault(); 
-                                        if (trimmedOptName && !isOptDuplicate) handleAddEduOption(); 
-                                      } 
-                                    }}
-                                    className={`flex-1 px-3 py-1.5 bg-white border rounded-lg text-xs font-medium focus:outline-none transition-all ${
-                                      isOptDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
-                                    }`}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={handleAddEduOption}
-                                    disabled={!trimmedOptName || isOptDuplicate}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>Add {isSchoolActive ? 'Board' : 'Course'}</span>
-                                  </button>
-                                </div>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder={`Add new ${isSchoolActive ? 'Board (e.g. CBSE, ICSE, State Board)' : 'Course / Degree (e.g. B.Tech, M.Com, CA, MBA)'}...`}
+                                      value={newEduOptionName}
+                                      onChange={(e) => setNewEduOptionName(e.target.value)}
+                                      onKeyDown={(e) => { 
+                                        if (e.key === 'Enter') { 
+                                          e.preventDefault(); 
+                                          if (trimmedOptName && !isOptDuplicate) handleAddEduOption(); 
+                                        } 
+                                      }}
+                                      className={`flex-1 px-3 py-1.5 bg-white border rounded-lg text-xs font-medium focus:outline-none transition-all ${
+                                        isOptDuplicate ? 'border-amber-400 ring-1 ring-amber-100' : 'border-gray-200 focus:border-emerald-500'
+                                      }`}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={handleAddEduOption}
+                                      disabled={!trimmedOptName || isOptDuplicate}
+                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>Add {isSchoolActive ? 'Board' : 'Course'}</span>
+                                    </button>
+                                  </div>
                               ) : (
                                 <p className="text-xs text-gray-400 italic">Select an education type from the left to manage options.</p>
                               )}
@@ -6101,6 +6407,36 @@ export default function EmployeesTab() {
                                 <option value="USD">USD ($)</option>
                                 <option value="EUR">EUR (€)</option>
                                 <option value="GBP">GBP (£)</option>
+                                <option value="AED">AED (د.إ)</option>
+                                <option value="CAD">CAD ($)</option>
+                                <option value="AUD">AUD ($)</option>
+                                <option value="SGD">SGD ($)</option>
+                                <option value="SAR">SAR (﷼)</option>
+                                <option value="QAR">QAR (﷼)</option>
+                                <option value="OMR">OMR (﷼)</option>
+                                <option value="KWD">KWD (د.ك)</option>
+                                <option value="BHD">BHD (.د.ب)</option>
+                                <option value="JPY">JPY (¥)</option>
+                                <option value="CNY">CNY (¥)</option>
+                                <option value="CHF">CHF (Fr)</option>
+                                <option value="HKD">HKD ($)</option>
+                                <option value="NZD">NZD ($)</option>
+                                <option value="MYR">MYR (RM)</option>
+                                <option value="ZAR">ZAR (R)</option>
+                                <option value="THB">THB (฿)</option>
+                                <option value="PHP">PHP (₱)</option>
+                                <option value="IDR">IDR (Rp)</option>
+                                <option value="VND">VND (₫)</option>
+                                <option value="BRL">BRL (R$)</option>
+                                <option value="RUB">RUB (₽)</option>
+                                <option value="KRW">KRW (₩)</option>
+                                <option value="TRY">TRY (₺)</option>
+                                <option value="MXN">MXN ($)</option>
+                                <option value="EGP">EGP (E£)</option>
+                                <option value="LKR">LKR (Rs)</option>
+                                <option value="PKR">PKR (Rs)</option>
+                                <option value="BDT">BDT (৳)</option>
+                                <option value="NPR">NPR (Rs)</option>
                               </select>
                             </div>
                           </div>
@@ -6207,8 +6543,12 @@ export default function EmployeesTab() {
                     </div>
 
                     <div className="space-y-4 pt-2">
-                      {step5FieldKeys.map(item => {
-                        const fieldData = onboardingConfig.step5?.fields?.[item.key] || { label: item.title, placeholder: '', isRequired: item.key === 'resume' };
+                      {step5FieldKeys.filter(k => k.key !== 'introVideo').map(item => {
+                        const defaultStep5Fields = {
+                          resume: { label: 'Resume (PDF/DOCX)', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: true },
+                          coverLetter: { label: 'Cover Letter', placeholder: 'Supported Formats: doc, docx, pdf, upto 300KB', isRequired: false }
+                        };
+                        const fieldData = onboardingConfig.step5?.fields?.[item.key] || defaultStep5Fields[item.key] || { label: item.defaultLabel || item.title, placeholder: item.defaultPlaceholder || '', isRequired: item.key === 'resume' };
                         const isReq = fieldData.isRequired !== false;
                         return (
                           <div key={item.key} className="p-4 bg-gray-50/80 rounded-xl border border-gray-200/70 space-y-3">
@@ -6265,6 +6605,159 @@ export default function EmployeesTab() {
                           </div>
                         );
                       })}
+
+                      {/* Introductory Video & Paste Link Full Customization Card */}
+                      {(() => {
+                        const vCfg = onboardingConfig.step5?.videoConfig || {};
+                        const vReq = onboardingConfig.step5?.fields?.introVideo?.isRequired === true;
+                        
+                        const updateVideoCfg = (key, val) => {
+                          setOnboardingConfig(prev => ({
+                            ...prev,
+                            step5: {
+                              ...prev.step5,
+                              videoConfig: {
+                                ...(prev.step5?.videoConfig || {}),
+                                [key]: val
+                              }
+                            }
+                          }));
+                        };
+
+                        return (
+                          <div className="p-5 bg-gradient-to-br from-emerald-50/50 via-white to-gray-50/80 rounded-2xl border border-emerald-200/80 shadow-2xs space-y-4">
+                            <div className="flex items-center justify-between border-b border-emerald-100/80 pb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                  <Video className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <span className="text-xs font-extrabold text-gray-900 block">
+                                    Introductory Video & Link Customization
+                                  </span>
+                                  <span className="text-[10px] text-gray-500 font-medium">
+                                    Customize all labels, tabs, dropzone texts, URL placeholder, and attach button
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOnboardingMandatoryToggle('step5', 'introVideo')}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                  vReq
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                                }`}
+                              >
+                                {vReq ? (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Mandatory (*)
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                    Optional
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Section Title</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.sectionTitle !== undefined ? vCfg.sectionTitle : 'Introductory Video'}
+                                  onChange={(e) => updateVideoCfg('sectionTitle', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Section Subtitle</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.sectionSubtitle !== undefined ? vCfg.sectionSubtitle : 'Upload MP4/MOV or attach video link'}
+                                  onChange={(e) => updateVideoCfg('sectionSubtitle', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">"Upload File" Tab Button Text</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.uploadTabLabel !== undefined ? vCfg.uploadTabLabel : 'Upload File'}
+                                  onChange={(e) => updateVideoCfg('uploadTabLabel', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">"Paste Link" Tab Button Text</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.linkTabLabel !== undefined ? vCfg.linkTabLabel : 'Paste Link'}
+                                  onChange={(e) => updateVideoCfg('linkTabLabel', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Dropzone Title (Upload File)</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.uploadDropzoneTitle !== undefined ? vCfg.uploadDropzoneTitle : 'Click or drag video to upload'}
+                                  onChange={(e) => updateVideoCfg('uploadDropzoneTitle', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Dropzone Subtitle (Format Limits)</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.uploadDropzoneSubtitle !== undefined ? vCfg.uploadDropzoneSubtitle : 'MP4, MOV, WebM up to 200MB (Max 3 mins)'}
+                                  onChange={(e) => updateVideoCfg('uploadDropzoneSubtitle', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div className="sm:col-span-2">
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Link Input Placeholder (Paste Link Mode)</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.linkInputPlaceholder !== undefined ? vCfg.linkInputPlaceholder : 'e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link'}
+                                  onChange={(e) => updateVideoCfg('linkInputPlaceholder', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Link "Attach" Button Text</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.linkAttachButtonText !== undefined ? vCfg.linkAttachButtonText : 'Attach'}
+                                  onChange={(e) => updateVideoCfg('linkAttachButtonText', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Supported Links Help Text</label>
+                                <input
+                                  type="text"
+                                  value={vCfg.linkHelpText !== undefined ? vCfg.linkHelpText : 'Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.'}
+                                  onChange={(e) => updateVideoCfg('linkHelpText', e.target.value)}
+                                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -6295,7 +6788,7 @@ export default function EmployeesTab() {
                       <div className="p-5 space-y-4 text-xs bg-gray-50/40">
                         <div className="border-b border-gray-200 pb-2">
                           <h4 className="font-bold text-gray-800 text-sm">{onboardingConfig.step5?.title || 'Documents & Media'}</h4>
-                          <p className="text-[11px] text-gray-500 mt-0.5">{onboardingConfig.step5?.subtitle || 'Manage your introductory video, resume, and cover letter.'}</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">{onboardingConfig.step5?.subtitle || 'Upload your resume, cover letter, and introductory video'}</p>
                         </div>
 
                         {/* Side by side 2 cards */}
@@ -6303,90 +6796,98 @@ export default function EmployeesTab() {
                           {/* Resume Upload Card */}
                           <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2">
                             <label className="block font-bold text-gray-900 text-xs">
-                              {onboardingConfig.step5?.fields?.resume?.label || 'Upload Resume'}
-                              {onboardingConfig.step5?.fields?.resume?.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
+                              {onboardingConfig.step5?.fields?.resume?.label || 'Resume (PDF/DOCX)'}
+                              {onboardingConfig.step5?.fields?.resume?.isRequired !== false && <span className="text-red-500 font-bold ml-1">*</span>}
                             </label>
                             <div className="flex items-center gap-2">
                               <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-full text-[10px]">Choose File</span>
                               <span className="text-[10px] text-gray-500">No file chosen</span>
                             </div>
-                            <p className="text-[10px] text-gray-600 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
-                            
-                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-6 h-6 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                  <FileText className="w-3.5 h-3.5" />
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="font-bold text-[11px] text-gray-900 block truncate">Uploaded Document (Click to view)</span>
-                                  <span className="text-[9px] text-gray-500 block">Uploaded Document</span>
-                                </div>
-                              </div>
-                              <Trash2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            </div>
+                            <p className="text-[10px] text-gray-600 font-medium">{onboardingConfig.step5?.fields?.resume?.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}</p>
                           </div>
 
                           {/* Cover Letter Upload Card */}
                           <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2">
-                            <div className="flex items-center justify-between">
-                              <label className="block font-bold text-gray-900 text-xs">
-                                {onboardingConfig.step5?.fields?.coverLetter?.label || 'Upload Cover Letter'}
-                                {onboardingConfig.step5?.fields?.coverLetter?.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
-                              </label>
-                              {!onboardingConfig.step5?.fields?.coverLetter?.isRequired && (
-                                <span className="text-gray-400 text-[10px] font-medium">(Optional)</span>
-                              )}
-                            </div>
+                            <label className="block font-bold text-gray-900 text-xs">
+                              {onboardingConfig.step5?.fields?.coverLetter?.label || 'Cover Letter'}
+                              {onboardingConfig.step5?.fields?.coverLetter?.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
+                            </label>
                             <div className="flex items-center gap-2">
                               <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-full text-[10px]">Choose File</span>
                               <span className="text-[10px] text-gray-500">No file chosen</span>
                             </div>
-                            <p className="text-[10px] text-gray-600 font-medium">Supported Formats: doc, docx, pdf, upto 300KB</p>
-                            
-                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-6 h-6 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                  <FileText className="w-3.5 h-3.5" />
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="font-bold text-[11px] text-gray-900 block truncate">Uploaded Document (Click to view)</span>
-                                  <span className="text-[9px] text-gray-500 block">Uploaded Document</span>
-                                </div>
-                              </div>
-                              <Trash2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                            </div>
+                            <p className="text-[10px] text-gray-600 font-medium">{onboardingConfig.step5?.fields?.coverLetter?.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}</p>
                           </div>
                         </div>
 
                         {/* Introductory Video Card */}
-                        <div className="p-4 border border-emerald-200 rounded-2xl bg-white space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="flex items-center gap-1.5 font-bold text-gray-900 text-xs">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                <span>{onboardingConfig.step5?.fields?.introVideo?.label || 'Introductory Video'}</span>
-                                {!onboardingConfig.step5?.fields?.introVideo?.isRequired ? (
-                                  <span className="text-gray-400 font-normal text-[10px]">(Optional)</span>
-                                ) : (
-                                  <span className="text-red-500 font-bold ml-0.5">*</span>
-                                )}
-                              </div>
-                              <p className="text-[10px] text-gray-500 mt-0.5">Short video introducing yourself (1–2 mins). Supports MP4, MOV, WebM (Max 100MB) or link.</p>
-                            </div>
-                            <div className="flex bg-gray-100 p-0.5 rounded-lg text-[10px] font-semibold shrink-0">
-                              <span className="px-2 py-0.5 bg-white text-gray-900 rounded-md shadow-xs">Upload File</span>
-                              <span className="px-2 py-0.5 text-gray-500">Paste Link</span>
-                            </div>
-                          </div>
+                        {(() => {
+                          const vCfg = onboardingConfig.step5?.videoConfig || {};
+                          const vTitle = vCfg.sectionTitle || onboardingConfig.step5?.fields?.introVideo?.label || 'Introductory Video';
+                          const vSub = vCfg.sectionSubtitle || onboardingConfig.step5?.fields?.introVideo?.placeholder || 'Upload MP4/MOV or attach video link';
+                          const vUploadTab = vCfg.uploadTabLabel || 'Upload File';
+                          const vLinkTab = vCfg.linkTabLabel || 'Paste Link';
+                          const vDropTitle = vCfg.uploadDropzoneTitle || 'Click or drag video to upload';
+                          const vDropSub = vCfg.uploadDropzoneSubtitle || 'MP4, MOV, WebM up to 200MB (Max 3 mins)';
+                          const vPlaceholder = vCfg.linkInputPlaceholder || 'e.g. YouTube, Loom, Vimeo, Drive, or Mux stream link';
+                          const vAttach = vCfg.linkAttachButtonText || 'Attach';
+                          const vHelp = vCfg.linkHelpText || 'Supported: YouTube, Loom, Vimeo, Google Drive, Mux Stream URLs, and MP4 links.';
 
-                          <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl text-center flex flex-col items-center justify-center">
-                            <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5">
-                              <Video className="w-4 h-4" />
+                          return (
+                            <div className="p-4 border border-emerald-200 rounded-2xl bg-white space-y-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
+                                  <div className="flex items-center gap-1.5 font-bold text-gray-900 text-xs">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span>{vTitle}</span>
+                                    {onboardingConfig.step5?.fields?.introVideo?.isRequired && (
+                                      <span className="text-red-500 font-bold ml-0.5">*</span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-gray-500 mt-0.5">{vSub}</p>
+                                </div>
+                                <div className="flex bg-gray-100 p-0.5 rounded-lg text-[10px] font-semibold shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewVideoTab('upload')}
+                                    className={`px-2 py-0.5 rounded-md transition-all ${previewVideoTab === 'upload' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-500'}`}
+                                  >
+                                    {vUploadTab}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewVideoTab('link')}
+                                    className={`px-2 py-0.5 rounded-md transition-all ${previewVideoTab === 'link' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-500'}`}
+                                  >
+                                    {vLinkTab}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {previewVideoTab === 'upload' ? (
+                                <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl text-center flex flex-col items-center justify-center">
+                                  <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5">
+                                    <Video className="w-4 h-4" />
+                                  </div>
+                                  <span className="text-xs font-bold text-emerald-600 block">{vDropTitle}</span>
+                                  <span className="text-[10px] text-gray-400 block mt-0.5">{vDropSub}</span>
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1.5 text-left">
+                                  <div className="flex gap-2">
+                                    <div className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] text-gray-400 truncate">
+                                      {vPlaceholder}
+                                    </div>
+                                    <span className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-bold rounded-lg shrink-0">
+                                      {vAttach}
+                                    </span>
+                                  </div>
+                                  <p className="text-[9px] text-gray-400">{vHelp}</p>
+                                </div>
+                              )}
                             </div>
-                            <span className="text-xs font-bold text-emerald-600 block">Click or drag video to upload</span>
-                            <span className="text-[10px] text-gray-400 block mt-0.5">MP4, MOV, WebM up to 100MB</span>
-                          </div>
-                        </div>
+                          );
+                        })()}
 
                         <div className="pt-3 flex justify-between">
                           <div className="px-5 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">{onboardingConfig.buttons?.backBtnText || 'Back'}</div>

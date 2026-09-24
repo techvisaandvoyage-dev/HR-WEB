@@ -94,6 +94,14 @@ const EmployeeSchema = new mongoose.Schema({
     type: Object,
     default: {}
   },
+  isOnboardingCompleted: {
+    type: Boolean,
+    default: false
+  },
+  onboardingStep: {
+    type: Number,
+    default: 1
+  },
   lastLogin: {
     type: Date,
     default: Date.now

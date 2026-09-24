@@ -191,6 +191,15 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('employeeToken', data.token);
+        if (data.isOnboardingCompleted) {
+          localStorage.setItem('hasProfile', 'true');
+          localStorage.removeItem('onboardingCurrentStep');
+        } else {
+          localStorage.setItem('hasProfile', 'false');
+          if (data.onboardingStep) {
+            localStorage.setItem('onboardingCurrentStep', data.onboardingStep.toString());
+          }
+        }
         onLoginSuccess?.(data);
       } else {
         setErrors({ google: data.message || 'Google signup failed' });
@@ -402,9 +411,10 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
           }
         };
         localStorage.setItem('userProfile', JSON.stringify(newProfile));
-        localStorage.setItem('hasProfile', 'true');
+        localStorage.setItem('hasProfile', 'false');
+        localStorage.setItem('onboardingCurrentStep', '1');
         
-        onLoginSuccess?.({ isNewUser: true });
+        onLoginSuccess?.({ ...data, isNewUser: true, isOnboardingCompleted: false, onboardingStep: 1 });
       }
     } catch (err) {
       console.error("Register Error:", err);
