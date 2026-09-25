@@ -4,7 +4,7 @@ import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdow
 import { currentLocationOptions } from '../../../data/preferredLocations';
 import { uploadFileToStorage, deleteFileFromStorage } from '../../../utils/firebaseStorage';
 
-const CompanyProfileTab = () => {
+const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const storedTab = localStorage.getItem('employer_profile_active_tab');
@@ -344,14 +344,36 @@ const CompanyProfileTab = () => {
     );
   };
 
+  const isConsultant = companyData.hiringFor === 'consultant' || employerProfile?.hiringFor === 'consultant' || accountData.accountType === 'Consultant/agency';
+
+  const pageTitle = isConsultant 
+    ? (portalConfig?.consultantTitle || 'Consultant Profile')
+    : (portalConfig?.title || 'Company Profile');
+
+  const pageSubtitle = isConsultant
+    ? (portalConfig?.consultantSubtitle || 'Manage your consultant profile, staffing details and branding.')
+    : (portalConfig?.subtitle || 'Manage your company information and branding.');
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* Top Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">Company Profile</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your company information and branding.</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">
+              {pageTitle}
+            </h1>
+            {isConsultant && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
+                <svg className="w-3.5 h-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                Consultant
+              </span>
+            )}
+          </div>
+          <p className="text-gray-500 text-sm mt-1">
+            {pageSubtitle}
+          </p>
         </div>
       </div>
 
@@ -365,14 +387,14 @@ const CompanyProfileTab = () => {
             onClick={() => handleTabChange('account')}
             className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'account' ? 'border-[#29953f] text-[#29953f]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
           >
-            Account Details
+            {portalConfig?.accountTabLabel || 'Account Details'}
           </button>
           <button 
             type="button"
             onClick={() => handleTabChange('company')}
             className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'company' ? 'border-[#29953f] text-[#29953f]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
           >
-            Company Details
+            {isConsultant ? (portalConfig?.consultantTabLabel || 'Consultant Details') : (portalConfig?.companyTabLabel || 'Company Details')}
           </button>
         </div>
 
@@ -392,9 +414,9 @@ const CompanyProfileTab = () => {
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900">Personal info</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{portalConfig?.personalInfoTitle || 'Personal info'}</h2>
                   </div>
-                  <p className="text-sm text-gray-500 ml-14">Your name and/or role may be visible to jobseekers and other members of your organisation.</p>
+                  <p className="text-sm text-gray-500 ml-14">{portalConfig?.personalInfoSubtitle || 'Your name and/or role may be visible to jobseekers and other members of your organisation.'}</p>
                 </div>
 
                 <div className="divide-y divide-gray-100">
@@ -415,15 +437,23 @@ const CompanyProfileTab = () => {
                         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900">Company Details</h2>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {isConsultant ? (portalConfig?.consultantDetailsTitle || 'Consultant Details') : (portalConfig?.companyDetailsTitle || 'Company Details')}
+                    </h2>
                   </div>
-                  <p className="text-sm text-gray-500 ml-14">Manage your company information and branding.</p>
+                  <p className="text-sm text-gray-500 ml-14">
+                    {isConsultant 
+                      ? (portalConfig?.consultantDetailsSubtitle || 'Manage your consultant information, staffing details and branding.') 
+                      : (portalConfig?.companyDetailsSubtitle || 'Manage your company information and branding.')}
+                  </p>
                 </div>
 
                 <div className="divide-y divide-gray-100">
                   {/* Company Logo Row */}
                   <div className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors min-h-[90px]">
-                    <div className="w-1/3 text-sm text-gray-500">Company Logo</div>
+                    <div className="w-1/3 text-sm text-gray-500">
+                      {isConsultant ? (portalConfig?.consultantLogoLabel || 'Consultant Logo') : (portalConfig?.companyLogoLabel || 'Company Logo')}
+                    </div>
                     <div className="flex-1 flex items-center gap-4">
                       <input 
                         type="file" 
@@ -483,7 +513,7 @@ const CompanyProfileTab = () => {
                       </div>
                     </div>
                   </div>
-                  {renderRow('company', 'hiringFor', 'Hiring for', companyData.hiringFor === 'consultant' ? 'Consultant / Staffing Agency' : 'Your Company', 'text', false)}
+                  {renderRow('company', 'hiringFor', 'Hiring for', companyData.hiringFor === 'consultant' ? 'Consultant' : 'Your Company', 'text', false)}
                   {renderRow('company', 'companyName', 'Company Name', companyData.companyName)}
                   {renderRow('company', 'industry', 'Industry', companyData.industry, 'select-industry')}
                   {renderRow('company', 'employees', 'Number of Employees', companyData.employees, 'select-employees')}

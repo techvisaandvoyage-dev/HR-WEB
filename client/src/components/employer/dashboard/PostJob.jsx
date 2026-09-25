@@ -4,6 +4,7 @@ import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdow
 import { currentLocationOptions, preferredLocationOptions } from '../../../data/preferredLocations';
 import CustomDropdown from '../../common/CustomDropdown';
 import RichTextEditor from '../../common/RichTextEditor';
+import JobShareModal from '../../common/JobShareModal';
 import { allSkillsOptions, getSuggestedSkills } from '../../../utils/skillsData';
 
 const formatIndianNumber = (numStr) => {
@@ -73,6 +74,8 @@ const PostJob = ({ addJob, updateJob }) => {
   });
 
   const [skillInput, setSkillInput] = useState('');
+  const [publishedJob, setPublishedJob] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
   
   const [skillsList, setSkillsList] = useState(() => {
     if (isEditing) return [];
@@ -215,7 +218,8 @@ const PostJob = ({ addJob, updateJob }) => {
           setEmployerDetails({
             companyName: data.data.companyName || 'My Company',
             industry: data.data.industry || 'Company',
-            companyLogo: data.data.companyLogo || ''
+            companyLogo: data.data.companyLogo || '',
+            hiringFor: data.data.hiringFor || 'your_company'
           });
         }
       } catch (err) {
@@ -417,6 +421,15 @@ const PostJob = ({ addJob, updateJob }) => {
       ? cmsConfig.step3.streamOptions
       : DEFAULT_STREAMS;
     return list.map(s => ({ value: typeof s === 'string' ? s : s.label, label: typeof s === 'string' ? s : s.label }));
+  }, [cmsConfig]);
+
+  const allSkillsList = useMemo(() => {
+    if (Array.isArray(cmsConfig?.step2?.skillsOptions) && cmsConfig.step2.skillsOptions.length > 0) {
+      return cmsConfig.step2.skillsOptions.map(s => 
+        typeof s === 'string' ? { value: s, label: s } : { value: s.value || s.label, label: s.label || s.value }
+      );
+    }
+    return allSkillsOptions;
   }, [cmsConfig]);
 
   const validateStep = (stepNumber) => {
@@ -869,7 +882,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   </div>
                 )}
                 <CustomDropdown
-                  options={allSkillsOptions.filter(opt => {
+                  options={allSkillsList.filter(opt => {
                     const optVal = typeof opt === 'object' ? (opt.value || opt.label) : opt;
                     return !skillsList.includes(optVal);
                   })}
@@ -1256,9 +1269,17 @@ const PostJob = ({ addJob, updateJob }) => {
           {activeStep === 5 && (
             <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 h-full flex flex-col">
-                <h3 className="text-xl font-bold text-gray-900 border-b border-gray-200 pb-4 mb-4">
-                  {cmsConfig?.step5?.heading || 'Job Preview'}
-                </h3>
+                <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-4 flex-wrap gap-2">
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {cmsConfig?.step5?.heading || 'Job Preview'}
+                  </h3>
+                  {employerDetails.hiringFor === 'consultant' && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
+                      <svg className="w-3.5 h-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                      Posting as Consultant
+                    </span>
+                  )}
+                </div>
                 
                 <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {/* Basic Info */}
@@ -1446,8 +1467,8 @@ const PostJob = ({ addJob, updateJob }) => {
                         localStorage.removeItem('employer_post_job_salary_type');
                         localStorage.removeItem('employer_post_job_currency');
                         localStorage.removeItem('employer_post_job_salary_values');
-                        alert("Job Published Successfully!");
-                        navigate('/employer');
+                        setPublishedJob(data.data);
+                        setShowShareModal(true);
                       }
                     } else {
                       alert("Error: " + data.message);
@@ -1466,6 +1487,19 @@ const PostJob = ({ addJob, updateJob }) => {
         </div>
         
       </div>
+
+      {/* Shareable Link Modal on Publish */}
+      {publishedJob && (
+        <JobShareModal 
+          isOpen={showShareModal} 
+          onClose={() => {
+            setShowShareModal(false);
+            navigate('/employer/manage-jobs');
+          }} 
+          job={publishedJob}
+          isNewlyPublished={true}
+        />
+      )}
 
     </div>
   );

@@ -27,10 +27,61 @@ import {
   RefreshCw,
   ChevronDown,
   Lock,
-  UserCheck
+  UserCheck,
+  Award,
+  Search
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+export const DEFAULT_POST_JOB_SKILLS_OPTIONS = [
+  '3D Modeling', 'ASP.NET', 'AWS', 'Account Management', 'Accounting', 'Adobe After Effects',
+  'Adobe Illustrator', 'Adobe InDesign', 'Adobe Lightroom', 'Adobe Photoshop', 'Adobe Premiere Pro',
+  'Adobe XD', 'Agile', 'Alpine.js', 'Android Development', 'Angular', 'Animation', 'Ansible',
+  'Ant Design', 'Apache', 'Appcelerator', 'ArangoDB', 'Artificial Intelligence', 'Assembly',
+  'Auditing', 'AutoCAD', 'Axure', 'B2B Sales', 'Babel', 'Backbone.js', 'Backend Development',
+  'Balsamiq', 'Big Data', 'Blender', 'Blogging', 'Bookkeeping', 'Bootstrap', 'Brand Management',
+  'Business Development', 'C#', 'C++', 'CI/CD', 'CakePHP', 'Cassandra', 'Chakra UI', 'Chef',
+  'Cinema 4D', 'CircleCI', 'Cloud Security', 'CodeIgniter', 'Communication', 'Compliance',
+  'Computer Vision', 'Confluence', 'Content Marketing', 'Copywriting', 'Cordova', 'CorelDRAW',
+  'Corporate Finance', 'CouchDB', 'Couchbase', 'Critical Thinking', 'Cryptography', 'Customer Service',
+  'Customer Success', 'Cybersecurity', 'Dart', 'Data Analysis', 'Data Entry', 'Data Mining',
+  'Data Science', 'Database Management', 'DaVinci Resolve', 'Deep Learning', 'Digital Marketing',
+  'DigitalOcean', 'Django', 'Docker', 'DynamoDB', 'Editing', 'Elasticsearch', 'Ember.js',
+  'Email Marketing', 'Employee Relations', 'Ethical Hacking', 'Event Planning', 'Excel',
+  'Express.js', 'Facebook Ads', 'FastAPI', 'Figma', 'Final Cut Pro', 'Financial Analysis',
+  'Financial Modeling', 'Firebase', 'Firewalls', 'Flask', 'Flutter', 'Forensics',
+  'Frontend Development', 'Game Development', 'Git', 'GitHub', 'GitLab', 'Go', 'Google Ads',
+  'Google Analytics', 'Google Cloud (GCP)', 'GraphQL', 'Groovy', 'HIPAA', 'HTML', 'HBase',
+  'Hadoop', 'Haskell', 'Heroku', 'Human Resources', 'IAM', 'ISO 27001', 'Incident Response',
+  'Information Security', 'InVision', 'Inventory Management', 'Investment Banking', 'Ionic',
+  'Java', 'JavaScript', 'Jenkins', 'Jetpack Compose', 'Jira', 'Kafka', 'Keras', 'Koa',
+  'Kotlin', 'Kubernetes', 'Laravel', 'Lean Six Sigma', 'Linux', 'Logistics', 'Looker',
+  'Lua', 'MATLAB', 'Machine Learning', 'MariaDB', 'Market Research', 'Marvel', 'Material UI',
+  'Maya', 'Memcached', 'Meteor', 'Microservices', 'Microsoft Azure', 'Microsoft Office',
+  'Microsoft SQL Server', 'MongoDB', 'MySQL', 'NLP', 'NativeScript', 'Negotiation',
+  'Neo4j', 'NestJS', 'Netlify', 'Network Security', 'Next.js', 'Nginx', 'Node.js',
+  'NumPy', 'Nuke', 'Nuxt.js', 'Objective-C', 'Onboarding', 'Operations Management',
+  'Oracle', 'PCI DSS', 'PHP', 'Pandas', 'Payroll', 'Penetration Testing',
+  'Performance Management', 'Perl', 'PhoneGap', 'Photography', 'Podcasting',
+  'PostgreSQL', 'Power BI', 'PowerShell', 'Problem Solving', 'Procurement',
+  'Product Management', 'Project Management', 'Prototyping', 'Public Relations',
+  'Public Speaking', 'Puppet', 'PyTorch', 'Python', 'QlikView', 'Quality Assurance',
+  'QuickBooks', 'R', 'REST API', 'React Native', 'React.js', 'Reactjs Workflows',
+  'Recruiting', 'Redis', 'Redux', 'Research', 'RethinkDB', 'Risk Management',
+  'Ruby', 'Ruby on Rails', 'Rust', 'SEO', 'SIEM', 'SOC', 'SQL', 'SQLite',
+  'Sails.js', 'Sales', 'Scala', 'Scikit-learn', 'Scrum', 'Shell', 'Sketch',
+  'Social Media Marketing', 'SolidWorks', 'Sound Design', 'Spark', 'Spring Boot',
+  'Styled Components', 'Substance Painter', 'Supply Chain Management', 'Svelte',
+  'Swift', 'SwiftUI', 'Symphony', 'Tableau', 'Tailwind CSS', 'Talent Acquisition',
+  'Tally', 'Tax Preparation', 'Team Leadership', 'Technical Writing', 'TensorFlow',
+  'Terraform', 'Time Management', 'Translation', 'Travis CI', 'TypeScript', 'Typing',
+  'UI Design', 'UX Research', 'Unity', 'Unreal Engine', 'VBA', 'VPN', 'Vagrant',
+  'Vercel', 'Video Editing', 'Vlogging', 'Vue.js', 'Vulnerability Assessment',
+  'Wealth Management', 'Webpack', 'Wireframing', 'Writing', 'Xamarin', 'ZBrush',
+  'Zend Framework', 'Zeplin', 'jQuery', 'iOS Development'
+];
+export const DEFAULT_SKILLS_OPTIONS = DEFAULT_POST_JOB_SKILLS_OPTIONS;
 
 export const DEFAULT_POST_JOB_CATEGORIES = [
   'Accounting & Finance', 'Administration & Office Support', 'Advertising & Media', 'Agriculture & Farming',
@@ -271,6 +322,12 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Sub-Editor Modals State
+  const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
+  const [newSkillOption, setNewSkillOption] = useState('');
+  const [skillFilterSearch, setSkillFilterSearch] = useState('');
+  const [draggedSkillIndex, setDraggedSkillIndex] = useState(null);
+  const [dragOverSkillIndex, setDragOverSkillIndex] = useState(null);
+
   const [isEmpTypesModalOpen, setIsEmpTypesModalOpen] = useState(false);
   const [empTypesModalList, setEmpTypesModalList] = useState([]);
   const [newEmpTypeInput, setNewEmpTypeInput] = useState('');
@@ -371,7 +428,10 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
               fields: {
                 ...DEFAULT_EMPLOYER_POST_JOB_CONFIG.step2.fields,
                 ...(fetched.step2?.fields || {})
-              }
+              },
+              skillsOptions: (Array.isArray(fetched.step2?.skillsOptions) && fetched.step2.skillsOptions.length > 0)
+                ? fetched.step2.skillsOptions
+                : (DEFAULT_EMPLOYER_POST_JOB_CONFIG.step2?.skillsOptions || DEFAULT_SKILLS_OPTIONS)
             },
             step3: {
               ...DEFAULT_EMPLOYER_POST_JOB_CONFIG.step3,
@@ -523,6 +583,113 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
         }
       };
     });
+  };
+
+  // Key Skills Options Handlers (Step 2)
+  const handleAddSkillOption = () => {
+    const raw = newSkillOption.trim();
+    if (!raw) return;
+
+    // Support adding comma-separated skills in bulk
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+
+    setPostJobConfig(prev => {
+      const currentList = prev.step2?.skillsOptions || DEFAULT_SKILLS_OPTIONS;
+      const lowerExisting = new Set(currentList.map(s => s.toLowerCase()));
+      const uniqueNew = [];
+
+      parts.forEach(p => {
+        if (!lowerExisting.has(p.toLowerCase())) {
+          lowerExisting.add(p.toLowerCase());
+          uniqueNew.push(p);
+        }
+      });
+
+      if (uniqueNew.length === 0) return prev;
+
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          skillsOptions: [...currentList, ...uniqueNew]
+        }
+      };
+    });
+    setNewSkillOption('');
+  };
+
+  const handleDeleteSkillOption = (idxToDelete) => {
+    setPostJobConfig(prev => {
+      const currentList = prev.step2?.skillsOptions || DEFAULT_SKILLS_OPTIONS;
+      const updated = currentList.filter((_, idx) => idx !== idxToDelete);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          skillsOptions: updated
+        }
+      };
+    });
+  };
+
+  const handleResetSkillsOptions = () => {
+    setPostJobConfig(prev => ({
+      ...prev,
+      step2: {
+        ...prev.step2,
+        skillsOptions: DEFAULT_SKILLS_OPTIONS
+      }
+    }));
+  };
+
+  const handleSkillDragStart = (e, index) => {
+    e.dataTransfer.setData('text/plain', index);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedSkillIndex(index);
+  };
+
+  const handleSkillDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverSkillIndex !== index) {
+      setDragOverSkillIndex(index);
+    }
+  };
+
+  const handleSkillDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedSkillIndex === null || draggedSkillIndex === dropIndex) {
+      setDraggedSkillIndex(null);
+      setDragOverSkillIndex(null);
+      return;
+    }
+
+    setPostJobConfig(prev => {
+      const currentList = [...(prev.step2?.skillsOptions || DEFAULT_SKILLS_OPTIONS)];
+      const [draggedItem] = currentList.splice(draggedSkillIndex, 1);
+      currentList.splice(dropIndex, 0, draggedItem);
+      return {
+        ...prev,
+        step2: {
+          ...prev.step2,
+          skillsOptions: currentList
+        }
+      };
+    });
+    setDraggedSkillIndex(null);
+    setDragOverSkillIndex(null);
+  };
+
+  const handleSkillDragEnd = () => {
+    setDraggedSkillIndex(null);
+    setDragOverSkillIndex(null);
+  };
+
+  const handleOpenSkillsModal = () => {
+    setNewSkillOption('');
+    setSkillFilterSearch('');
+    setIsSkillsModalOpen(true);
   };
 
   const handleStep3PropChange = (key, value) => {
@@ -921,7 +1088,13 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
   const step2FieldKeys = [
     { key: 'aboutRole', title: 'About Role' },
     { key: 'responsibilities', title: 'Responsibilities' },
-    { key: 'skillsRequired', title: 'Skills Required' }
+    {
+      key: 'skillsRequired',
+      title: 'Skills Required',
+      hasModal: true,
+      modalBtnText: `Edit Skills List (${(postJobConfig.step2?.skillsOptions || DEFAULT_SKILLS_OPTIONS).length})`,
+      onOpenModal: handleOpenSkillsModal
+    }
   ];
 
   const step3FieldKeys = [
@@ -1297,27 +1470,41 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
                           {isReq && <span className="text-red-500 text-sm font-bold">*</span>}
                         </span>
 
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStep2Required(item.key)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                            isReq
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-gray-100 text-gray-500 border border-gray-200'
-                          }`}
-                        >
-                          {isReq ? (
-                            <>
-                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              Mandatory (*)
-                            </>
-                          ) : (
-                            <>
-                              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                              Optional
-                            </>
+                        <div className="flex items-center gap-2">
+                          {item.hasModal && (
+                            <button
+                              type="button"
+                              onClick={item.onOpenModal}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs hover:scale-105"
+                              title="Open Key Skills Options Management Popup"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>{item.modalBtnText}</span>
+                            </button>
                           )}
-                        </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStep2Required(item.key)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                              isReq
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-gray-100 text-gray-500 border border-gray-200'
+                            }`}
+                          >
+                            {isReq ? (
+                              <>
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Mandatory (*)
+                              </>
+                            ) : (
+                              <>
+                                <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                                Optional
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="space-y-2 text-xs">
@@ -2881,6 +3068,265 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
           </div>
         </div>
       )}
+
+      {/* 8. KEY SKILLS OPTIONS MODAL POPUP (STEP 2) */}
+      {isSkillsModalOpen && (() => {
+        const currentSkillsList = postJobConfig.step2?.skillsOptions || DEFAULT_SKILLS_OPTIONS;
+        const trimmedInput = newSkillOption.trim();
+        const isDuplicate = trimmedInput && currentSkillsList.some(s => s.toLowerCase() === trimmedInput.toLowerCase());
+        
+        const filteredList = currentSkillsList.filter(s => 
+          !skillFilterSearch || s.toLowerCase().includes(skillFilterSearch.toLowerCase())
+        );
+
+        return (
+          <div 
+            className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+            onClick={() => setIsSkillsModalOpen(false)}
+          >
+            <div 
+              className="bg-white rounded-3xl border border-gray-200 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                      Key Skills Options Manager
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Add, delete, search, and reorder skills available in job posting skill selection dropdowns.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleResetSkillsOptions}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                    title="Reset to default standard skills list"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset Defaults</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleSavePostJobConfig();
+                      setIsSkillsModalOpen(false);
+                    }}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>Save Changes</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSkillsModalOpen(false)}
+                    className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                    title="Close popup"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-5">
+                {/* Add New Skill Card with Comma-separated Bulk Add Support */}
+                <div className="p-4 bg-gray-50 border border-gray-200/80 rounded-2xl space-y-3">
+                  <label className="block text-xs font-extrabold text-gray-800 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                      Add Skill to Dropdown (Single or comma-separated for bulk add)
+                    </span>
+                    {trimmedInput && !isDuplicate && (
+                      <span className="text-[11px] text-emerald-700 font-bold">✓ Ready to add</span>
+                    )}
+                  </label>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Type skill name e.g. React, Next.js, Python, Power BI (or comma-separated)..."
+                      value={newSkillOption}
+                      onChange={(e) => setNewSkillOption(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddSkillOption();
+                        }
+                      }}
+                      className={`flex-1 px-4 py-2.5 bg-white border rounded-xl text-xs font-medium focus:outline-none transition-all ${
+                        isDuplicate
+                          ? 'border-amber-400 ring-2 ring-amber-100'
+                          : 'border-gray-200 focus:border-emerald-500'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddSkillOption}
+                      disabled={!trimmedInput}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Skill</span>
+                    </button>
+                  </div>
+
+                  {isDuplicate && (
+                    <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium animate-in fade-in duration-150">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span><strong>"{trimmedInput}"</strong> is already in the skills list!</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search Filter and Count Bar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search skills..."
+                      value={skillFilterSearch}
+                      onChange={(e) => setSkillFilterSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:bg-white focus:border-emerald-500"
+                    />
+                    {skillFilterSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setSkillFilterSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-gray-500 font-semibold self-end sm:self-center">
+                    Total Configured Skills: <span className="text-emerald-700 font-bold">{currentSkillsList.length}</span>
+                    {skillFilterSearch && (
+                      <span className="ml-1 text-gray-400">({filteredList.length} filtered)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Skills Grid / Reorderable List */}
+                <div 
+                  className="space-y-1.5 max-h-[380px] overflow-y-auto custom-scrollbar pr-1"
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      setDragOverSkillIndex(null);
+                    }
+                  }}
+                >
+                  {filteredList.length === 0 ? (
+                    <div className="py-12 text-center text-gray-400 text-xs font-medium">
+                      No skills match "{skillFilterSearch}"
+                    </div>
+                  ) : (
+                    filteredList.map((skillName) => {
+                      const originalIndex = currentSkillsList.indexOf(skillName);
+                      const isDragging = draggedSkillIndex === originalIndex;
+                      const isDragOver = dragOverSkillIndex === originalIndex && draggedSkillIndex !== originalIndex;
+
+                      return (
+                        <div
+                          key={skillName + originalIndex}
+                          draggable
+                          onDragStart={(e) => handleSkillDragStart(e, originalIndex)}
+                          onDragOver={(e) => handleSkillDragOver(e, originalIndex)}
+                          onDrop={(e) => handleSkillDrop(e, originalIndex)}
+                          onDragEnd={handleSkillDragEnd}
+                          className={`relative flex items-center justify-between p-2.5 rounded-xl text-xs font-medium transition-all duration-150 select-none border ${
+                            isDragging
+                              ? 'opacity-30 border-2 border-dashed border-emerald-400 bg-emerald-50/50 scale-[0.98]'
+                              : isDragOver
+                              ? 'border-2 border-emerald-500 bg-emerald-50 scale-[1.02] shadow-md ring-2 ring-emerald-400/50'
+                              : 'bg-white hover:bg-gray-50/80 text-gray-800 border-gray-200/80 shadow-2xs hover:border-emerald-300'
+                          }`}
+                        >
+                          {isDragOver && (
+                            <div className="absolute -top-1 left-2 right-2 h-1 bg-emerald-500 rounded-full animate-pulse z-20 pointer-events-none" />
+                          )}
+
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-2">
+                            <span
+                              className="cursor-grab active:cursor-grabbing p-1 rounded text-gray-400 hover:text-gray-700 transition-colors"
+                              title="Drag to change dropdown order"
+                            >
+                              <GripVertical className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="w-7 text-[10px] text-gray-400 font-mono font-bold shrink-0">
+                              #{originalIndex + 1}
+                            </span>
+                            <span className="font-bold text-gray-900 truncate">
+                              {skillName}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSkillOption(originalIndex)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                            title={`Delete skill "${skillName}"`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 sm:px-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handleResetSkillsOptions}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  title="Reset to default standard skills"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Defaults</span>
+                </button>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsSkillsModalOpen(false)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleSavePostJobConfig();
+                      setIsSkillsModalOpen(false);
+                    }}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>Save & Apply</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

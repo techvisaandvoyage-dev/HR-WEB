@@ -84,6 +84,26 @@ const homepageConfigSchema = new mongoose.Schema({
   employerPostJob: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  employerPortal: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  consultantRegister: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  consultantLogin: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  consultantPostJob: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  directJobApply: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true,

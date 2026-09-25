@@ -6,7 +6,8 @@ import { currentLocationOptions } from '../../data/preferredLocations';
 import CustomDropdown from '../common/CustomDropdown';
 import { EMPLOYER_INDUSTRIES, getDesignationsForIndustry } from '../../data/employerIndustryDesignations';
 
-const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onLoginSuccess }) => {
+const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onClose, onLoginClick, onLoginSuccess }) => {
+  const isConsultantMode = Boolean(isConsultant || initialData?.isConsultant);
   const [step, setStep] = useState(1); // 1: Email & Account, 2: Company Details, 3: Success
   const [isGoogleAuth, setIsGoogleAuth] = useState(false);
 
@@ -19,7 +20,6 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [termsChecked, setTermsChecked] = useState(true);
 
   // OTP states
   const [showOtpBox, setShowOtpBox] = useState(false);
@@ -43,23 +43,29 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
   const [successMessage, setSuccessMessage] = useState('');
   const [cmsConfig, setCmsConfig] = useState(null);
 
-  // Fetch Employer Register CMS config
+  // Fetch Employer / Consultant Register CMS config
   useEffect(() => {
     const fetchCmsConfig = async () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
         const data = await res.json();
-        if (data.success && data.data?.employerRegister) {
-          setCmsConfig(data.data.employerRegister);
+        if (data.success && data.data) {
+          if (isConsultantMode && data.data?.consultantRegister && Object.keys(data.data.consultantRegister).length > 0) {
+            setCmsConfig(data.data.consultantRegister);
+          } else if (!isConsultantMode && data.data?.employerRegister && Object.keys(data.data.employerRegister).length > 0) {
+            setCmsConfig(data.data.employerRegister);
+          } else if (isConsultantMode && data.data?.employerRegister) {
+            setCmsConfig(data.data.employerRegister);
+          }
         }
       } catch (err) {
-        console.error('Error fetching employer register CMS config:', err);
+        console.error('Error fetching register CMS config:', err);
       }
     };
     if (isOpen) {
       fetchCmsConfig();
     }
-  }, [isOpen]);
+  }, [isOpen, isConsultantMode]);
 
   // Industry options: use CMS industriesData or industryOptions if available, else use data file
   const industryOptions = useMemo(() => {
@@ -168,11 +174,10 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
       setConfirmPassword('');
       setShowPassword(false);
       setShowConfirmPassword(false);
-      setTermsChecked(true);
       setShowOtpBox(false);
       setOtp(['', '', '', '']);
       setResendTimer(0);
-      setHiringFor('your_company');
+      setHiringFor(isConsultantMode ? 'consultant' : 'your_company');
       setCompanyName('');
       setIndustry('');
       setEmployees('');
@@ -185,7 +190,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
       setSuccessMessage('');
       setLoading(false);
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, isConsultantMode]);
 
   // Focus first OTP field when OTP box opens
   useEffect(() => {
@@ -232,7 +237,11 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
       const res = await fetch(`${apiUrl}/api/employer/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken }),
+        body: JSON.stringify({ 
+          id_token: idToken, 
+          isConsultant: isConsultantMode, 
+          hiringFor: isConsultantMode ? 'consultant' : 'your_company' 
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -247,11 +256,18 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
           onLoginSuccess?.(data);
         }
       } else {
-        setError(data.message || 'Google signup failed');
+        const errorMsg = data.message || 'Google signup failed';
+        if (data.message && (data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('account') || data.message.toLowerCase().includes('employer') || data.message.toLowerCase().includes('consultant'))) {
+          setErrors({ email: errorMsg });
+          setError('');
+        } else {
+          setError(errorMsg);
+        }
       }
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
-        setError(err.message || 'Google signup failed');
+        const errorMsg = err.message || 'Google signup failed';
+        setError(errorMsg);
       }
     } finally {
       setLoading(false);
@@ -290,26 +306,23 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
       return;
     }
 
-    const isValidPassword =
-      password.length >= 8 &&
-      /[a-z]/.test(password) &&
-      /[A-Z]/.test(password) &&
-      /[0-9]/.test(password) &&
-      /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    if (password || passwordCfg.isRequired) {
+      const isValidPassword =
+        password.length >= 8 &&
+        /[a-z]/.test(password) &&
+        /[A-Z]/.test(password) &&
+        /[0-9]/.test(password) &&
+        /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-    if (!isValidPassword) {
-      setErrors({ password: 'Password must be at least 8 characters with upper, lower, number & special symbol.' });
-      return;
-    }
+      if (!isValidPassword) {
+        setErrors({ password: 'Password must be at least 8 characters with upper, lower, number & special symbol.' });
+        return;
+      }
 
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: "Passwords don't match" });
-      return;
-    }
-
-    if (!termsChecked) {
-      setError('Please accept the Terms and Privacy Policy to continue');
-      return;
+      if (password !== confirmPassword) {
+        setErrors({ confirmPassword: "Passwords don't match" });
+        return;
+      }
     }
 
     setLoading(true);
@@ -321,7 +334,13 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), mobile: mobile.trim(), fullName: fullName.trim() }),
+        body: JSON.stringify({ 
+          email: email.trim(), 
+          mobile: mobile.trim(), 
+          fullName: fullName.trim(),
+          isConsultant: isConsultantMode,
+          hiringFor: isConsultantMode ? 'consultant' : 'your_company'
+        }),
       });
       const data = await response.json();
 
@@ -358,7 +377,13 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), mobile: mobile.trim(), fullName: fullName.trim() }),
+        body: JSON.stringify({ 
+          email: email.trim(), 
+          mobile: mobile.trim(), 
+          fullName: fullName.trim(),
+          isConsultant: isConsultantMode,
+          hiringFor: isConsultantMode ? 'consultant' : 'your_company'
+        }),
       });
       const data = await response.json();
 
@@ -454,6 +479,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
           // Skip password & OTP for Google auth users
           ...(isGoogleAuth ? {} : { password, otp: otp.join('') }),
           hiringFor,
+          isConsultant: isConsultantMode,
           companyName: companyName.trim(),
           industry,
           employees,
@@ -531,12 +557,14 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
               <>
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">
-                    {showOtpBox ? 'Verify Email Address' : (cmsConfig?.modalTitle || 'Create Employer Account')}
+                    {showOtpBox 
+                      ? 'Verify Email Address' 
+                      : (cmsConfig?.modalTitle || (isConsultantMode ? 'Create Consultant Account' : 'Create Employer Account'))}
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
                     {showOtpBox
                       ? `We sent a 4-digit code to ${email}`
-                      : (cmsConfig?.modalSubtitle || 'Register to find qualified talent and post job on sahijob.com')}
+                      : (cmsConfig?.modalSubtitle || (isConsultantMode ? 'Register to find qualified talent and post jobs for clients on sahijob.com' : 'Register to find qualified talent and post job on sahijob.com'))}
                   </p>
                 </div>
 
@@ -590,7 +618,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                   </div>
                 )}
 
-                {error && (
+                {error && !errors.email && !errors.mobile && !errors.password && !errors.confirmPassword && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-semibold text-center flex items-center justify-center gap-2">
                     <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -810,26 +838,6 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                       )}
                     </div>
 
-                    {/* Terms Checkbox */}
-                    <div className="pt-1">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={termsChecked}
-                          onChange={(e) => setTermsChecked(e.target.checked)}
-                          className="mt-1 w-4 h-4 text-palette-900 rounded border-gray-300 focus:ring-palette-400 accent-palette-900"
-                        />
-                        <span className="text-xs text-gray-600 leading-relaxed">
-                          {cmsConfig?.termsText ? (
-                            <span>{cmsConfig.termsText}</span>
-                          ) : (
-                            <>
-                              I agree to the <a href="/page/privacy-policy" target="_blank" className="text-palette-400 hover:underline font-semibold">Privacy Policy</a> and <a href="/page/terms-of-service" target="_blank" className="text-palette-400 hover:underline font-semibold">Terms &amp; Conditions</a>
-                            </>
-                          )}
-                        </span>
-                      </label>
-                    </div>
 
                     <button
                       type="submit"
@@ -914,13 +922,24 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                 {onLoginClick && (
                   <div className="mt-6 text-center">
                     <p className="text-sm text-gray-600">
-                      Already have an account?{' '}
-                      <button
-                        onClick={onLoginClick}
-                        className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
-                      >
-                        Login
-                      </button>
+                      {cmsConfig?.loginLinkText ? (
+                        <button
+                          onClick={onLoginClick}
+                          className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                        >
+                          {cmsConfig.loginLinkText}
+                        </button>
+                      ) : (
+                        <>
+                          Already have an account?{' '}
+                          <button
+                            onClick={onLoginClick}
+                            className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                          >
+                            Login
+                          </button>
+                        </>
+                      )}
                     </p>
                   </div>
                 )}
@@ -931,9 +950,13 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
             {step === 2 && (
               <>
                 <div className="mb-5">
-                  <h2 className="text-2xl font-bold text-gray-900">Company Information</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {cmsConfig?.step2?.title || (isConsultantMode ? 'Consultant / Agency Information' : 'Company Information')}
+                  </h2>
                   <p className="text-xs text-gray-500 mt-1">
-                    Provide your organization details to complete your recruiter profile
+                    {cmsConfig?.step2?.subtitle || (isConsultantMode 
+                      ? 'Provide your consultancy or agency details to complete your profile'
+                      : 'Provide your organization details to complete your recruiter profile')}
                   </p>
                 </div>
 
@@ -977,40 +1000,42 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                 )}
 
                 <form className="space-y-4" onSubmit={handleFinalRegister}>
-                  {/* Hiring For */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      {cmsConfig?.hiringForLabel || 'Hiring For'}
-                    </label>
-                    <div className="flex flex-wrap gap-4">
-                      {(cmsConfig?.hiringForOptions && cmsConfig.hiringForOptions.length > 0
-                        ? cmsConfig.hiringForOptions
-                        : [
-                            { id: 'your_company', value: 'your_company', label: cmsConfig?.hiringForCompanyLabel || 'Your Company' },
-                            { id: 'consultant', value: 'consultant', label: cmsConfig?.hiringForConsultantLabel || 'Consultant / Staffing Agency' }
-                          ]
-                      ).map((opt) => {
-                        const optVal = opt.value || opt.id;
-                        return (
-                          <label key={optVal} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="hiringFor"
-                              value={optVal}
-                              checked={hiringFor === optVal}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setHiringFor(val);
-                                setAccountType(val.toLowerCase().includes('company') || val.toLowerCase().includes('business') ? 'company' : 'individual');
-                              }}
-                              className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600"
-                            />
-                            <span className="text-sm font-medium text-gray-700">{opt.label}</span>
-                          </label>
-                        );
-                      })}
+                  {/* Hiring For (Only for Employer, hidden for Consultant) */}
+                  {!isConsultantMode && (
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        {cmsConfig?.hiringForLabel || 'Hiring For'}
+                      </label>
+                      <div className="flex flex-wrap gap-4">
+                        {(cmsConfig?.hiringForOptions && cmsConfig.hiringForOptions.length > 0
+                          ? cmsConfig.hiringForOptions
+                          : [
+                              { id: 'your_company', value: 'your_company', label: cmsConfig?.hiringForCompanyLabel || 'Your Company' },
+                              { id: 'consultant', value: 'consultant', label: cmsConfig?.hiringForConsultantLabel || 'Consultant' }
+                            ]
+                        ).map((opt) => {
+                          const optVal = opt.value || opt.id;
+                          return (
+                            <label key={optVal} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="hiringFor"
+                                value={optVal}
+                                checked={hiringFor === optVal}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setHiringFor(val);
+                                  setAccountType(val.toLowerCase().includes('company') || val.toLowerCase().includes('business') ? 'company' : 'individual');
+                                }}
+                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600"
+                              />
+                              <span className="text-sm font-medium text-gray-700">{opt.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Company Name */}
                   <div className="space-y-1.5">
@@ -1133,7 +1158,7 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                       }}
                       multiple={false}
                       placeholder={locationCfg.placeholder}
-                      className={`w-full px-5 py-3.5 rounded-2xl border ${
+                      className={`w-full px-5 py-3.5 rounded-full border ${
                         errors.location
                           ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
                           : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
@@ -1231,13 +1256,15 @@ const EmployerRegisterModal = ({ isOpen, initialData, onClose, onLoginClick, onL
                 </div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">Congratulations!</h2>
                 <p className="text-gray-600 mb-8 max-w-[320px] text-sm leading-relaxed">
-                  Your employer recruiter account for <strong className="text-gray-900">{companyName}</strong> has been successfully set up.
+                  {isConsultantMode 
+                    ? <>Your consultant recruiter account for <strong className="text-gray-900">{companyName || fullName}</strong> has been successfully set up.</>
+                    : <>Your employer recruiter account for <strong className="text-gray-900">{companyName || fullName}</strong> has been successfully set up.</>}
                 </p>
                 <button
                   onClick={() => onLoginSuccess?.()}
                   className="w-full py-3.5 bg-palette-900 hover:bg-palette-400 text-white font-bold rounded-full shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transition-all duration-300 transform hover:-translate-y-0.5"
                 >
-                  Go to Employer Dashboard
+                  {isConsultantMode ? 'Go to Consultant Dashboard' : 'Go to Employer Dashboard'}
                 </button>
               </div>
             )}

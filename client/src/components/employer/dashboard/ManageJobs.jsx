@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import JobShareModal from '../../common/JobShareModal';
 
-const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = false }) => {
+const ManageJobs = ({ portalConfig, jobs = [], candidates = [], toggleJobStatus, hideHeader = false }) => {
   const [selectedJob, setSelectedJob] = useState(null);
+  const [jobToShare, setJobToShare] = useState(null);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
 
@@ -53,7 +56,7 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input 
               type="text" 
-              placeholder="Search job by title, location..." 
+              placeholder={portalConfig?.jobSearchPlaceholder || "Search job by title, location..."} 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f] transition-all placeholder-gray-400"
@@ -170,6 +173,15 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
 
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-1.5 shrink-0">
+                      <button
+                        onClick={() => { setJobToShare(job); setShowShareModal(true); }}
+                        className="p-2 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-xl transition-colors border border-gray-200/80 hover:border-green-200 cursor-pointer"
+                        title="Share Direct Apply Link"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                      </button>
                       <Link
                         to="/employer/post-job"
                         state={{ jobToEdit: job }}
@@ -374,11 +386,21 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
             </div>
 
             {/* Sidebar Footer Actions (Fixed) */}
-            <div className="mt-6 pt-6 border-t border-gray-100 flex gap-3 shrink-0">
+            <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setJobToShare(selectedJob);
+                  setShowShareModal(true);
+                }}
+                className="py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-sm transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>🔗</span> Share Apply Link
+              </button>
               <Link 
                 to="/employer/applications" 
                 state={{ jobTitle: selectedJob.title }}
-                className="w-full py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm text-center"
+                className="flex-1 py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm text-center"
               >
                 View Applications
               </Link>
@@ -386,6 +408,18 @@ const ManageJobs = ({ jobs = [], candidates = [], toggleJobStatus, hideHeader = 
 
           </div>
         </>
+      )}
+
+      {/* Share Apply Link Modal */}
+      {jobToShare && (
+        <JobShareModal
+          isOpen={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setJobToShare(null);
+          }}
+          job={jobToShare}
+        />
       )}
 
     </div>

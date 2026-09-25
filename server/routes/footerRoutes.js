@@ -19,13 +19,15 @@ router.get('/', async (req, res) => {
 // PUT update footer configuration
 router.put('/', async (req, res) => {
   try {
-    let config = await FooterConfig.findOne();
-    if (!config) {
-      config = new FooterConfig(req.body);
-    } else {
-      Object.assign(config, req.body);
-    }
-    const updated = await config.save();
+    const updateData = { ...req.body };
+    delete updateData._id;
+    delete updateData.__v;
+
+    const updated = await FooterConfig.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
     res.json(updated);
   } catch (error) {
     console.error('Error updating footer config:', error);

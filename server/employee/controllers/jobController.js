@@ -1,5 +1,6 @@
 const Job = require('../../models/Job');
 const Application = require('../../models/Application');
+const Employee = require('../models/Employee');
 
 // @desc    Get all active jobs
 // @route   GET /api/employee/jobs
@@ -10,6 +11,22 @@ exports.getAllJobs = async (req, res) => {
       .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics')
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: jobs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get single job by ID
+// @route   GET /api/employee/jobs/:id
+// @access  Public
+exports.getJobById = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics');
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+    res.status(200).json({ success: true, data: job });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -72,6 +89,15 @@ exports.applyForJob = async (req, res) => {
       return res.status(400).json({ success: false, message: 'You have already applied for this job' });
     }
 
+    // Update candidate CV / Resume / mobile in DB if provided
+    if (req.body.resume || req.body.mobile || req.body.name) {
+      const updateFields = {};
+      if (req.body.resume) updateFields.resume = req.body.resume;
+      if (req.body.mobile) updateFields.mobile = req.body.mobile;
+      if (req.body.name) updateFields.name = req.body.name;
+      await Employee.findByIdAndUpdate(employeeId, updateFields);
+    }
+
     const application = await Application.create({
       jobId,
       employeeId,
@@ -80,7 +106,7 @@ exports.applyForJob = async (req, res) => {
     });
 
     // Increment applications count
-    job.applications += 1;
+    job.applications = (job.applications || 0) + 1;
     await job.save();
 
     res.status(201).json({ success: true, data: application });

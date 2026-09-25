@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import ManageJobs from './ManageJobs';
-const DashboardOverview = ({ employerProfile, employerName, jobs = [], candidates = [], toggleJobStatus }) => {
+const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs = [], candidates = [], toggleJobStatus }) => {
   const [selectedJob, setSelectedJob] = useState(null);
 
   const displayName = employerName || employerProfile?.fullName || employerProfile?.companyName || 'Recruiter';
@@ -24,21 +24,25 @@ const DashboardOverview = ({ employerProfile, employerName, jobs = [], candidate
   const shortlistedCount = candidates.reduce((sum, c) => sum + (c.history?.filter(h => h.status === 'Shortlisted').length || 0), 0);
 
   const stats = [
-    { label: 'Active Job', value: activeJobsCount.toString(), trend: 'Updated just now', trendColor: 'text-gray-500', icon: (
+    { label: portalConfig?.stats?.activeJobsLabel || portalConfig?.stats?.activeJobLabel || 'Active Job', value: activeJobsCount.toString(), trend: 'Updated just now', trendColor: 'text-gray-500', icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#147a2e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
     )},
-    { label: 'Total Applications', value: totalAppsCount.toString(), trend: '+12 this week', trendColor: 'text-green-600', icon: (
+    { label: portalConfig?.stats?.totalApplicationsLabel || 'Total Applications', value: totalAppsCount.toString(), trend: '+12 this week', trendColor: 'text-green-600', icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#147a2e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
     )},
-    { label: 'Total Candidates', value: totalCandidatesCount.toString(), trend: '+8 this week', trendColor: 'text-green-600', icon: (
+    { label: portalConfig?.stats?.totalCandidatesLabel || 'Total Candidates', value: totalCandidatesCount.toString(), trend: '+8 this week', trendColor: 'text-green-600', icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
     )},
-    { label: 'Shortlisted', value: shortlistedCount.toString(), trend: '+5 this week', trendColor: 'text-green-600', icon: (
+    { label: portalConfig?.stats?.shortlistedLabel || 'Shortlisted', value: shortlistedCount.toString(), trend: '+5 this week', trendColor: 'text-green-600', icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
     )}
   ];
 
   const recentJobs = jobs.slice(0, 5);
+
+  const welcomePrefix = portalConfig?.welcomePrefix || 'Welcome back,';
+  const subtitle = portalConfig?.subtitle || "Here's what's happening with your job posting today.";
+  const postJobBtnText = portalConfig?.postJobBtnText || 'Post New Job';
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -46,10 +50,17 @@ const DashboardOverview = ({ employerProfile, employerName, jobs = [], candidate
       {/* Top Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-[26px] font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            Welcome back, {displayName}! <span className="text-2xl">👋</span>
+          <h1 className="text-[26px] font-bold text-gray-900 tracking-tight flex items-center gap-2.5 flex-wrap">
+            <span>{welcomePrefix} {displayName}!</span>
+            {employerProfile?.hiringFor === 'consultant' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
+                <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                Consultant
+              </span>
+            )}
+            <span className="text-2xl">👋</span>
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Here's what's happening with your job posting today.</p>
+          <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -57,7 +68,7 @@ const DashboardOverview = ({ employerProfile, employerName, jobs = [], candidate
             to="/employer/post-job"
             className="px-5 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-full transition-colors flex items-center gap-1.5 shadow-sm"
           >
-            <span className="text-lg leading-none">+</span> Post New Job
+            <span className="text-lg leading-none">+</span> {postJobBtnText}
           </Link>
           <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm cursor-pointer overflow-hidden" title={displayName}>
             {employerProfile?.companyLogo ? (
@@ -86,7 +97,7 @@ const DashboardOverview = ({ employerProfile, employerName, jobs = [], candidate
 
       {/* Main Layout */}
       <div className="pt-2">
-        <ManageJobs jobs={jobs} toggleJobStatus={toggleJobStatus} hideHeader={true} />
+        <ManageJobs portalConfig={portalConfig} jobs={jobs} toggleJobStatus={toggleJobStatus} hideHeader={true} />
       </div>
     </div>
   );

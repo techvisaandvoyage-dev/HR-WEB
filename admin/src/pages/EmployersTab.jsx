@@ -45,10 +45,13 @@ import {
   RotateCcw,
   LayoutDashboard,
   GripVertical,
-  FolderPlus
+  FolderPlus,
+  Link2
 } from 'lucide-react';
 
 import EmployerPostJobEditor, { DEFAULT_EMPLOYER_POST_JOB_CONFIG } from './homepage-cms/components/EmployerPostJobEditor';
+import EmployerPortalEditor, { DEFAULT_EMPLOYER_PORTAL_CONFIG } from './homepage-cms/components/EmployerPortalEditor';
+import DirectJobApplyEditor from './homepage-cms/components/DirectJobApplyEditor';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -274,7 +277,7 @@ export const DEFAULT_EMPLOYER_DESIGNATION_OPTIONS = [
 
 export const DEFAULT_EMPLOYER_HIRING_FOR_OPTIONS = [
   { id: 'your_company', value: 'your_company', label: 'Your Company' },
-  { id: 'consultant', value: 'consultant', label: 'Consultant / Staffing Agency' }
+  { id: 'consultant', value: 'consultant', label: 'Consultant' }
 ];
 
 export const DEFAULT_EMPLOYER_REGISTER_CONFIG = {
@@ -290,7 +293,7 @@ export const DEFAULT_EMPLOYER_REGISTER_CONFIG = {
   accountTypeIndividualLabel: 'Individual / Proprietor',
   hiringForLabel: 'Hiring For',
   hiringForCompanyLabel: 'Your Company',
-  hiringForConsultantLabel: 'Consultant / Staffing Agency',
+  hiringForConsultantLabel: 'Consultant',
   hiringForOptions: DEFAULT_EMPLOYER_HIRING_FOR_OPTIONS,
   step1: {
     title: 'Account Information',
@@ -343,9 +346,9 @@ export default function EmployersTab() {
   const [activeSection, setActiveSectionState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sec = params.get('section');
-    if (sec && ['auth', 'post-job', 'overview'].includes(sec)) return sec;
+    if (sec && ['auth', 'post-job', 'portal'].includes(sec)) return sec;
     const saved = localStorage.getItem('adminEmployerSection');
-    if (saved && ['auth', 'post-job', 'overview'].includes(saved)) return saved;
+    if (saved && ['auth', 'post-job', 'portal'].includes(saved)) return saved;
     return 'auth';
   });
 
@@ -556,7 +559,7 @@ export default function EmployersTab() {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const sec = params.get('section');
-      if (sec && ['auth', 'post-job', 'overview'].includes(sec)) {
+      if (sec && ['auth', 'post-job'].includes(sec)) {
         setActiveSectionState(sec);
       }
       const sub = params.get('authSub');
@@ -1131,7 +1134,8 @@ export default function EmployersTab() {
   const sidebarSections = [
     { id: 'auth', label: 'Authentication', icon: ShieldCheck },
     { id: 'post-job', label: 'Post a Job', icon: Briefcase },
-    { id: 'overview', label: 'Overview & Directory', icon: LayoutDashboard }
+    { id: 'portal', label: 'Portal & Dashboard', icon: LayoutDashboard },
+    { id: 'direct-apply', label: 'Direct Job Apply', icon: Link2 }
   ];
 
   // Step 1 Field Keys definition
@@ -1323,9 +1327,15 @@ export default function EmployersTab() {
     }
   };
 
-  // Filter options
+  // Employer Type Label helper
+  const getEmployerTypeLabel = (empr) => {
+    if (empr?.hiringFor === 'consultant' || empr?.isConsultant) return 'Consultant';
+    if (empr?.accountType === 'individual') return 'Individual / Proprietor';
+    return 'Company';
+  };
+
   const isIndividualHiring = (empr) => {
-    return empr?.hiringFor === 'consultant' || empr?.accountType === 'individual';
+    return empr?.accountType === 'individual';
   };
 
   const filteredAndSortedEmployers = React.useMemo(() => {
@@ -1339,16 +1349,16 @@ export default function EmployersTab() {
         const loc = (empr.location || '').toLowerCase();
         const ind = (empr.industry || '').toLowerCase();
         const desig = (empr.designation || '').toLowerCase();
-        const hiringType = isIndividualHiring(empr) ? 'individual proprietor' : 'company business';
+        const hiringType = getEmployerTypeLabel(empr).toLowerCase();
         if (!comp.includes(q) && !name.includes(q) && !email.includes(q) && !phone.includes(q) && !loc.includes(q) && !ind.includes(q) && !desig.includes(q) && !hiringType.includes(q)) {
           return false;
         }
       }
 
       if (hiringForFilter !== 'All') {
-        const isInd = isIndividualHiring(empr);
-        if (hiringForFilter === 'consultant' && !isInd) return false;
-        if (hiringForFilter === 'your_company' && isInd) return false;
+        const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant;
+        if (hiringForFilter === 'consultant' && !isConsultant) return false;
+        if (hiringForFilter === 'your_company' && isConsultant) return false;
       }
 
       if (industryFilter !== 'All') {
@@ -2396,9 +2406,31 @@ export default function EmployersTab() {
         )}
 
         {/* ========================================================================= */}
+        {/* 3. PORTAL & DASHBOARD CMS SECTION                                         */}
+        {/* ========================================================================= */}
+        {activeSection === 'portal' && (
+          <EmployerPortalEditor
+            onSaveSuccess={() => {
+              showToast('Employer Portal & Dashboard CMS settings updated successfully!');
+            }}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 4. DIRECT JOB APPLY LINK CMS SECTION                                      */}
+        {/* ========================================================================= */}
+        {activeSection === 'direct-apply' && (
+          <DirectJobApplyEditor
+            onSaveSuccess={() => {
+              showToast('Direct Job Apply CMS settings updated successfully!');
+            }}
+          />
+        )}
+
+        {/* ========================================================================= */}
         {/* 3. OVERVIEW & DIRECTORY SECTION                                           */}
         {/* ========================================================================= */}
-        {activeSection === 'overview' && (
+        {false && (
           <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
             
             {/* Header */}
@@ -2523,7 +2555,7 @@ export default function EmployersTab() {
                                       <div>
                                         <span>{empr.companyName || empr.fullName || 'N/A'}</span>
                                         <p className="text-[10px] text-gray-400 font-normal">
-                                          {isIndividualHiring(empr) ? 'Individual / Proprietor' : 'Company'}
+                                          {getEmployerTypeLabel(empr)}
                                         </p>
                                       </div>
                                     </div>
@@ -3045,7 +3077,7 @@ export default function EmployersTab() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="e.g. Consultant / Staffing Agency"
+                    placeholder="e.g. Consultant"
                     value={newHiringForLabel}
                     onChange={(e) => {
                       setNewHiringForLabel(e.target.value);

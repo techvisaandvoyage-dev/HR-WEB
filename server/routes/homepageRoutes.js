@@ -26,25 +26,15 @@ const toPlain = (val) => {
 // PUT update homepage configuration
 router.put('/', async (req, res) => {
   try {
-    let config = await HomepageConfig.findOne();
-    if (!config) {
-      config = new HomepageConfig(req.body);
-    } else {
-      if (req.body.logo !== undefined) { config.logo = req.body.logo; config.markModified('logo'); }
-      if (req.body.hero !== undefined) { config.hero = req.body.hero; config.markModified('hero'); }
-      if (req.body.searchBar !== undefined) { config.searchBar = req.body.searchBar; config.markModified('searchBar'); }
-      if (req.body.jobCards !== undefined) { config.jobCards = req.body.jobCards; config.markModified('jobCards'); }
-      if (req.body.typography !== undefined) { config.typography = req.body.typography; config.markModified('typography'); }
-      if (req.body.customFontsLibrary !== undefined) { config.customFontsLibrary = req.body.customFontsLibrary; config.markModified('customFontsLibrary'); }
-      if (req.body.employeeRegister !== undefined) { config.employeeRegister = req.body.employeeRegister; config.markModified('employeeRegister'); }
-      if (req.body.employeeLogin !== undefined) { config.employeeLogin = req.body.employeeLogin; config.markModified('employeeLogin'); }
-      if (req.body.employeeOnboarding !== undefined) { config.employeeOnboarding = req.body.employeeOnboarding; config.markModified('employeeOnboarding'); }
-      if (req.body.employerRegister !== undefined) { config.employerRegister = req.body.employerRegister; config.markModified('employerRegister'); }
-      if (req.body.employerLogin !== undefined) { config.employerLogin = req.body.employerLogin; config.markModified('employerLogin'); }
-      if (req.body.employerPostJob !== undefined) { config.employerPostJob = req.body.employerPostJob; config.markModified('employerPostJob'); }
-    }
+    const updateData = { ...req.body };
+    delete updateData._id;
+    delete updateData.__v;
 
-    const updated = await config.save();
+    const updated = await HomepageConfig.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
     res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error updating homepage config:', error);

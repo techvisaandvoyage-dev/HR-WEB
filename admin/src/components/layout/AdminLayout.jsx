@@ -5,6 +5,7 @@ import {
   SlidersHorizontal, 
   LayoutDashboard, 
   Building2, 
+  Briefcase,
   Users, 
   LogOut, 
   Settings,
@@ -35,6 +36,11 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
       icon: Building2
     },
     {
+      id: 'consultants',
+      label: 'Consultants',
+      icon: Briefcase
+    },
+    {
       id: 'footer',
       label: 'Footer & Icons',
       icon: SlidersHorizontal
@@ -43,6 +49,11 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
       id: 'overview',
       label: 'Overview',
       icon: LayoutDashboard
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings
     }
   ];
 

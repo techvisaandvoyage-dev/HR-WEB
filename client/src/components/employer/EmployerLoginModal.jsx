@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
 
-const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }) => {
+const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterClick, onLoginSuccess }) => {
   const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'otp' | 'forgot'
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -24,23 +24,29 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
   const [errors, setErrors] = useState({});
   const [cmsConfig, setCmsConfig] = useState(null);
 
-  // Fetch Employer Login CMS config
+  // Fetch Employer / Consultant Login CMS config
   useEffect(() => {
     const fetchCmsConfig = async () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
         const data = await res.json();
-        if (data.success && data.data?.employerLogin) {
-          setCmsConfig(data.data.employerLogin);
+        if (data.success && data.data) {
+          if (isConsultant && data.data?.consultantLogin && Object.keys(data.data.consultantLogin).length > 0) {
+            setCmsConfig(data.data.consultantLogin);
+          } else if (!isConsultant && data.data?.employerLogin && Object.keys(data.data.employerLogin).length > 0) {
+            setCmsConfig(data.data.employerLogin);
+          } else if (isConsultant && data.data?.employerLogin) {
+            setCmsConfig(data.data.employerLogin);
+          }
         }
       } catch (err) {
-        console.error('Error fetching employer login CMS config:', err);
+        console.error('Error fetching login CMS config:', err);
       }
     };
     if (isOpen) {
       fetchCmsConfig();
     }
-  }, [isOpen]);
+  }, [isOpen, isConsultant]);
 
   // Countdown timer for Resend OTP
   useEffect(() => {
@@ -119,7 +125,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       const res = await fetch(`${apiUrl}/api/employer/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken })
+        body: JSON.stringify({ id_token: idToken, isConsultant: Boolean(isConsultant) })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -127,7 +133,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
         if (data.isNewUser) {
           // New user -> open Company Details form
           if (onRegisterClick) {
-            onRegisterClick({ step: 2, fullName: data.fullName, email: data.email, isGoogleAuth: true });
+            onRegisterClick({ step: 2, fullName: data.fullName, email: data.email, isGoogleAuth: true, isConsultant });
           }
         } else {
           onLoginSuccess?.(data);
@@ -135,7 +141,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       } else {
         const errorMsg = data.message || 'Google login failed';
         setError(errorMsg);
-        setErrors({ general: errorMsg });
+        setErrors({ general: errorMsg, email: errorMsg });
       }
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
@@ -173,7 +179,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password, isConsultant: Boolean(isConsultant) }),
       });
 
       const data = await response.json();
@@ -183,14 +189,12 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
         onLoginSuccess?.(data);
       } else {
         const errorState = {};
-        if (data.field === 'email' || (data.message && (data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('account') || data.message.toLowerCase().includes('find') || data.message.toLowerCase().includes('exist') || data.message.toLowerCase().includes('register') || data.message.toLowerCase().includes('credential')))) {
-          errorState.email = (data.message && !data.message.toLowerCase().includes('credential'))
-            ? data.message
-            : "We couldn't find an employer account with this email. Please register first to continue.";
-        } else if (data.field === 'password' || (data.message && data.message.toLowerCase().includes('password'))) {
+        if (data.field === 'password' || (data.message && data.message.toLowerCase().includes('password') && !data.message.toLowerCase().includes('email'))) {
           errorState.password = data.message || "Invalid password. Please check and try again.";
         } else {
-          errorState.email = "We couldn't find an employer account with this email. Please register first to continue.";
+          errorState.email = data.message || (isConsultant 
+            ? "We couldn't find a consultant account with this email. Please register first to continue." 
+            : "We couldn't find an employer account with this email. Please register first to continue.");
         }
         setErrors(errorState);
       }
@@ -213,7 +217,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/login/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), isConsultant: Boolean(isConsultant) }),
       });
       const data = await response.json();
 
@@ -450,13 +454,13 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
           {/* Header */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-palette-900">
-              {cmsConfig?.modalTitle || 'Welcome to Employer Portal'}
+              {cmsConfig?.modalTitle || (isConsultant ? 'Welcome to Consultant Portal' : 'Welcome to Employer Portal')}
             </h2>
-            {cmsConfig?.modalSubtitle && (
-              <p className="text-xs text-gray-500 mt-1">
-                {cmsConfig.modalSubtitle}
-              </p>
-            )}
+            <p className="text-xs text-gray-500 mt-1">
+              {cmsConfig?.modalSubtitle || (isConsultant 
+                ? 'Sign in to access your consultant dashboard and manage job postings' 
+                : 'Sign in to access your recruiter dashboard and find matching candidates')}
+            </p>
           </div>
 
           {loginMethod === 'forgot' ? (
@@ -743,7 +747,7 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                 <div className="h-px bg-gray-200 flex-1"></div>
               </div>
 
-              {errors.general && (
+              {errors.general && !errors.email && (
                 <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-semibold rounded-lg border border-red-200 flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -1010,16 +1014,26 @@ const EmployerLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
               <p className="text-gray-600 text-sm">
                 {cmsConfig?.registerCtaText ? (
                   <button 
-                    onClick={onRegisterClick}
+                    onClick={() => onRegisterClick({ isConsultant })}
                     className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
                   >
                     {cmsConfig.registerCtaText}
                   </button>
+                ) : isConsultant ? (
+                  <>
+                    Don't have a consultant account?{' '}
+                    <button 
+                      onClick={() => onRegisterClick({ isConsultant: true })}
+                      className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
+                    >
+                      Register as Consultant
+                    </button>
+                  </>
                 ) : (
                   <>
                     Don't have an employer account?{' '}
                     <button 
-                      onClick={onRegisterClick}
+                      onClick={() => onRegisterClick({ isConsultant: false })}
                       className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
                     >
                       Register now

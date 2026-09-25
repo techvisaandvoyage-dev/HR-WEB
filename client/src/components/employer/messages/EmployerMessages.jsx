@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import VideoPlayer from '../../common/VideoPlayer';
 
-const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateStatus }) => {
+const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, updateCandidateStatus }) => {
   const location = useLocation();
   const initialEmployeeData = location.state?.initialEmployee;
 
@@ -169,12 +169,12 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
       {/* Column 1 - Employees */}
       <div className="w-[300px] bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col shrink-0 overflow-hidden">
         <div className="p-5 border-b border-gray-100 shrink-0">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Candidates</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">{portalConfig?.candidatesColumnTitle || 'Candidates'}</h2>
           <div className="relative">
             <svg className="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             <input 
               type="text" 
-              placeholder="Search candidates..." 
+              placeholder={portalConfig?.candidatesSearchPlaceholder || "Search candidates..."} 
               value={employeeSearch}
               onChange={(e) => setEmployeeSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#29953f] focus:bg-white transition-all text-gray-800 placeholder-gray-400"
@@ -183,7 +183,7 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
         </div>
         <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-1">
           {filteredCandidates.length === 0 ? (
-            <div className="text-center p-6 text-gray-400 text-sm">No candidates found.</div>
+            <div className="text-center p-6 text-gray-400 text-sm">{portalConfig?.noCandidatesFoundText || "No candidates found."}</div>
           ) : (
             filteredCandidates.map(cand => {
               const appCount = cand.history?.length || 0;
@@ -300,8 +300,12 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
               <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             </div>
-            <h3 className="text-gray-900 font-bold mb-1">Select a Candidate</h3>
-            <p className="text-sm text-gray-500">Choose a candidate from the list to view their job applications & chats.</p>
+            <h3 className="text-gray-900 font-bold mb-1">
+              {portalConfig?.selectCandidateTitle || 'Select a Candidate'}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {portalConfig?.selectCandidateSubtitle || 'Choose a candidate from the list to view their job applications & chats.'}
+            </p>
           </div>
         )}
       </div>
@@ -399,8 +403,12 @@ const EmployerMessages = ({ candidates = [], triggerNavRefresh, updateCandidateS
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm border border-gray-100">
               <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Employer Messages</h3>
-            <p className="text-gray-500">Select an application to view its conversation.</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {portalConfig?.emptyChatTitle || 'Employer Messages'}
+            </h3>
+            <p className="text-gray-500">
+              {portalConfig?.emptyChatSubtitle || 'Select an application to view its conversation.'}
+            </p>
           </div>
         )}
       </div>

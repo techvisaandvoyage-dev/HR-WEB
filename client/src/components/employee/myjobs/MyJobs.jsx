@@ -28,7 +28,7 @@ const MyJobs = ({ jobs = [] }) => {
   useEffect(() => {
     const fetchMyApplications = async () => {
       try {
-        const token = localStorage.getItem('employeeToken');
+        const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
         if (!token) return;
         
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
@@ -36,10 +36,10 @@ const MyJobs = ({ jobs = [] }) => {
         });
         const data = await res.json();
         
-        if (data.success) {
+        if (data.success && Array.isArray(data.data)) {
           const sortedData = [...data.data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           const apiAppliedJobs = sortedData.map(app => ({
-            id: app.jobId?._id || app.jobId,
+            id: app.jobId?._id || app.jobId?.id || app.jobId,
             status: app.status || 'Applied',
             date: new Date(app.createdAt).toLocaleDateString(),
             jobDetails: typeof app.jobId === 'object' ? app.jobId : null
@@ -207,7 +207,7 @@ const MyJobs = ({ jobs = [] }) => {
                       </span>
                       <h2 className="text-[17px] font-bold text-gray-900 group-hover:underline">{job.title}</h2>
                       <p className="text-[15px] text-gray-800 mt-1">{job.company}</p>
-                      <p className="text-[15px] text-gray-800 mt-0.5">{job.location}, {job.details.workLocation}</p>
+                      <p className="text-[15px] text-gray-800 mt-0.5">{job.location}{job.details?.workLocation ? `, ${job.details.workLocation}` : ''}</p>
                       <p className="text-[13px] text-gray-500 mt-1">Applied on sahijob.com on {applied.date}</p>
                     </div>
                     

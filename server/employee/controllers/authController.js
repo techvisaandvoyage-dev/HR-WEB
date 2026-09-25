@@ -139,6 +139,87 @@ const registerEmployee = async (req, res) => {
   }
 };
 
+// @desc    Quick register candidate for direct apply link / simplified auth
+// @route   POST /api/employee/auth/quick-register
+// @access  Public
+const quickRegisterCandidate = async (req, res) => {
+  try {
+    const { name, email, password, mobile, location } = req.body;
+
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({ success: false, message: 'Please enter your email address' });
+    }
+
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const existing = await Employee.findOne({ 
+      email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+    });
+
+    if (existing) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'An account with this email already exists. Please login to continue.' 
+      });
+    }
+
+    if (mobile && String(mobile).trim()) {
+      const cleanMobile = String(mobile).trim();
+      const mobileExists = await Employee.findOne({ mobile: cleanMobile });
+      if (mobileExists) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'This phone number is already registered with another account.' 
+        });
+      }
+    }
+
+    const employee = await Employee.create({
+      name: (name && String(name).trim()) ? String(name).trim() : cleanEmail.split('@')[0],
+      email: cleanEmail,
+      password,
+      mobile: mobile ? String(mobile).trim() : '',
+      location: location ? String(location).trim() : ''
+    });
+
+    res.status(201).json({
+      success: true,
+      _id: employee.id,
+      name: employee.name,
+      email: employee.email,
+      mobile: employee.mobile,
+      location: employee.location,
+      isNewUser: true,
+      isOnboardingCompleted: false,
+      onboardingStep: 1,
+      hasProfile: false,
+      token: generateToken(employee._id),
+      profile: {
+        firstName: employee.name ? employee.name.split(' ')[0] : '',
+        lastName: employee.name && employee.name.split(' ').length > 1 ? employee.name.split(' ').slice(1).join(' ') : '',
+        email: employee.email,
+        phone: employee.mobile || '',
+        brief: '',
+        avatar: '',
+        designation: '',
+        totalExperience: '',
+        isFresher: true,
+        qualifications: [],
+        experience: [],
+        professionalDetails: { currentLocation: employee.location || '' },
+        resume: '',
+        coverLetter: ''
+      }
+    });
+  } catch (error) {
+    console.error("Quick Register Error:", error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
 // @desc    Authenticate an employee
 // @route   POST /api/employee/auth/login
 // @access  Public
@@ -879,6 +960,7 @@ const changePassword = async (req, res) => {
 
 module.exports = {
   registerEmployee,
+  quickRegisterCandidate,
   loginEmployee,
   sendLoginOtp,
   resendLoginOtp,

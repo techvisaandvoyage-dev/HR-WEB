@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2022",
+    "checkJs": false,
+    "forceConsistentCasingInFileNames": false
+  },
+  "exclude": [
+    "node_modules",
+    "backups"
+  ]
+}

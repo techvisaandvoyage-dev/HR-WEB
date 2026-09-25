@@ -3,6 +3,7 @@ const router = express.Router();
 const { protectEmployee } = require('../../middleware/authMiddleware');
 const {
   registerEmployee,
+  quickRegisterCandidate,
   loginEmployee,
   sendLoginOtp,
   resendLoginOtp,
@@ -25,6 +26,7 @@ const {
 } = require('../controllers/authController');
 
 router.post('/register', registerEmployee);
+router.post('/quick-register', quickRegisterCandidate);
 router.post('/login', loginEmployee);
 router.post('/login/send-otp', sendLoginOtp);
 router.post('/login/resend-otp', resendLoginOtp);

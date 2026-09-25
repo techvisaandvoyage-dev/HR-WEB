@@ -59,7 +59,7 @@ const designationToIndustryMap = {
   'Graphic Designer': 'Other',
 };
 
-const AllEmployeesTab = () => {
+const AllEmployeesTab = ({ portalConfig }) => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -177,8 +177,12 @@ const AllEmployeesTab = () => {
       {/* Top Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">Candidates</h1>
-          <p className="text-gray-500 text-sm mt-1">Browse and discover qualified candidates & talent on the platform.</p>
+          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">
+            {portalConfig?.title || 'Candidates'}
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {portalConfig?.subtitle || 'Browse and discover qualified candidates & talent on the platform.'}
+          </p>
         </div>
       </div>
 
@@ -194,7 +198,7 @@ const AllEmployeesTab = () => {
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name or email..." 
+                placeholder={portalConfig?.searchPlaceholder || "Search by name or email..."} 
                 className="w-full pl-9 pr-4 py-2 border border-[#ECECEC] rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all placeholder-gray-400"
               />
             </div>
@@ -211,7 +215,9 @@ const AllEmployeesTab = () => {
           <div className="flex gap-3 flex-wrap items-center">
             {/* Industry Filter */}
             <div className="relative" style={{ minWidth: '220px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Function</span>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
+                {portalConfig?.functionFilterLabel || 'Function'}
+              </span>
               <MultiSelectLocationDropdown
                 options={[{ value: 'All', label: 'All Functions' }, ...industryOptions.map(ind => ({ value: ind, label: ind }))]}
                 value={industryFilter}
@@ -224,7 +230,9 @@ const AllEmployeesTab = () => {
 
             {/* Location Filter */}
             <div className="relative" style={{ minWidth: '280px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Location</span>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
+                {portalConfig?.locationFilterLabel || 'Location'}
+              </span>
               <MultiSelectLocationDropdown
                 options={[{ value: 'All', label: 'All Locations' }, ...preferredLocationOptions]}
                 value={locationFilter}
@@ -237,7 +245,9 @@ const AllEmployeesTab = () => {
 
             {/* Experience Filter */}
             <div className="relative" style={{ minWidth: '180px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Experience</span>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
+                {portalConfig?.experienceFilterLabel || 'Experience'}
+              </span>
               <MultiSelectLocationDropdown
                 options={[{ value: 'All', label: 'All Exp' }, ...experienceOptions.map(exp => ({ value: exp, label: exp }))]}
                 value={experienceFilter}
@@ -250,7 +260,9 @@ const AllEmployeesTab = () => {
 
             {/* Last Update Filter */}
             <div className="relative" style={{ minWidth: '180px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Last Update</span>
+              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
+                {portalConfig?.lastUpdateFilterLabel || 'Last Update'}
+              </span>
               <MultiSelectLocationDropdown
                 options={[
                   { value: 'All', label: 'Any time' },

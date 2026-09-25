@@ -14,6 +14,7 @@ import LocationAutocomplete from './components/common/LocationAutocomplete';
 import Footer from './components/common/Footer';
 import StaticPage from './components/common/StaticPage';
 import BrandLogo from './components/common/BrandLogo';
+import DirectJobApply from './components/candidate/DirectJobApply';
 import { isLocationMatch } from './data/preferredLocations';
 
 function App() {
@@ -397,6 +398,7 @@ function App() {
   const [isEmployeeRegisterOpen, setIsEmployeeRegisterOpen] = useState(false);
   const [isEmployerLoginOpen, setIsEmployerLoginOpen] = useState(false);
   const [isEmployerRegisterOpen, setIsEmployerRegisterOpen] = useState(false);
+  const [isConsultantMode, setIsConsultantMode] = useState(false);
   const [employerRegisterInitialData, setEmployerRegisterInitialData] = useState(null);
   const navigate = useNavigate();
 
@@ -412,7 +414,8 @@ function App() {
 
   const openEmployerRegister = (initialData = null) => {
     setIsEmployerLoginOpen(false);
-    setEmployerRegisterInitialData(initialData);
+    const consultantFlag = initialData?.isConsultant !== undefined ? initialData.isConsultant : isConsultantMode;
+    setEmployerRegisterInitialData(initialData ? { ...initialData, isConsultant: consultantFlag } : (consultantFlag ? { isConsultant: true } : null));
     setIsEmployerRegisterOpen(true);
   };
 
@@ -435,6 +438,14 @@ function App() {
     } else {
       navigate('/employee', { state: { loggedIn: true } });
     }
+  };
+
+  const handleDirectApplyAuthSuccess = () => {
+    setIsLoggedIn(true);
+    setUserRole('employee');
+    setIsEmployeeLoginOpen(false);
+    setIsEmployeeRegisterOpen(false);
+    // Stay on the direct job apply page and do NOT redirect to onboarding
   };
 
   const handleEmployerLoginSuccess = () => {
@@ -465,18 +476,24 @@ function App() {
         />
 
         {/* Desktop Buttons */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
           <button 
             onClick={() => setIsEmployeeLoginOpen(true)}
-            className="px-6 py-2.5 rounded-full font-medium text-palette-900 hover:text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
+            className="px-5 py-2.5 rounded-full font-medium text-palette-900 hover:text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
           >
             Employee Login
           </button>
           <button 
-            onClick={() => setIsEmployerLoginOpen(true)}
-            className="px-6 py-2.5 rounded-full font-medium bg-palette-900 text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-900 focus:ring-offset-2"
+            onClick={() => { setIsConsultantMode(false); setIsEmployerLoginOpen(true); }}
+            className="px-5 py-2.5 rounded-full font-medium text-palette-900 border border-palette-200 hover:border-palette-400 hover:bg-palette-50 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
           >
             Employer Login
+          </button>
+          <button 
+            onClick={() => { setIsConsultantMode(true); setIsEmployerLoginOpen(true); }}
+            className="px-5 py-2.5 rounded-full font-medium bg-palette-900 text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-900 focus:ring-offset-2 flex items-center gap-1.5"
+          >
+            Consultant Login
           </button>
         </div>
 
@@ -496,10 +513,10 @@ function App() {
         {/* Mobile Menu Dropdown */}
         <div 
           className={`md:hidden bg-white border-b border-palette-100 absolute top-full left-0 w-full z-40 shadow-lg transition-all duration-300 ease-in-out overflow-hidden ${
-            isMobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 border-transparent'
+            isMobileMenuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0 border-transparent'
           }`}
         >
-          <div className="flex flex-col p-6 gap-4">
+          <div className="flex flex-col p-6 gap-3">
             <button 
               onClick={() => { setIsMobileMenuOpen(false); setIsEmployeeLoginOpen(true); }}
               className="w-full px-6 py-3 rounded-xl font-bold text-palette-900 bg-palette-100/50 hover:bg-palette-100 transition-colors"
@@ -507,10 +524,16 @@ function App() {
               Employee Login
             </button>
             <button 
-              onClick={() => { setIsMobileMenuOpen(false); setIsEmployerLoginOpen(true); }}
-              className="w-full px-6 py-3 rounded-xl font-bold bg-palette-900 text-white hover:bg-palette-800 transition-colors"
+              onClick={() => { setIsMobileMenuOpen(false); setIsConsultantMode(false); setIsEmployerLoginOpen(true); }}
+              className="w-full px-6 py-3 rounded-xl font-bold text-palette-900 border border-palette-200 bg-white hover:bg-palette-50 transition-colors"
             >
               Employer Login
+            </button>
+            <button 
+              onClick={() => { setIsMobileMenuOpen(false); setIsConsultantMode(true); setIsEmployerLoginOpen(true); }}
+              className="w-full px-6 py-3 rounded-xl font-bold bg-palette-900 text-white hover:bg-palette-800 transition-colors"
+            >
+              Consultant Login
             </button>
           </div>
         </div>
@@ -651,7 +674,15 @@ function App() {
                     )}
                   </div>
                   <div className="flex flex-col flex-1">
-                    <span className="font-bold text-gray-900">{job.company}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-gray-900">{job.company}</span>
+                      {job.employerId?.hiringFor === 'consultant' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <svg className="w-2.5 h-2.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                          Consultant
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center text-gray-500 text-sm mt-1 gap-1.5">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -737,6 +768,16 @@ function App() {
           path="/page/*" 
           element={<StaticPage />} 
         />
+
+        {/* Direct Candidate Job Apply Routes (Shareable Link) */}
+        <Route 
+          path="/apply-job/:jobId" 
+          element={<DirectJobApply onAuthSuccess={handleDirectApplyAuthSuccess} />} 
+        />
+        <Route 
+          path="/apply/:jobId" 
+          element={<DirectJobApply onAuthSuccess={handleDirectApplyAuthSuccess} />} 
+        />
         
         <Route 
           path="/employee" 
@@ -799,14 +840,16 @@ function App() {
       />
       <EmployerLoginModal 
         isOpen={isEmployerLoginOpen} 
-        onClose={() => setIsEmployerLoginOpen(false)} 
+        isConsultant={isConsultantMode}
+        onClose={() => { setIsEmployerLoginOpen(false); setIsConsultantMode(false); }} 
         onRegisterClick={openEmployerRegister}
         onLoginSuccess={handleEmployerLoginSuccess}
       />
       <EmployerRegisterModal 
         isOpen={isEmployerRegisterOpen}
+        isConsultant={isConsultantMode || employerRegisterInitialData?.isConsultant}
         initialData={employerRegisterInitialData}
-        onClose={() => { setIsEmployerRegisterOpen(false); setEmployerRegisterInitialData(null); }}
+        onClose={() => { setIsEmployerRegisterOpen(false); setEmployerRegisterInitialData(null); setIsConsultantMode(false); }}
         onLoginClick={openEmployerLogin}
         onLoginSuccess={handleEmployerLoginSuccess}
       />

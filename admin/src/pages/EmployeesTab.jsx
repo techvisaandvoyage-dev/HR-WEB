@@ -405,10 +405,10 @@ export default function EmployeesTab() {
   const [activeSection, setActiveSectionState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sec = params.get('section') || params.get('subtab');
-    if (sec && ['auth', 'onboarding', 'overview'].includes(sec)) return sec;
+    if (sec && ['auth', 'onboarding'].includes(sec)) return sec;
     const saved = localStorage.getItem('adminEmployeesSection');
-    if (saved && ['auth', 'onboarding', 'overview'].includes(saved)) return saved;
-    return 'onboarding';
+    if (saved && ['auth', 'onboarding'].includes(saved)) return saved;
+    return 'auth';
   });
 
   const [authSubTab, setAuthSubTabState] = useState(() => {
@@ -859,7 +859,7 @@ export default function EmployeesTab() {
     const handlePopState = () => {
       const p = new URLSearchParams(window.location.search);
       const sec = p.get('section') || p.get('subtab');
-      if (sec && ['auth', 'onboarding', 'overview'].includes(sec)) {
+      if (sec && ['auth', 'onboarding'].includes(sec)) {
         setActiveSectionState(sec);
       }
       const authSub = p.get('authSub');
@@ -2154,8 +2154,7 @@ export default function EmployeesTab() {
 
   const sidebarSections = [
     { id: 'auth', label: 'Authentication', icon: ShieldCheck },
-    { id: 'onboarding', label: 'Onboarding', icon: UserCheck },
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard }
+    { id: 'onboarding', label: 'Onboarding', icon: UserCheck }
   ];
 
   const fieldKeys = [
@@ -6992,19 +6991,6 @@ export default function EmployeesTab() {
               </div>
             )}
 
-          </div>
-        )}
-
-        {/* 3. Overview Section */}
-        {activeSection === 'overview' && (
-          <div className="bg-white rounded-2xl border border-gray-200/80 p-8 shadow-xs text-center py-20 animate-in fade-in duration-200">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-100">
-              <Users className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-extrabold text-gray-900">Employees Management & CMS</h3>
-            <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
-              Select <b>Authentication</b> (Login & Register) or <b>Onboarding</b> (Steps 1 to 6) in the left sidebar to edit live page controls, text labels, and required field settings!
-            </p>
           </div>
         )}
 

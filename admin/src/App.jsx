@@ -4,13 +4,15 @@ import HomepageCMS from './pages/homepage-cms/HomepageCMS';
 import DashboardOverview from './pages/DashboardOverview';
 import EmployeesTab from './pages/EmployeesTab';
 import EmployersTab from './pages/EmployersTab';
+import ConsultantsTab from './pages/ConsultantsTab';
 import FooterEditor from './pages/FooterEditor';
+import SettingsTab from './pages/SettingsTab';
 import AdminLogin from './pages/AdminLogin';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('adminAuthenticated') === 'true');
   
-  const VALID_TABS = ['homepage', 'footer', 'overview', 'employees', 'employers'];
+  const VALID_TABS = ['homepage', 'footer', 'overview', 'employees', 'employers', 'consultants', 'settings'];
 
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -32,12 +34,12 @@ function App() {
     params.set('tab', newTab);
     
     // Clean up specific sub-keys when changing main tabs
-    if (newTab !== 'employees' && newTab !== 'employers') {
+    if (newTab !== 'employees' && newTab !== 'employers' && newTab !== 'consultants') {
       params.delete('section');
       params.delete('step');
       params.delete('authSub');
     }
-    if (newTab !== 'employers' && newTab !== 'footer' && newTab !== 'homepage' && newTab !== 'overview') {
+    if (newTab !== 'employers' && newTab !== 'consultants' && newTab !== 'footer' && newTab !== 'homepage' && newTab !== 'overview') {
       params.delete('subtab');
     }
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
@@ -95,6 +97,14 @@ function App() {
       )}
       {activeTab === 'employers' && (
         <EmployersTab />
+      )}
+      {activeTab === 'consultants' && (
+        <ConsultantsTab />
+      )}
+      {activeTab === 'settings' && (
+        <div className="flex-1 w-full h-full overflow-y-auto">
+          <SettingsTab />
+        </div>
       )}
     </AdminLayout>
   );

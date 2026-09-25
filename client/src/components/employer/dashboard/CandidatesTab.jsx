@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import DateRangePicker from '../../common/DateRangePicker';
 import VideoPlayer from '../../common/VideoPlayer';
 
-const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
+const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const initialJob = location.state?.jobTitle || 'All Jobs';
@@ -123,12 +123,12 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            {selectedJob === 'All Jobs' ? 'Applications' : selectedJob}
+            {selectedJob === 'All Jobs' ? (portalConfig?.title || 'Applications') : selectedJob}
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             {selectedJob !== 'All Jobs' 
               ? `Showing applications for ${selectedJob}` 
-              : 'Browse and manage all applications.'}
+              : (portalConfig?.subtitle || 'Browse and manage all applications.')}
           </p>
         </div>
       </div>
@@ -148,7 +148,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
                   type="text" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search applications by name or email..." 
+                  placeholder={portalConfig?.searchPlaceholder || "Search applications by name or email..."} 
                   className="w-full pl-9 pr-4 py-2 border border-[#ECECEC] rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all placeholder-gray-400"
                 />
               </div>
@@ -165,7 +165,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
             <div className="flex gap-3 flex-wrap items-center">
               {/* Job Filter */}
               <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-                <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Job</span>
+                <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">{portalConfig?.jobFilterLabel || 'Job'}</span>
                 <select 
                   className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative w-32 truncate"
                   value={selectedJob}
@@ -189,7 +189,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
 
               {/* Status Filter */}
               <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-                <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Status</span>
+                <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">{portalConfig?.statusFilterLabel || 'Status'}</span>
                 <select 
                   className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative"
                   value={statusFilter}
@@ -205,7 +205,7 @@ const CandidatesTab = ({ candidates: globalCandidates = [], jobs = [], updateCan
 
               {/* Apps Filter */}
               <div className="flex items-center bg-[#FDFDFD] border border-[#ECECEC] rounded-xl px-4 py-2 hover:border-[#D1D1D1] transition-colors focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999] h-[42px] relative overflow-hidden">
-                <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">Apps</span>
+                <span className="text-[12px] font-bold text-[#666666] tracking-wider uppercase mr-3 shrink-0">{portalConfig?.appsFilterLabel || 'Apps'}</span>
                 <select 
                   className="bg-transparent border-none text-[14px] font-semibold text-[#111111] focus:ring-0 cursor-pointer outline-none appearance-none pr-6 relative"
                   value={appsFilter}

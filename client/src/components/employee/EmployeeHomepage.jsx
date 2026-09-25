@@ -15,6 +15,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const [showToast, setShowToast] = useState(location.state?.profileCreated || location.state?.loggedIn || false);
   const [toastType, setToastType] = useState(location.state?.profileCreated ? 'created' : (location.state?.loggedIn ? 'login' : ''));
   const [toastName, setToastName] = useState('');
+  const [showOnboardingPopup, setShowOnboardingPopup] = useState(location.state?.showOnboardingPrompt || false);
   
   const [mobileSearchTerm, setMobileSearchTerm] = useState('');
   const [showMobileSuggestions, setShowMobileSuggestions] = useState(false);
@@ -114,6 +115,45 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   }, [showToast, navigate, location.pathname]);
   
   const [savedJobs, setSavedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
+
+  const [appliedJobs, setAppliedJobs] = useState(() => {
+    try {
+      const applied = localStorage.getItem('appliedJobs');
+      return applied ? JSON.parse(applied) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const fetchAppliedJobs = async () => {
+      try {
+        const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+        if (!token) return;
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const apiAppliedJobs = data.data.map(app => ({
+            id: app.jobId?._id || app.jobId?.id || app.jobId,
+            status: app.status || 'Applied',
+            date: new Date(app.createdAt).toLocaleDateString()
+          }));
+          setAppliedJobs(apiAppliedJobs);
+          localStorage.setItem('appliedJobs', JSON.stringify(apiAppliedJobs));
+        }
+      } catch (err) {
+        console.error('Error fetching applied jobs in homepage:', err);
+      }
+    };
+    fetchAppliedJobs();
+  }, []);
+
+  const isJobApplied = (jobId) => {
+    if (!jobId) return false;
+    return appliedJobs.some(a => String(a.id) === String(jobId));
+  };
 
   const toggleSaveJob = (jobId, e) => {
     if (e) e.stopPropagation();
@@ -331,8 +371,15 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         )}
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-1">
-                          {job.company} {job.rating && <span className="text-xs text-gray-500">{job.rating}★</span>}
+                        <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                          <span>{job.company}</span>
+                          {job.rating && <span className="text-xs text-gray-500">{job.rating}★</span>}
+                          {job.employerId?.hiringFor === 'consultant' && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <svg className="w-2.5 h-2.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                              Consultant
+                            </span>
+                          )}
                         </h4>
                         <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">{job.title}</h3>
                         <p className="text-xs text-gray-600 mt-1">
@@ -363,10 +410,17 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       <span className="w-full inline-flex justify-center items-center px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold">
                         Closed
                       </span>
+                    ) : isJobApplied(job.id) ? (
+                      <span className="w-full inline-flex justify-center items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-bold cursor-not-allowed border border-gray-200">
+                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Already applied
+                      </span>
                     ) : (
                       <button 
                         onClick={(e) => { e.stopPropagation(); setSelectedJobId(job.id); setIsApplicationModalOpen(true); }}
-                        className="w-full inline-flex justify-center items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-sm font-bold transition-colors"
+                        className="w-full inline-flex justify-center items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-sm font-bold transition-colors cursor-pointer"
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
                         Apply now
@@ -394,7 +448,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                     {/* DESKTOP HEADER */}
                     <div className="hidden md:block">
                       <div className="flex justify-between items-start mb-4">
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 items-center">
                           <div className="w-12 h-12 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-lg shrink-0 overflow-hidden border border-gray-200">
                             {(selectedJob.companyLogo || selectedJob.employerId?.companyLogo) ? (
                               <img src={selectedJob.companyLogo || selectedJob.employerId?.companyLogo} alt={selectedJob.company} className="w-full h-full object-cover" />
@@ -402,12 +456,18 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                               selectedJob.companyInitial
                             )}
                           </div>
-                          <div>
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h2 className="text-xl font-semibold text-gray-900">{selectedJob.company}</h2>
+                            {selectedJob.employerId?.hiringFor === 'consultant' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
+                                <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                                Consultant
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center transition-colors">
-                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
                         </button>
                       </div>
                       
@@ -417,7 +477,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded font-medium">{selectedJob.location}</span>
                         <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded font-medium">{selectedJob.details?.workLocation || 'On-site'}</span>
                         <span className="bg-purple-50 text-purple-700 px-2.5 py-1 rounded font-medium flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                           {(selectedJob.details?.openings || selectedJob.openings || '1')} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
                         </span>
                         <span className="text-gray-900 font-semibold">
@@ -434,10 +494,20 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           >
                             Closed
                           </button>
+                        ) : isJobApplied(selectedJob.id) ? (
+                          <button 
+                            disabled
+                            className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-500 border border-gray-200 rounded-lg font-bold cursor-not-allowed shadow-none"
+                          >
+                            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Already applied
+                          </button>
                         ) : (
                           <button 
                             onClick={() => setIsApplicationModalOpen(true)}
-                            className="flex items-center gap-2 px-6 py-2.5 bg-green-700 hover:bg-green-800 text-white rounded-lg font-bold transition-colors"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-green-700 hover:bg-green-800 text-white rounded-lg font-bold transition-colors cursor-pointer"
                           >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
                             Apply
@@ -450,7 +520,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           {savedJobs.includes(selectedJobId) ? (
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" /></svg>
                           ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                           )}
                         </button>
                       </div>
@@ -474,9 +544,9 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                                   <p className="text-sm text-gray-700">
                                     {selectedJob.employerId?.designation || 'HR Professional'} {selectedJob.employerId?.companyName ? `at ${selectedJob.employerId.companyName}` : ''}
                                   </p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-green-50 text-green-700 border border-green-200">
-                                      {selectedJob.employerId?.hiringFor === 'consultant' ? 'Individual / Proprietor' : 'Company / Business'}
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${selectedJob.employerId?.hiringFor === 'consultant' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                      {selectedJob.employerId?.hiringFor === 'consultant' ? 'Consultant' : 'Company / Business'}
                                     </span>
                                     {selectedJob.employerId?.employees && (
                                       <span className="text-xs text-gray-500 font-medium">
@@ -570,9 +640,9 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                                   <p className="text-sm text-gray-700">
                                     {selectedJob.employerId?.designation || 'HR Professional'} {selectedJob.employerId?.companyName ? `at ${selectedJob.employerId.companyName}` : ''}
                                   </p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-green-50 text-green-700 border border-green-200">
-                                      {selectedJob.employerId?.hiringFor === 'consultant' ? 'Individual / Proprietor' : 'Company / Business'}
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${selectedJob.employerId?.hiringFor === 'consultant' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                      {selectedJob.employerId?.hiringFor === 'consultant' ? 'Consultant' : 'Company / Business'}
                                     </span>
                                     {selectedJob.employerId?.employees && (
                                       <span className="text-xs text-gray-500 font-medium">
@@ -685,11 +755,21 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                             <p><strong>Company Name:</strong> {selectedJob.employerId?.companyName || selectedJob.company || selectedJob.employerId?.fullName || 'Company'}</p>
                           </div>
                           <div>
-                            <p><strong>Hiring Type:</strong> {selectedJob.employerId?.hiringFor === 'consultant' ? 'Individual / Proprietor' : 'Company / Business'}</p>
+                            <p className="flex items-center gap-1.5 flex-wrap">
+                              <strong>Hiring Type:</strong>{' '}
+                              {selectedJob.employerId?.hiringFor === 'consultant' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                                  Consultant
+                                </span>
+                              ) : (
+                                'Company / Business'
+                              )}
+                            </p>
                           </div>
                           {selectedJob.employerId?.employees && (
                             <div>
-                              <p><strong>Company Size:</strong> {selectedJob.employerId.employees} Employees</p>
+                              <p><strong>Company Size:</strong> {selectedJob.employerId.employees.toLowerCase().includes('employee') ? selectedJob.employerId.employees : `${selectedJob.employerId.employees} Employees`}</p>
                             </div>
                           )}
                           {(selectedJob.employerId?.industry || selectedJob.details?.jobCategory) && (
@@ -759,10 +839,20 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       >
                         Closed
                       </button>
+                    ) : isJobApplied(selectedJob.id) ? (
+                      <button 
+                        disabled
+                        className="w-full py-3 bg-gray-100 text-gray-500 rounded-lg font-bold cursor-not-allowed shadow-none border border-gray-200 flex items-center justify-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Already applied
+                      </button>
                     ) : (
                       <button 
                         onClick={() => setIsApplicationModalOpen(true)}
-                        className="w-full py-3 bg-green-700 hover:bg-green-800 text-white rounded-lg font-bold transition-colors text-base shadow-sm"
+                        className="w-full py-3 bg-green-700 hover:bg-green-800 text-white rounded-lg font-bold transition-colors text-base shadow-sm cursor-pointer"
                       >
                         Apply now
                       </button>
@@ -778,10 +868,78 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
       <JobApplicationModal 
         isOpen={isApplicationModalOpen} 
-        onClose={() => setIsApplicationModalOpen(false)} 
+        onClose={() => {
+          setIsApplicationModalOpen(false);
+          try {
+            const applied = localStorage.getItem('appliedJobs');
+            if (applied) setAppliedJobs(JSON.parse(applied));
+          } catch (e) {}
+        }} 
         job={selectedJob}
         applyToJob={applyToJob}
       />
+
+      {/* Onboarding / Fill Details Prompt Modal */}
+      {showOnboardingPopup && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setShowOnboardingPopup(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in zoom-in-95 duration-200 text-center relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowOnboardingPopup(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+            
+            <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-xs">
+              📝
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-gray-900">
+                Complete Your Profile Details
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                Apni education, experience aur personal details fill karein taaki recruiters aapko top matching jobs ke liye direct shortlist kar sakein!
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-left flex items-start gap-2.5">
+              <span className="text-base">⚡</span>
+              <p className="text-xs text-emerald-800 font-medium leading-relaxed">
+                Complete profile hone se candidates ko <strong>5x jyada interview calls</strong> aur direct employer messages milte hain.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOnboardingPopup(false);
+                  navigate('/employee/onboarding');
+                }}
+                className="w-full py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Fill Details Now</span>
+                <span>→</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowOnboardingPopup(false)}
+                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Explore Jobs First
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
