@@ -6,21 +6,65 @@ import VideoPlayer from '../../common/VideoPlayer';
 const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const initialJob = location.state?.jobTitle || 'All Jobs';
+  const initialJob = location.state?.jobTitle || 'All';
 
-  const [selectedJob, setSelectedJob] = useState(initialJob);
+  // Modals & Drawer States
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [previewResume, setPreviewResume] = useState(null);
   const [previewCoverLetter, setPreviewCoverLetter] = useState(null);
   const [previewScreeningQA, setPreviewScreeningQA] = useState(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const allJobs = ['All Jobs', ...new Set([...jobs.map(j => j.title), ...(initialJob !== 'All Jobs' && initialJob !== 'All Job' ? [initialJob] : [])])];
+  // Column Filters State (Filter for every single column)
+  const initialFilters = {
+    candidate: '',
+    job: initialJob !== 'All Jobs' && initialJob !== 'All Job' ? initialJob : 'All',
+    workExp: 'All',
+    functionArea: 'All',
+    designation: '',
+    company: '',
+    qualification: 'All',
+    status: 'All',
+    sortDate: 'desc' // 'desc' | 'asc'
+  };
+
+  const [colFilters, setColFilters] = useState(initialFilters);
+
+  const handleFilterChange = (key, value) => {
+    setColFilters(prev => ({ ...prev, [key]: value }));
+    setCurrentPage(1);
+  };
+
+  const resetAllFilters = () => {
+    setColFilters({
+      candidate: '',
+      job: 'All',
+      workExp: 'All',
+      functionArea: 'All',
+      designation: '',
+      company: '',
+      qualification: 'All',
+      status: 'All',
+      sortDate: 'desc'
+    });
+    setDateRange({ start: '', end: '' });
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = 
+    colFilters.candidate !== '' ||
+    colFilters.job !== 'All' ||
+    colFilters.workExp !== 'All' ||
+    colFilters.functionArea !== 'All' ||
+    colFilters.designation !== '' ||
+    colFilters.company !== '' ||
+    colFilters.qualification !== 'All' ||
+    colFilters.status !== 'All' ||
+    dateRange.start !== '' ||
+    dateRange.end !== '';
 
   const getStatusBadgeStyles = (status) => {
     const map = {
@@ -45,6 +89,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
   // Helper extraction methods
   const getWorkExp = (cand) => {
+    if (!cand) return 'Fresher';
     if (cand.totalExperience && cand.totalExperience !== 'N/A' && cand.totalExperience !== '') {
       return cand.totalExperience;
     }
@@ -57,10 +102,12 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   };
 
   const getFunction = (cand) => {
+    if (!cand) return 'N/A';
     return cand.industry || cand.professionalDetails?.functionalArea || cand.function || 'N/A';
   };
 
   const getCurrentDesignation = (cand) => {
+    if (!cand) return 'N/A';
     if (cand.designation && cand.designation !== 'N/A' && cand.designation !== '') {
       return cand.designation;
     }
@@ -73,6 +120,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   };
 
   const getCurrentCompany = (cand) => {
+    if (!cand) return 'N/A';
     if (cand.experience && cand.experience.length > 0) {
       const comp = cand.experience[0].companyName || cand.experience[0].company;
       if (comp) return comp;
@@ -84,6 +132,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   };
 
   const getHighestQualification = (cand) => {
+    if (!cand) return 'N/A';
     if (cand.education && cand.education.length > 0) {
       const edu = cand.education[0];
       return edu.degree || edu.institution || 'Graduate';
@@ -133,26 +182,96 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return list;
   }, [globalCandidates]);
 
-  // Filter applications
+  // Unique options for each dropdown filter
+  const uniqueJobs = useMemo(() => {
+    const list = flattenedApplications.map(a => a.jobTitle).filter(Boolean);
+    return ['All', ...new Set(list)];
+  }, [flattenedApplications]);
+
+  const uniqueWorkExps = useMemo(() => {
+    const list = flattenedApplications.map(a => getWorkExp(a.candidate)).filter(Boolean);
+    return ['All', ...new Set(list)];
+  }, [flattenedApplications]);
+
+  const uniqueFunctions = useMemo(() => {
+    const list = flattenedApplications.map(a => getFunction(a.candidate)).filter(Boolean);
+    return ['All', ...new Set(list)];
+  }, [flattenedApplications]);
+
+  const uniqueQualifications = useMemo(() => {
+    const list = flattenedApplications.map(a => getHighestQualification(a.candidate)).filter(Boolean);
+    return ['All', ...new Set(list)];
+  }, [flattenedApplications]);
+
+  // Filter and sort applications based on all column filters
   const filteredApplications = useMemo(() => {
-    return flattenedApplications.filter(item => {
+    const result = flattenedApplications.filter(item => {
       const cand = item.candidate;
+      const workExp = getWorkExp(cand);
+      const func = getFunction(cand);
+      const desig = getCurrentDesignation(cand);
+      const comp = getCurrentCompany(cand);
+      const qual = getHighestQualification(cand);
 
-      // 1. Job Filter
-      if (selectedJob !== 'All Jobs' && selectedJob !== 'All Job') {
-        if (item.jobTitle?.trim().toLowerCase() !== selectedJob?.trim().toLowerCase()) {
+      // 1. Candidate Name / Email / Phone Search
+      if (colFilters.candidate.trim()) {
+        const q = colFilters.candidate.toLowerCase().trim();
+        const matchesName = (cand.name || '').toLowerCase().includes(q);
+        const matchesEmail = (cand.email || '').toLowerCase().includes(q);
+        const matchesPhone = (cand.phone || '').includes(q);
+        if (!matchesName && !matchesEmail && !matchesPhone) return false;
+      }
+
+      // 2. Job Filter
+      if (colFilters.job !== 'All') {
+        if ((item.jobTitle || '').trim().toLowerCase() !== colFilters.job.trim().toLowerCase()) {
           return false;
         }
       }
 
-      // 2. Status Filter
-      if (statusFilter !== 'All') {
-        if (item.status?.toLowerCase() !== statusFilter.toLowerCase()) {
+      // 3. Work Exp Filter
+      if (colFilters.workExp !== 'All') {
+        if (workExp.trim().toLowerCase() !== colFilters.workExp.trim().toLowerCase()) {
           return false;
         }
       }
 
-      // 3. Date Filter
+      // 4. Function Filter
+      if (colFilters.functionArea !== 'All') {
+        if (func.trim().toLowerCase() !== colFilters.functionArea.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 5. Designation Filter
+      if (colFilters.designation.trim()) {
+        if (!desig.toLowerCase().includes(colFilters.designation.toLowerCase().trim())) {
+          return false;
+        }
+      }
+
+      // 6. Company Filter
+      if (colFilters.company.trim()) {
+        if (!comp.toLowerCase().includes(colFilters.company.toLowerCase().trim())) {
+          return false;
+        }
+      }
+
+      // 7. Qualification Filter
+      if (colFilters.qualification !== 'All') {
+        if (qual.trim().toLowerCase() !== colFilters.qualification.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 8. Status Filter
+      if (colFilters.status !== 'All') {
+        if ((item.status || 'New').toLowerCase() !== colFilters.status.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 9. Date Filter
       if (dateRange.start || dateRange.end) {
         try {
           const appDate = new Date(item.appliedDate);
@@ -168,31 +287,21 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             endDate.setHours(23, 59, 59, 999);
             if (appDate > endDate) return false;
           }
-        } catch (e) {
-          // ignore date parse errors
-        }
-      }
-
-      // 4. Search Query Filter
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const matchesName = cand.name?.toLowerCase().includes(q);
-        const matchesEmail = cand.email?.toLowerCase().includes(q);
-        const matchesPhone = cand.phone?.toLowerCase().includes(q);
-        const matchesJob = item.jobTitle?.toLowerCase().includes(q);
-        const matchesDesignation = getCurrentDesignation(cand).toLowerCase().includes(q);
-        const matchesCompany = getCurrentCompany(cand).toLowerCase().includes(q);
-        const matchesQualification = getHighestQualification(cand).toLowerCase().includes(q);
-        const matchesFunction = getFunction(cand).toLowerCase().includes(q);
-
-        if (!matchesName && !matchesEmail && !matchesPhone && !matchesJob && !matchesDesignation && !matchesCompany && !matchesQualification && !matchesFunction) {
-          return false;
-        }
+        } catch (_) {}
       }
 
       return true;
     });
-  }, [flattenedApplications, selectedJob, statusFilter, dateRange, searchQuery]);
+
+    // Sorting by date
+    result.sort((a, b) => {
+      const dateA = new Date(a.appliedDate).getTime() || 0;
+      const dateB = new Date(b.appliedDate).getTime() || 0;
+      return colFilters.sortDate === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+
+    return result;
+  }, [flattenedApplications, colFilters, dateRange]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredApplications.length / itemsPerPage) || 1;
@@ -201,199 +310,258 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return filteredApplications.slice(startIdx, startIdx + itemsPerPage);
   }, [filteredApplications, currentPage, itemsPerPage]);
 
-  const clearFilters = () => {
-    setSelectedJob('All Jobs');
-    setStatusFilter('All');
-    setDateRange({ start: '', end: '' });
-    setSearchQuery('');
-    setCurrentPage(1);
-  };
-
-  const hasActiveFilters = (selectedJob !== 'All Jobs' && selectedJob !== 'All Job') || statusFilter !== 'All' || dateRange.start || dateRange.end || searchQuery;
-
   // Status breakdown metrics
   const stats = useMemo(() => {
-    const total = filteredApplications.length;
-    const newCount = filteredApplications.filter(a => (a.status || 'New').toLowerCase() === 'new').length;
-    const shortlistedCount = filteredApplications.filter(a => (a.status || '').toLowerCase() === 'shortlisted').length;
-    const viewedCount = filteredApplications.filter(a => (a.status || '').toLowerCase() === 'viewed').length;
-    const rejectedCount = filteredApplications.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
+    const total = flattenedApplications.length;
+    const newCount = flattenedApplications.filter(a => (a.status || 'New').toLowerCase() === 'new').length;
+    const shortlistedCount = flattenedApplications.filter(a => (a.status || '').toLowerCase() === 'shortlisted').length;
+    const viewedCount = flattenedApplications.filter(a => (a.status || '').toLowerCase() === 'viewed').length;
+    const rejectedCount = flattenedApplications.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
     return { total, newCount, shortlistedCount, viewedCount, rejectedCount };
-  }, [filteredApplications]);
+  }, [flattenedApplications]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-12 font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="space-y-5 animate-in fade-in duration-300 pb-12 font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       
-      {/* Top Header & Stats */}
+      {/* Top Header & Quick Status Filters */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-              {selectedJob === 'All Jobs' || selectedJob === 'All Job' ? (portalConfig?.title || 'Job Applications') : selectedJob}
+              {portalConfig?.title || 'Job Applications Management'}
             </h1>
-            <span className="px-3 py-1 bg-emerald-50 text-emerald-700 font-extrabold text-xs rounded-full border border-emerald-200">
-              {filteredApplications.length} {filteredApplications.length === 1 ? 'Application' : 'Applications'}
+            <span className="px-3 py-1 bg-emerald-50 text-emerald-800 font-extrabold text-xs rounded-full border border-emerald-200">
+              {filteredApplications.length} of {flattenedApplications.length} Applications
             </span>
           </div>
           <p className="text-gray-500 text-xs mt-1">
-            {selectedJob !== 'All Jobs' && selectedJob !== 'All Job'
-              ? `Direct tabular overview of all received applications for ${selectedJob}.`
-              : (portalConfig?.subtitle || 'Direct overview of all candidate applications across all jobs.')}
+            {portalConfig?.subtitle || 'Direct overview of all candidate applications with individual column filters.'}
           </p>
         </div>
 
-        {/* Quick Status Badges */}
+        {/* Quick Status Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           <button 
-            onClick={() => { setStatusFilter('All'); setCurrentPage(1); }} 
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${statusFilter === 'All' ? 'bg-gray-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            onClick={() => handleFilterChange('status', 'All')} 
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'All' ? 'bg-gray-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
           >
             All: {stats.total}
           </button>
           <button 
-            onClick={() => { setStatusFilter('New'); setCurrentPage(1); }} 
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${statusFilter === 'New' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+            onClick={() => handleFilterChange('status', 'New')} 
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'New' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
           >
             New: {stats.newCount}
           </button>
           <button 
-            onClick={() => { setStatusFilter('Shortlisted'); setCurrentPage(1); }} 
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${statusFilter === 'Shortlisted' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+            onClick={() => handleFilterChange('status', 'Shortlisted')} 
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'Shortlisted' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
           >
             Shortlisted: {stats.shortlistedCount}
           </button>
           <button 
-            onClick={() => { setStatusFilter('Viewed'); setCurrentPage(1); }} 
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${statusFilter === 'Viewed' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+            onClick={() => handleFilterChange('status', 'Viewed')} 
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'Viewed' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
           >
             Viewed: {stats.viewedCount}
           </button>
           <button 
-            onClick={() => { setStatusFilter('Rejected'); setCurrentPage(1); }} 
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${statusFilter === 'Rejected' ? 'bg-red-600 text-white shadow-xs' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}
+            onClick={() => handleFilterChange('status', 'Rejected')} 
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'Rejected' ? 'bg-red-600 text-white shadow-xs' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}
           >
             Rejected: {stats.rejectedCount}
           </button>
-        </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
-        
-        {/* Search */}
-        <div className="relative flex-1 min-w-[260px]">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            placeholder={portalConfig?.searchPlaceholder || "Search by candidate name, email, designation, company, qualification..."} 
-            className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 focus:bg-white transition-all placeholder-gray-400 font-medium"
-          />
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Dropdowns */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Job Filter */}
-          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 h-[40px] relative">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-2 shrink-0">Job:</span>
-            <select 
-              className="bg-transparent border-none text-xs font-bold text-gray-800 focus:ring-0 cursor-pointer outline-none appearance-none pr-6 max-w-[180px] truncate"
-              value={selectedJob}
-              onChange={(e) => { setSelectedJob(e.target.value); setCurrentPage(1); }}
-            >
-              {allJobs.map(job => <option key={job} value={job}>{job}</option>)}
-            </select>
-            <div className="pointer-events-none absolute right-3 text-gray-400">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-            </div>
-          </div>
-
-          {/* Date Range Picker */}
-          <div className="w-[230px]">
-            <DateRangePicker 
-              dateRange={dateRange}
-              onRangeChange={(dr) => { setDateRange(dr); setCurrentPage(1); }}
-              className="h-[40px]"
-            />
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 h-[40px] relative">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-2 shrink-0">Status:</span>
-            <select 
-              className="bg-transparent border-none text-xs font-bold text-gray-800 focus:ring-0 cursor-pointer outline-none appearance-none pr-6"
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            >
-              <option value="All">All Statuses</option>
-              {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-            </select>
-            <div className="pointer-events-none absolute right-3 text-gray-400">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-            </div>
-          </div>
 
           {hasActiveFilters && (
             <button 
-              onClick={clearFilters}
-              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              onClick={resetAllFilters} 
+              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ml-2"
+              title="Reset all applied filters"
             >
-              Clear Filters
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Reset Filters</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Main Applications Table (Clean, Direct, Full Columns) */}
+      {/* Main Applications Table with Column Filter Controls */}
       <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
-        {filteredApplications.length === 0 ? (
-          <div className="p-16 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-3 border border-gray-200 text-gray-400">
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
-            </div>
-            <h3 className="text-base font-bold text-gray-900 mb-1">No applications found</h3>
-            <p className="text-xs text-gray-500 mb-4 max-w-sm">No candidate application records match the selected job, status, or search filters.</p>
-            {hasActiveFilters && (
-              <button 
-                onClick={clearFilters} 
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-50/90 border-b border-gray-200 text-gray-700 font-black uppercase tracking-wider text-[11px]">
-                  <th className="py-4 px-4 whitespace-nowrap">Candidate</th>
-                  <th className="py-4 px-4 whitespace-nowrap">Job Applied</th>
-                  <th className="py-4 px-4 whitespace-nowrap">Work Exp</th>
-                  <th className="py-4 px-4 whitespace-nowrap">Function</th>
-                  <th className="py-4 px-4 whitespace-nowrap">Current Designation</th>
-                  <th className="py-4 px-4 whitespace-nowrap">Current Company</th>
-                  <th className="py-4 px-4 whitespace-nowrap">Primary Qualification</th>
-                  <th className="py-4 px-4 whitespace-nowrap">Applied Date</th>
-                  <th className="py-4 px-4 whitespace-nowrap text-center">Status</th>
-                  <th className="py-4 px-4 text-right whitespace-nowrap">Actions</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              {/* Row 1: Main Column Headers */}
+              <tr className="bg-gray-100/90 border-b border-gray-200 text-gray-800 font-black uppercase tracking-wider text-[11px]">
+                <th className="py-3 px-3 min-w-[200px] whitespace-nowrap">Candidate</th>
+                <th className="py-3 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
+                <th className="py-3 px-3 min-w-[110px] whitespace-nowrap">Work Exp</th>
+                <th className="py-3 px-3 min-w-[130px] whitespace-nowrap">Function</th>
+                <th className="py-3 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
+                <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
+                <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
+                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Applied Date</th>
+                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap text-center">Status</th>
+                <th className="py-3 px-3 min-w-[130px] text-right whitespace-nowrap">Actions</th>
+              </tr>
+
+              {/* Row 2: In-Column Dedicated Filter Inputs & Dropdowns */}
+              <tr className="bg-gray-50/95 border-b border-gray-200">
+                
+                {/* 1. Candidate Filter */}
+                <th className="p-2">
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      value={colFilters.candidate}
+                      onChange={(e) => handleFilterChange('candidate', e.target.value)}
+                      placeholder="🔍 Name / Email..."
+                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400"
+                    />
+                  </div>
+                </th>
+
+                {/* 2. Job Applied Filter */}
+                <th className="p-2">
+                  <select
+                    value={colFilters.job}
+                    onChange={(e) => handleFilterChange('job', e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {uniqueJobs.map(j => (
+                      <option key={j} value={j}>{j === 'All' ? 'All Jobs' : j}</option>
+                    ))}
+                  </select>
+                </th>
+
+                {/* 3. Work Exp Filter */}
+                <th className="p-2">
+                  <select
+                    value={colFilters.workExp}
+                    onChange={(e) => handleFilterChange('workExp', e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {uniqueWorkExps.map(exp => (
+                      <option key={exp} value={exp}>{exp === 'All' ? 'All Exp' : exp}</option>
+                    ))}
+                  </select>
+                </th>
+
+                {/* 4. Function Filter */}
+                <th className="p-2">
+                  <select
+                    value={colFilters.functionArea}
+                    onChange={(e) => handleFilterChange('functionArea', e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
+                  >
+                    {uniqueFunctions.map(f => (
+                      <option key={f} value={f}>{f === 'All' ? 'All Functions' : f}</option>
+                    ))}
+                  </select>
+                </th>
+
+                {/* 5. Current Designation Filter */}
+                <th className="p-2">
+                  <input 
+                    type="text"
+                    value={colFilters.designation}
+                    onChange={(e) => handleFilterChange('designation', e.target.value)}
+                    placeholder="🔍 Filter role..."
+                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400"
+                  />
+                </th>
+
+                {/* 6. Current Company Filter */}
+                <th className="p-2">
+                  <input 
+                    type="text"
+                    value={colFilters.company}
+                    onChange={(e) => handleFilterChange('company', e.target.value)}
+                    placeholder="🔍 Filter company..."
+                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400"
+                  />
+                </th>
+
+                {/* 7. Primary Qualification Filter */}
+                <th className="p-2">
+                  <select
+                    value={colFilters.qualification}
+                    onChange={(e) => handleFilterChange('qualification', e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
+                  >
+                    {uniqueQualifications.map(q => (
+                      <option key={q} value={q}>{q === 'All' ? 'All Quals' : q}</option>
+                    ))}
+                  </select>
+                </th>
+
+                {/* 8. Applied Date Sort Toggle */}
+                <th className="p-2">
+                  <button
+                    onClick={() => handleFilterChange('sortDate', colFilters.sortDate === 'desc' ? 'asc' : 'desc')}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg text-xs font-bold text-gray-700 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    title="Toggle Date Sort Order"
+                  >
+                    <span>{colFilters.sortDate === 'desc' ? '⬇ Newest' : '⬆ Oldest'}</span>
+                  </button>
+                </th>
+
+                {/* 9. Status Filter */}
+                <th className="p-2">
+                  <select
+                    value={colFilters.status}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="All">All Status</option>
+                    {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
+                  </select>
+                </th>
+
+                {/* 10. Actions Filter Reset */}
+                <th className="p-2 text-right">
+                  {hasActiveFilters ? (
+                    <button 
+                      onClick={resetAllFilters}
+                      className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-colors cursor-pointer border border-red-200 whitespace-nowrap"
+                    >
+                      Clear
+                    </button>
+                  ) : (
+                    <span className="text-[10px] text-gray-400 font-normal px-2">Filters Ready</span>
+                  )}
+                </th>
+
+              </tr>
+            </thead>
+
+            {/* Table Body */}
+            <tbody className="divide-y divide-gray-100">
+              {filteredApplications.length === 0 ? (
+                <tr>
+                  <td colSpan="10" className="py-14 text-center">
+                    <div className="max-w-md mx-auto flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-400">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <h4 className="text-sm font-bold text-gray-900 mb-1">No matching candidate applications</h4>
+                      <p className="text-xs text-gray-500 mb-3">No records match the active column filters. Try clearing some filters.</p>
+                      {hasActiveFilters && (
+                        <button 
+                          onClick={resetAllFilters}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                        >
+                          Clear All Filters
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedApplications.map((item, idx) => {
+              ) : (
+                paginatedApplications.map((item, idx) => {
                   const cand = item.candidate;
                   const workExp = getWorkExp(cand);
                   const func = getFunction(cand);
@@ -411,12 +579,12 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       }}
                     >
                       {/* 1. Candidate Name, Email & Avatar */}
-                      <td className="py-3.5 px-4 font-medium text-gray-900">
+                      <td className="py-3.5 px-3 font-medium text-gray-900">
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-2xs ${cand.bg || 'bg-emerald-600'}`}>
                             {cand.initials || (cand.name ? cand.name.charAt(0).toUpperCase() : 'C')}
                           </div>
-                          <div className="min-w-[140px]">
+                          <div className="min-w-[130px]">
                             <p className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors text-[13px] leading-tight">
                               {cand.name}
                             </p>
@@ -429,7 +597,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </td>
 
                       {/* 2. Job Applied */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
                           <span className="font-bold text-gray-900 text-xs">
@@ -439,41 +607,41 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </td>
 
                       {/* 3. Work Exp */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block whitespace-nowrap ${workExp === 'Fresher' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-gray-100 text-gray-800 border border-gray-200/60'}`}>
                           {workExp}
                         </span>
                       </td>
 
                       {/* 4. Function */}
-                      <td className="py-3.5 px-4 text-gray-700 font-medium whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-gray-700 font-medium whitespace-nowrap">
                         {func}
                       </td>
 
                       {/* 5. Current Designation */}
-                      <td className="py-3.5 px-4 font-semibold text-gray-900 whitespace-nowrap">
+                      <td className="py-3.5 px-3 font-semibold text-gray-900 whitespace-nowrap">
                         {desig}
                       </td>
 
                       {/* 6. Current Company */}
-                      <td className="py-3.5 px-4 text-gray-700 font-medium whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-gray-700 font-medium whitespace-nowrap">
                         {comp}
                       </td>
 
                       {/* 7. Primary Qualification */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200/60 inline-block">
                           {qual}
                         </span>
                       </td>
 
                       {/* 8. Applied Date */}
-                      <td className="py-3.5 px-4 text-gray-500 text-xs font-medium whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-gray-500 text-xs font-medium whitespace-nowrap">
                         {item.appliedDate}
                       </td>
 
                       {/* 9. Status (Dropdown) */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <select 
                           className={`appearance-none cursor-pointer outline-none transition-all px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(item.status)}`}
                           value={item.status || 'New'}
@@ -493,7 +661,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </td>
 
                       {/* 10. Actions */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 px-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           
                           {/* Screening Q&A icon */}
@@ -559,11 +727,11 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Real Working Pagination */}
         {filteredApplications.length > 0 && (
@@ -693,7 +861,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   <p className="text-xs font-extrabold text-gray-900">{getCurrentCompany(selectedCandidate)}</p>
                 </div>
                 <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Highest Qualification</h4>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Primary Qualification</h4>
                   <p className="text-xs font-extrabold text-gray-900">{getHighestQualification(selectedCandidate)}</p>
                 </div>
                 <div>
@@ -872,7 +1040,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </div>
                 
                 <div>
-                  <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Qualification</h2>
+                  <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Primary Qualification</h2>
                   <p className="text-xs text-gray-700">{getHighestQualification(previewResume)}</p>
                 </div>
               </div>
