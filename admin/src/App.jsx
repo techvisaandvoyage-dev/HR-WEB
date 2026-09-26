@@ -12,7 +12,7 @@ import AdminLogin from './pages/AdminLogin';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('adminAuthenticated') === 'true');
   
-  const VALID_TABS = ['homepage', 'footer', 'overview', 'employees', 'employers', 'consultants', 'settings'];
+  const VALID_TABS = ['overview', 'homepage', 'employees', 'employers', 'consultants', 'footer', 'settings'];
 
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -24,7 +24,7 @@ function App() {
     if (saved && VALID_TABS.includes(saved)) {
       return saved;
     }
-    return 'homepage';
+    return 'overview';
   });
 
   const handleSelectTab = (newTab) => {

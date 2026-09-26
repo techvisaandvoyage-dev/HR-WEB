@@ -20,6 +20,11 @@ import {
 export default function AdminLayout({ children, activeTab, onSelectTab, onLogout }) {
   const topNavTabs = [
     {
+      id: 'overview',
+      label: 'Overview',
+      icon: LayoutDashboard
+    },
+    {
       id: 'homepage',
       label: 'Homepage',
       icon: Home,
@@ -46,11 +51,6 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
       icon: SlidersHorizontal
     },
     {
-      id: 'overview',
-      label: 'Overview',
-      icon: LayoutDashboard
-    },
-    {
       id: 'settings',
       label: 'Settings',
       icon: Settings
@@ -66,7 +66,7 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
           
           {/* Brand / Logo */}
           <div className="flex items-center shrink-0">
-            <BrandLogo onClick={() => onSelectTab('homepage')} defaultHeight={32} />
+            <BrandLogo onClick={() => onSelectTab('overview')} defaultHeight={32} />
           </div>
 
           {/* Center Navigation Tabs */}
