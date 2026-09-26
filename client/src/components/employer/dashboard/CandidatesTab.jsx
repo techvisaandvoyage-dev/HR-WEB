@@ -324,10 +324,44 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportNotice, setExportNotice] = useState(null);
 
+  const getInstitute = (cand) => {
+    if (!cand) return 'N/A';
+    if (cand.education && cand.education.length > 0) {
+      const inst = cand.education[0].institution;
+      if (inst && inst !== 'Institution') return inst;
+    }
+    if (cand.qualifications && cand.qualifications.length > 0) {
+      const q = cand.qualifications[0];
+      const u = q.university || q.board || q.institute || q.college;
+      if (u) return u;
+    }
+    return 'N/A';
+  };
+
   // Helper to get raw application data array
   const getExportData = () => {
     return filteredApplications.length > 0 ? filteredApplications : flattenedApplications;
   };
+
+  // Exact Google Sheet Headers
+  const exportHeaders = [
+    'Name',
+    'Email ID',
+    'Mobile No.',
+    'Work Exp',
+    'Function',
+    'Current designation',
+    'Current company',
+    'Highest/primary Qualification',
+    'Institute',
+    'current salary',
+    'expected salary',
+    'Question 1',
+    'Question 2',
+    'Question 3',
+    'Question 4',
+    'Question 5'
+  ];
 
   // 1. Export & Open in Google Sheets
   const handleExportGoogleSheets = async () => {
@@ -337,25 +371,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       return;
     }
 
-    const headers = [
-      'Candidate Name',
-      'Candidate Email',
-      'Mobile Number',
-      'Job Applied',
-      'Work Experience',
-      'Function / Industry',
-      'Current Designation',
-      'Current Company',
-      'Primary Qualification',
-      'Applied Date',
-      'Status',
-      'Location',
-      'Current CTC',
-      'Expected CTC',
-      'Resume Link',
-      'Screening Answers'
-    ];
-
     // Tab-separated values for instant Google Sheets pasting
     const rows = dataToExport.map(item => {
       const cand = item.candidate || {};
@@ -364,33 +379,38 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       const desig = getCurrentDesignation(cand);
       const comp = getCurrentCompany(cand);
       const qual = getHighestQualification(cand);
-      const resumeUrl = item.resume || cand.resume || cand.documents?.resume || '';
+      const institute = getInstitute(cand);
+      const currentSalary = cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary || 'N/A');
+      const expectedSalary = cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary || 'N/A');
       
-      const screeningQA = (item.screeningAnswers || [])
-        .map((qa, i) => `Q${i + 1}: ${qa.question} -> Ans: ${qa.answer}`)
-        .join(' | ');
+      const qa = item.screeningAnswers || [];
+      const q1 = qa[0]?.answer || '';
+      const q2 = qa[1]?.answer || '';
+      const q3 = qa[2]?.answer || '';
+      const q4 = qa[3]?.answer || '';
+      const q5 = qa[4]?.answer || '';
 
       return [
         cand.name || '',
         cand.email || '',
         cand.phone || '',
-        item.jobTitle || '',
         workExp,
         func,
         desig,
         comp,
         qual,
-        item.appliedDate || '',
-        item.status || 'New',
-        cand.location || '',
-        cand.currentCTC || '',
-        cand.expectedCTC || '',
-        resumeUrl,
-        screeningQA
+        institute,
+        currentSalary,
+        expectedSalary,
+        q1,
+        q2,
+        q3,
+        q4,
+        q5
       ].join('\t');
     });
 
-    const tsvContent = [headers.join('\t'), ...rows].join('\n');
+    const tsvContent = [exportHeaders.join('\t'), ...rows].join('\n');
 
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -406,7 +426,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
     setExportNotice({
       title: 'Opened in Google Sheets!',
-      message: `${dataToExport.length} candidate applications copied to clipboard. Press Ctrl + V in the opened Google Sheet to paste all data instantly!`
+      message: `${dataToExport.length} candidate applications copied in Google Sheets format. Press Ctrl + V in the opened Google Sheet to paste!`
     });
     setShowExportMenu(false);
   };
@@ -418,25 +438,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       if (showNotification) alert('No application data to export.');
       return;
     }
-
-    const headers = [
-      'Candidate Name',
-      'Candidate Email',
-      'Mobile Number',
-      'Job Applied',
-      'Work Experience',
-      'Function / Industry',
-      'Current Designation',
-      'Current Company',
-      'Primary Qualification',
-      'Applied Date',
-      'Status',
-      'Location',
-      'Current CTC',
-      'Expected CTC',
-      'Resume Link',
-      'Screening Answers'
-    ];
 
     const escapeCsv = (str) => {
       if (str === null || str === undefined) return '""';
@@ -451,33 +452,38 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       const desig = getCurrentDesignation(cand);
       const comp = getCurrentCompany(cand);
       const qual = getHighestQualification(cand);
-      const resumeUrl = item.resume || cand.resume || cand.documents?.resume || '';
+      const institute = getInstitute(cand);
+      const currentSalary = cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary || 'N/A');
+      const expectedSalary = cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary || 'N/A');
       
-      const screeningQA = (item.screeningAnswers || [])
-        .map((qa, i) => `Q${i + 1}: ${qa.question} -> Ans: ${qa.answer}`)
-        .join(' | ');
+      const qa = item.screeningAnswers || [];
+      const q1 = qa[0]?.answer || '';
+      const q2 = qa[1]?.answer || '';
+      const q3 = qa[2]?.answer || '';
+      const q4 = qa[3]?.answer || '';
+      const q5 = qa[4]?.answer || '';
 
       return [
         escapeCsv(cand.name || ''),
         escapeCsv(cand.email || ''),
         escapeCsv(cand.phone || ''),
-        escapeCsv(item.jobTitle || ''),
         escapeCsv(workExp),
         escapeCsv(func),
         escapeCsv(desig),
         escapeCsv(comp),
         escapeCsv(qual),
-        escapeCsv(item.appliedDate || ''),
-        escapeCsv(item.status || 'New'),
-        escapeCsv(cand.location || ''),
-        escapeCsv(cand.currentCTC || ''),
-        escapeCsv(cand.expectedCTC || ''),
-        escapeCsv(resumeUrl),
-        escapeCsv(screeningQA)
+        escapeCsv(institute),
+        escapeCsv(currentSalary),
+        escapeCsv(expectedSalary),
+        escapeCsv(q1),
+        escapeCsv(q2),
+        escapeCsv(q3),
+        escapeCsv(q4),
+        escapeCsv(q5)
       ].join(',');
     });
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const csvContent = '\uFEFF' + [exportHeaders.join(','), ...rows].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -493,7 +499,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     if (showNotification) {
       setExportNotice({
         title: 'CSV Downloaded!',
-        message: `Saved ${filename} with ${dataToExport.length} records. You can open or import it into Google Sheets (File > Import).`
+        message: `Saved ${filename} with ${dataToExport.length} records in Google Sheets format.`
       });
       setShowExportMenu(false);
     }
