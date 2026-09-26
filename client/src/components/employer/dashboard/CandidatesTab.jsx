@@ -14,6 +14,9 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   const [previewResume, setPreviewResume] = useState(null);
   const [previewCoverLetter, setPreviewCoverLetter] = useState(null);
   const [previewScreeningQA, setPreviewScreeningQA] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportNotice, setExportNotice] = useState(null);
+  const [showOnlineSheetModal, setShowOnlineSheetModal] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -320,10 +323,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return { total, newCount, shortlistedCount, viewedCount, rejectedCount };
   }, [flattenedApplications]);
 
-  // Export State & Notification
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [exportNotice, setExportNotice] = useState(null);
-
   const getInstitute = (cand) => {
     if (!cand) return 'N/A';
     if (cand.education && cand.education.length > 0) {
@@ -366,7 +365,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     'Name',
     'Email ID',
     'Mobile No.',
-    'Work Exp',
+    'Work Experience',
     'Function',
     'Current designation',
     'Current company',
@@ -428,7 +427,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     });
   };
 
-  // 1. Export & Open in Google Sheets
+  // 1. Export & Open in Google Sheets (Opens Google Sheets directly in new tab & opens interactive viewer)
   const handleExportGoogleSheets = async () => {
     const dataToExport = getExportData();
     if (dataToExport.length === 0) {
@@ -446,17 +445,20 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       }
     } catch (_) {}
 
-    // Also download the backup CSV spreadsheet automatically with the exact name
-    handleExportCSV(false);
+    // 1. Directly open official Google Sheets in a new tab
+    try {
+      window.open('https://sheets.new', '_blank');
+    } catch (_) {}
 
-    // Open a brand new Google Spreadsheet
-    window.open('https://sheets.new', '_blank');
-
-    setExportNotice({
-      title: `Google Sheet: ${fileName}`,
-      message: `Data copied to clipboard! In the new Google Sheet, press "Ctrl + V" in cell A1, and name your sheet: "${fileName}".`
-    });
+    // 2. Open interactive Google Sheets viewer modal in-app
+    setShowOnlineSheetModal(true);
     setShowExportMenu(false);
+
+    // 3. Show notification
+    setExportNotice({
+      title: 'Google Sheet Opened & Data Copied!',
+      message: `Google Sheets (sheets.new) has been opened in a new tab. All ${dataToExport.length} candidates' data is copied to your clipboard. Simply press Ctrl + V in the Google Sheet to paste!`
+    });
   };
 
   // 2. Export to CSV / Excel File with Exact Job Name & Date
@@ -582,19 +584,27 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             Rejected: {stats.rejectedCount}
           </button>
 
-          {/* Export to Google Sheets / CSV Dropdown */}
+          {/* Direct 1-Click Google Sheet Open Button */}
+          <button
+            onClick={handleExportGoogleSheets}
+            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 shadow-md shadow-emerald-600/25 cursor-pointer ml-1"
+            title="Directly open applications in Google Sheet (sheets.new)"
+          >
+            <svg className="w-4 h-4 text-emerald-200" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
+            </svg>
+            <span>Open in Google Sheets</span>
+          </button>
+
+          {/* More Export Options Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-700/20 cursor-pointer ml-1"
-              title="Export applications to Google Sheets or CSV"
+              className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all flex items-center justify-center cursor-pointer border border-gray-200"
+              title="More Export Options (.CSV / Copy Data)"
             >
-              <svg className="w-4 h-4 text-emerald-200" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
-              </svg>
-              <span>Export</span>
-              <svg className="w-3 h-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
               </svg>
             </button>
 
@@ -1335,6 +1345,213 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interactive Google Spreadsheet Online Viewer Modal */}
+      {showOnlineSheetModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-200">
+            
+            {/* 1. Google Sheets App Header */}
+            <div className="bg-[#f9fbfd] border-b border-gray-200 px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div className="flex items-center gap-3">
+                {/* Google Sheets Green Icon */}
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black text-gray-900 tracking-tight">
+                      {getSheetFileName()}
+                    </h2>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
+                      Google Sheets
+                    </span>
+                  </div>
+                  {/* Google Sheets Mock Menu */}
+                  <div className="flex items-center gap-3 text-xs text-gray-600 mt-1 font-medium">
+                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">File</span>
+                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Edit</span>
+                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">View</span>
+                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Insert</span>
+                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Format</span>
+                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Data</span>
+                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Tools</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons in Google Sheets Header */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* 1-Click Open in Official sheets.new */}
+                <button
+                  onClick={() => {
+                    handleCopyClipboard();
+                    window.open('https://sheets.new', '_blank');
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
+                  title="Open brand new Google Sheet in new tab"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
+                  </svg>
+                  <span>Open in sheets.new</span>
+                </button>
+
+                {/* Copy All Data */}
+                <button
+                  onClick={handleCopyClipboard}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Copy all rows formatted for Google Sheets"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                  <span>Copy Data</span>
+                </button>
+
+                {/* Download CSV */}
+                <button
+                  onClick={() => handleExportCSV(true)}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Download offline CSV file"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>Download .CSV</span>
+                </button>
+
+                {/* Close Modal */}
+                <button
+                  onClick={() => setShowOnlineSheetModal(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Info Banner with Quick Tip */}
+            <div className="bg-emerald-50 border-b border-emerald-200/80 px-4 py-2 flex items-center justify-between gap-2 text-xs text-emerald-900">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold flex items-center gap-1 text-emerald-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Pre-filled Data Ready:
+                </span>
+                <span>All <b>{getExportData().length} candidate records</b> are loaded with Columns A to P. Click <b>"Open in sheets.new"</b> and press <b>Ctrl + V</b> to paste anytime.</span>
+              </div>
+              <span className="text-[11px] text-emerald-700 font-bold shrink-0">16 Columns (A - P)</span>
+            </div>
+
+            {/* 3. Formula Bar */}
+            <div className="bg-gray-50 border-b border-gray-200 px-4 py-1.5 flex items-center gap-2 text-xs font-mono text-gray-600">
+              <span className="font-bold text-gray-400">fx</span>
+              <div className="w-[1px] h-4 bg-gray-300"></div>
+              <span className="font-bold text-gray-700">A1</span>
+              <div className="w-[1px] h-4 bg-gray-300"></div>
+              <span className="text-gray-500 font-sans truncate">{getSheetFileName()} ({getExportData().length} Applications)</span>
+            </div>
+
+            {/* 4. Live Spreadsheet Grid */}
+            <div className="flex-1 overflow-auto bg-white font-sans text-xs select-text">
+              <table className="w-full border-collapse border border-gray-300 text-left min-w-[1700px]">
+                
+                {/* Column Letters Bar (A, B, C, D, E...) */}
+                <thead className="sticky top-0 bg-[#f3f4f6] text-gray-600 font-semibold z-20 shadow-xs">
+                  <tr className="divide-x divide-gray-300 border-b border-gray-300">
+                    <th className="w-12 bg-gray-200 text-center py-1 text-[11px] font-bold text-gray-500 sticky left-0 z-30"></th>
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'].map((col, idx) => (
+                      <th key={idx} className="px-3 py-1 text-center text-[11px] font-bold bg-[#f3f4f6] text-gray-600 min-w-[120px]">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+
+                  {/* Row 1: Header Row in Google Sheets */}
+                  <tr className="divide-x divide-gray-300 border-b-2 border-emerald-600 bg-emerald-50 text-emerald-950 font-black">
+                    <td className="w-12 text-center py-2 bg-gray-200 font-bold text-gray-500 sticky left-0 z-20">1</td>
+                    {exportHeaders.map((hdr, idx) => (
+                      <td key={idx} className="px-3 py-2 font-black text-xs text-emerald-950 bg-emerald-50/80 whitespace-nowrap">
+                        {hdr}
+                      </td>
+                    ))}
+                  </tr>
+                </thead>
+
+                {/* Spreadsheet Data Rows */}
+                <tbody className="divide-y divide-gray-200">
+                  {getExportData().map((item, rowIdx) => {
+                    const cand = item.candidate || {};
+                    const qa = item.screeningAnswers || [];
+
+                    return (
+                      <tr key={rowIdx} className="hover:bg-blue-50/60 transition-colors divide-x divide-gray-200 group">
+                        {/* Row Index on Left (2, 3, 4...) */}
+                        <td className="w-12 text-center py-2 bg-gray-100 font-semibold text-gray-500 group-hover:bg-blue-100 sticky left-0 z-10 text-[11px]">
+                          {rowIdx + 2}
+                        </td>
+                        {/* A: Name */}
+                        <td className="px-3 py-2 font-bold text-gray-900 whitespace-nowrap">{cand.name || 'N/A'}</td>
+                        {/* B: Email ID */}
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{cand.email || 'N/A'}</td>
+                        {/* C: Mobile No. */}
+                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{cand.phone || '+91 98765 43210'}</td>
+                        {/* D: Work Exp */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getWorkExp(cand)}</td>
+                        {/* E: Function */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getFunction(cand)}</td>
+                        {/* F: Current designation */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getCurrentDesignation(cand)}</td>
+                        {/* G: Current company */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getCurrentCompany(cand)}</td>
+                        {/* H: Highest/primary Qualification */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getHighestQualification(cand)}</td>
+                        {/* I: Institute */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getInstitute(cand)}</td>
+                        {/* J: Current Salary */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary || 'N/A')}</td>
+                        {/* K: Expected Salary */}
+                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary || 'N/A')}</td>
+                        {/* L: Question 1 */}
+                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[0]?.answer || ''}>{qa[0]?.answer || '-'}</td>
+                        {/* M: Question 2 */}
+                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[1]?.answer || ''}>{qa[1]?.answer || '-'}</td>
+                        {/* N: Question 3 */}
+                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[2]?.answer || ''}>{qa[2]?.answer || '-'}</td>
+                        {/* O: Question 4 */}
+                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[3]?.answer || ''}>{qa[3]?.answer || '-'}</td>
+                        {/* P: Question 5 */}
+                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[4]?.answer || ''}>{qa[4]?.answer || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 5. Google Sheets Bottom Tab Bar */}
+            <div className="bg-[#f0f3f4] border-t border-gray-300 px-4 py-2 flex items-center justify-between text-xs text-gray-600">
+              <div className="flex items-center gap-1">
+                <button className="p-1 hover:bg-gray-300 rounded text-gray-700 font-bold">+</button>
+                <div className="flex items-center gap-1 bg-white border border-gray-300 px-3 py-1 rounded-t shadow-xs border-b-2 border-b-emerald-600 font-bold text-gray-900">
+                  <span>Sheet1</span>
+                  <span className="text-[9px] text-gray-400">▼</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-semibold text-gray-600">
+                <span>{getExportData().length} Applications loaded</span>
+                <span>•</span>
+                <span>Columns: A to P (16)</span>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
