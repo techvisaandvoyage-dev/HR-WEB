@@ -100,7 +100,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const [loadingJob, setLoadingJob] = useState(true);
   const [jobError, setJobError] = useState('');
 
-  // Current Step: 1: Auth, 2: Questions, 3: CV, 4: Review, 5: Success
+  // Current Step: 1: Auth, 2: Questions & CV, 3: Review, 4: Success
   const [step, setStep] = useState(1);
 
   // User auth state
@@ -575,13 +575,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       setIsOtpStep(false);
 
       if (onAuthSuccess) onAuthSuccess(data);
-
-      // Move to Step 2 (Questions) or Step 3 (CV Upload)
-      if (job?.screeningQuestions && job.screeningQuestions.length > 0) {
-        setStep(2);
-      } else {
-        setStep(3);
-      }
+ 
+      // Move to Step 2 (Questions & CV Upload)
+      setStep(2);
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setAuthError('Server connection error. Please try again.');
@@ -735,9 +731,10 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     }
   };
 
-  // Step 2: Validate Questions and move to Step 3
-  const handleQuestionsSubmit = () => {
+  // Step 2: Validate Questions + CV and move to Step 3 (Review)
+  const handleStep2Submit = () => {
     setQuestionsError('');
+    setCvError('');
     const newFieldErrors = {};
     let firstErrorIdx = null;
 
@@ -767,10 +764,22 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     }
 
     setQuestionFieldErrors({});
+
+    if (!resumeUrl) {
+      setCvError('CV / Resume upload is compulsory. Please attach your resume to continue.');
+      setTimeout(() => {
+        const el = document.getElementById('cv_upload_section');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+      return;
+    }
+
     setStep(3);
   };
 
-  // Step 3: Handle CV Upload (Firebase or fallback)
+  // Handle CV Upload (Firebase or fallback)
   const handleCvFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -811,17 +820,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     }
   };
 
-  // Step 3: Validate CV and move to Step 4
-  const handleCvNext = () => {
-    setCvError('');
-    if (!resumeUrl) {
-      setCvError('CV / Resume upload is compulsory. Please attach your resume to continue.');
-      return;
-    }
-    setStep(4);
-  };
-
-  // Step 4: Final Submit Application
+  // Step 3: Final Submit Application
   const handleSubmitFinalApplication = async () => {
     setSubmitting(true);
     setSubmitError('');
@@ -868,7 +867,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           console.error('Error saving appliedJobs in localStorage:', storageErr);
         }
 
-        setStep(5); // Success step!
+        setStep(4); // Success step!
       } else if (data.message && data.message.includes('already applied')) {
         try {
           const jobIdentifier = job?._id || job?.id || jobId;
@@ -888,7 +887,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         }
 
         setAlreadyApplied(true);
-        setStep(5);
+        setStep(4);
       } else {
         setSubmitError(data.message || 'Failed to submit application. Please try again.');
       }
@@ -999,9 +998,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         </div>
 
         {/* Multi-Step Progress Tracker */}
-        {step < 5 && (
+        {step < 4 && (
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs">
-            <div className="grid grid-cols-4 gap-2 text-center relative">
+            <div className="grid grid-cols-3 gap-2 text-center relative">
               
               {/* Step 1 */}
               <div className="flex flex-col items-center gap-1.5">
@@ -1023,31 +1022,19 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   {step > 2 ? '✓' : '2'}
                 </div>
                 <span className={`text-[11px] font-bold ${step === 2 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {stepper.step2Title || 'Questions'}
+                  {job?.screeningQuestions?.length > 0 ? (stepper.step2Title || 'Questions & CV') : (stepper.step3Title ? stepper.step3Title.replace(/\s*\*/, '') : 'Upload CV')} <span className="text-red-500 font-extrabold">*</span>
                 </span>
               </div>
 
               {/* Step 3 */}
               <div className="flex flex-col items-center gap-1.5">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step > 3 ? 'bg-green-600 text-white' : step === 3 ? 'bg-[#29953f] text-white ring-4 ring-green-100' : 'bg-gray-100 text-gray-400'
+                  step === 3 ? 'bg-[#29953f] text-white ring-4 ring-green-100' : 'bg-gray-100 text-gray-400'
                 }`}>
-                  {step > 3 ? '✓' : '3'}
+                  3
                 </div>
                 <span className={`text-[11px] font-bold ${step === 3 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {stepper.step3Title ? stepper.step3Title.replace(/\s*\*/, '') : 'Upload CV'} <span className="text-red-500 font-extrabold">*</span>
-                </span>
-              </div>
-
-              {/* Step 4 */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step === 4 ? 'bg-[#29953f] text-white ring-4 ring-green-100' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  4
-                </div>
-                <span className={`text-[11px] font-bold ${step === 4 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {stepper.step4Title || 'Review'}
+                  {stepper.step4Title || stepper.step3Title || 'Review'}
                 </span>
               </div>
 
@@ -1647,104 +1634,242 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 2: JOB SCREENING QUESTIONS                                            */}
+        {/* STEP 2: QUESTIONS & CV UPLOAD                                             */}
         {/* ========================================================================= */}
         {step === 2 && (
-          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-6">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-8">
             <div>
-              <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 2 of 4</span>
-              <h2 className="text-xl font-bold text-gray-900 mt-1">{s2.heading || 'Screening Questions'}</h2>
+              <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 2 of 3</span>
+              <h2 className="text-xl font-bold text-gray-900 mt-1">
+                {job.screeningQuestions && job.screeningQuestions.length > 0
+                  ? (s2.heading || 'Screening Questions & CV Upload')
+                  : (s3.heading ? s3.heading.replace(/\s*\*/, '') : 'Upload Your CV / Resume')}
+                <span className="text-red-500 font-extrabold ml-1">*</span>
+              </h2>
               <p className="text-xs sm:text-sm text-gray-500">
-                {s2.subtitle || "Please answer the employer's specific screening questions for this position."}
+                {job.screeningQuestions && job.screeningQuestions.length > 0
+                  ? (s2.subtitle || "Please answer the screening questions and upload your latest resume.")
+                  : (s3.subtitle || `Please attach your latest resume in PDF, DOC, or DOCX format (Max ${maxLimitKb}KB).`)}
               </p>
             </div>
 
-            {job.screeningQuestions && job.screeningQuestions.length > 0 ? (
-              <div className="space-y-5">
-                {job.screeningQuestions.map((q, idx) => {
-                  const hasError = !!questionFieldErrors[idx];
-                  return (
-                    <div 
-                      key={idx} 
-                      id={`question_card_${idx}`}
-                      className={`p-4 sm:p-5 rounded-2xl border transition-all space-y-2.5 ${
-                        hasError 
-                          ? 'border-red-400 bg-red-50/25 ring-2 ring-red-100 shadow-xs' 
-                          : 'border-gray-200 bg-slate-50/50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <label className={`text-sm font-bold leading-snug ${hasError ? 'text-red-900' : 'text-gray-800'}`}>
-                          {idx + 1}. {q.question}
-                          {q.required !== false && <span className="text-red-500 ml-1 font-extrabold">*</span>}
-                        </label>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 ${
-                          hasError ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {q.type || 'Short Text'}
-                        </span>
-                      </div>
-
-                      {q.type === 'Yes/No' ? (
-                        <div className="flex items-center gap-3 pt-1">
-                          {['Yes', 'No'].map((opt) => (
-                            <label
-                              key={opt}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
-                                screeningAnswers[idx] === opt
-                                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-100'
-                                  : hasError
-                                    ? 'bg-white border-red-300 text-gray-700 hover:border-red-400'
-                                    : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name={`question_${idx}`}
-                                value={opt}
-                                checked={screeningAnswers[idx] === opt}
-                                onChange={() => handleAnswerChange(idx, opt)}
-                                className="accent-[#29953f]"
-                              />
-                              {opt}
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <textarea
-                          rows={2}
-                          placeholder="Type your answer here..."
-                          value={screeningAnswers[idx] || ''}
-                          onChange={(e) => handleAnswerChange(idx, e.target.value)}
-                          className={`w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none transition-all ${
-                            hasError
-                              ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                              : 'border-gray-200 focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]'
-                          }`}
-                        />
-                      )}
-
-                      {/* Inline Field Error Message Underneath Question */}
-                      {hasError && (
-                        <p className="text-xs font-bold text-red-600 flex items-center gap-1.5 pt-0.5 animate-in fade-in duration-200">
-                          <span className="font-extrabold text-red-500">⚠️</span>
-                          <span>{questionFieldErrors[idx]}</span>
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-6 text-center bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
-                <div className="text-2xl">✨</div>
-                <h4 className="font-bold text-gray-800 text-sm">{s2.noQuestionsHeading || 'No screening questions required'}</h4>
-                <p className="text-xs text-gray-500">
-                  {s2.noQuestionsSubtitle || 'The employer has not set any custom screening questions. You can proceed directly to CV upload.'}
-                </p>
+            {/* Questions Error Alert if any */}
+            {questionsError && (
+              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-2xl flex items-center gap-2 animate-in fade-in duration-200">
+                <span className="font-bold text-red-500">⚠️</span> {questionsError}
               </div>
             )}
 
+            {/* SECTION 1: Screening Questions (if present) */}
+            {job.screeningQuestions && job.screeningQuestions.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <span>📋 Employer Screening Questions</span>
+                  </h3>
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-md">
+                    {job.screeningQuestions.length} Questions
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {job.screeningQuestions.map((q, idx) => {
+                    const hasError = !!questionFieldErrors[idx];
+                    return (
+                      <div 
+                        key={idx} 
+                        id={`question_card_${idx}`}
+                        className={`p-4 sm:p-5 rounded-2xl border transition-all space-y-2.5 ${
+                          hasError 
+                            ? 'border-red-400 bg-red-50/25 ring-2 ring-red-100 shadow-xs' 
+                            : 'border-gray-200 bg-slate-50/50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <label className={`text-sm font-bold leading-snug ${hasError ? 'text-red-900' : 'text-gray-800'}`}>
+                            {idx + 1}. {q.question}
+                            {q.required !== false && <span className="text-red-500 ml-1 font-extrabold">*</span>}
+                          </label>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 ${
+                            hasError ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {q.type || 'Short Text'}
+                          </span>
+                        </div>
+
+                        {q.type === 'Yes/No' ? (
+                          <div className="flex items-center gap-3 pt-1">
+                            {['Yes', 'No'].map((opt) => (
+                              <label
+                                key={opt}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                                  screeningAnswers[idx] === opt
+                                    ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-100'
+                                    : hasError
+                                      ? 'bg-white border-red-300 text-gray-700 hover:border-red-400'
+                                      : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`question_${idx}`}
+                                  value={opt}
+                                  checked={screeningAnswers[idx] === opt}
+                                  onChange={() => handleAnswerChange(idx, opt)}
+                                  className="accent-[#29953f]"
+                                />
+                                {opt}
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <input
+                              type="text"
+                              maxLength={16}
+                              placeholder="Type your answer (max 16 chars)..."
+                              value={screeningAnswers[idx] || ''}
+                              onChange={(e) => handleAnswerChange(idx, e.target.value.slice(0, 16))}
+                              className={`w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none transition-all ${
+                                hasError
+                                  ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                                  : 'border-gray-200 focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]'
+                              }`}
+                            />
+                            <div className="flex justify-end">
+                              <span className={`text-[10px] font-semibold ${
+                                (screeningAnswers[idx]?.length || 0) >= 16 ? 'text-amber-600 font-bold' : 'text-gray-400'
+                              }`}>
+                                {screeningAnswers[idx]?.length || 0}/16 characters
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Inline Field Error Message Underneath Question */}
+                        {hasError && (
+                          <p className="text-xs font-bold text-red-600 flex items-center gap-1.5 pt-0.5 animate-in fade-in duration-200">
+                            <span className="font-extrabold text-red-500">⚠️</span>
+                            <span>{questionFieldErrors[idx]}</span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SECTION 2: CV / Resume Upload */}
+            <div id="cv_upload_section" className="space-y-4 pt-2">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  <span>📄 CV / Resume Upload</span>
+                  <span className="text-red-500 font-extrabold">*</span>
+                </h3>
+                <span className="text-xs text-gray-500 font-medium">
+                  Max {maxLimitKb}KB (PDF, DOC, DOCX)
+                </span>
+              </div>
+
+              {/* Current Resume Preview if already available */}
+              {resumeUrl && (
+                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
+                      PDF
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-gray-900 truncate">
+                        {resumeName || 'My_Resume.pdf'}
+                      </p>
+                      <span className="text-[11px] text-emerald-700 font-semibold">{s3.attachedBadgeText || '✓ Attached & Ready'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowCvModal(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-emerald-700 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs whitespace-nowrap cursor-pointer hover:shadow-sm"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span>{s3.viewFileBtnText || 'View File'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs whitespace-nowrap cursor-pointer hover:shadow-sm"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>{s3.replaceBtnText || 'Replace'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Drag & Drop Area */}
+              <div className="space-y-2">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all group ${
+                    cvError
+                      ? 'border-red-400 bg-red-50/25 ring-2 ring-red-100'
+                      : 'border-gray-300 hover:border-[#29953f] bg-slate-50/60 hover:bg-green-50/30'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleCvFileChange}
+                    className="hidden"
+                  />
+
+                  <div className={`w-12 h-12 bg-white rounded-2xl shadow-xs border flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform ${
+                    cvError ? 'border-red-300 text-red-500' : 'border-gray-200 text-emerald-600'
+                  }`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+
+                  <h4 className={`text-sm font-bold ${cvError ? 'text-red-900' : 'text-gray-800'}`}>
+                    {uploadingResume ? "Uploading Resume..." : (resumeUrl ? "Click or Drag to Upload Different Resume" : (s3.uploadBoxTitle || "Click or Drag to Upload Resume"))}
+                  </h4>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {s3.uploadBoxSubtitle || `Supports PDF, DOC, DOCX up to ${maxLimitKb}KB`}
+                  </p>
+
+                  {uploadingResume && (
+                    <div className="mt-4 max-w-xs mx-auto space-y-1.5">
+                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-[#29953f] h-2 transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700">{uploadProgress}% uploaded</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Inline Error Message Underneath Upload Box */}
+                {cvError && (
+                  <p className="text-xs font-bold text-red-600 flex items-center gap-1.5 pt-1 animate-in fade-in duration-200">
+                    <span className="font-extrabold text-red-500">⚠️</span>
+                    <span>{cvError}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Step 2 Bottom Actions */}
             <div className="flex items-center justify-between pt-4 border-t border-gray-100">
               <button
                 type="button"
@@ -1755,153 +1880,23 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               </button>
               <button
                 type="button"
-                onClick={handleQuestionsSubmit}
-                className="px-7 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                onClick={handleStep2Submit}
+                disabled={uploadingResume}
+                className="px-7 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
               >
-                {s2.continueBtnText || 'Continue to CV Upload →'}
+                {s3.continueBtnText || 'Continue to Review →'}
               </button>
             </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 3: CV / RESUME UPLOAD                                                 */}
+        {/* STEP 3: REVIEW & SUBMIT APPLICATION                                        */}
         {/* ========================================================================= */}
         {step === 3 && (
           <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-6">
             <div>
-              <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 3 of 4</span>
-              <h2 className="text-xl font-bold text-gray-900 mt-1">
-                {s3.heading ? s3.heading.replace(/\s*\*/, '') : 'Upload Your CV / Resume'} <span className="text-red-500 font-extrabold">*</span>
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-500">
-                {s3.subtitle || `Please attach your latest resume in PDF, DOC, or DOCX format (Max ${maxLimitKb}KB).`}
-              </p>
-            </div>
-
-            {/* Current Resume Preview if already available */}
-            {resumeUrl && (
-              <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
-                    PDF
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-900 truncate">
-                      {resumeName || 'My_Resume.pdf'}
-                    </p>
-                    <span className="text-[11px] text-emerald-700 font-semibold">{s3.attachedBadgeText || '✓ Attached & Ready'}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowCvModal(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-emerald-700 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs whitespace-nowrap cursor-pointer hover:shadow-sm"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <span>{s3.viewFileBtnText || 'View File'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs whitespace-nowrap cursor-pointer hover:shadow-sm"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span>{s3.replaceBtnText || 'Replace'}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Upload Drag & Drop Area */}
-            <div className="space-y-2">
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all group ${
-                  cvError
-                    ? 'border-red-400 bg-red-50/25 ring-2 ring-red-100'
-                    : 'border-gray-300 hover:border-[#29953f] bg-slate-50/60 hover:bg-green-50/30'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  onChange={handleCvFileChange}
-                  className="hidden"
-                />
-
-                <div className={`w-14 h-14 bg-white rounded-2xl shadow-xs border flex items-center justify-center mx-auto mb-3 group-hover:scale-105 transition-transform ${
-                  cvError ? 'border-red-300 text-red-500' : 'border-gray-200 text-emerald-600'
-                }`}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                </div>
-
-                <h4 className={`text-sm font-bold ${cvError ? 'text-red-900' : 'text-gray-800'}`}>
-                  {uploadingResume ? "Uploading Resume..." : (s3.uploadBoxTitle || "Click or Drag to Upload Resume")}
-                </h4>
-                <p className="text-xs text-gray-500 mt-1">
-                  {s3.uploadBoxSubtitle || `Supports PDF, DOC, DOCX up to ${maxLimitKb}KB`}
-                </p>
-
-                {uploadingResume && (
-                  <div className="mt-4 max-w-xs mx-auto space-y-1.5">
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-[#29953f] h-2 transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-700">{uploadProgress}% uploaded</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Inline Error Message Underneath Upload Box */}
-              {cvError && (
-                <p className="text-xs font-bold text-red-600 flex items-center gap-1.5 pt-1 animate-in fade-in duration-200">
-                  <span className="font-extrabold text-red-500">⚠️</span>
-                  <span>{cvError}</span>
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="px-5 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                {s3.backBtnText || '← Back'}
-              </button>
-              <button
-                type="button"
-                onClick={handleCvNext}
-                disabled={uploadingResume}
-                className="px-7 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
-              >
-                {s3.continueBtnText || 'Review & Submit →'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* STEP 4: REVIEW & SUBMIT APPLICATION                                        */}
-        {/* ========================================================================= */}
-        {step === 4 && (
-          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-6">
-            <div>
-              <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 4 of 4</span>
+              <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 3 of 3</span>
               <h2 className="text-xl font-bold text-gray-900 mt-1">{s4.heading || 'Review Your Application'}</h2>
               <p className="text-xs sm:text-sm text-gray-500">
                 {s4.subtitle || 'Please verify your contact details and responses before final submission.'}
@@ -1977,7 +1972,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             <div className="flex items-center justify-between pt-4 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setStep(3)}
+                onClick={() => setStep(2)}
                 className="px-5 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
                 {s4.backBtnText || '← Back'}
@@ -2002,9 +1997,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 5: SUCCESS CONFIRMATION & PORTAL INVITATION                          */}
+        {/* STEP 4: SUCCESS CONFIRMATION & PORTAL INVITATION                          */}
         {/* ========================================================================= */}
-        {step === 5 && (
+        {step === 4 && (
           <div className="bg-white rounded-3xl p-8 sm:p-10 border border-gray-200/80 shadow-md text-center space-y-6">
             
             <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-4xl font-black shadow-inner">

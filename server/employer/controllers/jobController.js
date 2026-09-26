@@ -22,6 +22,10 @@ exports.createJob = async (req, res) => {
       companyLogo = req.user.companyLogo;
     }
 
+    if (Array.isArray(screeningQuestions)) {
+      screeningQuestions = screeningQuestions.slice(0, 5);
+    }
+
     const job = await Job.create({
       employerId,
       company,
@@ -72,6 +76,10 @@ exports.updateJob = async (req, res) => {
       company, companyInitial, companyLogo, title, location, salary, employerProvided,
       easyApply, qualifications, details, screeningQuestions
     } = req.body;
+
+    if (Array.isArray(screeningQuestions)) {
+      screeningQuestions = screeningQuestions.slice(0, 5);
+    }
 
     if (!company) {
       company = job.company || (req.user && req.user.companyName) || (req.user && req.user.fullName) || 'Company';

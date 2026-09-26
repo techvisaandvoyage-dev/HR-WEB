@@ -680,23 +680,31 @@ const p = formData.professionalDetails || {};
                   })}
                 </div>
               ) : (
-                <div className="pt-1">
-                  <textarea
-                    rows="3"
-                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-all resize-none shadow-sm ${
+                <div className="pt-1 space-y-1">
+                  <input
+                    type="text"
+                    maxLength={16}
+                    className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-all shadow-sm ${
                       hasError
                         ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                         : 'border-gray-200 focus:border-[#29953f] focus:ring-2 focus:ring-green-100'
                     }`}
-                    placeholder="Type your answer here..."
+                    placeholder="Type your answer (max 16 chars)..."
                     value={screeningAnswers[i] || ''}
                     onChange={(e) => {
-                      setScreeningAnswers({ ...screeningAnswers, [i]: e.target.value });
+                      setScreeningAnswers({ ...screeningAnswers, [i]: e.target.value.slice(0, 16) });
                       if (questionErrors[i]) {
                         setQuestionErrors({ ...questionErrors, [i]: false });
                       }
                     }}
                   />
+                  <div className="flex justify-end">
+                    <span className={`text-[10px] font-semibold ${
+                      (screeningAnswers[i]?.length || 0) >= 16 ? 'text-amber-600 font-bold' : 'text-gray-400'
+                    }`}>
+                      {screeningAnswers[i]?.length || 0}/16 characters
+                    </span>
+                  </div>
                 </div>
               )}
 

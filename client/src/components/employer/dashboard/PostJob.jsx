@@ -496,6 +496,9 @@ const PostJob = ({ addJob, updateJob }) => {
     }
 
     if (stepNumber === 4) {
+      if (jobData.screeningQuestions && jobData.screeningQuestions.length > 5) {
+        errors.screeningQuestions = 'Maximum 5 screening questions allowed.';
+      }
       if (jobData.screeningQuestions && jobData.screeningQuestions.length > 0) {
         for (let i = 0; i < jobData.screeningQuestions.length; i++) {
           const sq = jobData.screeningQuestions[i];
@@ -1106,52 +1109,79 @@ const PostJob = ({ addJob, updateJob }) => {
             <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {cmsConfig?.step4?.heading || 'Applicant Screening Questions'}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {cmsConfig?.step4?.heading || 'Applicant Screening Questions'}
+                    </h3>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      jobData.screeningQuestions.length >= 5
+                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                        : 'bg-green-100 text-green-800 border border-green-200'
+                    }`}>
+                      {jobData.screeningQuestions.length}/5 added
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    {cmsConfig?.step4?.subtitle || 'Add optional questions for candidates to answer when applying.'}
+                    {cmsConfig?.step4?.subtitle || 'Add optional questions for candidates to answer when applying (Maximum 5 questions).'}
                   </p>
                 </div>
                 <button 
+                  type="button"
+                  disabled={jobData.screeningQuestions.length >= 5}
                   onClick={() => {
-                    setJobData({
-                      ...jobData, 
-                      screeningQuestions: [...jobData.screeningQuestions, { question: '', type: 'Yes/No', required: true }]
-                    });
+                    if (jobData.screeningQuestions.length < 5) {
+                      setJobData({
+                        ...jobData, 
+                        screeningQuestions: [...jobData.screeningQuestions, { question: '', type: 'Yes/No', required: true }]
+                      });
+                    }
                   }}
-                  className="px-4 py-2 bg-green-50 text-[#29953f] hover:bg-green-100 rounded-lg text-sm font-bold transition-colors cursor-pointer"
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors cursor-pointer ${
+                    jobData.screeningQuestions.length >= 5
+                      ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
+                      : 'bg-green-50 text-[#29953f] hover:bg-green-100'
+                  }`}
                 >
-                  {cmsConfig?.step4?.addBtnText || '+ Add Question'}
+                  {jobData.screeningQuestions.length >= 5 ? 'Max 5 Limit Reached' : (cmsConfig?.step4?.addBtnText || '+ Add Question')}
                 </button>
               </div>
 
               {/* Recommended Question Templates Quick Add */}
               {cmsConfig?.step4?.recommendedTemplates && cmsConfig.step4.recommendedTemplates.length > 0 && (
                 <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-2">
-                  <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider block">
-                    Recommended Questions (Click to add):
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider block">
+                      Recommended Questions (Click to add):
+                    </span>
+                    {jobData.screeningQuestions.length >= 5 && (
+                      <span className="text-[11px] font-bold text-amber-700">
+                        ⚠️ Maximum 5 questions limit reached
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {cmsConfig.step4.recommendedTemplates.map((template, tIdx) => {
                       const isAlreadyAdded = jobData.screeningQuestions.some(q => q.question.toLowerCase() === template.question.toLowerCase());
+                      const isMaxReached = jobData.screeningQuestions.length >= 5 && !isAlreadyAdded;
                       return (
                         <button
                           key={tIdx}
                           type="button"
-                          disabled={isAlreadyAdded}
+                          disabled={isAlreadyAdded || isMaxReached}
                           onClick={() => {
-                            if (!isAlreadyAdded) {
+                            if (!isAlreadyAdded && jobData.screeningQuestions.length < 5) {
                               setJobData({
                                 ...jobData, 
                                 screeningQuestions: [...jobData.screeningQuestions, { question: template.question, type: template.type || 'Yes/No', required: template.required !== false }]
                               });
                             }
                           }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                             isAlreadyAdded
                               ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
-                              : 'bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-600 hover:text-white shadow-2xs'
+                              : isMaxReached
+                                ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50'
+                                : 'bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-600 hover:text-white shadow-2xs cursor-pointer'
                           }`}
                         >
                           <span>{isAlreadyAdded ? '✓ Added' : '+'}</span>
