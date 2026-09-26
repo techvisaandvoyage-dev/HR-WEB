@@ -780,7 +780,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
             {selectedJob && (
               <div className={`flex-1 w-full bg-white border border-gray-200 rounded-xl sticky top-24 h-[calc(100vh-120px)] overflow-hidden flex-col ${!isMobileDetailsOpen ? 'hidden md:flex' : 'flex'}`}>
                 
-                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col pb-24 md:pb-0">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col pb-24 md:pb-0">
                   {/* Mobile Back Button */}
                   <div className="p-4 border-b border-gray-200 md:hidden flex items-center bg-gray-50 sticky top-0 z-10">
                     <button onClick={() => setIsMobileDetailsOpen(false)} className="text-gray-500 hover:text-gray-900 font-semibold text-sm flex items-center gap-2">
