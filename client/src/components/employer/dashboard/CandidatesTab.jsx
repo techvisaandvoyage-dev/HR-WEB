@@ -338,12 +338,30 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return 'N/A';
   };
 
+  // Dynamic Sheet File Name: Job Name with Date (e.g. Frontend Devloper - 26-09-2026)
+  const getSheetFileName = () => {
+    const today = new Date();
+    const d = String(today.getDate()).padStart(2, '0');
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const y = today.getFullYear();
+    const dateStr = `${d}-${m}-${y}`;
+    
+    let jobName = 'All Applications';
+    if (colFilters.job && colFilters.job !== 'All') {
+      jobName = colFilters.job;
+    } else if (selectedJob && selectedJob !== 'All Jobs' && selectedJob !== 'All') {
+      jobName = selectedJob;
+    }
+    const cleanJobName = jobName.replace(/[/\\?%*:|"<>]/g, ' ').trim();
+    return `${cleanJobName} - ${dateStr}`;
+  };
+
   // Helper to get raw application data array
   const getExportData = () => {
     return filteredApplications.length > 0 ? filteredApplications : flattenedApplications;
   };
 
-  // Exact Google Sheet Headers
+  // Exact Google Sheet Headers (Column A to P)
   const exportHeaders = [
     'Name',
     'Email ID',
@@ -363,89 +381,15 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     'Question 5'
   ];
 
-  // 1. Export & Open in Google Sheets
-  const handleExportGoogleSheets = async () => {
-    const dataToExport = getExportData();
-    if (dataToExport.length === 0) {
-      alert('No application data to export.');
-      return;
-    }
-
-    // Tab-separated values for instant Google Sheets pasting
-    const rows = dataToExport.map(item => {
-      const cand = item.candidate || {};
-      const workExp = getWorkExp(cand);
-      const func = getFunction(cand);
-      const desig = getCurrentDesignation(cand);
-      const comp = getCurrentCompany(cand);
-      const qual = getHighestQualification(cand);
-      const institute = getInstitute(cand);
-      const currentSalary = cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary || 'N/A');
-      const expectedSalary = cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary || 'N/A');
-      
-      const qa = item.screeningAnswers || [];
-      const q1 = qa[0]?.answer || '';
-      const q2 = qa[1]?.answer || '';
-      const q3 = qa[2]?.answer || '';
-      const q4 = qa[3]?.answer || '';
-      const q5 = qa[4]?.answer || '';
-
-      return [
-        cand.name || '',
-        cand.email || '',
-        cand.phone || '',
-        workExp,
-        func,
-        desig,
-        comp,
-        qual,
-        institute,
-        currentSalary,
-        expectedSalary,
-        q1,
-        q2,
-        q3,
-        q4,
-        q5
-      ].join('\t');
-    });
-
-    const tsvContent = [exportHeaders.join('\t'), ...rows].join('\n');
-
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(tsvContent);
-      }
-    } catch (_) {}
-
-    // Also download CSV backup automatically
-    handleExportCSV(false);
-
-    // Open a brand new Google Spreadsheet
-    window.open('https://sheets.new', '_blank');
-
-    setExportNotice({
-      title: 'Opened in Google Sheets!',
-      message: `${dataToExport.length} candidate applications copied in Google Sheets format. Press Ctrl + V in the opened Google Sheet to paste!`
-    });
-    setShowExportMenu(false);
-  };
-
-  // 2. Export to CSV / Excel File
-  const handleExportCSV = (showNotification = true) => {
-    const dataToExport = getExportData();
-    if (dataToExport.length === 0) {
-      if (showNotification) alert('No application data to export.');
-      return;
-    }
-
+  // Helper to format rows
+  const getExportRows = (dataToExport, delimiter = '\t', isCsv = false) => {
     const escapeCsv = (str) => {
-      if (str === null || str === undefined) return '""';
+      if (str === null || str === undefined) return isCsv ? '""' : '';
       const s = String(str).replace(/"/g, '""');
-      return `"${s}"`;
+      return isCsv ? `"${s}"` : String(str).replace(/\t|\n|\r/g, ' ');
     };
 
-    const rows = dataToExport.map(item => {
+    return dataToExport.map(item => {
       const cand = item.candidate || {};
       const workExp = getWorkExp(cand);
       const func = getFunction(cand);
@@ -480,17 +424,58 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         escapeCsv(q3),
         escapeCsv(q4),
         escapeCsv(q5)
-      ].join(',');
+      ].join(delimiter);
     });
+  };
 
+  // 1. Export & Open in Google Sheets
+  const handleExportGoogleSheets = async () => {
+    const dataToExport = getExportData();
+    if (dataToExport.length === 0) {
+      alert('No application data to export.');
+      return;
+    }
+
+    const fileName = getSheetFileName();
+    const rows = getExportRows(dataToExport, '\t', false);
+    const tsvContent = [exportHeaders.join('\t'), ...rows].join('\n');
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(tsvContent);
+      }
+    } catch (_) {}
+
+    // Also download the backup CSV spreadsheet automatically with the exact name
+    handleExportCSV(false);
+
+    // Open a brand new Google Spreadsheet
+    window.open('https://sheets.new', '_blank');
+
+    setExportNotice({
+      title: `Google Sheet: ${fileName}`,
+      message: `Data copied to clipboard! In the new Google Sheet, press "Ctrl + V" in cell A1, and name your sheet: "${fileName}".`
+    });
+    setShowExportMenu(false);
+  };
+
+  // 2. Export to CSV / Excel File with Exact Job Name & Date
+  const handleExportCSV = (showNotification = true) => {
+    const dataToExport = getExportData();
+    if (dataToExport.length === 0) {
+      if (showNotification) alert('No application data to export.');
+      return;
+    }
+
+    const fileName = getSheetFileName();
+    const rows = getExportRows(dataToExport, ',', true);
     const csvContent = '\uFEFF' + [exportHeaders.join(','), ...rows].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const safeJobName = colFilters.job !== 'All' ? colFilters.job.replace(/[^a-zA-Z0-9]/g, '_') : 'All_Jobs';
-    const filename = `Applications_${safeJobName}_${new Date().toISOString().slice(0, 10)}.csv`;
+    const fullFilename = `${fileName}.csv`;
     link.setAttribute('href', url);
-    link.setAttribute('download', filename);
+    link.setAttribute('download', fullFilename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -498,11 +483,28 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
     if (showNotification) {
       setExportNotice({
-        title: 'CSV Downloaded!',
-        message: `Saved ${filename} with ${dataToExport.length} records in Google Sheets format.`
+        title: 'Spreadsheet File Downloaded!',
+        message: `Saved "${fullFilename}" with ${dataToExport.length} applications. You can open directly in Excel or import into Google Sheets.`
       });
       setShowExportMenu(false);
     }
+  };
+
+  // 3. Copy Table Data to Clipboard
+  const handleCopyClipboard = async () => {
+    const dataToExport = getExportData();
+    const rows = getExportRows(dataToExport, '\t', false);
+    const tsvContent = [exportHeaders.join('\t'), ...rows].join('\n');
+    try {
+      await navigator.clipboard.writeText(tsvContent);
+      setExportNotice({
+        title: 'Copied to Clipboard!',
+        message: `All ${dataToExport.length} application rows copied! You can now paste directly with Ctrl + V into any Google Sheet or Excel.`
+      });
+    } catch (_) {
+      alert('Could not copy to clipboard.');
+    }
+    setShowExportMenu(false);
   };
 
   return (
@@ -635,8 +637,24 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-gray-900">Download CSV / Excel</p>
-                      <p className="text-[10px] text-gray-500">Spreadsheet file format</p>
+                      <p className="text-xs font-bold text-gray-900">Download Spreadsheet (.csv)</p>
+                      <p className="text-[10px] text-gray-500">{getSheetFileName()}.csv</p>
+                    </div>
+                  </button>
+
+                  {/* 3. Copy to Clipboard Option */}
+                  <button
+                    onClick={handleCopyClipboard}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-purple-50 text-gray-800 hover:text-purple-800 rounded-xl transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-900">Copy Table to Clipboard</p>
+                      <p className="text-[10px] text-gray-500">Paste anywhere in Excel / Sheets</p>
                     </div>
                   </button>
                 </div>
