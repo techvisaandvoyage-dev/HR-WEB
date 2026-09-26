@@ -7,6 +7,7 @@ import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS, DEFAULT_COURSE_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_NOTICE_PERIOD_OPTIONS, DEFAULT_GRADING_SYSTEMS, normalizeGradingSystems, sortQualifications, sortExperience } from './EmployeeOnboarding';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
+import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -460,19 +461,21 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
     localStorage.setItem('userProfile', JSON.stringify(formData));
     localStorage.setItem('hasProfile', 'true');
     
-    // Save to applied jobs
+    // Save to applied jobs (scoped per employee so MyJobs & EmployeeHomepage pick it up)
     if (job) {
       try {
-        const savedApplied = localStorage.getItem('appliedJobs');
-        let appliedJobs = savedApplied ? JSON.parse(savedApplied) : [];
+        let appliedJobs = getEmployeeStoredValue('appliedJobs', []);
           // Add if not already applied
-          if (!appliedJobs.some(a => a.id === job.id)) {
-            appliedJobs.push({
+          if (!appliedJobs.some(a => String(a.id) === String(job.id))) {
+            appliedJobs.unshift({
               id: job.id,
+              _id: job.id,
               status: 'Applied',
-              date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+              date: new Date().toLocaleDateString(),
+              jobDetails: job
             });
-            localStorage.setItem('appliedJobs', JSON.stringify(appliedJobs));
+            setEmployeeStoredValue('appliedJobs', appliedJobs);
+            localStorage.removeItem('appliedJobs'); // clean up old un-scoped key
             
             // Save candidate profile to backend first
             try {

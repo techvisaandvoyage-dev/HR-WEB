@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
@@ -18,49 +18,49 @@ const MyJobs = ({ jobs = [] }) => {
 
   const [appliedJobs, setAppliedJobs] = useState(() => getEmployeeStoredValue('appliedJobs', []));
 
+  const fetchMyApplications = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+      if (!token) {
+        setAppliedJobs([]);
+        return;
+      }
+      
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (data.success && Array.isArray(data.data)) {
+        const sortedData = [...data.data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const apiAppliedJobs = sortedData.map(app => {
+          const populated = typeof app.jobId === 'object' && app.jobId !== null ? app.jobId : null;
+          const jId = populated?._id || populated?.id || app.jobId;
+          return {
+            id: jId,
+            _id: jId,
+            status: app.status || 'Applied',
+            date: new Date(app.createdAt).toLocaleDateString(),
+            jobDetails: populated
+          };
+        });
+        
+        setAppliedJobs(apiAppliedJobs);
+        setEmployeeStoredValue('appliedJobs', apiAppliedJobs);
+      }
+    } catch (err) {
+      console.error("Error fetching my applications:", err);
+    }
+  }, []);
+
   useEffect(() => {
     // Clear any legacy un-scoped appliedJobs key to prevent cross-user leak
     try {
       localStorage.removeItem('appliedJobs');
     } catch (e) {}
 
-    const fetchMyApplications = async () => {
-      try {
-        const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
-        if (!token) {
-          setAppliedJobs([]);
-          return;
-        }
-        
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        
-        if (data.success && Array.isArray(data.data)) {
-          const sortedData = [...data.data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          const apiAppliedJobs = sortedData.map(app => {
-            const populated = typeof app.jobId === 'object' && app.jobId !== null ? app.jobId : null;
-            const jId = populated?._id || populated?.id || app.jobId;
-            return {
-              id: jId,
-              _id: jId,
-              status: app.status || 'Applied',
-              date: new Date(app.createdAt).toLocaleDateString(),
-              jobDetails: populated
-            };
-          });
-          
-          setAppliedJobs(apiAppliedJobs);
-          setEmployeeStoredValue('appliedJobs', apiAppliedJobs);
-        }
-      } catch (err) {
-        console.error("Error fetching my applications:", err);
-      }
-    };
-    
     fetchMyApplications();
-  }, []);
+  }, [fetchMyApplications]);
 
   const handleUpdateStatus = (newStatus) => {
     if (!statusUpdateJobId) return;
@@ -83,14 +83,8 @@ const MyJobs = ({ jobs = [] }) => {
 
   const handleCloseModal = () => {
     setIsApplicationModalOpen(false);
-    try {
-      const applied = localStorage.getItem('appliedJobs');
-      if (applied) {
-        setAppliedJobs(JSON.parse(applied));
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    // Re-fetch from API to reflect any newly submitted application
+    fetchMyApplications();
   };
 
   return (

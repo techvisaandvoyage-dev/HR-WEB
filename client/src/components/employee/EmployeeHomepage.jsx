@@ -440,37 +440,40 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
   const [appliedJobs, setAppliedJobs] = useState(() => getEmployeeStoredValue('appliedJobs', []));
 
-  useEffect(() => {
-    const fetchAppliedJobs = async () => {
-      try {
-        const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
-        if (!token) {
-          setAppliedJobs([]);
-          return;
-        }
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.data)) {
-          const apiAppliedJobs = data.data.map(app => {
-            const jId = app.jobId?._id || app.jobId?.id || app.jobId;
-            return {
-              id: jId,
-              _id: jId,
-              status: app.status || 'Applied',
-              date: new Date(app.createdAt).toLocaleDateString()
-            };
-          });
-          setAppliedJobs(apiAppliedJobs);
-          setEmployeeStoredValue('appliedJobs', apiAppliedJobs);
-        }
-      } catch (err) {
-        console.error('Error fetching applied jobs in homepage:', err);
+  // Extracted so it can also be called after modal close to refresh applied state
+  const fetchAppliedJobs = React.useCallback(async () => {
+    try {
+      const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+      if (!token) {
+        setAppliedJobs([]);
+        return;
       }
-    };
-    fetchAppliedJobs();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        const apiAppliedJobs = data.data.map(app => {
+          const jId = app.jobId?._id || app.jobId?.id || app.jobId;
+          return {
+            id: jId,
+            _id: jId,
+            status: app.status || 'Applied',
+            date: new Date(app.createdAt).toLocaleDateString(),
+            jobDetails: typeof app.jobId === 'object' ? app.jobId : null
+          };
+        });
+        setAppliedJobs(apiAppliedJobs);
+        setEmployeeStoredValue('appliedJobs', apiAppliedJobs);
+      }
+    } catch (err) {
+      console.error('Error fetching applied jobs in homepage:', err);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAppliedJobs();
+  }, [fetchAppliedJobs]);
 
   const isJobApplied = (jobTarget) => {
     if (!jobTarget) return false;
@@ -1299,10 +1302,8 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
         isOpen={isApplicationModalOpen} 
         onClose={() => {
           setIsApplicationModalOpen(false);
-          try {
-            const applied = localStorage.getItem('appliedJobs');
-            if (applied) setAppliedJobs(JSON.parse(applied));
-          } catch (e) {}
+          // Re-fetch from API so "Already applied" badge updates instantly
+          fetchAppliedJobs();
         }} 
         job={selectedJob}
         applyToJob={applyToJob}
