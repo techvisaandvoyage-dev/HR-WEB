@@ -6,6 +6,230 @@ import CustomDropdown from '../common/CustomDropdown';
 import Footer from '../common/Footer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 
+const parseProfileData = (profile) => {
+  if (!profile || typeof profile !== 'object') return null;
+
+  // Extract designation from all possible fields used across old & new versions
+  let designation = (
+    profile.designation ||
+    profile.currentDesignation ||
+    profile.professionalDetails?.currentDesignation ||
+    profile.professionalDetails?.designation ||
+    profile.professionalDetails?.role ||
+    profile.professionalDetails?.jobTitle ||
+    profile.role ||
+    profile.jobTitle ||
+    profile.title ||
+    ''
+  ).trim();
+
+  // If still empty, check past experience roles
+  if (!designation && Array.isArray(profile.experience) && profile.experience.length > 0) {
+    const currentRole = profile.experience.find(e => e.roles?.some(r => r.currentCompany))?.roles?.find(r => r.currentCompany);
+    if (currentRole && currentRole.jobTitle) {
+      designation = currentRole.jobTitle.trim();
+    } else if (profile.experience[0]?.roles?.[0]?.jobTitle) {
+      designation = profile.experience[0].roles[0].jobTitle.trim();
+    } else if (profile.experience[0]?.designation) {
+      designation = profile.experience[0].designation.trim();
+    } else if (profile.experience[0]?.title) {
+      designation = profile.experience[0].title.trim();
+    }
+  }
+
+  let skills = [];
+  if (Array.isArray(profile.skills)) {
+    skills = profile.skills.map(s => (typeof s === 'string' ? s : s.name || '')).filter(Boolean);
+  } else if (typeof profile.skills === 'string') {
+    skills = profile.skills.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  if (profile.professionalDetails?.skills) {
+    const profSkills = Array.isArray(profile.professionalDetails.skills)
+      ? profile.professionalDetails.skills
+      : profile.professionalDetails.skills.split(',').map(s => s.trim()).filter(Boolean);
+    skills = Array.from(new Set([...skills, ...profSkills]));
+  }
+  if (Array.isArray(profile.qualifications)) {
+    const qSkills = profile.qualifications.map(q => (typeof q === 'string' ? q : q.name || '')).filter(Boolean);
+    skills = Array.from(new Set([...skills, ...qSkills]));
+  }
+  if (Array.isArray(profile.keySkills)) {
+    skills = Array.from(new Set([...skills, ...profile.keySkills.filter(Boolean)]));
+  }
+
+  const industry = (profile.industry || profile.department || profile.jobCategory || profile.roleCategory || profile.professionalDetails?.industry || '').trim();
+  const location = (profile.preferredLocation || profile.location || profile.city || profile.address?.city || '').trim();
+  const experience = (profile.workExperience || profile.experience || profile.totalExperience || profile.professionalDetails?.experience || '').toString().trim();
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.name || profile.fullName || 'Candidate';
+
+  return {
+    exists: Boolean(designation || skills.length > 0 || industry || profile.email),
+    designation,
+    skills,
+    industry,
+    location,
+    experience,
+    fullName
+  };
+};
+
+const getCandidateProfile = () => {
+  try {
+    const raw = localStorage.getItem('userProfile');
+    if (!raw) return null;
+    const profile = JSON.parse(raw);
+    return parseProfileData(profile);
+  } catch (err) {
+    console.error('Error parsing candidate profile:', err);
+    return null;
+  }
+};
+
+const synonymGroups = [
+  ['qa', 'quality', 'analyst', 'tester', 'testing', 'automation', 'qc', 'quality assurance'],
+  ['hr', 'human resources', 'recruiter', 'recruitment', 'talent', 'talent acquisition', 'hiring'],
+  ['developer', 'engineer', 'programmer', 'software', 'full stack', 'frontend', 'backend', 'web developer', 'coder'],
+  ['designer', 'graphic', 'ui', 'ux', 'motion', 'animator', 'video editor', 'editor', 'creative'],
+  ['sales', 'business development', 'bde', 'bda', 'telecaller', 'inside sales', 'account executive', 'client relationship'],
+  ['marketing', 'digital marketing', 'seo', 'sem', 'content', 'social media', 'growth'],
+  ['finance', 'accountant', 'accounts', 'accounting', 'auditor', 'taxation', 'banking', 'financial'],
+  ['counselor', 'admissions', 'academic counselor', 'education', 'student advisor', 'career counselor'],
+  ['support', 'customer support', 'customer success', 'customer care', 'service desk', 'helpdesk', 'support specialist'],
+  ['manager', 'lead', 'operations', 'supervisor', 'head', 'general manager', 'coordinator']
+];
+
+const computeJobMatch = (job, candidateProfile) => {
+  if (!candidateProfile || (!candidateProfile.designation && (!candidateProfile.skills || candidateProfile.skills.length === 0) && !candidateProfile.industry)) {
+    return { isMatched: false, score: 0, matchPercentage: 0, matchedDesignation: false, matchedSkills: [], matchReason: '' };
+  }
+
+  let score = 0;
+  let matchedDesignation = false;
+  let matchedSkills = [];
+  let matchedIndustry = false;
+  let matchedLocation = false;
+
+  const jobTitleLower = (job.title || '').toLowerCase();
+  const jobCategoryLower = (job.details?.jobCategory || job.jobCategory || '').toLowerCase();
+  const jobIndustryLower = (job.details?.industry || '').toLowerCase();
+  const jobAboutRole = (job.details?.aboutRole || '').toLowerCase();
+  const jobLocationLower = (job.location || job.details?.workLocation || '').toLowerCase();
+
+  // 1. Designation & Role Matching
+  if (candidateProfile.designation) {
+    const desigLower = candidateProfile.designation.toLowerCase().trim();
+    
+    // Direct exact or substring match
+    if (jobTitleLower.includes(desigLower) || desigLower.includes(jobTitleLower)) {
+      score += 120;
+      matchedDesignation = true;
+    } else if (jobCategoryLower.includes(desigLower) || desigLower.includes(jobCategoryLower)) {
+      score += 90;
+      matchedDesignation = true;
+    } else {
+      // Token & Stop word analysis
+      const stopWords = new Set(['and', '&', 'or', 'in', 'of', 'for', 'the', 'a', 'an', 'at', 'to', 'with', 'on', 'senior', 'junior', 'lead', 'associate', 'executive', 'specialist', 'officer']);
+      const desigTokens = desigLower.split(/[\s,/-]+/).map(t => t.trim()).filter(t => t.length > 1 && !stopWords.has(t));
+      
+      let tokenMatches = 0;
+      for (const token of desigTokens) {
+        if (jobTitleLower.includes(token) || jobCategoryLower.includes(token)) {
+          tokenMatches++;
+        }
+      }
+      
+      if (desigTokens.length > 0 && tokenMatches > 0) {
+        const ratio = tokenMatches / desigTokens.length;
+        score += Math.round(ratio * 90);
+        if (ratio >= 0.35 || tokenMatches >= 1) {
+          matchedDesignation = true;
+        }
+      }
+
+      // Synonym group matching (e.g. QA <-> Quality Analyst)
+      if (!matchedDesignation) {
+        for (const group of synonymGroups) {
+          const hasCandidate = group.some(term => desigLower.includes(term));
+          const hasJob = group.some(term => jobTitleLower.includes(term) || jobCategoryLower.includes(term));
+          if (hasCandidate && hasJob) {
+            score += 85;
+            matchedDesignation = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Skills matching
+  const jobSkillText = [
+    job.details?.skillsRequired || '',
+    ...(Array.isArray(job.qualifications) ? job.qualifications.map(q => (typeof q === 'string' ? q : q.name || '')) : []),
+    jobTitleLower,
+    jobAboutRole
+  ].join(' ').toLowerCase();
+
+  if (candidateProfile.skills && candidateProfile.skills.length > 0) {
+    candidateProfile.skills.forEach(skill => {
+      const sLower = skill.toLowerCase().trim();
+      if (sLower.length >= 2 && jobSkillText.includes(sLower)) {
+        score += 25;
+        matchedSkills.push(skill);
+      }
+    });
+  }
+
+  // 3. Industry / Category matching
+  if (candidateProfile.industry) {
+    const indLower = candidateProfile.industry.toLowerCase().trim();
+    if (jobIndustryLower.includes(indLower) || jobCategoryLower.includes(indLower) || indLower.includes(jobCategoryLower)) {
+      score += 30;
+      matchedIndustry = true;
+    }
+  }
+
+  // 4. Location matching
+  if (candidateProfile.location) {
+    const locLower = candidateProfile.location.toLowerCase().trim();
+    if (jobLocationLower.includes(locLower) || locLower.includes(jobLocationLower)) {
+      score += 15;
+      matchedLocation = true;
+    }
+  }
+
+  // If candidate has designation, strictly match when designation matches!
+  const isMatched = candidateProfile.designation
+    ? matchedDesignation
+    : (matchedSkills.length >= 2 || (matchedSkills.length >= 1 && matchedIndustry));
+  
+  // Calculate a human-friendly match percentage (e.g. 70% to 98%)
+  let matchPercentage = 0;
+  if (isMatched) {
+    matchPercentage = Math.min(98, Math.max(75, Math.round(70 + Math.min(score, 120) * 0.24)));
+  }
+
+  // Primary match reason
+  let matchReason = '';
+  if (candidateProfile.designation) {
+    matchReason = `Matches your designation (${candidateProfile.designation})`;
+  } else if (matchedSkills.length > 0) {
+    matchReason = `Matches your skills: ${matchedSkills.slice(0, 2).join(', ')}`;
+  } else if (matchedIndustry) {
+    matchReason = `Matches your industry domain`;
+  }
+
+  return {
+    isMatched,
+    score,
+    matchPercentage,
+    matchedDesignation,
+    matchedSkills,
+    matchedIndustry,
+    matchedLocation,
+    matchReason
+  };
+};
+
 const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -16,6 +240,76 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const [toastType, setToastType] = useState(location.state?.profileCreated ? 'created' : (location.state?.loggedIn ? 'login' : ''));
   const [toastName, setToastName] = useState('');
   const [showOnboardingPopup, setShowOnboardingPopup] = useState(location.state?.showOnboardingPrompt || false);
+  const [profileModalConfig, setProfileModalConfig] = useState(null);
+  const [candidateProfile, setCandidateProfile] = useState(() => getCandidateProfile());
+
+  useEffect(() => {
+    setCandidateProfile(getCandidateProfile());
+  }, [location]);
+
+  // Sync profile from backend for old & returning accounts
+  useEffect(() => {
+    const syncProfileFromBackend = async () => {
+      try {
+        const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+        if (!token) return;
+
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employee/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const freshData = await res.json();
+          if (freshData && typeof freshData === 'object') {
+            const existing = JSON.parse(localStorage.getItem('userProfile') || '{}');
+            const merged = { ...existing, ...freshData };
+            localStorage.setItem('userProfile', JSON.stringify(merged));
+            const parsed = parseProfileData(merged);
+            if (parsed) {
+              setCandidateProfile(parsed);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error syncing candidate profile from backend:', err);
+      }
+    };
+    syncProfileFromBackend();
+  }, []);
+
+  const [matchBannerConfig, setMatchBannerConfig] = useState({
+    enabled: true,
+    headerPrefix: 'MATCHED FOR',
+    subheading: 'Matches your designation ({designation})',
+    emptyMatchReason: 'This job matches your designation and role criteria.',
+    designationChipText: '✓ Designation: {designation}',
+    skillsChipText: '✓ Skills: {skills}',
+    industryChipText: '✓ Industry Fit',
+    cardBadgeText: '🎯 Matched for {designation}',
+    cardBadgeEnabled: true,
+    showDesignationChip: true,
+    showSkillsChip: true,
+    showIndustryChip: true
+  });
+
+  useEffect(() => {
+    const fetchCms = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          if (json.data.profilePromptModal) {
+            setProfileModalConfig(json.data.profilePromptModal);
+          }
+          if (json.data.employerPostJob?.step6) {
+            setMatchBannerConfig(prev => ({ ...prev, ...json.data.employerPostJob.step6 }));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching modal config in EmployeeHomepage:', err);
+      }
+    };
+    fetchCms();
+  }, []);
   
   const [mobileSearchTerm, setMobileSearchTerm] = useState('');
   const [showMobileSuggestions, setShowMobileSuggestions] = useState(false);
@@ -62,11 +356,11 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     postingDate: 'Any time'
   });
 
-  let displayedJobs = activeJobs;
+  let rawFilteredJobs = activeJobs;
 
   if (filters.keyword) {
     const kw = filters.keyword.toLowerCase();
-    displayedJobs = displayedJobs.filter(job => 
+    rawFilteredJobs = rawFilteredJobs.filter(job => 
       job.title.toLowerCase().includes(kw) || 
       job.company.toLowerCase().includes(kw) ||
       (job.details?.skillsRequired || '').toLowerCase().includes(kw)
@@ -75,14 +369,14 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
   if (filters.location) {
     const loc = filters.location.toLowerCase();
-    displayedJobs = displayedJobs.filter(job => 
+    rawFilteredJobs = rawFilteredJobs.filter(job => 
       job.location.toLowerCase().includes(loc) || 
       (job.details?.workLocation || '').toLowerCase().includes(loc)
     );
   }
 
   if (filters.experience !== 'All') {
-    displayedJobs = displayedJobs.filter(job => 
+    rawFilteredJobs = rawFilteredJobs.filter(job => 
       job.details?.experience && job.details.experience.includes(filters.experience)
     );
   }
@@ -94,8 +388,36 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     if (filters.postingDate === 'Past week') timeLimit.setDate(now.getDate() - 7);
     if (filters.postingDate === 'Past month') timeLimit.setMonth(now.getMonth() - 1);
     
-    displayedJobs = displayedJobs.filter(job => job.createdAt && new Date(job.createdAt) >= timeLimit);
+    rawFilteredJobs = rawFilteredJobs.filter(job => job.createdAt && new Date(job.createdAt) >= timeLimit);
   }
+
+  // Augment jobs with smart matching against candidate profile
+  const jobsWithMatch = rawFilteredJobs.map(job => ({
+    ...job,
+    _match: computeJobMatch(job, candidateProfile)
+  }));
+
+  // If candidate profile exists with designation or skills, prioritize matched jobs to the very top!
+  if (candidateProfile && candidateProfile.exists && (candidateProfile.designation || (candidateProfile.skills && candidateProfile.skills.length > 0))) {
+    jobsWithMatch.sort((a, b) => {
+      // 1. Profile matched jobs first
+      if (a._match.isMatched && !b._match.isMatched) return -1;
+      if (!a._match.isMatched && b._match.isMatched) return 1;
+      // 2. Higher match score first
+      if (a._match.isMatched && b._match.isMatched) {
+        if (b._match.score !== a._match.score) {
+          return b._match.score - a._match.score;
+        }
+      }
+      // 3. Fallback to newest posting date
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }
+
+  const displayedJobs = jobsWithMatch;
+  const matchedJobsCount = displayedJobs.filter(j => j._match?.isMatched).length;
 
   const filteredMobileJobs = mobileSearchTerm 
     ? activeJobs.filter(job => job.title.toLowerCase().includes(mobileSearchTerm.toLowerCase()) || job.company.toLowerCase().includes(mobileSearchTerm.toLowerCase()))
@@ -116,32 +438,32 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   
   const [savedJobs, setSavedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
 
-  const [appliedJobs, setAppliedJobs] = useState(() => {
-    try {
-      const applied = localStorage.getItem('appliedJobs');
-      return applied ? JSON.parse(applied) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [appliedJobs, setAppliedJobs] = useState(() => getEmployeeStoredValue('appliedJobs', []));
 
   useEffect(() => {
     const fetchAppliedJobs = async () => {
       try {
         const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+          setAppliedJobs([]);
+          return;
+        }
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
-          const apiAppliedJobs = data.data.map(app => ({
-            id: app.jobId?._id || app.jobId?.id || app.jobId,
-            status: app.status || 'Applied',
-            date: new Date(app.createdAt).toLocaleDateString()
-          }));
+          const apiAppliedJobs = data.data.map(app => {
+            const jId = app.jobId?._id || app.jobId?.id || app.jobId;
+            return {
+              id: jId,
+              _id: jId,
+              status: app.status || 'Applied',
+              date: new Date(app.createdAt).toLocaleDateString()
+            };
+          });
           setAppliedJobs(apiAppliedJobs);
-          localStorage.setItem('appliedJobs', JSON.stringify(apiAppliedJobs));
+          setEmployeeStoredValue('appliedJobs', apiAppliedJobs);
         }
       } catch (err) {
         console.error('Error fetching applied jobs in homepage:', err);
@@ -150,9 +472,16 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     fetchAppliedJobs();
   }, []);
 
-  const isJobApplied = (jobId) => {
-    if (!jobId) return false;
-    return appliedJobs.some(a => String(a.id) === String(jobId));
+  const isJobApplied = (jobTarget) => {
+    if (!jobTarget) return false;
+    const targetId = typeof jobTarget === 'object'
+      ? String(jobTarget._id || jobTarget.id || '')
+      : String(jobTarget);
+    if (!targetId) return false;
+    return appliedJobs.some(a => {
+      const aid = typeof a === 'object' ? String(a.id || a._id || '') : String(a);
+      return aid === targetId;
+    });
   };
 
   const toggleSaveJob = (jobId, e) => {
@@ -358,9 +687,22 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                   key={job.id} 
                   onClick={() => { setSelectedJobId(job.id); setIsMobileDetailsOpen(true); }}
                   className={`p-4 bg-white border rounded-xl cursor-pointer transition-all ${
-                    selectedJobId === job.id ? 'border-green-600 shadow-md' : 'border-gray-200 hover:shadow-sm hover:border-gray-300'
+                    selectedJobId === job.id ? 'border-green-600 shadow-md ring-1 ring-green-600/30' : 'border-gray-200 hover:shadow-sm hover:border-gray-300'
                   }`}
                 >
+                  {/* Smart Designation Match Badge */}
+                  {job._match?.isMatched && matchBannerConfig.cardBadgeEnabled !== false && (
+                    <div className="mb-3 flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-emerald-100">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>
+                          {(matchBannerConfig.cardBadgeText || '🎯 Matched for {designation}')
+                            .replace(/\{designation\}/gi, candidateProfile?.designation || job.title)}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-start">
                     <div className="flex gap-2">
                       <div className="w-8 h-8 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-xs shrink-0 overflow-hidden border border-gray-100">
@@ -410,7 +752,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       <span className="w-full inline-flex justify-center items-center px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold">
                         Closed
                       </span>
-                    ) : isJobApplied(job.id) ? (
+                    ) : isJobApplied(job) ? (
                       <span className="w-full inline-flex justify-center items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-bold cursor-not-allowed border border-gray-200">
                         <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -473,7 +815,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       
                       <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedJob.title}</h1>
                       
-                      <div className="flex items-center gap-3 mb-6 text-sm flex-wrap">
+                      <div className="flex items-center gap-3 mb-4 text-sm flex-wrap">
                         <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded font-medium">{selectedJob.location}</span>
                         <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded font-medium">{selectedJob.details?.workLocation || 'On-site'}</span>
                         <span className="bg-purple-50 text-purple-700 px-2.5 py-1 rounded font-medium flex items-center gap-1">
@@ -485,6 +827,46 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         </span>
                       </div>
 
+                      {/* Profile Match Highlight Box for Selected Job */}
+                      {selectedJob._match?.isMatched && matchBannerConfig.enabled !== false && (
+                        <div className="mb-5 p-3.5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border border-emerald-200 shadow-2xs">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-900">
+                                  🎯 {(matchBannerConfig.headerPrefix || 'MATCHED FOR').trim()} {((candidateProfile?.designation || selectedJob.title || '')).toUpperCase()}
+                                </h4>
+                              </div>
+                              <p className="text-xs font-medium text-emerald-950">
+                                {selectedJob._match.matchReason || (matchBannerConfig.subheading || 'Matches your designation ({designation})').replace(/\{designation\}/gi, candidateProfile?.designation || selectedJob.title) || (matchBannerConfig.emptyMatchReason || 'This job matches your designation and role criteria.')}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                {matchBannerConfig.showDesignationChip !== false && selectedJob._match.matchedDesignation && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
+                                    {(matchBannerConfig.designationChipText || '✓ Designation: {designation}').replace(/\{designation\}/gi, candidateProfile?.designation || selectedJob.title)}
+                                  </span>
+                                )}
+                                {matchBannerConfig.showSkillsChip !== false && selectedJob._match.matchedSkills && selectedJob._match.matchedSkills.length > 0 && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
+                                    {(matchBannerConfig.skillsChipText || '✓ Skills: {skills}').replace(/\{skills\}/gi, selectedJob._match.matchedSkills.slice(0, 3).join(', '))}
+                                  </span>
+                                )}
+                                {matchBannerConfig.showIndustryChip !== false && selectedJob._match.matchedIndustry && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
+                                    {matchBannerConfig.industryChipText || '✓ Industry Fit'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* DESKTOP ONLY Inline Buttons */}
                       <div className="flex gap-3">
                         {selectedJob.status === 'Closed' ? (
@@ -494,7 +876,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           >
                             Closed
                           </button>
-                        ) : isJobApplied(selectedJob.id) ? (
+                        ) : isJobApplied(selectedJob) ? (
                           <button 
                             disabled
                             className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-500 border border-gray-200 rounded-lg font-bold cursor-not-allowed shadow-none"
@@ -621,6 +1003,46 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         </div>
                       </div>
 
+                      {/* Mobile Profile Match Highlight Box */}
+                      {selectedJob._match?.isMatched && matchBannerConfig.enabled !== false && (
+                        <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border border-emerald-200 shadow-2xs">
+                          <div className="flex items-start gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-900">
+                                  🎯 {(matchBannerConfig.headerPrefix || 'MATCHED FOR').trim()} {((candidateProfile?.designation || selectedJob.title || '')).toUpperCase()}
+                                </h4>
+                              </div>
+                              <p className="text-[11px] font-medium text-emerald-950">
+                                {selectedJob._match.matchReason || (matchBannerConfig.subheading || 'Matches your designation ({designation})').replace(/\{designation\}/gi, candidateProfile?.designation || selectedJob.title) || (matchBannerConfig.emptyMatchReason || 'This job matches your designation and role criteria.')}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                {matchBannerConfig.showDesignationChip !== false && selectedJob._match.matchedDesignation && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
+                                    {(matchBannerConfig.designationChipText || '✓ Designation: {designation}').replace(/\{designation\}/gi, candidateProfile?.designation || selectedJob.title)}
+                                  </span>
+                                )}
+                                {matchBannerConfig.showSkillsChip !== false && selectedJob._match.matchedSkills && selectedJob._match.matchedSkills.length > 0 && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
+                                    {(matchBannerConfig.skillsChipText || '✓ Skills: {skills}').replace(/\{skills\}/gi, selectedJob._match.matchedSkills.slice(0, 3).join(', '))}
+                                  </span>
+                                )}
+                                {matchBannerConfig.showIndustryChip !== false && selectedJob._match.matchedIndustry && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
+                                    {matchBannerConfig.industryChipText || '✓ Industry Fit'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Analytics Card (Mobile) */}
                       {!selectedJob.employerId?.hidePostedByCard && (
                         <div className="mt-6 pt-6 border-t border-gray-100">
@@ -680,22 +1102,29 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
                   <div className="p-6 border-b border-gray-200">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-bold text-gray-900">Your qualifications for this job</h3>
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <span>Your qualifications for this job</span>
+                        {candidateProfile?.designation && (
+                          <span className="text-xs font-normal text-gray-500">
+                            (Matching for {candidateProfile.designation})
+                          </span>
+                        )}
+                      </h3>
                     </div>
                     <div className="grid grid-cols-2 gap-y-3 gap-x-8">
                       {(() => {
-                        const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-                        const mySkills = (profile.professionalDetails?.skills || '')
-                          .split(',')
-                          .map(s => s.trim().toLowerCase())
-                          .filter(s => s);
+                        const mySkills = (candidateProfile?.skills || []).map(s => s.toLowerCase());
                         
                         const requiredSkills = selectedJob.qualifications && selectedJob.qualifications.length > 0
-                          ? selectedJob.qualifications.map(q => q.name)
+                          ? selectedJob.qualifications.map(q => (typeof q === 'string' ? q : q.name || ''))
                           : (selectedJob.details?.skillsRequired ? selectedJob.details.skillsRequired.split(',').map(s => s.trim()).filter(s => s) : []);
 
+                        if (requiredSkills.length === 0) {
+                          return <div className="text-sm text-gray-500 col-span-2">No specific skill qualifications listed.</div>;
+                        }
+
                         return requiredSkills.map((skillName, idx) => {
-                          const isMet = mySkills.includes(skillName.toLowerCase());
+                          const isMet = mySkills.some(s => s && skillName.toLowerCase().includes(s) || s.includes(skillName.toLowerCase()));
                           return (
                             <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
                               {isMet ? (
@@ -703,7 +1132,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                               ) : (
                                 <svg className="w-5 h-5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" strokeWidth="2" /></svg>
                               )}
-                              {skillName}
+                              <span className={isMet ? 'font-semibold text-gray-900' : ''}>{skillName}</span>
                             </div>
                           );
                         });
@@ -880,7 +1309,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
       />
 
       {/* Onboarding / Fill Details Prompt Modal */}
-      {showOnboardingPopup && (
+      {showOnboardingPopup && (profileModalConfig?.isEnabled !== false) && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => setShowOnboardingPopup(false)}
@@ -889,51 +1318,55 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
             className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in zoom-in-95 duration-200 text-center relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setShowOnboardingPopup(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
-            >
-              ✕
-            </button>
+            {profileModalConfig?.showCloseButton !== false && (
+              <button
+                type="button"
+                onClick={() => setShowOnboardingPopup(false)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
             
             <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-xs">
-              📝
+              {profileModalConfig?.modalIcon || '📝'}
             </div>
 
             <div className="space-y-1.5">
               <h3 className="text-lg font-bold text-gray-900">
-                Complete Your Profile Details
+                {profileModalConfig?.title || 'Complete Your Profile Details'}
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                Apni education, experience aur personal details fill karein taaki recruiters aapko top matching jobs ke liye direct shortlist kar sakein!
+                {profileModalConfig?.subtitle || 'Apni education, experience aur personal details fill karein taaki recruiters aapko top matching jobs ke liye direct shortlist kar sakein!'}
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-left flex items-start gap-2.5">
-              <span className="text-base">⚡</span>
-              <p className="text-xs text-emerald-800 font-medium leading-relaxed">
-                Complete profile hone se candidates ko <strong>5x jyada interview calls</strong> aur direct employer messages milte hain.
-              </p>
-            </div>
+            {profileModalConfig?.showBenefitBanner !== false && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-left flex items-start gap-2.5">
+                <span className="text-base">{profileModalConfig?.benefitIcon || '⚡'}</span>
+                <p className="text-xs text-emerald-800 font-medium leading-relaxed">
+                  {profileModalConfig?.benefitText || 'Complete profile hone se candidates ko 5x jyada interview calls aur direct employer messages milte hain.'}
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => {
                   setShowOnboardingPopup(false);
-                  navigate('/employee/onboarding');
+                  navigate(profileModalConfig?.primaryButtonLink || '/employee/onboarding');
                 }}
                 className="w-full py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <span>Fill Details Now</span>
-                <span>→</span>
+                <span>{profileModalConfig?.primaryButtonText || 'Fill Details Now →'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowOnboardingPopup(false)}
                 className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
               >
-                Explore Jobs First
+                {profileModalConfig?.secondaryButtonText || 'Explore Jobs First'}
               </button>
             </div>
 

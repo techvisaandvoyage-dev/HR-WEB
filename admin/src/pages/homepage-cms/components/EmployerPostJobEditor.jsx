@@ -29,7 +29,8 @@ import {
   Lock,
   UserCheck,
   Award,
-  Search
+  Search,
+  Target
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -294,6 +295,23 @@ export const DEFAULT_EMPLOYER_POST_JOB_CONFIG = {
     noDescriptionText: 'No description provided.',
     noResponsibilitiesText: 'No responsibilities listed.',
     noSkillsText: 'No specific skills requested.'
+  },
+  step6: {
+    stepTitle: 'Display & Visibility Controls',
+    stepNumberText: '6',
+    enabled: true,
+    badgeEmoji: '🎯',
+    headerPrefix: 'MATCHED FOR',
+    subheading: 'Matches your designation ({designation})',
+    emptyMatchReason: 'This job matches your designation and role criteria.',
+    designationChipText: '✓ Designation: {designation}',
+    skillsChipText: '✓ Skills: {skills}',
+    industryChipText: '✓ Industry Fit',
+    cardBadgeText: '🎯 Matched for {designation}',
+    cardBadgeEnabled: true,
+    showDesignationChip: true,
+    showSkillsChip: true,
+    showIndustryChip: true
   }
 };
 
@@ -307,6 +325,12 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
       return 1;
     }
   });
+
+  const [previewDesignation, setPreviewDesignation] = useState('Auditor');
+  const [previewSkills, setPreviewSkills] = useState('Auditing, Compliance, Taxation');
+
+  const [globalCardVisible, setGlobalCardVisible] = useState(true);
+  const [globalCardLoading, setGlobalCardLoading] = useState(false);
 
   const setActiveStep = (step) => {
     setActiveStepState(step);
@@ -466,6 +490,10 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
             step5: {
               ...DEFAULT_EMPLOYER_POST_JOB_CONFIG.step5,
               ...(fetched.step5 || {})
+            },
+            step6: {
+              ...DEFAULT_EMPLOYER_POST_JOB_CONFIG.step6,
+              ...(fetched.step6 || {})
             }
           });
         }
@@ -476,8 +504,45 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
       }
     };
 
+    const fetchSiteSettings = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/admin/site-settings`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setGlobalCardVisible(!json.data.hidePostedByCardGlobally);
+        }
+      } catch (err) {
+        console.error('Error fetching site settings:', err);
+      }
+    };
+
     fetchConfig();
+    fetchSiteSettings();
   }, []);
+
+  const handleToggleGlobalRecruiterCard = async () => {
+    const newVisible = !globalCardVisible;
+    try {
+      setGlobalCardLoading(true);
+      const res = await fetch(`${API_URL}/api/admin/site-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hidePostedByCardGlobally: !newVisible })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGlobalCardVisible(newVisible);
+        showToast(newVisible ? 'Website-wide Recruiter Card ENABLED (Visible on job posts)' : 'Website-wide Recruiter Card DISABLED (Hidden on job posts)');
+      } else {
+        alert(data.message || 'Failed to update visibility setting');
+      }
+    } catch (err) {
+      console.error('Error toggling recruiter card visibility:', err);
+      alert('Failed to connect to server');
+    } finally {
+      setGlobalCardLoading(false);
+    }
+  };
 
   // Save Settings Function
   const handleSavePostJobConfig = async (customConfig) => {
@@ -739,6 +804,13 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
     setPostJobConfig(prev => ({
       ...prev,
       step5: { ...prev.step5, [key]: value }
+    }));
+  };
+
+  const handleStep6PropChange = (key, value) => {
+    setPostJobConfig(prev => ({
+      ...prev,
+      step6: { ...prev.step6, [key]: value }
     }));
   };
 

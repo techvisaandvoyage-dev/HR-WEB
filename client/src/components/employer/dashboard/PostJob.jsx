@@ -816,7 +816,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   {aboutConfig.label}
                   {aboutConfig.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
                 </label>
-                <div className={fieldErrors.about ? 'border border-red-500 rounded-xl overflow-hidden' : ''}>
+                <div className={fieldErrors.about ? 'border border-red-500 rounded-lg overflow-hidden' : ''}>
                   <RichTextEditor 
                     placeholder={aboutConfig.placeholder} 
                     value={jobData.about}
@@ -841,7 +841,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   {respConfig.label}
                   {respConfig.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
                 </label>
-                <div className={fieldErrors.responsibilities ? 'border border-red-500 rounded-xl overflow-hidden' : ''}>
+                <div className={fieldErrors.responsibilities ? 'border border-red-500 rounded-lg overflow-hidden' : ''}>
                   <RichTextEditor 
                     placeholder={respConfig.placeholder} 
                     value={jobData.responsibilities}
@@ -954,7 +954,7 @@ const PostJob = ({ addJob, updateJob }) => {
                         <select 
                           value={salaryType}
                           onChange={(e) => setSalaryType(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
                         >
                           {salaryTypeOptions.map((st) => (
                             <option key={st} value={st}>{st}</option>
@@ -973,7 +973,7 @@ const PostJob = ({ addJob, updateJob }) => {
                         <select 
                           value={currency}
                           onChange={(e) => setCurrency(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
                         >
                           {currencyOptions.map((c) => (
                             <option key={c.code} value={c.code}>{c.label}</option>
@@ -997,7 +997,7 @@ const PostJob = ({ addJob, updateJob }) => {
                           placeholder={salaryType === 'Yearly' ? (cmsConfig?.step3?.minSalaryPlaceholder || 'write the amount in LPA') : salaryType === 'Monthly' ? `${cSym}40,000` : `${cSym}300`}
                           value={salaryValues[salaryType].min}
                           onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], min: formatIndianNumber(e.target.value)}})}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">
                           {cmsConfig?.step3?.minLabel || 'Minimum'}
@@ -1009,7 +1009,7 @@ const PostJob = ({ addJob, updateJob }) => {
                           placeholder={salaryType === 'Yearly' ? (cmsConfig?.step3?.maxSalaryPlaceholder || 'write the amount in LPA') : salaryType === 'Monthly' ? `${cSym}60,000` : `${cSym}600`}
                           value={salaryValues[salaryType].max}
                           onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], max: formatIndianNumber(e.target.value)}})}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">
                           {cmsConfig?.step3?.maxLabel || 'Maximum'}

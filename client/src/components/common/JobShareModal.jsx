@@ -17,17 +17,6 @@ const JobShareModal = ({ isOpen, onClose, job, isNewlyPublished = false }) => {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const whatsappMessage = encodeURIComponent(
-    `🔥 Hiring Alert: *${jobTitle}* at *${companyName}*\n\n` +
-    `Apply directly using this link:\n${applyUrl}\n\n` +
-    `Explore more jobs on https://sahijob.com`
-  );
-
-  const emailSubject = encodeURIComponent(`Job Opportunity: ${jobTitle} at ${companyName}`);
-  const emailBody = encodeURIComponent(
-    `Hi,\n\nI wanted to share this job opening for ${jobTitle} at ${companyName}.\n\nYou can apply directly here:\n${applyUrl}\n\nBest regards.`
-  );
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
@@ -96,42 +85,6 @@ const JobShareModal = ({ isOpen, onClose, job, isNewlyPublished = false }) => {
             >
               {copied ? "✓ Copied!" : "Copy Link"}
             </button>
-          </div>
-        </div>
-
-        {/* Quick Social Share Buttons */}
-        <div className="space-y-2 pt-1">
-          <span className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Quick Share</span>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            
-            {/* WhatsApp */}
-            <a
-              href={`https://api.whatsapp.com/send?text=${whatsappMessage}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center gap-2 p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-colors"
-            >
-              <span>💬</span> WhatsApp
-            </a>
-
-            {/* Email */}
-            <a
-              href={`mailto:?subject=${emailSubject}&body=${emailBody}`}
-              className="flex items-center justify-center gap-2 p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl text-xs font-bold transition-colors"
-            >
-              <span>✉️</span> Email
-            </a>
-
-            {/* Preview Link */}
-            <a
-              href={applyUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 p-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold transition-colors"
-            >
-              <span>↗</span> Open Preview
-            </a>
-
           </div>
         </div>
 

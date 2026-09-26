@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select option", error = false, className = "", rounded = "rounded-full" }) => {
+const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select option", error = false, className = "", rounded = "rounded-lg" }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
@@ -107,8 +107,8 @@ const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select o
     <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
         onClick={() => setIsOpen(true)}
-        className={`w-full px-5 py-3.5 bg-white border ${
-          isOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : 'border-gray-300')
+        className={`w-full px-4 py-2.5 bg-white border ${
+          isOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : 'border-gray-200')
         } ${rounded} text-gray-700 flex justify-between items-center transition-all shadow-2xs cursor-text text-sm ${className}`}
       >
         <div className="flex-1 overflow-hidden pr-2">

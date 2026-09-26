@@ -207,26 +207,45 @@ const Footer = () => {
           {/* Dynamic Footer Columns Section */}
           <div className="lg:col-span-8">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
-              {Object.entries(columns).map(([columnName, pages]) => (
-                <div key={columnName} className="space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-                    {columnName}
-                  </h3>
-                  <ul className="space-y-2.5">
-                    {pages.map((page, idx) => (
-                      <li key={page._id || page.id || idx}>
-                        <Link
-                          to={page.slug.startsWith('/') ? page.slug : `/${page.slug}`}
-                          onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
-                          className="text-sm text-gray-600 hover:text-emerald-600 hover:translate-x-1 inline-block transition-all duration-150 font-medium"
-                        >
-                          {page.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              {(() => {
+                const columnOrder = footerConfig.columnOrder || ['Company', 'Services', 'Support', 'Legal'];
+                const orderedEntries = [];
+                
+                // Add columns in configured order
+                columnOrder.forEach(colName => {
+                  if (columns[colName] && columns[colName].length > 0) {
+                    orderedEntries.push([colName, columns[colName]]);
+                  }
+                });
+
+                // Add any other dynamic columns not explicitly in order
+                Object.entries(columns).forEach(([colName, pages]) => {
+                  if (!columnOrder.includes(colName) && pages.length > 0) {
+                    orderedEntries.push([colName, pages]);
+                  }
+                });
+
+                return orderedEntries.map(([columnName, pages]) => (
+                  <div key={columnName} className="space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600">
+                      {columnName}
+                    </h3>
+                    <ul className="space-y-2.5">
+                      {pages.map((page, idx) => (
+                        <li key={page._id || page.id || idx}>
+                          <Link
+                            to={page.slug.startsWith('/') ? page.slug : `/${page.slug}`}
+                            onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
+                            className="text-sm text-gray-600 hover:text-emerald-600 hover:translate-x-1 inline-block transition-all duration-150 font-medium"
+                          >
+                            {page.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
 

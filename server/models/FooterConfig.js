@@ -49,6 +49,10 @@ const footerConfigSchema = new mongoose.Schema({
       { platform: 'LinkedIn', url: 'https://linkedin.com', isActive: true },
       { platform: 'YouTube', url: 'https://youtube.com', isActive: false },
     ]
+  },
+  columnOrder: {
+    type: [String],
+    default: ['Company', 'Services', 'Support', 'Legal']
   }
 }, {
   timestamps: true

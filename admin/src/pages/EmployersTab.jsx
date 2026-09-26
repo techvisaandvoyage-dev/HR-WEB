@@ -52,6 +52,8 @@ import {
 import EmployerPostJobEditor, { DEFAULT_EMPLOYER_POST_JOB_CONFIG } from './homepage-cms/components/EmployerPostJobEditor';
 import EmployerPortalEditor, { DEFAULT_EMPLOYER_PORTAL_CONFIG } from './homepage-cms/components/EmployerPortalEditor';
 import DirectJobApplyEditor from './homepage-cms/components/DirectJobApplyEditor';
+import ProfilePromptModalEditor from './homepage-cms/components/ProfilePromptModalEditor';
+import EmployerVisibilityEditor from './homepage-cms/components/EmployerVisibilityEditor';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -342,13 +344,22 @@ export const DEFAULT_EMPLOYER_LOGIN_CONFIG = {
 };
 
 export default function EmployersTab() {
+  const sidebarSections = [
+    { id: 'auth', label: 'Auth & Controls', icon: Lock },
+    { id: 'post-job', label: 'Post a Job CMS', icon: Briefcase },
+    { id: 'visibility', label: 'Job Display & Visibility CMS', icon: Eye },
+    { id: 'portal', label: 'Portal & Dashboard', icon: LayoutDashboard },
+    { id: 'direct-apply', label: 'Direct Job Apply CMS', icon: Link2 },
+    { id: 'profile-modal', label: 'Profile Completion Modal', icon: Sparkles }
+  ];
+
   // Navigation State
   const [activeSection, setActiveSectionState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sec = params.get('section');
-    if (sec && ['auth', 'post-job', 'portal'].includes(sec)) return sec;
+    if (sec && ['auth', 'post-job', 'visibility', 'portal', 'direct-apply', 'profile-modal'].includes(sec)) return sec;
     const saved = localStorage.getItem('adminEmployerSection');
-    if (saved && ['auth', 'post-job', 'portal'].includes(saved)) return saved;
+    if (saved && ['auth', 'post-job', 'visibility', 'portal', 'direct-apply', 'profile-modal'].includes(saved)) return saved;
     return 'auth';
   });
 
@@ -559,7 +570,7 @@ export default function EmployersTab() {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const sec = params.get('section');
-      if (sec && ['auth', 'post-job'].includes(sec)) {
+      if (sec && ['auth', 'post-job', 'visibility', 'portal', 'direct-apply', 'profile-modal'].includes(sec)) {
         setActiveSectionState(sec);
       }
       const sub = params.get('authSub');
@@ -1129,14 +1140,6 @@ export default function EmployersTab() {
       }
     }));
   };
-
-  // Sidebar Sections
-  const sidebarSections = [
-    { id: 'auth', label: 'Authentication', icon: ShieldCheck },
-    { id: 'post-job', label: 'Post a Job', icon: Briefcase },
-    { id: 'portal', label: 'Portal & Dashboard', icon: LayoutDashboard },
-    { id: 'direct-apply', label: 'Direct Job Apply', icon: Link2 }
-  ];
 
   // Step 1 Field Keys definition
   const step1FieldKeys = [
@@ -2406,7 +2409,18 @@ export default function EmployersTab() {
         )}
 
         {/* ========================================================================= */}
-        {/* 3. PORTAL & DASHBOARD CMS SECTION                                         */}
+        {/* 3. JOB DISPLAY & VISIBILITY CMS SECTION                                   */}
+        {/* ========================================================================= */}
+        {activeSection === 'visibility' && (
+          <EmployerVisibilityEditor
+            onSaveSuccess={() => {
+              showToast('Job Display & Visibility CMS settings updated successfully!');
+            }}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 4. PORTAL & DASHBOARD CMS SECTION                                         */}
         {/* ========================================================================= */}
         {activeSection === 'portal' && (
           <EmployerPortalEditor
@@ -2423,6 +2437,17 @@ export default function EmployersTab() {
           <DirectJobApplyEditor
             onSaveSuccess={() => {
               showToast('Direct Job Apply CMS settings updated successfully!');
+            }}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 5. PROFILE COMPLETION PROMPT MODAL CMS SECTION                            */}
+        {/* ========================================================================= */}
+        {activeSection === 'profile-modal' && (
+          <ProfilePromptModalEditor
+            onSaveSuccess={() => {
+              showToast('Profile Completion Modal CMS settings updated successfully!');
             }}
           />
         )}
@@ -2459,30 +2484,12 @@ export default function EmployersTab() {
               </div>
             </div>
 
-            {/* Top Sub Tabs for Directory */}
-            <div className="flex items-center gap-2 border-b border-gray-200">
-              <button
-                onClick={() => setActiveMainTabState('list')}
-                className={`px-5 py-3 font-bold text-xs border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
-                  activeMainTab === 'list'
-                    ? 'border-emerald-600 text-emerald-600 bg-emerald-50/40 rounded-t-xl'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Building2 className="w-4 h-4" />
-                All Employers Directory
-              </button>
-              <button
-                onClick={() => setActiveMainTabState('controls')}
-                className={`px-5 py-3 font-bold text-xs border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
-                  activeMainTab === 'controls'
-                    ? 'border-emerald-600 text-emerald-600 bg-emerald-50/40 rounded-t-xl'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <Sliders className="w-4 h-4 text-emerald-600" />
-                Display & Visibility Controls
-              </button>
+            {/* Top Header for Directory */}
+            <div className="flex items-center justify-between gap-2 border-b border-gray-200 pb-1">
+              <div className="px-1 py-2 font-bold text-xs flex items-center gap-2 text-emerald-800">
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                <span>All Registered Employers & Recruiters List</span>
+              </div>
             </div>
 
             {/* DIRECTORY TAB 1: LIST */}

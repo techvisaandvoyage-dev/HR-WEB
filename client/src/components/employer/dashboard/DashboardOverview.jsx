@@ -42,7 +42,8 @@ const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs =
 
   const welcomePrefix = portalConfig?.welcomePrefix || 'Welcome back,';
   const subtitle = portalConfig?.subtitle || "Here's what's happening with your job posting today.";
-  const postJobBtnText = portalConfig?.postJobBtnText || 'Post New Job';
+  const rawPostJobBtnText = portalConfig?.postJobBtnText || 'Post New Job';
+  const postJobBtnText = rawPostJobBtnText.replace(/^\+\s*/, '').trim() || 'Post New Job';
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

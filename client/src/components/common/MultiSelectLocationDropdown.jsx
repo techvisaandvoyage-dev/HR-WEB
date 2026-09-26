@@ -77,7 +77,7 @@ const MultiSelectLocationDropdown = ({
   onChange, 
   multiple = true,
   placeholder = "Select locations",
-  className = "w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 transition-all shadow-sm"
+  className = "w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-700 transition-all shadow-sm"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');

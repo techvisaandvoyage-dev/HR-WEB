@@ -43,7 +43,7 @@ const RichTextEditor = ({
   className = ''
 }) => {
   return (
-    <div className={`rich-text-editor-container w-full max-w-full rounded-xl overflow-hidden border border-gray-200 bg-white focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f]/20 transition-all ${className}`}>
+    <div className={`rich-text-editor-container w-full max-w-full rounded-lg overflow-hidden border border-gray-200 bg-white focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f]/20 transition-all ${className}`}>
       <ReactQuill
         theme="snow"
         value={value || ''}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
-import { getEmployeeStoredValue } from '../../../utils/employeeStorage';
+import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
 
 const MyJobs = ({ jobs = [] }) => {
   const navigate = useNavigate();
@@ -16,20 +16,21 @@ const MyJobs = ({ jobs = [] }) => {
 
   const [savedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
 
-  const [appliedJobs, setAppliedJobs] = useState(() => {
-    try {
-      const applied = localStorage.getItem('appliedJobs');
-      return applied ? JSON.parse(applied) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [appliedJobs, setAppliedJobs] = useState(() => getEmployeeStoredValue('appliedJobs', []));
 
   useEffect(() => {
+    // Clear any legacy un-scoped appliedJobs key to prevent cross-user leak
+    try {
+      localStorage.removeItem('appliedJobs');
+    } catch (e) {}
+
     const fetchMyApplications = async () => {
       try {
         const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+          setAppliedJobs([]);
+          return;
+        }
         
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/my-applications`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -38,15 +39,20 @@ const MyJobs = ({ jobs = [] }) => {
         
         if (data.success && Array.isArray(data.data)) {
           const sortedData = [...data.data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          const apiAppliedJobs = sortedData.map(app => ({
-            id: app.jobId?._id || app.jobId?.id || app.jobId,
-            status: app.status || 'Applied',
-            date: new Date(app.createdAt).toLocaleDateString(),
-            jobDetails: typeof app.jobId === 'object' ? app.jobId : null
-          }));
+          const apiAppliedJobs = sortedData.map(app => {
+            const populated = typeof app.jobId === 'object' && app.jobId !== null ? app.jobId : null;
+            const jId = populated?._id || populated?.id || app.jobId;
+            return {
+              id: jId,
+              _id: jId,
+              status: app.status || 'Applied',
+              date: new Date(app.createdAt).toLocaleDateString(),
+              jobDetails: populated
+            };
+          });
           
           setAppliedJobs(apiAppliedJobs);
-          localStorage.setItem('appliedJobs', JSON.stringify(apiAppliedJobs));
+          setEmployeeStoredValue('appliedJobs', apiAppliedJobs);
         }
       } catch (err) {
         console.error("Error fetching my applications:", err);
@@ -183,32 +189,44 @@ const MyJobs = ({ jobs = [] }) => {
               <p className="text-gray-500 py-4">You haven't applied to any job yet.</p>
             ) : (
               appliedJobs.map(applied => {
-                const job = jobs.find(j => String(j.id) === String(applied.id)) || applied.jobDetails;
-                if (!job) return null;
+                const targetId = String(applied.id || applied._id || '');
+                const foundJob = jobs.find(j => String(j.id || j._id) === targetId);
+                const job = foundJob || applied.jobDetails || {
+                  id: targetId,
+                  _id: targetId,
+                  title: applied.title || 'Applied Position',
+                  company: applied.company || 'Company',
+                  location: applied.location || 'Remote',
+                  details: {}
+                };
+
+                const companyLogo = job.companyLogo || job.employerId?.companyLogo;
+                const companyInitial = job.companyInitial || (job.company ? job.company.substring(0, 2).toUpperCase() : 'HR');
+
                 return (
                   <div 
-                    key={applied.id} 
-                    onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id } })}
+                    key={targetId || Math.random()} 
+                    onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
                     className={`pb-6 border-b border-gray-200 flex flex-col md:flex-row gap-4 hover:bg-gray-50 transition-colors -mx-4 px-4 pt-4 rounded-xl group ${job.status === 'Closed' ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
                   >
                     <div className="hidden md:flex w-12 h-12 items-center justify-center flex-shrink-0">
                       <div className="w-10 h-10 bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center font-bold text-gray-600 overflow-hidden shadow-sm">
-                        {(job.companyLogo || job.employerId?.companyLogo) ? (
-                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
+                        {companyLogo ? (
+                          <img src={companyLogo} alt={job.company} className="w-full h-full object-cover" />
                         ) : (
-                          job.companyInitial
+                          companyInitial
                         )}
                       </div>
                     </div>
                     
                     <div className="flex-1">
                       <span className={`inline-block px-3 py-1 font-bold text-xs rounded-full mb-2 ${job.status === 'Closed' ? 'bg-gray-200 text-gray-700' : (applied.status === 'Applied' || applied.status === 'New') ? 'bg-blue-100 text-blue-800' : (applied.status === 'Hired' || applied.status?.toLowerCase() === 'shortlisted' || applied.status === 'Viewed') ? 'bg-green-100 text-green-800' : 'bg-red-50 text-red-700'}`}>
-                        {job.status === 'Closed' ? 'Closed' : (applied.status === 'New' ? 'Applied' : applied.status)}
+                        {job.status === 'Closed' ? 'Closed' : (applied.status === 'New' ? 'Applied' : applied.status || 'Applied')}
                       </span>
                       <h2 className="text-[17px] font-bold text-gray-900 group-hover:underline">{job.title}</h2>
                       <p className="text-[15px] text-gray-800 mt-1">{job.company}</p>
                       <p className="text-[15px] text-gray-800 mt-0.5">{job.location}{job.details?.workLocation ? `, ${job.details.workLocation}` : ''}</p>
-                      <p className="text-[13px] text-gray-500 mt-1">Applied on sahijob.com on {applied.date}</p>
+                      <p className="text-[13px] text-gray-500 mt-1">Applied on sahijob.com on {applied.date || 'recently'}</p>
                     </div>
                     
                     <div className="flex flex-col items-end gap-3 mt-4 md:mt-0 w-full md:w-auto">

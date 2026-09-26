@@ -44,14 +44,25 @@ export const DEFAULT_DIRECT_JOB_APPLY_CONFIG = {
     tabLoginText: 'Already Registered? Login',
     googleBtnText: 'Continue with Google',
     dividerText: 'OR WITH EMAIL',
+    fields: {
+      name: { label: 'Full Name', placeholder: 'What is your name?', isRequired: true },
+      email: { label: 'Email ID', placeholder: 'Tell us your Email ID', isRequired: true },
+      mobile: { label: 'Mobile number', placeholder: 'Enter your mobile number', isRequired: false },
+      password: { label: 'Password', placeholder: 'Create a strong password', isRequired: true },
+      confirmPassword: { label: 'Re-enter password', placeholder: 'Confirm your password', isRequired: true },
+      loginEmail: { label: 'Email ID', placeholder: 'Tell us your Email ID', isRequired: true },
+      loginPassword: { label: 'Password', placeholder: 'Your password', isRequired: true }
+    },
     fullNameLabel: 'Full Name',
-    fullNamePlaceholder: 'e.g. Rahul Sharma',
-    emailLabel: 'Email Address',
-    emailPlaceholder: 'name@example.com',
-    mobileLabel: 'Mobile Number',
-    mobilePlaceholder: 'e.g. 9876543210',
-    passwordLabel: 'Create Password',
-    passwordPlaceholder: 'At least 6 characters',
+    fullNamePlaceholder: 'What is your name?',
+    emailLabel: 'Email ID',
+    emailPlaceholder: 'Tell us your Email ID',
+    mobileLabel: 'Mobile number',
+    mobilePlaceholder: 'Enter your mobile number',
+    passwordLabel: 'Password',
+    passwordPlaceholder: 'Create a strong password',
+    confirmPasswordLabel: 'Re-enter password',
+    confirmPasswordPlaceholder: 'Confirm your password',
     registerSubmitBtnText: 'Register & Proceed to Questions →',
     loginSubmitBtnText: 'Login & Proceed →',
     loggedInWelcomeTitle: 'You are currently logged in as',
@@ -100,6 +111,7 @@ export const DEFAULT_DIRECT_JOB_APPLY_CONFIG = {
 export default function DirectJobApplyEditor({ onSaveSuccess }) {
   const [activeTab, setActiveTab] = useState('step1'); // 'general', 'step1', 'step2', 'step3', 'step4', 'step5'
   const [previewStep, setPreviewStep] = useState(1);
+  const [previewAuthTab, setPreviewAuthTab] = useState('register'); // 'register' | 'login'
   const [config, setConfig] = useState(DEFAULT_DIRECT_JOB_APPLY_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,7 +135,14 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
           setConfig({
             general: { ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.general, ...(fetched.general || {}) },
             stepper: { ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.stepper, ...(fetched.stepper || {}) },
-            step1: { ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.step1, ...(fetched.step1 || {}) },
+            step1: {
+              ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.step1,
+              ...(fetched.step1 || {}),
+              fields: {
+                ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.step1.fields,
+                ...(fetched.step1?.fields || {})
+              }
+            },
             step2: { ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.step2, ...(fetched.step2 || {}) },
             step3: { ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.step3, ...(fetched.step3 || {}) },
             step4: { ...DEFAULT_DIRECT_JOB_APPLY_CONFIG.step4, ...(fetched.step4 || {}) },
@@ -148,6 +167,45 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
         [key]: value
       }
     }));
+  };
+
+  const handleFieldUpdate = (section, fieldKey, prop, value) => {
+    setConfig(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        fields: {
+          ...(prev[section]?.fields || {}),
+          [fieldKey]: {
+            ...(DEFAULT_DIRECT_JOB_APPLY_CONFIG[section]?.fields?.[fieldKey] || {}),
+            ...(prev[section]?.fields?.[fieldKey] || {}),
+            [prop]: value
+          }
+        }
+      }
+    }));
+  };
+
+  const handleFieldToggle = (section, fieldKey) => {
+    setConfig(prev => {
+      const defaultField = DEFAULT_DIRECT_JOB_APPLY_CONFIG[section]?.fields?.[fieldKey] || {};
+      const currentField = prev[section]?.fields?.[fieldKey] || defaultField;
+      const isCurrentlyRequired = currentField.isRequired !== false;
+      return {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          fields: {
+            ...(prev[section]?.fields || {}),
+            [fieldKey]: {
+              ...defaultField,
+              ...currentField,
+              isRequired: !isCurrentlyRequired
+            }
+          }
+        }
+      };
+    });
   };
 
   const handleReset = (section) => {
@@ -236,7 +294,7 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
               </span>
             </div>
             <p className="text-xs md:text-sm text-gray-500 mt-1 max-w-2xl leading-relaxed">
-              Employers direct shareable application links (<code className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-mono">/apply-job/:jobId</code>) ke sabhi steps, headings, messages, button texts aur validations ko customize karein.
+              Employers direct shareable application links (<code className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-mono">/apply-job/:jobId</code>) ke sabhi steps, registration fields, mandatory toggles (<span className="text-red-500 font-bold">*</span>), headings, button texts aur validations ko customize karein.
             </p>
           </div>
         </div>
@@ -276,7 +334,7 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-200">
         {[
           { id: 'general', label: 'Header & Stepper', icon: Layers },
-          { id: 'step1', label: 'Step 1: Auth & Login', icon: UserCheck },
+          { id: 'step1', label: 'Step 1: Auth & Fields', icon: UserCheck },
           { id: 'step2', label: 'Step 2: Questions', icon: HelpCircle },
           { id: 'step3', label: 'Step 3: CV Upload', icon: UploadCloud },
           { id: 'step4', label: 'Step 4: Review', icon: FileCheck },
@@ -404,13 +462,13 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
             </div>
           )}
 
-          {/* TAB 2: STEP 1 (AUTH & LOGIN) */}
+          {/* TAB 2: STEP 1 (AUTH & FIELDS & MANDATORY CONTROLS) */}
           {activeTab === 'step1' && (
             <div className="space-y-6 animate-in fade-in">
               <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                 <div>
-                  <h3 className="text-base font-bold text-gray-900">Step 1: Account / Candidate Auth</h3>
-                  <p className="text-xs text-gray-500">Google login, register, login form titles and field labels</p>
+                  <h3 className="text-base font-bold text-gray-900">Step 1: Account / Candidate Auth & Form Fields</h3>
+                  <p className="text-xs text-gray-500">Register & login headings, field labels, placeholders, and mandatory (<span className="text-red-500 font-bold">*</span>) toggles</p>
                 </div>
                 <button
                   type="button"
@@ -421,24 +479,32 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                 </button>
               </div>
 
+              {/* Section 1: Headings & Tab Texts */}
               <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Step 1 Main Heading</label>
-                  <input
-                    type="text"
-                    value={config.step1?.heading || ''}
-                    onChange={(e) => handleUpdate('step1', 'heading', e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
-                  />
+                <div className="flex items-center gap-2 text-xs font-black text-gray-800 uppercase tracking-wider">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Main Headings & Tabs</span>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Step 1 Subtitle</label>
-                  <input
-                    type="text"
-                    value={config.step1?.subtitle || ''}
-                    onChange={(e) => handleUpdate('step1', 'subtitle', e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Step 1 Main Heading</label>
+                    <input
+                      type="text"
+                      value={config.step1?.heading || ''}
+                      onChange={(e) => handleUpdate('step1', 'heading', e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Step 1 Subtitle</label>
+                    <input
+                      type="text"
+                      value={config.step1?.subtitle || ''}
+                      onChange={(e) => handleUpdate('step1', 'subtitle', e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -482,8 +548,146 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="pt-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Section 2: Registration Fields & Mandatory Toggles */}
+              <div className="pt-4 border-t border-gray-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-black text-gray-800 uppercase tracking-wider">
+                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Registration Form Fields & Mandatory Settings</span>
+                  </div>
+                  <span className="text-[11px] text-gray-400 font-medium">Toggle checkbox to make field mandatory (<span className="text-red-500 font-bold">*</span>)</span>
+                </div>
+
+                <div className="space-y-3.5">
+                  {[
+                    { key: 'name', title: 'Full Name', defaultLabel: 'Full Name', defaultPlaceholder: 'What is your name?', defaultRequired: true },
+                    { key: 'email', title: 'Email Address / Email ID', defaultLabel: 'Email ID', defaultPlaceholder: 'Tell us your Email ID', defaultRequired: true },
+                    { key: 'mobile', title: 'Mobile Number', defaultLabel: 'Mobile number', defaultPlaceholder: 'Enter your mobile number', defaultRequired: false },
+                    { key: 'password', title: 'Create Password', defaultLabel: 'Password', defaultPlaceholder: 'Create a strong password', defaultRequired: true },
+                    { key: 'confirmPassword', title: 'Confirm Password', defaultLabel: 'Re-enter password', defaultPlaceholder: 'Confirm your password', defaultRequired: true }
+                  ].map((fieldItem) => {
+                    const fieldVal = config.step1?.fields?.[fieldItem.key] || {};
+                    const label = fieldVal.label !== undefined ? fieldVal.label : fieldItem.defaultLabel;
+                    const placeholder = fieldVal.placeholder !== undefined ? fieldVal.placeholder : fieldItem.defaultPlaceholder;
+                    const isRequired = fieldVal.isRequired !== undefined ? fieldVal.isRequired : fieldItem.defaultRequired;
+
+                    return (
+                      <div
+                        key={fieldItem.key}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          isRequired ? 'bg-white border-emerald-200/80 shadow-xs' : 'bg-slate-50/70 border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-900">{fieldItem.title}</span>
+                            {isRequired ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Mandatory *
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                Optional
+                              </span>
+                            )}
+                          </div>
+
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isRequired}
+                              onChange={() => handleFieldToggle('step1', fieldItem.key)}
+                              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                            />
+                            <span className="text-xs font-bold text-gray-700">Compulsory / Mandatory</span>
+                          </label>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">Field Label</label>
+                            <input
+                              type="text"
+                              value={label}
+                              onChange={(e) => handleFieldUpdate('step1', fieldItem.key, 'label', e.target.value)}
+                              className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:border-emerald-600 outline-none"
+                              placeholder={fieldItem.defaultLabel}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">Placeholder Text</label>
+                            <input
+                              type="text"
+                              value={placeholder}
+                              onChange={(e) => handleFieldUpdate('step1', fieldItem.key, 'placeholder', e.target.value)}
+                              className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:border-emerald-600 outline-none"
+                              placeholder={fieldItem.defaultPlaceholder}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 3: Login Form Fields */}
+              <div className="pt-4 border-t border-gray-100 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-black text-gray-800 uppercase tracking-wider">
+                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Login Form Fields & Labels</span>
+                </div>
+
+                <div className="space-y-3.5">
+                  {[
+                    { key: 'loginEmail', title: 'Login Email ID', defaultLabel: 'Email ID', defaultPlaceholder: 'Tell us your Email ID' },
+                    { key: 'loginPassword', title: 'Login Password', defaultLabel: 'Password', defaultPlaceholder: 'Your password' }
+                  ].map((fieldItem) => {
+                    const fieldVal = config.step1?.fields?.[fieldItem.key] || {};
+                    const label = fieldVal.label !== undefined ? fieldVal.label : fieldItem.defaultLabel;
+                    const placeholder = fieldVal.placeholder !== undefined ? fieldVal.placeholder : fieldItem.defaultPlaceholder;
+
+                    return (
+                      <div key={fieldItem.key} className="p-4 rounded-2xl border border-gray-200 bg-white shadow-xs">
+                        <div className="text-xs font-bold text-gray-900 mb-2.5">{fieldItem.title}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">Field Label</label>
+                            <input
+                              type="text"
+                              value={label}
+                              onChange={(e) => handleFieldUpdate('step1', fieldItem.key, 'label', e.target.value)}
+                              className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:border-emerald-600 outline-none"
+                              placeholder={fieldItem.defaultLabel}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">Placeholder Text</label>
+                            <input
+                              type="text"
+                              value={placeholder}
+                              onChange={(e) => handleFieldUpdate('step1', fieldItem.key, 'placeholder', e.target.value)}
+                              className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-xl focus:border-emerald-600 outline-none"
+                              placeholder={fieldItem.defaultPlaceholder}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 4: Submit Buttons & Logged-in State */}
+              <div className="pt-4 border-t border-gray-100 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-black text-gray-800 uppercase tracking-wider">
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Form Action Buttons</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">Register Submit Button</label>
                     <input
@@ -529,8 +733,8 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                     </div>
                   </div>
                 </div>
-
               </div>
+
             </div>
           )}
 
@@ -986,22 +1190,122 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
 
               {/* STEP 1 PREVIEW */}
               {previewStep === 1 && (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                   <div className="text-center">
                     <h5 className="text-xs font-bold text-gray-900">{config.step1?.heading}</h5>
                     <p className="text-[10px] text-gray-500 leading-tight mt-0.5">{config.step1?.subtitle}</p>
                   </div>
-                  <div className="flex rounded-xl bg-gray-100 p-1 text-[10px] font-bold">
-                    <span className="flex-1 py-1 text-center bg-white rounded-lg shadow-xs">{config.step1?.tabRegisterText}</span>
-                    <span className="flex-1 py-1 text-center text-gray-500">{config.step1?.tabLoginText}</span>
+                  <div className="flex rounded-full bg-gray-100 p-0.5 text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewAuthTab('register')}
+                      className={`flex-1 py-1 text-center rounded-full transition-all cursor-pointer ${
+                        previewAuthTab === 'register' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500'
+                      }`}
+                    >
+                      {config.step1?.tabRegisterText}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewAuthTab('login')}
+                      className={`flex-1 py-1 text-center rounded-full transition-all cursor-pointer ${
+                        previewAuthTab === 'login' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500'
+                      }`}
+                    >
+                      {config.step1?.tabLoginText}
+                    </button>
                   </div>
-                  <div className="w-full py-1.5 border border-gray-200 rounded-xl text-[10px] font-bold text-gray-700 text-center flex items-center justify-center gap-1.5 shadow-xs">
+
+                  <div className="w-full py-1.5 border border-gray-200 rounded-full text-[10px] font-bold text-gray-700 text-center flex items-center justify-center gap-1.5 shadow-xs">
                     <span>G</span> {config.step1?.googleBtnText}
                   </div>
                   <div className="text-[9px] font-bold text-gray-400 text-center">{config.step1?.dividerText}</div>
-                  <div className="w-full py-2 bg-emerald-600 text-white font-bold text-[11px] rounded-xl text-center shadow-xs">
-                    {config.step1?.registerSubmitBtnText}
-                  </div>
+
+                  {previewAuthTab === 'register' ? (
+                    <div className="space-y-2">
+                      {/* Name Field */}
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-800 mb-0.5">
+                          {config.step1?.fields?.name?.label || config.step1?.fullNameLabel || 'Full Name'}
+                          {(config.step1?.fields?.name?.isRequired !== false) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        </div>
+                        <div className="w-full py-1.5 px-3 rounded-full border border-gray-200 text-[10px] text-gray-400 bg-slate-50">
+                          {config.step1?.fields?.name?.placeholder || config.step1?.fullNamePlaceholder || 'What is your name?'}
+                        </div>
+                      </div>
+
+                      {/* Email Field */}
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-800 mb-0.5">
+                          {config.step1?.fields?.email?.label || config.step1?.emailLabel || 'Email ID'}
+                          {(config.step1?.fields?.email?.isRequired !== false) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        </div>
+                        <div className="w-full py-1.5 px-3 rounded-full border border-gray-200 text-[10px] text-gray-400 bg-slate-50">
+                          {config.step1?.fields?.email?.placeholder || config.step1?.emailPlaceholder || 'Tell us your Email ID'}
+                        </div>
+                      </div>
+
+                      {/* Mobile Field */}
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-800 mb-0.5">
+                          {config.step1?.fields?.mobile?.label || config.step1?.mobileLabel || 'Mobile number'}
+                          {(config.step1?.fields?.mobile?.isRequired === true) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        </div>
+                        <div className="w-full py-1.5 px-3 rounded-full border border-gray-200 text-[10px] text-gray-400 bg-slate-50 flex items-center gap-1">
+                          <span className="font-bold text-gray-700">IN +91 |</span>
+                          <span>{config.step1?.fields?.mobile?.placeholder || config.step1?.mobilePlaceholder || 'Enter your mobile number'}</span>
+                        </div>
+                      </div>
+
+                      {/* Password Field */}
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-800 mb-0.5">
+                          {config.step1?.fields?.password?.label || config.step1?.passwordLabel || 'Password'}
+                          {(config.step1?.fields?.password?.isRequired !== false) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        </div>
+                        <div className="w-full py-1.5 px-3 rounded-full border border-gray-200 text-[10px] text-gray-400 bg-slate-50">
+                          {config.step1?.fields?.password?.placeholder || config.step1?.passwordPlaceholder || 'Create a strong password'}
+                        </div>
+                      </div>
+
+                      {/* Confirm Password Field */}
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-800 mb-0.5">
+                          {config.step1?.fields?.confirmPassword?.label || config.step1?.confirmPasswordLabel || 'Re-enter password'}
+                          {(config.step1?.fields?.confirmPassword?.isRequired !== false) && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                        </div>
+                        <div className="w-full py-1.5 px-3 rounded-full border border-gray-200 text-[10px] text-gray-400 bg-slate-50">
+                          {config.step1?.fields?.confirmPassword?.placeholder || config.step1?.confirmPasswordPlaceholder || 'Confirm your password'}
+                        </div>
+                      </div>
+
+                      <div className="w-full py-2 bg-emerald-600 text-white font-bold text-[11px] rounded-full text-center shadow-xs mt-2">
+                        {config.step1?.registerSubmitBtnText}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-800 mb-0.5">
+                          {config.step1?.fields?.loginEmail?.label || 'Email ID'} <span className="text-red-500 font-bold ml-0.5">*</span>
+                        </div>
+                        <div className="w-full py-1.5 px-3 rounded-full border border-gray-200 text-[10px] text-gray-400 bg-slate-50">
+                          {config.step1?.fields?.loginEmail?.placeholder || 'Tell us your Email ID'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-800 mb-0.5">
+                          {config.step1?.fields?.loginPassword?.label || 'Password'} <span className="text-red-500 font-bold ml-0.5">*</span>
+                        </div>
+                        <div className="w-full py-1.5 px-3 rounded-full border border-gray-200 text-[10px] text-gray-400 bg-slate-50">
+                          {config.step1?.fields?.loginPassword?.placeholder || 'Your password'}
+                        </div>
+                      </div>
+                      <div className="w-full py-2 bg-emerald-600 text-white font-bold text-[11px] rounded-full text-center shadow-xs mt-2">
+                        {config.step1?.loginSubmitBtnText}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1013,7 +1317,7 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                     <p className="text-[10px] text-gray-500 mt-0.5">{config.step2?.subtitle}</p>
                   </div>
                   <div className="p-2.5 rounded-xl border border-gray-200 bg-slate-50 space-y-1.5">
-                    <span className="text-[10px] font-bold text-gray-700">1. Years of experience? *</span>
+                    <span className="text-[10px] font-bold text-gray-700">1. Years of experience? <span className="text-red-500 font-bold">*</span></span>
                     <div className="w-full h-6 bg-white border border-gray-200 rounded-lg text-[10px] px-2 flex items-center text-gray-400">Answer...</div>
                   </div>
                   <div className="flex justify-between items-center pt-2">

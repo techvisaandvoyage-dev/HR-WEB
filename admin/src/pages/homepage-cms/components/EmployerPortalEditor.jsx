@@ -37,7 +37,7 @@ export const DEFAULT_EMPLOYER_PORTAL_CONFIG = {
   dashboard: {
     welcomePrefix: 'Welcome back,',
     subtitle: "Here's what's happening with your job posting today.",
-    postJobBtnText: '+ Post New Job',
+    postJobBtnText: 'Post New Job',
     searchPlaceholder: 'Search job by title, location...',
     stats: {
       activeJobsLabel: 'Active Job',
@@ -462,7 +462,7 @@ export default function EmployerPortalEditor({ onSaveSuccess }) {
                       value={portalConfig.dashboard?.postJobBtnText || ''}
                       onChange={(e) => setPortalConfig(prev => ({ ...prev, dashboard: { ...prev.dashboard, postJobBtnText: e.target.value } }))}
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg font-medium text-xs focus:outline-none focus:border-emerald-500"
-                      placeholder="+ Post New Job"
+                      placeholder="Post New Job"
                     />
                   </div>
 

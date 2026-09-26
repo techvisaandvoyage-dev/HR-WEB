@@ -5,14 +5,15 @@ import ContentForm from '../components/footer-editor/ContentForm';
 import SocialLinksForm from '../components/footer-editor/SocialLinksForm';
 import PagesLibrary from '../components/footer-editor/PagesLibrary';
 import PageEditor from '../components/footer-editor/PageEditor';
+import FooterColumnsManager from '../components/footer-editor/FooterColumnsManager';
 
 export default function FooterEditor() {
   const [activeTab, setActiveTabState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sub = params.get('subtab');
-    if (sub && ['content', 'social', 'library'].includes(sub)) return sub;
+    if (sub && ['content', 'social', 'columns', 'library'].includes(sub)) return sub;
     const saved = localStorage.getItem('adminFooterSubtab');
-    if (saved && ['content', 'social', 'library'].includes(saved)) return saved;
+    if (saved && ['content', 'social', 'columns', 'library'].includes(saved)) return saved;
     return 'content';
   });
 
@@ -29,7 +30,7 @@ export default function FooterEditor() {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const sub = params.get('subtab');
-      if (sub && ['content', 'social', 'library'].includes(sub)) {
+      if (sub && ['content', 'social', 'columns', 'library'].includes(sub)) {
         setActiveTabState(sub);
       }
     };
@@ -174,7 +175,7 @@ export default function FooterEditor() {
       <div className="mb-8 flex justify-between items-start">
         <div>
           <h2 className="text-3xl font-bold text-gray-800 tracking-tight">Footer Configuration</h2>
-          <p className="text-gray-500 mt-2">Manage the content, social links, and static pages displayed in the website footer.</p>
+          <p className="text-gray-500 mt-2">Manage the content, social links, column order, and static pages displayed in the website footer.</p>
         </div>
         {activeTab === 'library' && (
           <button 
@@ -202,6 +203,12 @@ export default function FooterEditor() {
               Social Links
             </button>
             <button
+              onClick={() => setActiveTab('columns')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'columns' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+            >
+              Footer Columns
+            </button>
+            <button
               onClick={() => setActiveTab('library')}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'library' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
@@ -210,11 +217,15 @@ export default function FooterEditor() {
           </nav>
         </div>
 
-        {activeTab !== 'library' && (
+        {activeTab !== 'library' && activeTab !== 'columns' && (
           <div className="p-6">
             {activeTab === 'content' && <ContentForm />}
             {activeTab === 'social' && <SocialLinksForm />}
           </div>
+        )}
+
+        {activeTab === 'columns' && (
+          <FooterColumnsManager pages={pages} onRefreshPages={fetchPages} />
         )}
       </div>
 

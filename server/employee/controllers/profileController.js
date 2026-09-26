@@ -5,6 +5,9 @@ const Employee = require('../models/Employee');
 // @access  Private
 const getProfile = async (req, res) => {
   try {
+    if (!req.employee?._id) {
+      return res.status(401).json({ message: 'Not authorized, please log in again' });
+    }
     const employee = await Employee.findById(req.employee._id);
 
     if (employee) {

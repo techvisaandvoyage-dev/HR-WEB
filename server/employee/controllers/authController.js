@@ -17,8 +17,8 @@ const sendRegistrationOtp = async (req, res) => {
   try {
     const { email, mobile } = req.body;
 
-    if (!email || !mobile) {
-      return res.status(400).json({ message: 'Email and mobile are required' });
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required', field: 'email' });
     }
 
     const emailExists = await Employee.findOne({ email });
@@ -26,9 +26,11 @@ const sendRegistrationOtp = async (req, res) => {
       return res.status(400).json({ message: 'Employee already exists with this email', field: 'email' });
     }
 
-    const mobileExists = await Employee.findOne({ mobile });
-    if (mobileExists) {
-      return res.status(400).json({ message: 'Phone number already exists', field: 'mobile' });
+    if (mobile && mobile.trim()) {
+      const mobileExists = await Employee.findOne({ mobile: mobile.trim() });
+      if (mobileExists) {
+        return res.status(400).json({ message: 'Phone number already exists', field: 'mobile' });
+      }
     }
 
     const result = await sendOtp({ email, name: email.split('@')[0], purpose: 'registration:employee' });
@@ -78,8 +80,8 @@ const registerEmployee = async (req, res) => {
     const { name, email, password, mobile, location, otp } = req.body;
 
     // Check for empty fields
-    if (!email || !password || !mobile) {
-      return res.status(400).json({ message: 'Please add all fields' });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please provide email and password' });
     }
 
     if (!otp || String(otp).length < 4) {
@@ -102,10 +104,11 @@ const registerEmployee = async (req, res) => {
       return res.status(400).json({ message: 'Employee already exists with this email' });
     }
 
-    const mobileExists = await Employee.findOne({ mobile });
-
-    if (mobileExists) {
-      return res.status(400).json({ message: 'Phone number already exists' });
+    if (mobile && mobile.trim()) {
+      const mobileExists = await Employee.findOne({ mobile: mobile.trim() });
+      if (mobileExists) {
+        return res.status(400).json({ message: 'Phone number already exists' });
+      }
     }
 
     // Create employee
@@ -113,7 +116,7 @@ const registerEmployee = async (req, res) => {
       name: name || 'Anonymous User',
       email,
       password,
-      mobile,
+      mobile: mobile ? mobile.trim() : undefined,
       location
     });
 

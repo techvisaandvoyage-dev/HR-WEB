@@ -62,6 +62,21 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// POST rename footer column across all pages
+router.post('/rename-column', async (req, res) => {
+  try {
+    const { oldColumnName, newColumnName } = req.body;
+    if (!oldColumnName || !newColumnName) {
+      return res.status(400).json({ message: 'Both oldColumnName and newColumnName are required' });
+    }
+    const result = await Page.updateMany({ footer: oldColumnName }, { footer: newColumnName });
+    res.json({ success: true, modifiedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('Error renaming column:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // DELETE page
 router.delete('/:id', async (req, res) => {
   try {

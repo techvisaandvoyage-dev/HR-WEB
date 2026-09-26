@@ -3,6 +3,93 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
+import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
+
+const COUNTRY_CODES = [
+  { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India (+91)' },
+  { code: '+1', country: 'US', flag: '🇺🇸', name: 'United States (+1)' },
+  { code: '+44', country: 'GB', flag: '🇬🇧', name: 'United Kingdom (+44)' },
+  { code: '+971', country: 'AE', flag: '🇦🇪', name: 'United Arab Emirates (+971)' },
+  { code: '+1', country: 'CA', flag: '🇨🇦', name: 'Canada (+1)' },
+  { code: '+61', country: 'AU', flag: '🇦🇺', name: 'Australia (+61)' },
+  { code: '+49', country: 'DE', flag: '🇩🇪', name: 'Germany (+49)' },
+  { code: '+33', country: 'FR', flag: '🇫🇷', name: 'France (+33)' },
+  { code: '+65', country: 'SG', flag: '🇸🇬', name: 'Singapore (+65)' },
+  { code: '+966', country: 'SA', flag: '🇸🇦', name: 'Saudi Arabia (+966)' },
+  { code: '+974', country: 'QA', flag: '🇶🇦', name: 'Qatar (+974)' },
+  { code: '+968', country: 'OM', flag: '🇴🇲', name: 'Oman (+968)' },
+  { code: '+965', country: 'KW', flag: '🇰🇼', name: 'Kuwait (+965)' },
+  { code: '+973', country: 'BH', flag: '🇧🇭', name: 'Bahrain (+973)' },
+  { code: '+81', country: 'JP', flag: '🇯🇵', name: 'Japan (+81)' },
+  { code: '+86', country: 'CN', flag: '🇨🇳', name: 'China (+86)' },
+  { code: '+82', country: 'KR', flag: '🇰🇷', name: 'South Korea (+82)' },
+  { code: '+92', country: 'PK', flag: '🇵🇰', name: 'Pakistan (+92)' },
+  { code: '+880', country: 'BD', flag: '🇧🇩', name: 'Bangladesh (+880)' },
+  { code: '+94', country: 'LK', flag: '🇱🇰', name: 'Sri Lanka (+94)' },
+  { code: '+977', country: 'NP', flag: '🇳🇵', name: 'Nepal (+977)' },
+  { code: '+60', country: 'MY', flag: '🇲🇾', name: 'Malaysia (+60)' },
+  { code: '+62', country: 'ID', flag: '🇮🇩', name: 'Indonesia (+62)' },
+  { code: '+63', country: 'PH', flag: '🇵🇭', name: 'Philippines (+63)' },
+  { code: '+84', country: 'VN', flag: '🇻🇳', name: 'Vietnam (+84)' },
+  { code: '+66', country: 'TH', flag: '🇹🇭', name: 'Thailand (+66)' },
+  { code: '+27', country: 'ZA', flag: '🇿🇦', name: 'South Africa (+27)' },
+  { code: '+20', country: 'EG', flag: '🇪🇬', name: 'Egypt (+20)' },
+  { code: '+234', country: 'NG', flag: '🇳🇬', name: 'Nigeria (+234)' },
+  { code: '+254', country: 'KE', flag: '🇰🇪', name: 'Kenya (+254)' },
+  { code: '+55', country: 'BR', flag: '🇧🇷', name: 'Brazil (+55)' },
+  { code: '+52', country: 'MX', flag: '🇲🇽', name: 'Mexico (+52)' },
+  { code: '+54', country: 'AR', flag: '🇦🇷', name: 'Argentina (+54)' },
+  { code: '+56', country: 'CL', flag: '🇨🇱', name: 'Chile (+56)' },
+  { code: '+57', country: 'CO', flag: '🇨🇴', name: 'Colombia (+57)' },
+  { code: '+34', country: 'ES', flag: '🇪🇸', name: 'Spain (+34)' },
+  { code: '+39', country: 'IT', flag: '🇮🇹', name: 'Italy (+39)' },
+  { code: '+31', country: 'NL', flag: '🇳🇱', name: 'Netherlands (+31)' },
+  { code: '+41', country: 'CH', flag: '🇨🇭', name: 'Switzerland (+41)' },
+  { code: '+46', country: 'SE', flag: '🇸🇪', name: 'Sweden (+46)' },
+  { code: '+47', country: 'NO', flag: '🇳🇴', name: 'Norway (+47)' },
+  { code: '+45', country: 'DK', flag: '🇩🇰', name: 'Denmark (+45)' },
+  { code: '+358', country: 'FI', flag: '🇫🇮', name: 'Finland (+358)' },
+  { code: '+353', country: 'IE', flag: '🇮🇪', name: 'Ireland (+353)' },
+  { code: '+32', country: 'BE', flag: '🇧🇪', name: 'Belgium (+32)' },
+  { code: '+43', country: 'AT', flag: '🇦🇹', name: 'Austria (+43)' },
+  { code: '+48', country: 'PL', flag: '🇵🇱', name: 'Poland (+48)' },
+  { code: '+420', country: 'CZ', flag: '🇨🇿', name: 'Czech Republic (+420)' },
+  { code: '+36', country: 'HU', flag: '🇭🇺', name: 'Hungary (+36)' },
+  { code: '+40', country: 'RO', flag: '🇷🇴', name: 'Romania (+40)' },
+  { code: '+30', country: 'GR', flag: '🇬🇷', name: 'Greece (+30)' },
+  { code: '+351', country: 'PT', flag: '🇵🇹', name: 'Portugal (+351)' },
+  { code: '+90', country: 'TR', flag: '🇹🇷', name: 'Turkey (+90)' },
+  { code: '+7', country: 'RU', flag: '🇷🇺', name: 'Russia (+7)' },
+  { code: '+380', country: 'UA', flag: '🇺🇦', name: 'Ukraine (+380)' },
+  { code: '+972', country: 'IL', flag: '🇮🇱', name: 'Israel (+972)' },
+  { code: '+961', country: 'LB', flag: '🇱🇧', name: 'Lebanon (+961)' },
+  { code: '+962', country: 'JO', flag: '🇯🇴', name: 'Jordan (+962)' },
+  { code: '+964', country: 'IQ', flag: '🇮🇶', name: 'Iraq (+964)' },
+  { code: '+98', country: 'IR', flag: '🇮🇷', name: 'Iran (+98)' },
+  { code: '+93', country: 'AF', flag: '🇦🇫', name: 'Afghanistan (+93)' },
+  { code: '+994', country: 'AZ', flag: '🇦🇿', name: 'Azerbaijan (+994)' },
+  { code: '+995', country: 'GE', flag: '🇬🇪', name: 'Georgia (+995)' },
+  { code: '+996', country: 'KG', flag: '🇰🇬', name: 'Kyrgyzstan (+996)' },
+  { code: '+998', country: 'UZ', flag: 'UZ', name: 'Uzbekistan (+998)' },
+  { code: '+852', country: 'HK', flag: '🇭🇰', name: 'Hong Kong (+852)' },
+  { code: '+886', country: 'TW', flag: '🇹🇼', name: 'Taiwan (+886)' },
+  { code: '+853', country: 'MO', flag: '🇲🇴', name: 'Macau (+853)' },
+  { code: '+855', country: 'KH', flag: '🇰🇭', name: 'Cambodia (+855)' },
+  { code: '+856', country: 'LA', flag: '🇱🇦', name: 'Laos (+856)' },
+  { code: '+95', country: 'MM', flag: '🇲🇲', name: 'Myanmar (+95)' },
+  { code: '+64', country: 'NZ', flag: '🇳🇿', name: 'New Zealand (+64)' },
+  { code: '+679', country: 'FJ', flag: '🇫🇯', name: 'Fiji (+679)' },
+  { code: '+212', country: 'MA', flag: '🇲🇦', name: 'Morocco (+212)' },
+  { code: '+213', country: 'DZ', flag: '🇩🇿', name: 'Algeria (+213)' },
+  { code: '+216', country: 'TN', flag: '🇹🇳', name: 'Tunisia (+216)' },
+  { code: '+233', country: 'GH', flag: '🇬🇭', name: 'Ghana (+233)' },
+  { code: '+237', country: 'CM', flag: '🇨🇲', name: 'Cameroon (+237)' },
+  { code: '+251', country: 'ET', flag: '🇪🇹', name: 'Ethiopia (+251)' },
+  { code: '+255', country: 'TZ', flag: '🇹🇿', name: 'Tanzania (+255)' },
+  { code: '+256', country: 'UG', flag: '🇺🇬', name: 'Uganda (+256)' },
+  { code: '+260', country: 'ZM', flag: '🇿🇲', name: 'Zambia (+260)' },
+  { code: '+263', country: 'ZW', flag: '🇿🇼', name: 'Zimbabwe (+263)' }
+];
 
 const DirectJobApply = ({ onAuthSuccess }) => {
   const { jobId } = useParams();
@@ -25,10 +112,96 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const [authName, setAuthName] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authMobile, setAuthMobile] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [authPassword, setAuthPassword] = useState('');
+  const [authConfirmPassword, setAuthConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [authFieldErrors, setAuthFieldErrors] = useState({});
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Custom Country Code Dropdown State
+  const countryDropdownRef = useRef(null);
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(event.target)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCountryObj = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
+
+  const filteredCountryCodes = COUNTRY_CODES.filter(c => 
+    c.name.toLowerCase().includes(countrySearch.toLowerCase()) || 
+    c.code.includes(countrySearch) || 
+    c.country.toLowerCase().includes(countrySearch.toLowerCase())
+  );
+
+  const hasLowercase = /[a-z]/.test(authPassword);
+  const hasUppercase = /[A-Z]/.test(authPassword);
+  const hasNumber = /[0-9]/.test(authPassword);
+  const hasMinLength = authPassword.length >= 8;
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(authPassword);
+
+  // Registration OTP State
+  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [otpSuccessMessage, setOtpSuccessMessage] = useState('');
+
+  // Resend OTP countdown timer
+  useEffect(() => {
+    let interval = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [resendTimer]);
+
+  const handleOtpChange = (index, value) => {
+    // Handle paste of full 4-digit code
+    if (value.length > 1) {
+      const pasteData = value.replace(/\D/g, '').slice(0, 4).split('');
+      const newOtp = [...otp];
+      pasteData.forEach((char, idx) => {
+        if (index + idx < 4) newOtp[index + idx] = char;
+      });
+      setOtp(newOtp);
+      const nextIdx = Math.min(index + pasteData.length, 3);
+      document.getElementById(`apply-otp-${nextIdx}`)?.focus();
+      return;
+    }
+
+    const val = value.replace(/\D/g, '');
+    const newOtp = [...otp];
+    newOtp[index] = val;
+    setOtp(newOtp);
+
+    // Clear error
+    if (authError) setAuthError('');
+
+    // Auto move to next input
+    if (val && index < 3) {
+      document.getElementById(`apply-otp-${index + 1}`)?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      document.getElementById(`apply-otp-${index - 1}`)?.focus();
+    }
+  };
 
   // Screening questions (Step 2)
   const [screeningAnswers, setScreeningAnswers] = useState({});
@@ -75,6 +248,81 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const s4 = cmsConfig?.step4 || {};
   const s5 = cmsConfig?.step5 || {};
   const maxLimitKb = s3.maxFileSizeKb || 300;
+
+  // Dynamic field configuration helper
+  const getFieldConfig = (key, defaultLabel, defaultPlaceholder, defaultRequired = true) => {
+    const f = s1.fields?.[key];
+    if (f) {
+      return {
+        label: f.label || defaultLabel,
+        placeholder: f.placeholder || defaultPlaceholder,
+        isRequired: f.isRequired !== undefined ? f.isRequired : defaultRequired
+      };
+    }
+    // Fallback to top-level legacy keys
+    if (key === 'name') {
+      return {
+        label: s1.fullNameLabel || defaultLabel,
+        placeholder: s1.fullNamePlaceholder || defaultPlaceholder,
+        isRequired: s1.fullNameRequired !== undefined ? s1.fullNameRequired : defaultRequired
+      };
+    }
+    if (key === 'email') {
+      return {
+        label: s1.emailLabel || defaultLabel,
+        placeholder: s1.emailPlaceholder || defaultPlaceholder,
+        isRequired: s1.emailRequired !== undefined ? s1.emailRequired : defaultRequired
+      };
+    }
+    if (key === 'mobile') {
+      return {
+        label: s1.mobileLabel || defaultLabel,
+        placeholder: s1.mobilePlaceholder || defaultPlaceholder,
+        isRequired: s1.mobileRequired !== undefined ? s1.mobileRequired : defaultRequired
+      };
+    }
+    if (key === 'password') {
+      return {
+        label: s1.passwordLabel || defaultLabel,
+        placeholder: s1.passwordPlaceholder || defaultPlaceholder,
+        isRequired: s1.passwordRequired !== undefined ? s1.passwordRequired : defaultRequired
+      };
+    }
+    if (key === 'confirmPassword') {
+      return {
+        label: s1.confirmPasswordLabel || defaultLabel,
+        placeholder: s1.confirmPasswordPlaceholder || defaultPlaceholder,
+        isRequired: s1.confirmPasswordRequired !== undefined ? s1.confirmPasswordRequired : defaultRequired
+      };
+    }
+    if (key === 'loginEmail') {
+      return {
+        label: s1.emailLabel || defaultLabel,
+        placeholder: s1.emailPlaceholder || defaultPlaceholder,
+        isRequired: true
+      };
+    }
+    if (key === 'loginPassword') {
+      return {
+        label: s1.passwordLabel || defaultLabel,
+        placeholder: s1.passwordPlaceholder || defaultPlaceholder,
+        isRequired: true
+      };
+    }
+    return {
+      label: defaultLabel,
+      placeholder: defaultPlaceholder,
+      isRequired: defaultRequired
+    };
+  };
+
+  const nameConfig = getFieldConfig('name', 'Full Name', 'What is your name?', true);
+  const emailConfig = getFieldConfig('email', 'Email ID', 'Tell us your Email ID', true);
+  const mobileConfig = getFieldConfig('mobile', 'Mobile number', 'Enter your mobile number', false);
+  const passwordConfig = getFieldConfig('password', 'Password', 'Create a strong password', true);
+  const confirmPasswordConfig = getFieldConfig('confirmPassword', 'Re-enter password', 'Confirm your password', true);
+  const loginEmailConfig = getFieldConfig('loginEmail', 'Email ID', 'Tell us your Email ID', true);
+  const loginPasswordConfig = getFieldConfig('loginPassword', 'Password', 'Your password', true);
 
   // Check initial user login from localStorage
   useEffect(() => {
@@ -159,55 +407,183 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     }
   }, [jobId]);
 
-  // Handle Candidate Register
+  // Handle Candidate Register (Step 1: Validate and Send Email OTP)
   const handleRegister = async (e) => {
     e.preventDefault();
     setAuthError('');
+    setOtpSuccessMessage('');
+    const errors = {};
 
-    if (!authEmail.trim()) {
-      setAuthError('Please enter your email address');
+    if (nameConfig.isRequired && !authName.trim()) {
+      errors.name = `Please enter your ${nameConfig.label.toLowerCase() || 'full name'}.`;
+    }
+
+    if (emailConfig.isRequired && !authEmail.trim()) {
+      errors.email = `Please enter your ${emailConfig.label.toLowerCase() || 'email address'}.`;
+    } else if (authEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail.trim())) {
+      errors.email = 'Please enter a valid email address.';
+    }
+
+    const cleanMobile = authMobile.replace(/\D/g, '');
+    if (mobileConfig.isRequired && !cleanMobile) {
+      errors.mobile = `Please enter your ${mobileConfig.label.toLowerCase() || 'mobile number'}.`;
+    } else if (cleanMobile && cleanMobile.length !== 10) {
+      errors.mobile = 'Please enter a valid 10-digit mobile number.';
+    }
+
+    if (passwordConfig.isRequired && !authPassword) {
+      errors.password = 'Please create a password.';
+    } else if (authPassword) {
+      const isValidPassword = authPassword.length >= 8 && 
+                              /[a-z]/.test(authPassword) && 
+                              /[A-Z]/.test(authPassword) && 
+                              /[0-9]/.test(authPassword) && 
+                              /[!@#$%^&*(),.?":{}|<>]/.test(authPassword);
+      if (!isValidPassword) {
+        errors.password = 'Password must be at least 8 chars long and contain lowercase, uppercase, numeric & special characters.';
+      }
+    }
+
+    if (confirmPasswordConfig.isRequired && !authConfirmPassword) {
+      errors.confirmPassword = 'Please confirm your password.';
+    } else if (authConfirmPassword && authPassword !== authConfirmPassword) {
+      errors.confirmPassword = 'Passwords do not match.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAuthFieldErrors(errors);
+      setAuthError('Please correct the errors in the form.');
       return;
     }
-    if (!authPassword || authPassword.length < 6) {
-      setAuthError('Password must be at least 6 characters long');
-      return;
+    setAuthFieldErrors({});
+
+    setAuthLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail.trim().toLowerCase(),
+          mobile: cleanMobile || undefined
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.field === 'email') {
+          setAuthFieldErrors({ email: data.message });
+        } else if (data.field === 'mobile') {
+          setAuthFieldErrors({ mobile: data.message });
+        } else {
+          setAuthError(data.message || 'Failed to send verification OTP.');
+        }
+        setAuthLoading(false);
+        return;
+      }
+
+      setOtp(['', '', '', '']);
+      setResendTimer(data.cooldownSeconds || 30);
+      setOtpSuccessMessage('A 4-digit verification code has been sent to your email.');
+      setIsOtpStep(true);
+    } catch (err) {
+      console.error('Send OTP Error:', err);
+      setAuthError('Failed to send verification OTP. Please check your internet connection.');
+    } finally {
+      setAuthLoading(false);
     }
-    if (!authMobile.trim()) {
-      setAuthError('Please enter your mobile number');
+  };
+
+  // Handle Resend OTP
+  const handleResendOtp = async () => {
+    if (resendTimer > 0) return;
+    setAuthLoading(true);
+    setAuthError('');
+    setOtpSuccessMessage('');
+    try {
+      const cleanMobile = authMobile.replace(/\D/g, '');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail.trim().toLowerCase(),
+          mobile: cleanMobile || undefined
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.cooldownRemaining) {
+          setResendTimer(data.cooldownRemaining);
+        }
+        setAuthError(data.message || 'Failed to resend OTP');
+      } else {
+        setOtp(['', '', '', '']);
+        setResendTimer(data.cooldownSeconds || 30);
+        setOtpSuccessMessage('Verification OTP resent successfully to your email!');
+      }
+    } catch (err) {
+      console.error('Resend OTP Error:', err);
+      setAuthError('Failed to resend OTP. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle Verify OTP and Complete Registration
+  const handleVerifyOtpAndRegister = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setOtpSuccessMessage('');
+    const enteredOtp = otp.join('');
+    if (enteredOtp.length < 4) {
+      setAuthError('Please enter the 4-digit OTP sent to your email.');
       return;
     }
 
     setAuthLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/quick-register`, {
+      const cleanMobile = authMobile.replace(/\D/g, '');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: authName.trim() || authEmail.split('@')[0],
           email: authEmail.trim().toLowerCase(),
           password: authPassword,
-          mobile: authMobile.trim()
+          mobile: cleanMobile || undefined,
+          otp: enteredOtp
         })
       });
+
       const data = await res.json();
 
-      if (res.ok && data.success) {
-        const authToken = data.token;
-        setToken(authToken);
-        setUser(data);
-        localStorage.setItem('token', authToken);
-        localStorage.setItem('employeeToken', authToken);
-        localStorage.setItem('employeeUser', JSON.stringify(data));
-        localStorage.setItem('userRole', 'employee');
-        if (onAuthSuccess) onAuthSuccess(data);
+      if (!res.ok) {
+        setAuthError(data.message || 'OTP verification failed. Please try again.');
+        setAuthLoading(false);
+        return;
+      }
 
-        // Move to Step 2 (Questions)
+      // Save token and user in localStorage
+      const authToken = data.token;
+      setToken(authToken);
+      setUser(data);
+      localStorage.setItem('token', authToken);
+      localStorage.setItem('employeeToken', authToken);
+      localStorage.setItem('employeeUser', JSON.stringify(data));
+      localStorage.setItem('user', JSON.stringify(data));
+      localStorage.setItem('userRole', 'employee');
+      setIsOtpStep(false);
+
+      if (onAuthSuccess) onAuthSuccess(data);
+
+      // Move to Step 2 (Questions) or Step 3 (CV Upload)
+      if (job?.screeningQuestions && job.screeningQuestions.length > 0) {
         setStep(2);
       } else {
-        setAuthError(data.message || 'Registration failed. Please try again.');
+        setStep(3);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Verify OTP Error:', err);
       setAuthError('Server connection error. Please try again.');
     } finally {
       setAuthLoading(false);
@@ -218,15 +594,23 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthError('');
+    const errors = {};
 
     if (!authEmail.trim()) {
-      setAuthError('Please enter your email address');
-      return;
+      errors.email = 'Please enter your email address.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail.trim())) {
+      errors.email = 'Please enter a valid email address.';
     }
     if (!authPassword) {
-      setAuthError('Please enter your password');
+      errors.password = 'Please enter your password.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAuthFieldErrors(errors);
+      setAuthError('Please fill in all required fields marked with *');
       return;
     }
+    setAuthFieldErrors({});
 
     setAuthLoading(true);
     try {
@@ -331,6 +715,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     setToken('');
     setAuthEmail('');
     setAuthPassword('');
+    setAuthConfirmPassword('');
     setAuthName('');
     setAuthMobile('');
     setResumeUrl('');
@@ -465,11 +850,10 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // Sync appliedJobs in localStorage so MyJobs immediately reflects this application
+        // Sync appliedJobs in scoped storage so MyJobs immediately reflects this application as 'Applied'
         try {
-          const savedApplied = localStorage.getItem('appliedJobs');
-          let appliedList = savedApplied ? JSON.parse(savedApplied) : [];
           const jobIdentifier = job?._id || job?.id || jobId;
+          let appliedList = getEmployeeStoredValue('appliedJobs', []);
           if (!appliedList.some(a => String(a.id) === String(jobIdentifier))) {
             appliedList.unshift({
               id: jobIdentifier,
@@ -477,8 +861,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               date: new Date().toLocaleDateString(),
               jobDetails: job ? { ...job, id: jobIdentifier, _id: jobIdentifier } : null
             });
-            localStorage.setItem('appliedJobs', JSON.stringify(appliedList));
+            setEmployeeStoredValue('appliedJobs', appliedList);
           }
+          localStorage.removeItem('appliedJobs');
         } catch (storageErr) {
           console.error('Error saving appliedJobs in localStorage:', storageErr);
         }
@@ -486,9 +871,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         setStep(5); // Success step!
       } else if (data.message && data.message.includes('already applied')) {
         try {
-          const savedApplied = localStorage.getItem('appliedJobs');
-          let appliedList = savedApplied ? JSON.parse(savedApplied) : [];
           const jobIdentifier = job?._id || job?.id || jobId;
+          let appliedList = getEmployeeStoredValue('appliedJobs', []);
           if (!appliedList.some(a => String(a.id) === String(jobIdentifier))) {
             appliedList.unshift({
               id: jobIdentifier,
@@ -496,8 +880,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               date: new Date().toLocaleDateString(),
               jobDetails: job ? { ...job, id: jobIdentifier, _id: jobIdentifier } : null
             });
-            localStorage.setItem('appliedJobs', JSON.stringify(appliedList));
+            setEmployeeStoredValue('appliedJobs', appliedList);
           }
+          localStorage.removeItem('appliedJobs');
         } catch (storageErr) {
           console.error('Error saving appliedJobs in localStorage:', storageErr);
         }
@@ -650,7 +1035,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   {step > 3 ? '✓' : '3'}
                 </div>
                 <span className={`text-[11px] font-bold ${step === 3 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {stepper.step3Title || 'Upload CV *'}
+                  {stepper.step3Title ? stepper.step3Title.replace(/\s*\*/, '') : 'Upload CV'} <span className="text-red-500 font-extrabold">*</span>
                 </span>
               </div>
 
@@ -694,7 +1079,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={handleContinueAsLoggedIn}
-                    className="w-full sm:w-auto px-8 py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer"
                   >
                     {(s1.continueAsBtnText || 'Continue Application →').replace('{name}', user.name || user.firstName || 'Candidate')}
                   </button>
@@ -706,6 +1091,109 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </button>
                 </div>
               </div>
+            ) : isOtpStep ? (
+              <div className="max-w-md mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-200">
+                {/* Registration Email OTP Verification View */}
+                <div className="text-center space-y-1.5">
+                  <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 border border-emerald-100 shadow-xs">
+                    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Verify Your Email Address</h2>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    We have sent a 4-digit verification code to <span className="font-bold text-gray-900">{authEmail}</span>
+                  </p>
+                </div>
+
+                {/* Success Notification */}
+                {otpSuccessMessage && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-2xl flex items-center justify-center gap-2 animate-in fade-in duration-200">
+                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{otpSuccessMessage}</span>
+                  </div>
+                )}
+
+                {/* Error Notification */}
+                {authError && (
+                  <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-2xl flex items-center justify-center gap-2 animate-in fade-in duration-200">
+                    <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{authError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleVerifyOtpAndRegister} className="space-y-6">
+                  {/* 4-Digit OTP Boxes */}
+                  <div className="flex justify-center gap-3 sm:gap-4">
+                    {otp.map((digit, index) => (
+                      <input
+                        key={index}
+                        id={`apply-otp-${index}`}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength="1"
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        autoFocus={index === 0}
+                        className="w-14 h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
+                      />
+                    ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      type="submit"
+                      disabled={authLoading}
+                      className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                    >
+                      {authLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        'Verify & Continue to Questions →'
+                      )}
+                    </button>
+
+                    <div className="flex items-center justify-center pt-2">
+                      {resendTimer > 0 ? (
+                        <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                          <svg className="w-3.5 h-3.5 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Resend OTP in <strong className="text-gray-900 font-bold">{resendTimer}s</strong>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={authLoading}
+                          className="text-xs font-bold text-green-700 hover:text-green-800 transition-colors cursor-pointer disabled:opacity-60"
+                        >
+                          Resend OTP to Email
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOtpStep(false);
+                        setAuthError('');
+                        setOtpSuccessMessage('');
+                        setOtp(['', '', '', '']);
+                      }}
+                      className="w-full py-2 text-xs text-gray-500 hover:text-gray-800 font-bold transition-colors cursor-pointer"
+                    >
+                      ← Back to Edit Registration Details
+                    </button>
+                  </div>
+                </form>
+              </div>
             ) : (
               <div>
                 <div className="text-center space-y-1 mb-6">
@@ -716,11 +1204,11 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 </div>
 
                 {/* Tabs */}
-                <div className="flex bg-gray-100 p-1 rounded-xl mb-6 max-w-sm mx-auto">
+                <div className="flex bg-gray-100 p-1 rounded-full mb-6 max-w-sm mx-auto">
                   <button
                     type="button"
-                    onClick={() => { setAuthTab('register'); setAuthError(''); }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    onClick={() => { setAuthTab('register'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                       authTab === 'register' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
                     }`}
                   >
@@ -728,8 +1216,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setAuthTab('login'); setAuthError(''); }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    onClick={() => { setAuthTab('login'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                       authTab === 'login' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
                     }`}
                   >
@@ -738,8 +1226,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 </div>
 
                 {authError && (
-                  <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2 max-w-md mx-auto">
-                    <span className="font-bold">⚠️</span> {authError}
+                  <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-2xl flex items-center gap-2 max-w-md mx-auto animate-in fade-in duration-200">
+                    <span className="font-bold text-red-500">⚠️</span> {authError}
                   </div>
                 )}
 
@@ -749,7 +1237,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                     type="button"
                     onClick={handleGoogleLogin}
                     disabled={authLoading}
-                    className="w-full py-3 px-4 flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-800 font-bold text-sm border border-gray-300 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60 hover:shadow-sm"
+                    className="w-full py-3.5 px-4 flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-800 font-bold text-sm border border-gray-300 rounded-full transition-all shadow-xs cursor-pointer disabled:opacity-60 hover:shadow-sm"
                   >
                     <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -769,125 +1257,386 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
                 {/* Register Form */}
                 {authTab === 'register' && (
-                  <form onSubmit={handleRegister} className="space-y-4 max-w-md mx-auto">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">{s1.fullNameLabel || 'Full Name'} *</label>
+                  <form onSubmit={handleRegister} noValidate autoComplete="off" className="space-y-4 max-w-md mx-auto">
+                    {/* Full Name Input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-gray-900">
+                        {nameConfig.label} {nameConfig.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                      </label>
                       <input
                         type="text"
-                        required
-                        placeholder={s1.fullNamePlaceholder || 'e.g. Rahul Sharma'}
+                        placeholder={nameConfig.placeholder}
                         value={authName}
-                        onChange={(e) => setAuthName(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]"
+                        onChange={(e) => {
+                          setAuthName(e.target.value);
+                          if (authFieldErrors.name) setAuthFieldErrors(prev => ({ ...prev, name: '' }));
+                        }}
+                        className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
+                          authFieldErrors.name
+                            ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                            : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                        }`}
                       />
+                      {authFieldErrors.name && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{authFieldErrors.name}</span>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">{s1.emailLabel || 'Email Address'} *</label>
+                    {/* Email ID Input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-gray-900">
+                        {emailConfig.label} {emailConfig.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                      </label>
                       <input
                         type="email"
-                        required
-                        placeholder={s1.emailPlaceholder || 'yourname@gmail.com'}
+                        placeholder={emailConfig.placeholder}
                         value={authEmail}
-                        onChange={(e) => setAuthEmail(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]"
+                        onChange={(e) => {
+                          setAuthEmail(e.target.value);
+                          if (authFieldErrors.email) setAuthFieldErrors(prev => ({ ...prev, email: '' }));
+                        }}
+                        className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
+                          authFieldErrors.email
+                            ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                            : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                        }`}
                       />
+                      {authFieldErrors.email && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{authFieldErrors.email}</span>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">{s1.mobileLabel || 'Mobile Number'} *</label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder={s1.mobilePlaceholder || 'e.g. 9876543210'}
-                        value={authMobile}
-                        onChange={(e) => setAuthMobile(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]"
-                      />
+                    {/* Mobile number Input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-gray-900">
+                        {mobileConfig.label} {mobileConfig.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                      </label>
+                      <div className={`flex items-center px-4 py-3.5 rounded-full border transition-all bg-white relative ${
+                        authFieldErrors.mobile 
+                          ? 'border-red-600 focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600 bg-red-50/30' 
+                          : 'border-gray-300 focus-within:border-green-600 focus-within:ring-1 focus-within:ring-green-600'
+                      }`}>
+                        {/* Custom Scrollable Country Code Dropdown */}
+                        <div className="relative shrink-0" ref={countryDropdownRef}>
+                          <button
+                            type="button"
+                            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                            className="flex items-center gap-1.5 text-gray-900 font-bold border-none outline-none cursor-pointer pr-2 text-sm hover:text-green-700 transition-colors"
+                          >
+                            <span className="text-xs font-bold text-gray-700">{selectedCountryObj.country}</span>
+                            <span className="text-sm font-bold">{selectedCountryObj.code}</span>
+                            <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {/* Dropdown Menu Popup */}
+                          {isCountryDropdownOpen && (
+                            <div className="absolute top-full left-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                              <div className="p-2.5 border-b border-gray-100 bg-gray-50/80">
+                                <input
+                                  type="text"
+                                  value={countrySearch}
+                                  onChange={(e) => setCountrySearch(e.target.value)}
+                                  placeholder="Search country or code..."
+                                  className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-green-600 text-gray-900"
+                                  autoFocus
+                                />
+                              </div>
+                              <div className="max-h-52 overflow-y-auto py-1">
+                                {filteredCountryCodes.length === 0 ? (
+                                  <div className="p-3 text-xs text-center text-gray-400 font-medium">No country found</div>
+                                ) : (
+                                  filteredCountryCodes.map((c, idx) => (
+                                    <button
+                                      key={`${c.country}-${c.code}-${idx}`}
+                                      type="button"
+                                      onClick={() => {
+                                        setCountryCode(c.code);
+                                        setIsCountryDropdownOpen(false);
+                                        setCountrySearch('');
+                                      }}
+                                      className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs text-left hover:bg-emerald-50 transition-colors ${c.code === countryCode ? 'bg-emerald-50/80 font-bold text-emerald-900' : 'text-gray-700 font-medium'}`}
+                                    >
+                                      <div className="flex items-center gap-2 truncate">
+                                        <span className="text-base leading-none">{c.flag}</span>
+                                        <span className="truncate">{c.name}</span>
+                                      </div>
+                                      <span className="font-semibold text-gray-400 shrink-0 ml-2">{c.code}</span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <span className="text-gray-300 mr-2.5 shrink-0">|</span>
+
+                        {/* 10-Digit Max Mobile Input */}
+                        <input
+                          type="tel"
+                          maxLength={10}
+                          value={authMobile}
+                          onChange={(e) => {
+                            setAuthMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+                            if (authFieldErrors.mobile) setAuthFieldErrors(prev => ({ ...prev, mobile: '' }));
+                          }}
+                          placeholder={mobileConfig.placeholder}
+                          className="w-full bg-transparent border-none outline-none placeholder-gray-400 text-gray-900 min-w-0 text-sm"
+                        />
+                      </div>
+                      {authFieldErrors.mobile && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{authFieldErrors.mobile}</span>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">{s1.passwordLabel || 'Create Password'} *</label>
+                    {/* Password Input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-gray-900">
+                        {passwordConfig.label} {passwordConfig.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                      </label>
                       <div className="relative">
                         <input
                           type={showPassword ? "text" : "password"}
-                          required
-                          placeholder={s1.passwordPlaceholder || 'At least 6 characters'}
                           value={authPassword}
-                          onChange={(e) => setAuthPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f] pr-10"
+                          onChange={(e) => {
+                            setAuthPassword(e.target.value);
+                            if (authFieldErrors.password) setAuthFieldErrors(prev => ({ ...prev, password: '' }));
+                          }}
+                          placeholder={passwordConfig.placeholder}
+                          className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all pr-12 placeholder-gray-400 text-sm ${
+                            authFieldErrors.password
+                              ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                              : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                          }`}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                         >
-                          {showPassword ? "Hide" : "Show"}
+                          {showPassword ? (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                          )}
                         </button>
                       </div>
+                      
+                      {/* Dynamic Password Checklist */}
+                      {authPassword.length > 0 && (
+                        <div className="mt-3 pl-3 space-y-2">
+                          <div className={`flex items-center text-xs font-semibold transition-colors duration-200 ${hasLowercase ? 'text-green-500' : 'text-gray-400'}`}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              {hasLowercase ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />}
+                            </svg>
+                            <span className="ml-2.5">At least one lowercase letter</span>
+                          </div>
+                          <div className={`flex items-center text-xs font-semibold transition-colors duration-200 ${hasMinLength ? 'text-green-500' : 'text-gray-400'}`}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              {hasMinLength ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />}
+                            </svg>
+                            <span className="ml-2.5">Minimum 8 characters</span>
+                          </div>
+                          <div className={`flex items-center text-xs font-semibold transition-colors duration-200 ${hasUppercase ? 'text-green-500' : 'text-gray-400'}`}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              {hasUppercase ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />}
+                            </svg>
+                            <span className="ml-2.5">At least one uppercase letter</span>
+                          </div>
+                          <div className={`flex items-center text-xs font-semibold transition-colors duration-200 ${hasNumber ? 'text-green-500' : 'text-gray-400'}`}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              {hasNumber ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />}
+                            </svg>
+                            <span className="ml-2.5">At least one number</span>
+                          </div>
+                          <div className={`flex items-center text-xs font-semibold transition-colors duration-200 ${hasSpecialChar ? 'text-green-500' : 'text-gray-400'}`}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              {hasSpecialChar ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />}
+                            </svg>
+                            <span className="ml-2.5">At least one special character</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {authFieldErrors.password && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{authFieldErrors.password}</span>
+                        </div>
+                      )}
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={authLoading}
-                      className="w-full py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
-                    >
-                      {authLoading ? (
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        s1.registerSubmitBtnText || "Create Account & Continue →"
-                      )}
-                    </button>
+                    {/* Re-enter password Input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-gray-900">
+                        {confirmPasswordConfig.label} {confirmPasswordConfig.isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={authConfirmPassword}
+                          onChange={(e) => {
+                            setAuthConfirmPassword(e.target.value);
+                            if (authFieldErrors.confirmPassword) setAuthFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+                          }}
+                          placeholder={confirmPasswordConfig.placeholder}
+                          className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all pr-12 text-sm ${
+                            authConfirmPassword.length > 0
+                              ? authPassword === authConfirmPassword
+                                ? 'border-green-500 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                                : 'border-red-500 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/20'
+                              : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600 placeholder-gray-400'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                        >
+                          {showConfirmPassword ? (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                          )}
+                        </button>
+                      </div>
+                      {authConfirmPassword.length > 0 && authPassword !== authConfirmPassword ? (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>Passwords do not match</span>
+                        </div>
+                      ) : authFieldErrors.confirmPassword ? (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{authFieldErrors.confirmPassword}</span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        disabled={authLoading}
+                        className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {authLoading ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          s1.registerSubmitBtnText || "Register & Proceed to Questions →"
+                        )}
+                      </button>
+                    </div>
                   </form>
                 )}
 
                 {/* Login Form */}
                 {authTab === 'login' && (
-                  <form onSubmit={handleLogin} className="space-y-4 max-w-md mx-auto">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">{s1.emailLabel || 'Email Address'} *</label>
+                  <form onSubmit={handleLogin} noValidate className="space-y-4 max-w-md mx-auto">
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-gray-900">
+                        {loginEmailConfig.label} <span className="text-red-500 font-bold ml-0.5">*</span>
+                      </label>
                       <input
                         type="email"
-                        required
-                        placeholder={s1.emailPlaceholder || 'yourname@gmail.com'}
+                        placeholder={loginEmailConfig.placeholder}
                         value={authEmail}
-                        onChange={(e) => setAuthEmail(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]"
+                        onChange={(e) => {
+                          setAuthEmail(e.target.value);
+                          if (authFieldErrors.email) setAuthFieldErrors(prev => ({ ...prev, email: '' }));
+                        }}
+                        className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
+                          authFieldErrors.email
+                            ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                            : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                        }`}
                       />
+                      {authFieldErrors.email && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{authFieldErrors.email}</span>
+                        </div>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1.5">{s1.passwordLabel || 'Password'} *</label>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-bold text-gray-900">
+                        {loginPasswordConfig.label} <span className="text-red-500 font-bold ml-0.5">*</span>
+                      </label>
                       <div className="relative">
                         <input
                           type={showPassword ? "text" : "password"}
-                          required
-                          placeholder={s1.passwordPlaceholder || 'Your password'}
+                          placeholder={loginPasswordConfig.placeholder}
                           value={authPassword}
-                          onChange={(e) => setAuthPassword(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f] pr-10"
+                          onChange={(e) => {
+                            setAuthPassword(e.target.value);
+                            if (authFieldErrors.password) setAuthFieldErrors(prev => ({ ...prev, password: '' }));
+                          }}
+                          className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all pr-12 placeholder-gray-400 text-sm ${
+                            authFieldErrors.password
+                              ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                              : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                          }`}
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                         >
-                          {showPassword ? "Hide" : "Show"}
+                          {showPassword ? (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                          )}
                         </button>
                       </div>
+                      {authFieldErrors.password && (
+                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{authFieldErrors.password}</span>
+                        </div>
+                      )}
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={authLoading}
-                      className="w-full py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
-                    >
-                      {authLoading ? (
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        s1.loginSubmitBtnText || "Login & Continue →"
-                      )}
-                    </button>
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        disabled={authLoading}
+                        className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {authLoading ? (
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          s1.loginSubmitBtnText || "Login & Proceed →"
+                        )}
+                      </button>
+                    </div>
                   </form>
                 )}
 
@@ -1023,7 +1772,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             <div>
               <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 3 of 4</span>
               <h2 className="text-xl font-bold text-gray-900 mt-1">
-                {s3.heading || 'Upload Your CV / Resume *'}
+                {s3.heading ? s3.heading.replace(/\s*\*/, '') : 'Upload Your CV / Resume'} <span className="text-red-500 font-extrabold">*</span>
               </h2>
               <p className="text-xs sm:text-sm text-gray-500">
                 {s3.subtitle || `Please attach your latest resume in PDF, DOC, or DOCX format (Max ${maxLimitKb}KB).`}
