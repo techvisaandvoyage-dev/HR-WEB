@@ -456,8 +456,8 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
     // 3. Show notification
     setExportNotice({
-      title: 'Google Sheet Opened & Data Copied!',
-      message: `Google Sheets (sheets.new) has been opened in a new tab. All ${dataToExport.length} candidates' data is copied to your clipboard. Simply press Ctrl + V in the Google Sheet to paste!`
+      title: 'Google Sheets Viewer Ready',
+      message: `All ${dataToExport.length} candidate application records are formatted with 16 columns (A to P).`
     });
   };
 
@@ -1387,19 +1387,19 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
               {/* Action Buttons in Google Sheets Header */}
               <div className="flex items-center gap-2 flex-wrap">
-                {/* 1-Click Open in Official sheets.new */}
+                {/* 1-Click Open in Official Google Sheets */}
                 <button
                   onClick={() => {
                     handleCopyClipboard();
                     window.open('https://sheets.new', '_blank');
                   }}
                   className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
-                  title="Open brand new Google Sheet in new tab"
+                  title="Open in Google Sheets"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
                   </svg>
-                  <span>Open in sheets.new</span>
+                  <span>Open in Google Sheets</span>
                 </button>
 
                 {/* Copy All Data */}
@@ -1445,7 +1445,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   </svg>
                   Pre-filled Data Ready:
                 </span>
-                <span>All <b>{getExportData().length} candidate records</b> are loaded with Columns A to P. Click <b>"Open in sheets.new"</b> and press <b>Ctrl + V</b> to paste anytime.</span>
+                <span>All <b>{getExportData().length} candidate records</b> are pre-loaded with full candidate details across 16 columns (A to P).</span>
               </div>
               <span className="text-[11px] text-emerald-700 font-bold shrink-0">16 Columns (A - P)</span>
             </div>
