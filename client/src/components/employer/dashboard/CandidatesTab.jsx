@@ -360,19 +360,19 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return filteredApplications.length > 0 ? filteredApplications : flattenedApplications;
   };
 
-  // Exact Google Sheet Headers (Column A to P)
+  // Exact Google Sheet Headers (Column A to P) - Full Form & Title/Camel Case
   const exportHeaders = [
-    'Name',
-    'Email ID',
-    'Mobile No.',
+    'Candidate Name',
+    'Email Address',
+    'Mobile Number',
     'Work Experience',
-    'Function',
-    'Current designation',
-    'Current company',
-    'Highest/primary Qualification',
-    'Institute',
-    'current salary',
-    'expected salary',
+    'Functional Area',
+    'Current Designation',
+    'Current Company',
+    'Primary Qualification',
+    'Institute Name',
+    'Current Salary',
+    'Expected Salary',
     'Question 1',
     'Question 2',
     'Question 3',
@@ -694,10 +694,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             <thead>
               {/* Row 1: Main Column Headers */}
               <tr className="bg-gray-100/90 border-b border-gray-200 text-gray-800 font-black uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-3 min-w-[200px] whitespace-nowrap">Candidate</th>
+                <th className="py-3 px-3 min-w-[200px] whitespace-nowrap">Candidate Name</th>
                 <th className="py-3 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
-                <th className="py-3 px-3 min-w-[110px] whitespace-nowrap">Work Exp</th>
-                <th className="py-3 px-3 min-w-[130px] whitespace-nowrap">Function</th>
+                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
+                <th className="py-3 px-3 min-w-[130px] whitespace-nowrap">Functional Area</th>
                 <th className="py-3 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
                 <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
                 <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
