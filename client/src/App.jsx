@@ -269,6 +269,9 @@ function App() {
                       coverLetter: emp.coverLetter || '',
                       introVideo: emp.introVideo || '',
                     },
+                    qualifications: emp.qualifications || [],
+                    isFresher: emp.isFresher ?? (emp.totalExperience === '0' || emp.totalExperience === 'Fresher'),
+                    professionalDetails: emp.professionalDetails || {},
                   };
                 }
                 
