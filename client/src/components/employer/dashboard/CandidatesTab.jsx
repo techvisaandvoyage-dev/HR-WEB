@@ -320,9 +320,211 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return { total, newCount, shortlistedCount, viewedCount, rejectedCount };
   }, [flattenedApplications]);
 
+  // Export State & Notification
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportNotice, setExportNotice] = useState(null);
+
+  // Helper to get raw application data array
+  const getExportData = () => {
+    return filteredApplications.length > 0 ? filteredApplications : flattenedApplications;
+  };
+
+  // 1. Export & Open in Google Sheets
+  const handleExportGoogleSheets = async () => {
+    const dataToExport = getExportData();
+    if (dataToExport.length === 0) {
+      alert('No application data to export.');
+      return;
+    }
+
+    const headers = [
+      'Candidate Name',
+      'Candidate Email',
+      'Mobile Number',
+      'Job Applied',
+      'Work Experience',
+      'Function / Industry',
+      'Current Designation',
+      'Current Company',
+      'Primary Qualification',
+      'Applied Date',
+      'Status',
+      'Location',
+      'Current CTC',
+      'Expected CTC',
+      'Resume Link',
+      'Screening Answers'
+    ];
+
+    // Tab-separated values for instant Google Sheets pasting
+    const rows = dataToExport.map(item => {
+      const cand = item.candidate || {};
+      const workExp = getWorkExp(cand);
+      const func = getFunction(cand);
+      const desig = getCurrentDesignation(cand);
+      const comp = getCurrentCompany(cand);
+      const qual = getHighestQualification(cand);
+      const resumeUrl = item.resume || cand.resume || cand.documents?.resume || '';
+      
+      const screeningQA = (item.screeningAnswers || [])
+        .map((qa, i) => `Q${i + 1}: ${qa.question} -> Ans: ${qa.answer}`)
+        .join(' | ');
+
+      return [
+        cand.name || '',
+        cand.email || '',
+        cand.phone || '',
+        item.jobTitle || '',
+        workExp,
+        func,
+        desig,
+        comp,
+        qual,
+        item.appliedDate || '',
+        item.status || 'New',
+        cand.location || '',
+        cand.currentCTC || '',
+        cand.expectedCTC || '',
+        resumeUrl,
+        screeningQA
+      ].join('\t');
+    });
+
+    const tsvContent = [headers.join('\t'), ...rows].join('\n');
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(tsvContent);
+      }
+    } catch (_) {}
+
+    // Also download CSV backup automatically
+    handleExportCSV(false);
+
+    // Open a brand new Google Spreadsheet
+    window.open('https://sheets.new', '_blank');
+
+    setExportNotice({
+      title: 'Opened in Google Sheets!',
+      message: `${dataToExport.length} candidate applications copied to clipboard. Press Ctrl + V in the opened Google Sheet to paste all data instantly!`
+    });
+    setShowExportMenu(false);
+  };
+
+  // 2. Export to CSV / Excel File
+  const handleExportCSV = (showNotification = true) => {
+    const dataToExport = getExportData();
+    if (dataToExport.length === 0) {
+      if (showNotification) alert('No application data to export.');
+      return;
+    }
+
+    const headers = [
+      'Candidate Name',
+      'Candidate Email',
+      'Mobile Number',
+      'Job Applied',
+      'Work Experience',
+      'Function / Industry',
+      'Current Designation',
+      'Current Company',
+      'Primary Qualification',
+      'Applied Date',
+      'Status',
+      'Location',
+      'Current CTC',
+      'Expected CTC',
+      'Resume Link',
+      'Screening Answers'
+    ];
+
+    const escapeCsv = (str) => {
+      if (str === null || str === undefined) return '""';
+      const s = String(str).replace(/"/g, '""');
+      return `"${s}"`;
+    };
+
+    const rows = dataToExport.map(item => {
+      const cand = item.candidate || {};
+      const workExp = getWorkExp(cand);
+      const func = getFunction(cand);
+      const desig = getCurrentDesignation(cand);
+      const comp = getCurrentCompany(cand);
+      const qual = getHighestQualification(cand);
+      const resumeUrl = item.resume || cand.resume || cand.documents?.resume || '';
+      
+      const screeningQA = (item.screeningAnswers || [])
+        .map((qa, i) => `Q${i + 1}: ${qa.question} -> Ans: ${qa.answer}`)
+        .join(' | ');
+
+      return [
+        escapeCsv(cand.name || ''),
+        escapeCsv(cand.email || ''),
+        escapeCsv(cand.phone || ''),
+        escapeCsv(item.jobTitle || ''),
+        escapeCsv(workExp),
+        escapeCsv(func),
+        escapeCsv(desig),
+        escapeCsv(comp),
+        escapeCsv(qual),
+        escapeCsv(item.appliedDate || ''),
+        escapeCsv(item.status || 'New'),
+        escapeCsv(cand.location || ''),
+        escapeCsv(cand.currentCTC || ''),
+        escapeCsv(cand.expectedCTC || ''),
+        escapeCsv(resumeUrl),
+        escapeCsv(screeningQA)
+      ].join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeJobName = colFilters.job !== 'All' ? colFilters.job.replace(/[^a-zA-Z0-9]/g, '_') : 'All_Jobs';
+    const filename = `Applications_${safeJobName}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    if (showNotification) {
+      setExportNotice({
+        title: 'CSV Downloaded!',
+        message: `Saved ${filename} with ${dataToExport.length} records. You can open or import it into Google Sheets (File > Import).`
+      });
+      setShowExportMenu(false);
+    }
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in duration-300 pb-12 font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
       
+      {/* Toast Notification Banner */}
+      {exportNotice && (
+        <div className="bg-emerald-600 text-white px-5 py-3.5 rounded-2xl shadow-lg flex items-center justify-between gap-4 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-extrabold text-sm">{exportNotice.title}</p>
+              <p className="text-xs text-emerald-100 mt-0.5">{exportNotice.message}</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setExportNotice(null)}
+            className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 text-xs font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Top Header & Quick Status Filters */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
         <div>
@@ -339,7 +541,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           </p>
         </div>
 
-        {/* Quick Status Buttons */}
+        {/* Quick Status Buttons & Export Action */}
         <div className="flex items-center gap-2 flex-wrap">
           <button 
             onClick={() => handleFilterChange('status', 'All')} 
@@ -372,16 +574,80 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             Rejected: {stats.rejectedCount}
           </button>
 
+          {/* Export to Google Sheets / CSV Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-700/20 cursor-pointer ml-1"
+              title="Export applications to Google Sheets or CSV"
+            >
+              <svg className="w-4 h-4 text-emerald-200" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
+              </svg>
+              <span>Export</span>
+              <svg className="w-3 h-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showExportMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-30" 
+                  onClick={() => setShowExportMenu(false)}
+                ></div>
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-200/80 p-2 z-40 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-2 border-b border-gray-100">
+                    <p className="text-[11px] font-black text-gray-800 uppercase tracking-wider">Export Applications</p>
+                    <p className="text-[10px] text-gray-500">Export {filteredApplications.length} application records</p>
+                  </div>
+
+                  {/* 1. Google Sheets Option */}
+                  <button
+                    onClick={handleExportGoogleSheets}
+                    className="w-full mt-1.5 flex items-center gap-2.5 px-3 py-2.5 hover:bg-emerald-50 text-gray-800 hover:text-emerald-800 rounded-xl transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-900">Open in Google Sheets</p>
+                      <p className="text-[10px] text-gray-500">Copies data & opens sheets.new</p>
+                    </div>
+                  </button>
+
+                  {/* 2. Download CSV Option */}
+                  <button
+                    onClick={() => handleExportCSV(true)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-blue-50 text-gray-800 hover:text-blue-800 rounded-xl transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-900">Download CSV / Excel</p>
+                      <p className="text-[10px] text-gray-500">Spreadsheet file format</p>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           {hasActiveFilters && (
             <button 
               onClick={resetAllFilters} 
-              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ml-2"
+              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ml-1"
               title="Reset all applied filters"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              <span>Reset Filters</span>
+              <span>Reset</span>
             </button>
           )}
         </div>
