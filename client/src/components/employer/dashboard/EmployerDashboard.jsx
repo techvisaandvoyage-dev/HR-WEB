@@ -172,8 +172,8 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-10 relative">
-          <div className="max-w-[1200px] mx-auto w-full">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 relative">
+          <div className="max-w-[1600px] mx-auto w-full space-y-6">
             <Routes>
               <Route index element={<DashboardOverview portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
               <Route path="/post-job" element={<PostJob addJob={addJob} updateJob={updateJob} />} />

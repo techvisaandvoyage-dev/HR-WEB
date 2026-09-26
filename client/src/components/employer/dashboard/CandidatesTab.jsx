@@ -379,17 +379,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-gray-50/90 border-b border-gray-200 text-gray-700 font-black uppercase tracking-wider text-[10px]">
-                  <th className="py-3.5 px-4 min-w-[200px]">Candidate (Name & Email)</th>
-                  <th className="py-3.5 px-4 min-w-[150px]">Job Applied</th>
-                  <th className="py-3.5 px-4 min-w-[90px]">Work Exp</th>
-                  <th className="py-3.5 px-4 min-w-[110px]">Function</th>
-                  <th className="py-3.5 px-4 min-w-[130px]">Current Designation</th>
-                  <th className="py-3.5 px-4 min-w-[120px]">Current Company</th>
-                  <th className="py-3.5 px-4 min-w-[150px]">Highest / Primary Qualification</th>
-                  <th className="py-3.5 px-4 min-w-[100px]">Applied Date</th>
-                  <th className="py-3.5 px-4 min-w-[110px]">Status</th>
-                  <th className="py-3.5 px-4 text-right min-w-[120px]">Actions</th>
+                <tr className="bg-gray-50/90 border-b border-gray-200 text-gray-700 font-black uppercase tracking-wider text-[11px]">
+                  <th className="py-4 px-4 whitespace-nowrap">Candidate</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Job Applied</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Work Exp</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Function</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Current Designation</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Current Company</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Primary Qualification</th>
+                  <th className="py-4 px-4 whitespace-nowrap">Applied Date</th>
+                  <th className="py-4 px-4 whitespace-nowrap text-center">Status</th>
+                  <th className="py-4 px-4 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -404,7 +404,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   return (
                     <tr 
                       key={item.appId || idx} 
-                      className="hover:bg-emerald-50/20 transition-colors group cursor-pointer"
+                      className="hover:bg-emerald-50/30 transition-colors group cursor-pointer"
                       onClick={() => {
                         setSelectedCandidate(cand);
                         setSelectedApplication(item);
@@ -413,69 +413,69 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       {/* 1. Candidate Name, Email & Avatar */}
                       <td className="py-3.5 px-4 font-medium text-gray-900">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-2xs ${cand.bg || 'bg-emerald-600'}`}>
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-2xs ${cand.bg || 'bg-emerald-600'}`}>
                             {cand.initials || (cand.name ? cand.name.charAt(0).toUpperCase() : 'C')}
                           </div>
-                          <div className="truncate max-w-[170px]">
-                            <p className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors truncate text-[13px]">
+                          <div className="min-w-[140px]">
+                            <p className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors text-[13px] leading-tight">
                               {cand.name}
                             </p>
-                            <p className="text-[11px] text-gray-500 truncate">{cand.email}</p>
+                            <p className="text-[11px] text-gray-500 mt-0.5">{cand.email}</p>
                             {cand.phone && (
-                              <p className="text-[10px] text-gray-400 font-mono">{cand.phone}</p>
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{cand.phone}</p>
                             )}
                           </div>
                         </div>
                       </td>
 
                       {/* 2. Job Applied */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div>
-                          <span className="font-bold text-gray-800 truncate max-w-[140px]" title={item.jobTitle}>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
+                          <span className="font-bold text-gray-900 text-xs">
                             {item.jobTitle}
                           </span>
                         </div>
                       </td>
 
                       {/* 3. Work Exp */}
-                      <td className="py-3.5 px-4 font-semibold text-gray-700">
-                        <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${workExp === 'Fresher' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-gray-100 text-gray-800'}`}>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block whitespace-nowrap ${workExp === 'Fresher' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-gray-100 text-gray-800 border border-gray-200/60'}`}>
                           {workExp}
                         </span>
                       </td>
 
                       {/* 4. Function */}
-                      <td className="py-3.5 px-4 text-gray-600 font-medium truncate max-w-[120px]" title={func}>
+                      <td className="py-3.5 px-4 text-gray-700 font-medium whitespace-nowrap">
                         {func}
                       </td>
 
                       {/* 5. Current Designation */}
-                      <td className="py-3.5 px-4 text-gray-700 font-semibold truncate max-w-[130px]" title={desig}>
+                      <td className="py-3.5 px-4 font-semibold text-gray-900 whitespace-nowrap">
                         {desig}
                       </td>
 
                       {/* 6. Current Company */}
-                      <td className="py-3.5 px-4 text-gray-600 truncate max-w-[120px]" title={comp}>
+                      <td className="py-3.5 px-4 text-gray-700 font-medium whitespace-nowrap">
                         {comp}
                       </td>
 
-                      {/* 7. Highest / Primary Qualification */}
-                      <td className="py-3.5 px-4 text-gray-700 font-medium truncate max-w-[150px]" title={qual}>
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded-md text-[11px] font-semibold border border-emerald-100/60">
+                      {/* 7. Primary Qualification */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200/60 inline-block">
                           {qual}
                         </span>
                       </td>
 
                       {/* 8. Applied Date */}
-                      <td className="py-3.5 px-4 text-gray-500 text-[11px] font-medium">
+                      <td className="py-3.5 px-4 text-gray-500 text-xs font-medium whitespace-nowrap">
                         {item.appliedDate}
                       </td>
 
                       {/* 9. Status (Dropdown) */}
-                      <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <select 
-                          className={`appearance-none cursor-pointer outline-none transition-all px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(item.status)}`}
+                          className={`appearance-none cursor-pointer outline-none transition-all px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(item.status)}`}
                           value={item.status || 'New'}
                           onChange={(e) => {
                             const newStatus = e.target.value;
@@ -483,7 +483,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                               updateCandidateStatus(item.appId, newStatus);
                             }
                             item.status = newStatus;
-                            // Optimistically update
                             if (cand.history) {
                               cand.history = cand.history.map(h => h.appId === item.appId ? { ...h, status: newStatus } : h);
                             }
@@ -494,17 +493,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </td>
 
                       {/* 10. Actions */}
-                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
                           
-                          {/* Screening Q&A icon (if questions answered) */}
+                          {/* Screening Q&A icon */}
                           {item.screeningAnswers && item.screeningAnswers.length > 0 && (
                             <button 
                               onClick={() => setPreviewScreeningQA({ candidateName: cand.name, jobTitle: item.jobTitle, answers: item.screeningAnswers })}
-                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer border border-emerald-100"
+                              className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer border border-emerald-200"
                               title={`View ${item.screeningAnswers.length} Screening Answers`}
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             </button>
@@ -558,7 +557,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
                         </div>
                       </td>
-
                     </tr>
                   );
                 })}
