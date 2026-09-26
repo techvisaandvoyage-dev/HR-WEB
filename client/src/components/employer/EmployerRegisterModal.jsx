@@ -283,8 +283,8 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     
     if (emailCfg.isRequired && !email.trim()) {
       newErrors.email = `${emailCfg.label} is required`;
-    } else if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
+    } else if (email.trim() && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com)';
     }
 
     if (mobileCfg.isRequired && !mobile.trim()) {
