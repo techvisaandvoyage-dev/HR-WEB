@@ -108,7 +108,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const [token, setToken] = useState('');
 
   // Auth form state (Step 1)
-  const [authTab, setAuthTab] = useState('register'); // 'register' | 'login'
+  const [authTab, setAuthTab] = useState('login'); // 'login' | 'register'
   const [authName, setAuthName] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authMobile, setAuthMobile] = useState('');
@@ -1207,21 +1207,21 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 <div className="flex bg-gray-100 p-1 rounded-full mb-6 max-w-sm mx-auto">
                   <button
                     type="button"
-                    onClick={() => { setAuthTab('register'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
-                      authTab === 'register' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
-                    }`}
-                  >
-                    {s1.tabRegisterText || 'New Candidate? Register'}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => { setAuthTab('login'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); }}
                     className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                       authTab === 'login' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
                     }`}
                   >
                     {s1.tabLoginText || 'Already Registered? Login'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAuthTab('register'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
+                      authTab === 'register' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    {s1.tabRegisterText || 'New Candidate? Register'}
                   </button>
                 </div>
 
