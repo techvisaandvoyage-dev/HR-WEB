@@ -1022,7 +1022,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   {step > 2 ? '✓' : '2'}
                 </div>
                 <span className={`text-[11px] font-bold ${step === 2 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {job?.screeningQuestions?.length > 0 ? (stepper.step2Title || 'Questions & CV') : (stepper.step3Title ? stepper.step3Title.replace(/\s*\*/, '') : 'Upload CV')} <span className="text-red-500 font-extrabold">*</span>
+                  {stepper.step2Title ? stepper.step2Title.replace(/\s*\*/g, '') : 'Details'}
                 </span>
               </div>
 
@@ -1642,9 +1642,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 2 of 3</span>
               <h2 className="text-xl font-bold text-gray-900 mt-1">
                 {job.screeningQuestions && job.screeningQuestions.length > 0
-                  ? (s2.heading || 'Screening Questions & CV Upload')
-                  : (s3.heading ? s3.heading.replace(/\s*\*/, '') : 'Upload Your CV / Resume')}
-                <span className="text-red-500 font-extrabold ml-1">*</span>
+                  ? (s2.heading ? s2.heading.replace(/\s*\*/g, '') : 'Screening Questions & CV Upload')
+                  : (s3.heading ? s3.heading.replace(/\s*\*/g, '') : 'Upload Your CV / Resume')}
               </h2>
               <p className="text-xs sm:text-sm text-gray-500">
                 {job.screeningQuestions && job.screeningQuestions.length > 0
@@ -1652,13 +1651,6 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   : (s3.subtitle || `Please attach your latest resume in PDF, DOC, or DOCX format (Max ${maxLimitKb}KB).`)}
               </p>
             </div>
-
-            {/* Questions Error Alert if any */}
-            {questionsError && (
-              <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-2xl flex items-center gap-2 animate-in fade-in duration-200">
-                <span className="font-bold text-red-500">⚠️</span> {questionsError}
-              </div>
-            )}
 
             {/* SECTION 1: Screening Questions (if present) */}
             {job.screeningQuestions && job.screeningQuestions.length > 0 && (
