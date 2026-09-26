@@ -1,7 +1,26 @@
 const jwt = require('jsonwebtoken');
+const dns = require('dns').promises;
 const Employer = require('../models/Employer');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
 const { sendOtp, resendOtp, verifyOtp } = require('../../utils/email');
+
+// Helper: validate email format + DNS MX lookup to confirm domain is real
+const validateEmailDomain = async (email) => {
+  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/;
+  if (!emailRegex.test(email)) {
+    return { valid: false, message: 'Please enter a valid email address (e.g. name@gmail.com)' };
+  }
+  const domain = email.split('@')[1];
+  try {
+    const mxRecords = await dns.resolveMx(domain);
+    if (!mxRecords || mxRecords.length === 0) {
+      return { valid: false, message: 'Email domain does not exist. Please use a real email address.' };
+    }
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, message: 'Email domain does not exist. Please use a real email address (e.g. name@gmail.com).' };
+  }
+};
 
 // Generate JWT
 const generateToken = (id) => {
@@ -59,6 +78,12 @@ exports.sendRegistrationOtp = async (req, res) => {
       if (mobileExists) {
         return res.status(400).json({ message: 'Mobile number already registered', field: 'mobile' });
       }
+    }
+
+    // Validate email format and domain via DNS MX lookup
+    const domainCheck = await validateEmailDomain(cleanEmail);
+    if (!domainCheck.valid) {
+      return res.status(400).json({ message: domainCheck.message, field: 'email' });
     }
 
     const result = await sendOtp({

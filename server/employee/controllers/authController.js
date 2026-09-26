@@ -1,5 +1,6 @@
 const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
+const dns = require('dns').promises;
 const { verifyIdToken } = require('../../config/firebaseAdmin');
 const { sendOtp, verifyOtp, resendOtp } = require('../../utils/email');
 
@@ -8,6 +9,24 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '30d'
   });
+};
+
+// Helper: validate email format + DNS MX lookup to confirm domain is real
+const validateEmailDomain = async (email) => {
+  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/;
+  if (!emailRegex.test(email)) {
+    return { valid: false, message: 'Please enter a valid email address (e.g. name@gmail.com)' };
+  }
+  const domain = email.split('@')[1];
+  try {
+    const mxRecords = await dns.resolveMx(domain);
+    if (!mxRecords || mxRecords.length === 0) {
+      return { valid: false, message: 'Email domain does not exist. Please use a real email address.' };
+    }
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, message: 'Email domain does not exist. Please use a real email address (e.g. name@gmail.com).' };
+  }
 };
 
 // @desc    Send registration OTP to email
@@ -19,6 +38,12 @@ const sendRegistrationOtp = async (req, res) => {
 
     if (!email) {
       return res.status(400).json({ message: 'Email is required', field: 'email' });
+    }
+
+    // Validate email format and domain
+    const domainCheck = await validateEmailDomain(email.trim().toLowerCase());
+    if (!domainCheck.valid) {
+      return res.status(400).json({ message: domainCheck.message, field: 'email' });
     }
 
     const emailExists = await Employee.findOne({ email });
