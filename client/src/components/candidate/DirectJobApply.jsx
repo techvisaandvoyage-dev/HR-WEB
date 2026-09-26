@@ -420,8 +420,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
     if (emailConfig.isRequired && !authEmail.trim()) {
       errors.email = `Please enter your ${emailConfig.label.toLowerCase() || 'email address'}.`;
-    } else if (authEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail.trim())) {
-      errors.email = 'Please enter a valid email address.';
+    } else if (authEmail.trim() && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(authEmail.trim())) {
+      errors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
     }
 
     const cleanMobile = authMobile.replace(/\D/g, '');

@@ -256,8 +256,10 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
 
     if (emailConfig.isRequired && !email.trim()) {
       newErrors.email = 'Please enter your email address.';
-    } else if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Please enter a valid email address.';
+    } else if (email.trim() && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
+    } else if (email.trim() && /^[^@]+@[^.]+$/.test(email.trim())) {
+      newErrors.email = 'Email domain must include a valid extension like .com or .in.';
     }
     
     if (mobileConfig.isRequired && !mobile.trim()) {
