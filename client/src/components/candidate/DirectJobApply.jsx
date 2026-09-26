@@ -244,10 +244,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const stepper = cmsConfig?.stepper || {};
   const s1 = cmsConfig?.step1 || {};
   const s2 = cmsConfig?.step2 || {};
-  const s3 = cmsConfig?.step3 || {};
-  const s4 = cmsConfig?.step4 || {};
-  const s5 = cmsConfig?.step5 || {};
-  const maxLimitKb = s3.maxFileSizeKb || 300;
+  const s3 = cmsConfig?.step3?.candidateInfoHeading ? cmsConfig.step3 : (cmsConfig?.step4 || cmsConfig?.step3 || {});
+  const s4 = cmsConfig?.step4?.successHeading ? cmsConfig.step4 : (cmsConfig?.step5 || cmsConfig?.step4 || {});
+  const maxLimitKb = s2.maxFileSizeKb || cmsConfig?.step3?.maxFileSizeKb || 300;
 
   // Dynamic field configuration helper
   const getFieldConfig = (key, defaultLabel, defaultPlaceholder, defaultRequired = true) => {
@@ -1775,7 +1774,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                       <p className="text-xs font-bold text-gray-900 truncate">
                         {resumeName || 'My_Resume.pdf'}
                       </p>
-                      <span className="text-[11px] text-emerald-700 font-semibold">{s3.attachedBadgeText || '✓ Attached & Ready'}</span>
+                      <span className="text-[11px] text-emerald-700 font-semibold">{s2.attachedBadgeText || s3.attachedBadgeText || '✓ Attached & Ready'}</span>
                     </div>
                   </div>
 
@@ -1789,7 +1788,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      <span>{s3.viewFileBtnText || 'View File'}</span>
+                      <span>{s2.viewFileBtnText || s3.viewFileBtnText || 'View File'}</span>
                     </button>
                     <button
                       type="button"
@@ -1799,7 +1798,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
-                      <span>{s3.replaceBtnText || 'Replace'}</span>
+                      <span>{s2.replaceBtnText || s3.replaceBtnText || 'Replace'}</span>
                     </button>
                   </div>
                 </div>
@@ -1832,10 +1831,10 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </div>
 
                   <h4 className={`text-sm font-bold ${cvError ? 'text-red-900' : 'text-gray-800'}`}>
-                    {uploadingResume ? "Uploading Resume..." : (resumeUrl ? "Click or Drag to Upload Different Resume" : (s3.uploadBoxTitle || "Click or Drag to Upload Resume"))}
+                    {uploadingResume ? "Uploading Resume..." : (resumeUrl ? "Click or Drag to Upload Different Resume" : (s2.uploadBoxTitle || s3.uploadBoxTitle || "Click or Drag to Upload Resume"))}
                   </h4>
                   <p className="text-xs text-gray-500 mt-1">
-                    {s3.uploadBoxSubtitle || `Supports PDF, DOC, DOCX up to ${maxLimitKb}KB`}
+                    {s2.uploadBoxSubtitle || s3.uploadBoxSubtitle || `Supports PDF, DOC, DOCX up to ${maxLimitKb}KB`}
                   </p>
 
                   {uploadingResume && (
@@ -1876,7 +1875,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 disabled={uploadingResume}
                 className="px-7 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
               >
-                {s3.continueBtnText || 'Continue to Review →'}
+                {s2.continueBtnText || s3.continueBtnText || 'Continue to Review →'}
               </button>
             </div>
           </div>
