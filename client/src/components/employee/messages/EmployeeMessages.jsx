@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
+import { socket } from '../../../utils/socket';
 
 const EmployeeMessages = () => {
   const navigate = useNavigate();
@@ -11,16 +12,59 @@ const EmployeeMessages = () => {
   const [isJobDetailsOpen, setIsJobDetailsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshNav, setRefreshNav] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   // Auto-scroll to top on load
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Auto-scroll messages list
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
   // Fetch conversations
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  // Global socket listener for conversation updates
+  useEffect(() => {
+    const handleConversationUpdated = (data) => {
+      setConversations(prev => {
+        const exists = prev.find(c => c.applicationId === data.applicationId);
+        const isCurrentChat = selectedChat?.applicationId === data.applicationId;
+
+        if (exists) {
+          return prev.map(c => 
+            c.applicationId === data.applicationId 
+              ? { 
+                  ...c, 
+                  lastMessage: data.lastMessage, 
+                  lastMessageTime: data.lastMessageTime,
+                  unreadCount: (data.senderModel === 'Employer' && !isCurrentChat) ? (c.unreadCount || 0) + 1 : (isCurrentChat ? 0 : c.unreadCount)
+                } 
+              : c
+          ).sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+        } else {
+          // New conversation initiated by employer
+          fetchConversations();
+          return prev;
+        }
+      });
+      setRefreshNav(prev => !prev);
+    };
+
+    socket.on('conversation_updated', handleConversationUpdated);
+
+    return () => {
+      socket.off('conversation_updated', handleConversationUpdated);
+    };
+  }, [selectedChat]);
 
   const fetchConversations = async () => {
     try {
@@ -38,12 +82,61 @@ const EmployeeMessages = () => {
     }
   };
 
-  // Fetch messages when a chat is selected
+  // Fetch messages and join socket room when a chat is selected
   useEffect(() => {
     if (selectedChat) {
-      fetchMessages(selectedChat.applicationId);
+      const appId = selectedChat.applicationId;
+      fetchMessages(appId);
+
+      // Join socket room
+      socket.emit('join_chat', appId);
+
+      const handleReceiveMessage = (msg) => {
+        if (msg.applicationId === appId) {
+          setMessages(prev => {
+            if (prev.some(m => m._id === msg._id)) return prev;
+            return [...prev, msg];
+          });
+          if (msg.senderModel === 'Employer') {
+            setRefreshNav(prev => !prev);
+          }
+        }
+      };
+
+      const handleMessagesMarkedRead = (data) => {
+        if (data.applicationId === appId && data.readBy === 'Employer') {
+          setMessages(prev => prev.map(m => m.senderModel === 'Employee' ? { ...m, isRead: true } : m));
+        }
+      };
+
+      const handleUserTyping = (data) => {
+        if (data.applicationId === appId && data.senderModel === 'Employer') {
+          setIsTyping(true);
+        }
+      };
+
+      const handleUserStopTyping = (data) => {
+        if (data.applicationId === appId && data.senderModel === 'Employer') {
+          setIsTyping(false);
+        }
+      };
+
+      socket.on('receive_message', handleReceiveMessage);
+      socket.on('messages_marked_read', handleMessagesMarkedRead);
+      socket.on('user_typing', handleUserTyping);
+      socket.on('user_stop_typing', handleUserStopTyping);
+
+      return () => {
+        socket.emit('leave_chat', appId);
+        socket.off('receive_message', handleReceiveMessage);
+        socket.off('messages_marked_read', handleMessagesMarkedRead);
+        socket.off('user_typing', handleUserTyping);
+        socket.off('user_stop_typing', handleUserStopTyping);
+        setIsTyping(false);
+      };
     } else {
       setMessages([]);
+      setIsTyping(false);
     }
   }, [selectedChat]);
 
@@ -66,8 +159,37 @@ const EmployeeMessages = () => {
     }
   };
 
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setNewMessage(val);
+
+    if (selectedChat) {
+      socket.emit('typing', {
+        applicationId: selectedChat.applicationId,
+        senderModel: 'Employee'
+      });
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stop_typing', {
+          applicationId: selectedChat.applicationId,
+          senderModel: 'Employee'
+        });
+      }, 1500);
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return;
+    
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit('stop_typing', {
+      applicationId: selectedChat.applicationId,
+      senderModel: 'Employee'
+    });
+
+    const msgContent = newMessage;
+    setNewMessage('');
     
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/applications/${selectedChat.applicationId}`, {
@@ -76,13 +198,15 @@ const EmployeeMessages = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('employeeToken')}`
         },
-        body: JSON.stringify({ content: newMessage })
+        body: JSON.stringify({ content: msgContent })
       });
       
       const data = await res.json();
       if (data.success) {
-        setMessages([...messages, data.data]);
-        setNewMessage('');
+        setMessages(prev => {
+          if (prev.some(m => m._id === data.data._id)) return prev;
+          return [...prev, data.data];
+        });
         
         // Update last message in conversations
         setConversations(prev => prev.map(c => 
@@ -95,6 +219,7 @@ const EmployeeMessages = () => {
       console.error("Error sending message:", err);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -181,6 +306,9 @@ const EmployeeMessages = () => {
                       )}
                       <span className="font-bold text-gray-700">{msg.senderModel === 'Employee' ? 'You' : selectedChat.companyName}</span>
                       <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {msg.senderModel === 'Employee' && (
+                        <svg className={`w-3.5 h-3.5 ${msg.isRead ? 'text-[#29953f]' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      )}
                     </div>
                   </div>
                 )) : (
@@ -192,6 +320,20 @@ const EmployeeMessages = () => {
                     <p className="text-sm text-gray-500">Start the conversation with {selectedChat.companyName}.</p>
                   </div>
                 )}
+
+                {/* Real-time Typing Indicator */}
+                {isTyping && (
+                  <div className="flex flex-col items-start animate-fade-in">
+                    <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    </div>
+                    <span className="text-[11px] text-gray-400 mt-1 px-1 font-medium">{selectedChat.companyName || 'Recruiter'} is typing...</span>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input Area */}
@@ -199,7 +341,7 @@ const EmployeeMessages = () => {
                 <div className="flex flex-col gap-3 min-h-[120px]">
                   <textarea 
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     className="w-full flex-1 resize-none bg-transparent outline-none text-sm text-gray-900 placeholder-gray-500 p-2"
                     placeholder="Write your message"

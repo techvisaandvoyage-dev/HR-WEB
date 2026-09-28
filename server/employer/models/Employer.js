@@ -85,6 +85,18 @@ const EmployerSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  googleSheetId: {
+    type: String,
+    default: ''
+  },
+  googleSheetUrl: {
+    type: String,
+    default: ''
+  },
+  autoSyncGoogleSheet: {
+    type: Boolean,
+    default: true
+  },
   lastLogin: {
     type: Date,
     default: Date.now

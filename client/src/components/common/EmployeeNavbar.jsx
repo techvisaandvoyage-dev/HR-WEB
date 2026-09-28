@@ -41,6 +41,8 @@ const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
   );
 };
 
+import { socket } from '../../utils/socket';
+
 const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -89,27 +91,36 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
     }
   } catch (e) {}
 
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!localStorage.getItem('employeeToken')) return;
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/unread-count`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-          setTotalUnread(data.count);
-        }
-      } catch (err) {
-        console.error("Error fetching unread count:", err);
+  const fetchUnreadCount = async () => {
+    if (!localStorage.getItem('employeeToken')) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/unread-count`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTotalUnread(data.count);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching unread count:", err);
+    }
+  };
+
+  useEffect(() => {
     fetchUnreadCount();
-    
-    // Optional: could poll every minute, or rely on socket/refresh. Just fetching once on mount for now.
-    // const interval = setInterval(fetchUnreadCount, 60000);
-    // return () => clearInterval(interval);
   }, [refreshUnread]);
+
+  useEffect(() => {
+    const handleConversationUpdate = (data) => {
+      fetchUnreadCount();
+    };
+
+    socket.on('conversation_updated', handleConversationUpdate);
+    return () => {
+      socket.off('conversation_updated', handleConversationUpdate);
+    };
+  }, []);
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {

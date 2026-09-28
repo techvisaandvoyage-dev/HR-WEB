@@ -11,6 +11,8 @@ import AllEmployeesTab from './AllEmployeesTab';
 import EmployerMessages from '../messages/EmployerMessages';
 import EmployerSettingsTab from './EmployerSettingsTab';
 
+import { socket } from '../../../utils/socket';
+
 const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawAppsData, updateCandidateStatus, toggleJobStatus }) => {
   const location = useLocation();
   const [totalUnread, setTotalUnread] = React.useState(0);
@@ -52,23 +54,36 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
     fetchProfile();
   }, []);
 
-  React.useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!localStorage.getItem('employerToken')) return;
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/unread-count`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-          setTotalUnread(data.count);
-        }
-      } catch (err) {
-        console.error("Error fetching unread count:", err);
+  const fetchUnreadCount = async () => {
+    if (!localStorage.getItem('employerToken')) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/unread-count`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTotalUnread(data.count);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching unread count:", err);
+    }
+  };
+
+  React.useEffect(() => {
     fetchUnreadCount();
   }, [refreshNav]);
+
+  React.useEffect(() => {
+    const handleConversationUpdate = (data) => {
+      fetchUnreadCount();
+    };
+
+    socket.on('conversation_updated', handleConversationUpdate);
+    return () => {
+      socket.off('conversation_updated', handleConversationUpdate);
+    };
+  }, []);
+
 
   const sidebarCfg = portalConfig?.sidebar || {};
 

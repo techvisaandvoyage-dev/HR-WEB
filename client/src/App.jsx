@@ -240,12 +240,16 @@ function App() {
                     name: emp.name || 'Unknown Candidate',
                     email: emp.email,
                     phone: emp.mobile,
+                    mobile: emp.mobile,
                     location: emp.location,
                     initials: emp.name ? emp.name.charAt(0).toUpperCase() : 'C',
                     bg: 'bg-green-600',
                     date: new Date(app.createdAt).toLocaleDateString(),
+                    createdAt: emp.createdAt || emp.registrationDate || app.createdAt,
+                    registeredOn: emp.createdAt || emp.registrationDate || app.createdAt,
                     history: [],
                     // Additional profile data for the Candidate Profile sidebar
+                    brief: emp.brief || '',
                     summary: emp.brief || (emp.professionalDetails && emp.professionalDetails.majorAchievements) || '',
                     skills: (emp.professionalDetails && emp.professionalDetails.skills) ? emp.professionalDetails.skills.split(',').map(s => s.trim()) : [],
                     experience: emp.experience || [],
@@ -277,6 +281,8 @@ function App() {
                 
                 candidatesMap[emp._id].history.push({
                   appId: app._id,
+                  applicationNumber: app.applicationNumber,
+                  createdAt: app.createdAt,
                   title: app.jobId?.title || 'Unknown Job',
                   status: app.status,
                   color: app.statusColor,

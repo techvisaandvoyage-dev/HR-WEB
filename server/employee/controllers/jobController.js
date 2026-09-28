@@ -1,6 +1,8 @@
 const Job = require('../../models/Job');
 const Application = require('../../models/Application');
 const Employee = require('../models/Employee');
+const Employer = require('../../employer/models/Employer');
+const googleSheetService = require('../../services/googleSheetService');
 
 // @desc    Get all active jobs
 // @route   GET /api/employee/jobs
@@ -98,7 +100,12 @@ exports.applyForJob = async (req, res) => {
       await Employee.findByIdAndUpdate(employeeId, updateFields);
     }
 
+    // Calculate sequential applicationNumber starting from 500101
+    const lastApp = await Application.findOne({ applicationNumber: { $exists: true } }).sort({ applicationNumber: -1 });
+    const applicationNumber = (lastApp && lastApp.applicationNumber) ? lastApp.applicationNumber + 1 : 500101;
+
     const application = await Application.create({
+      applicationNumber,
       jobId,
       employeeId,
       employerId: job.employerId,
@@ -108,6 +115,20 @@ exports.applyForJob = async (req, res) => {
     // Increment applications count
     job.applications = (job.applications || 0) + 1;
     await job.save();
+
+    // Background Auto-Sync to Employer's Google Sheet (Real-time without blocking response)
+    (async () => {
+      try {
+        const employer = await Employer.findById(job.employerId).select('googleSheetId autoSyncGoogleSheet');
+        if (employer && employer.googleSheetId && employer.autoSyncGoogleSheet !== false) {
+          const candidate = await Employee.findById(employeeId).select('-password');
+          const populatedApp = { ...application.toObject(), jobId: job };
+          await googleSheetService.appendApplicationToSpreadsheet(employer.googleSheetId, populatedApp, candidate);
+        }
+      } catch (sheetSyncErr) {
+        console.error('[GoogleSheet] Background auto-sync error:', sheetSyncErr.message);
+      }
+    })();
 
     res.status(201).json({ success: true, data: application });
   } catch (error) {

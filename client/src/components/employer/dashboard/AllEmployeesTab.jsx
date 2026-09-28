@@ -398,104 +398,66 @@ const AllEmployeesTab = ({ portalConfig }) => {
                 
                 <hr className="border-gray-100 mb-6" />
 
-                <div className="grid grid-cols-2 gap-6 mb-6">
+                {/* Sections in exact Employee Profile order */}
+                <div className="space-y-6">
+                  
+                  {/* 1. Basic Details - Professional Summary */}
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Function</h4>
-                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.industry || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Designation</h4>
-                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.designation || 'N/A'}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Experience</h4>
-                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.totalExperience || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Preferred Location</h4>
-                    <p className="text-sm font-bold text-gray-900">{selectedEmployee.preferredLocation || 'N/A'}</p>
-                  </div>
-                </div>
-                
-                <hr className="border-gray-100 mb-6" />
-
-                {/* Grid stats */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                      Current {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
-                    </h4>
-                    <p className="text-sm font-bold text-gray-900">
-                      {selectedEmployee.professionalDetails?.currentSalary ? `₹ ${selectedEmployee.professionalDetails.currentSalary}` : 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                      Expected {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
-                    </h4>
-                    <p className="text-sm font-bold text-gray-900">
-                      {selectedEmployee.professionalDetails?.expectedSalary ? `₹ ${selectedEmployee.professionalDetails.expectedSalary}` : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                <hr className="border-gray-100 mb-6" />
-
-                <div className="grid grid-cols-2 gap-6 mb-8">
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Joined On</h4>
-                    <p className="text-sm font-bold text-gray-900">{new Date(selectedEmployee.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Last Updated</h4>
-                    <p className="text-sm font-bold text-gray-900">
-                      {selectedEmployee.updatedAt 
-                        ? new Date(selectedEmployee.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-                        : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Sections */}
-                <div className="space-y-8">
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Professional Summary</h4>
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Brief About Candidate / Professional Summary</h4>
+                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
                       {selectedEmployee.brief || <span className="text-gray-400 italic">No professional summary provided.</span>}
                     </p>
                   </div>
 
+                  <hr className="border-gray-100" />
+
+                  {/* 2. Education */}
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Key Skills</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEmployee.professionalDetails?.skills && selectedEmployee.professionalDetails.skills.length > 0 ? (
-                        (typeof selectedEmployee.professionalDetails.skills === 'string' 
-                          ? selectedEmployee.professionalDetails.skills.split(',') 
-                          : Array.isArray(selectedEmployee.professionalDetails.skills) 
-                            ? selectedEmployee.professionalDetails.skills 
-                            : []).map((skill, idx) => (
-                          <span key={idx} className="px-3 py-1 bg-gray-50 text-gray-600 rounded-full text-xs font-semibold border border-gray-100">
-                            {skill.trim()}
-                          </span>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+                      <span>Education</span>
+                    </h4>
+                    <div className="space-y-3 ml-2">
+                      {selectedEmployee.qualifications && selectedEmployee.qualifications.length > 0 ? (
+                        selectedEmployee.qualifications.map((qual, i) => (
+                          <div key={i} className="relative pl-4 mb-3 border-l-2 border-[#18a058] ml-1.5 py-0.5">
+                            <div className="absolute w-2 h-2 bg-[#18a058] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
+                            <h5 className="font-bold text-gray-900 text-sm">{qual.degree} {qual.fieldOfStudy ? `in ${qual.fieldOfStudy}` : ''}</h5>
+                            <p className="text-xs text-[#18a058] font-semibold mb-1">{qual.graduationYear || 'Year'}</p>
+                            <p className="text-xs text-gray-500 leading-relaxed">{qual.institution || 'Institution'}</p>
+                          </div>
                         ))
                       ) : (
-                        <span className="text-gray-400 italic text-sm">No skills provided.</span>
+                        <span className="text-gray-400 italic text-sm">No education details provided.</span>
                       )}
                     </div>
                   </div>
 
+                  <hr className="border-gray-100" />
+
+                  {/* 3. Work Experience */}
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Work Experience</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Work Experience</h4>
+                      <span className="text-xs font-semibold text-gray-500">Total: {selectedEmployee.totalExperience || 'N/A'}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl mb-4">
+                      <div>
+                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Designation</h5>
+                        <p className="text-xs font-bold text-gray-900">{selectedEmployee.designation || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Function</h5>
+                        <p className="text-xs font-bold text-gray-900">{selectedEmployee.industry || 'N/A'}</p>
+                      </div>
+                    </div>
+
                     <div className="space-y-4 ml-2">
                       {selectedEmployee.experience && selectedEmployee.experience.length > 0 ? (
                         selectedEmployee.experience.map((exp, i) => (
                           <div key={i} className="mb-4">
                             <h5 className="font-bold text-gray-900 text-sm mb-2">{exp.company || 'Company'}</h5>
                             <div className="border-l-2 border-[#29953f] ml-1.5 space-y-4 py-1">
-                              {/* Using roles if they exist or fallback to the parent exp obj */}
                               {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
                                 const formatDate = (dateStr) => {
                                   if (!dateStr) return '';
@@ -525,25 +487,64 @@ const AllEmployeesTab = ({ portalConfig }) => {
                     </div>
                   </div>
 
+                  <hr className="border-gray-100" />
+
+                  {/* 4. Key Skills & Preferences */}
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Education</h4>
-                    <div className="space-y-4 ml-2">
-                      {selectedEmployee.qualifications && selectedEmployee.qualifications.length > 0 ? (
-                        selectedEmployee.qualifications.map((qual, i) => (
-                          <div key={i} className="relative pl-4 mb-4">
-                            <div className="absolute w-2 h-2 bg-[#18a058] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                            <h5 className="font-bold text-gray-900 text-sm">{qual.degree} {qual.fieldOfStudy ? `in ${qual.fieldOfStudy}` : ''}</h5>
-                            <p className="text-xs text-[#18a058] font-semibold mb-1">{qual.graduationYear || 'Year'}</p>
-                            <p className="text-xs text-gray-500 leading-relaxed">{qual.institution || 'Institution'}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <span className="text-gray-400 italic text-sm">No education details provided.</span>
-                      )}
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Key Skills & Preferences</h4>
+                    
+                    {/* Skills pills */}
+                    <div className="mb-4">
+                      <h5 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Skills</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedEmployee.professionalDetails?.skills && selectedEmployee.professionalDetails.skills.length > 0 ? (
+                          (typeof selectedEmployee.professionalDetails.skills === 'string' 
+                            ? selectedEmployee.professionalDetails.skills.split(',') 
+                            : Array.isArray(selectedEmployee.professionalDetails.skills) 
+                              ? selectedEmployee.professionalDetails.skills 
+                              : []).map((skill, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-semibold border border-emerald-100">
+                              {skill.trim()}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-400 italic text-sm">No skills provided.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Salary & Preferences Grid */}
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50/70 p-4 rounded-xl border border-gray-100">
+                      <div>
+                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                          Current {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
+                        </h4>
+                        <p className="text-sm font-bold text-gray-900">
+                          {selectedEmployee.professionalDetails?.currentSalary ? `₹ ${selectedEmployee.professionalDetails.currentSalary}` : 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                          Expected {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
+                        </h4>
+                        <p className="text-sm font-bold text-gray-900">
+                          {selectedEmployee.professionalDetails?.expectedSalary ? `₹ ${selectedEmployee.professionalDetails.expectedSalary}` : 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Preferred Location</h4>
+                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.preferredLocation || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Joined On</h4>
+                        <p className="text-sm font-bold text-gray-900">{new Date(selectedEmployee.createdAt).toLocaleDateString()}</p>
+                      </div>
                     </div>
                   </div>
+
+                  <hr className="border-gray-100" />
                   
-                  {/* Documents Section */}
+                  {/* 5. Documents & Media */}
                   {(selectedEmployee.resume || selectedEmployee.coverLetter || selectedEmployee.introVideo) && (
                     <div>
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents & Media</h4>

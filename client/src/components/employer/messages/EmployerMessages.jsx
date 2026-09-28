@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import VideoPlayer from '../../common/VideoPlayer';
+import { socket } from '../../../utils/socket';
 
 const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, updateCandidateStatus }) => {
   const location = useLocation();
@@ -15,6 +16,15 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
   const [isEmployeeDetailsOpen, setIsEmployeeDetailsOpen] = useState(false);
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
+  const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+
+  // Auto-scroll to bottom whenever messages or typing state changes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
 
   const getStatusBadgeStyles = (status) => {
     const map = {
@@ -41,6 +51,43 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  // Global socket listeners for real-time conversation updates
+  useEffect(() => {
+    const handleConversationUpdated = (data) => {
+      setBackendConversations(prev => {
+        const exists = prev.find(c => c.applicationId === data.applicationId);
+        const isCurrentChat = selectedApplication?.appId === data.applicationId;
+        
+        if (exists) {
+          return prev.map(c => 
+            c.applicationId === data.applicationId 
+              ? { 
+                  ...c, 
+                  lastMessage: data.lastMessage, 
+                  lastMessageTime: data.lastMessageTime,
+                  unreadCount: (data.senderModel === 'Employee' && !isCurrentChat) ? (c.unreadCount || 0) + 1 : (isCurrentChat ? 0 : c.unreadCount)
+                } 
+              : c
+          ).sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+        } else {
+          return [{
+            applicationId: data.applicationId,
+            lastMessage: data.lastMessage,
+            lastMessageTime: data.lastMessageTime,
+            unreadCount: (data.senderModel === 'Employee' && !isCurrentChat) ? 1 : 0
+          }, ...prev];
+        }
+      });
+      if (triggerNavRefresh) triggerNavRefresh();
+    };
+
+    socket.on('conversation_updated', handleConversationUpdated);
+
+    return () => {
+      socket.off('conversation_updated', handleConversationUpdated);
+    };
+  }, [selectedApplication, triggerNavRefresh]);
 
   const fetchConversations = async () => {
     try {
@@ -70,19 +117,70 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
     }
   }, [initialEmployeeData, candidates, selectedEmployee]);
 
-  // 3. Fetch messages when an application is selected
+  // 3. Fetch messages and join live socket room when an application is selected
   useEffect(() => {
     if (selectedApplication) {
-      fetchMessages(selectedApplication.appId);
+      const appId = selectedApplication.appId;
+      fetchMessages(appId);
       
+      // Join real-time room
+      socket.emit('join_chat', appId);
+
       // Pre-fill message if came from route
       if (initialEmployeeData && selectedEmployee?.id === initialEmployeeData.id) {
-        setNewMessage(`Hey ${selectedEmployee.name.split(' ')[0]}, `);
+        setNewMessage(`Hey ${selectedEmployee.name?.split(' ')[0] || ''}, `);
       } else {
         setNewMessage('');
       }
+
+      // Socket listeners for active room
+      const handleReceiveMessage = (msg) => {
+        if (msg.applicationId === appId) {
+          setMessages(prev => {
+            if (prev.some(m => m._id === msg._id)) return prev;
+            return [...prev, msg];
+          });
+          // Mark read locally and notify nav
+          if (msg.senderModel === 'Employee') {
+            if (triggerNavRefresh) triggerNavRefresh();
+          }
+        }
+      };
+
+      const handleMessagesMarkedRead = (data) => {
+        if (data.applicationId === appId && data.readBy === 'Employee') {
+          setMessages(prev => prev.map(m => m.senderModel === 'Employer' ? { ...m, isRead: true } : m));
+        }
+      };
+
+      const handleUserTyping = (data) => {
+        if (data.applicationId === appId && data.senderModel === 'Employee') {
+          setIsTyping(true);
+        }
+      };
+
+      const handleUserStopTyping = (data) => {
+        if (data.applicationId === appId && data.senderModel === 'Employee') {
+          setIsTyping(false);
+        }
+      };
+
+      socket.on('receive_message', handleReceiveMessage);
+      socket.on('messages_marked_read', handleMessagesMarkedRead);
+      socket.on('user_typing', handleUserTyping);
+      socket.on('user_stop_typing', handleUserStopTyping);
+
+      return () => {
+        socket.emit('leave_chat', appId);
+        socket.off('receive_message', handleReceiveMessage);
+        socket.off('messages_marked_read', handleMessagesMarkedRead);
+        socket.off('user_typing', handleUserTyping);
+        socket.off('user_stop_typing', handleUserStopTyping);
+        setIsTyping(false);
+      };
     } else {
       setMessages([]);
+      setIsTyping(false);
     }
   }, [selectedApplication]);
 
@@ -105,8 +203,38 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
     }
   };
 
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setNewMessage(val);
+
+    if (selectedApplication) {
+      socket.emit('typing', {
+        applicationId: selectedApplication.appId,
+        senderModel: 'Employer'
+      });
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stop_typing', {
+          applicationId: selectedApplication.appId,
+          senderModel: 'Employer'
+        });
+      }, 1500);
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedApplication) return;
+    
+    // Stop typing immediately
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit('stop_typing', {
+      applicationId: selectedApplication.appId,
+      senderModel: 'Employer'
+    });
+
+    const msgContent = newMessage;
+    setNewMessage('');
     
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedApplication.appId}`, {
@@ -115,13 +243,16 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('employerToken')}`
         },
-        body: JSON.stringify({ content: newMessage })
+        body: JSON.stringify({ content: msgContent })
       });
       
       const data = await res.json();
       if (data.success) {
-        setMessages([...messages, data.data]);
-        setNewMessage('');
+        // Append locally if not already received via socket
+        setMessages(prev => {
+          if (prev.some(m => m._id === data.data._id)) return prev;
+          return [...prev, data.data];
+        });
         
         // Update last message in backendConversations
         setBackendConversations(prev => {
@@ -158,6 +289,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
            c.email?.toLowerCase().includes(term) || 
            c.phone?.toLowerCase().includes(term);
   });
+
 
   if (isLoading) {
     return <div className="p-8 text-center text-gray-500 font-medium animate-pulse">Loading Messages...</div>;
@@ -373,6 +505,20 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
                   </div>
                 ))
               )}
+
+              {/* Real-time Typing Indicator */}
+              {isTyping && (
+                <div className="flex flex-col items-start animate-fade-in">
+                  <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                  <span className="text-[11px] text-gray-400 mt-1 px-1 font-medium">{selectedEmployee?.name?.split(' ')[0] || 'Candidate'} is typing...</span>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-white shrink-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
@@ -382,7 +528,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
                 </button>
                 <textarea 
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                   className="w-full flex-1 resize-none bg-transparent outline-none text-sm text-gray-900 placeholder-gray-500 py-2.5 max-h-[120px]"
                   placeholder="Type a message..."

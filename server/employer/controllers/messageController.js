@@ -2,6 +2,7 @@ const Message = require('../../models/Message');
 const Employee = require('../../employee/models/Employee');
 const Job = require('../../models/Job');
 const Application = require('../../models/Application');
+const { getIO } = require('../../socket');
 
 // @desc    Get total unread message count for employer
 // @route   GET /api/employer/messages/unread-count
@@ -78,10 +79,20 @@ exports.getMessages = async (req, res) => {
     }).sort({ createdAt: 1 }); // Oldest first for chat history
 
     // Mark messages from employee as read
-    await Message.updateMany(
+    const updateResult = await Message.updateMany(
       { employerId, applicationId, senderModel: 'Employee', isRead: false },
       { $set: { isRead: true } }
     );
+
+    if (updateResult.modifiedCount > 0) {
+      const io = getIO();
+      if (io) {
+        io.to(`chat_${applicationId}`).emit('messages_marked_read', {
+          applicationId,
+          readBy: 'Employer'
+        });
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -121,6 +132,20 @@ exports.sendMessage = async (req, res) => {
       content
     });
 
+    // Broadcast via socket.io
+    const io = getIO();
+    if (io) {
+      io.to(`chat_${applicationId}`).emit('receive_message', newMessage);
+      io.emit('conversation_updated', {
+        applicationId,
+        lastMessage: newMessage.content,
+        lastMessageTime: newMessage.createdAt,
+        senderModel: 'Employer',
+        employerId,
+        employeeId: application.employeeId
+      });
+    }
+
     res.status(201).json({
       success: true,
       data: newMessage
@@ -130,3 +155,4 @@ exports.sendMessage = async (req, res) => {
     res.status(500).json({ success: false, message: error.message, stack: error.stack });
   }
 };
+

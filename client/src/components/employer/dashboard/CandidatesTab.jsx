@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import DateRangePicker from '../../common/DateRangePicker';
 import VideoPlayer from '../../common/VideoPlayer';
 
@@ -16,13 +17,11 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   const [previewScreeningQA, setPreviewScreeningQA] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportNotice, setExportNotice] = useState(null);
-  const [showOnlineSheetModal, setShowOnlineSheetModal] = useState(false);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   // Column Filters State (Filter for every single column)
   const initialFilters = {
+    appId: '',
     candidate: '',
     job: initialJob !== 'All Jobs' && initialJob !== 'All Job' ? initialJob : 'All',
     workExp: 'All',
@@ -43,6 +42,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
   const resetAllFilters = () => {
     setColFilters({
+      appId: '',
       candidate: '',
       job: 'All',
       workExp: 'All',
@@ -58,6 +58,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   };
 
   const hasActiveFilters = 
+    colFilters.appId !== '' ||
     colFilters.candidate !== '' ||
     colFilters.job !== 'All' ||
     colFilters.workExp !== 'All' ||
@@ -147,6 +148,38 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return 'N/A';
   };
 
+  const getRegisteredDate = (cand) => {
+    if (!cand) return 'N/A';
+    const raw = cand.createdAt || cand.registeredOn || cand.registrationDate || cand.date;
+    if (!raw) return 'N/A';
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? raw : d.toLocaleDateString();
+  };
+
+  const handleOpenCandidate = (cand, item) => {
+    setSelectedCandidate(cand);
+    
+    // Automatically transition 'New' or 'Applied' status to 'Viewed'
+    if (item) {
+      const currentStatus = (item.status || '').toLowerCase();
+      if (currentStatus === 'new' || currentStatus === 'applied' || !item.status) {
+        const updatedStatus = 'Viewed';
+        if (updateCandidateStatus) {
+          updateCandidateStatus(item.appId, updatedStatus);
+        }
+        item.status = updatedStatus;
+        if (cand.history) {
+          cand.history = cand.history.map(h => h.appId === item.appId ? { ...h, status: updatedStatus } : h);
+        }
+        setSelectedApplication({ ...item, status: updatedStatus });
+      } else {
+        setSelectedApplication(item);
+      }
+    } else {
+      setSelectedApplication(null);
+    }
+  };
+
   // Flatten every application into its own individual record
   const flattenedApplications = useMemo(() => {
     const list = [];
@@ -155,10 +188,12 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       if (history.length === 0) {
         list.push({
           appId: cand.id || `app-${cand.email}`,
+          applicationNumber: cand.applicationNumber,
           jobTitle: cand.appliedJob || 'General Application',
           status: cand.status || 'New',
           statusColor: cand.statusColor || '',
           appliedDate: cand.date || new Date().toLocaleDateString(),
+          createdAt: cand.createdAt || cand.date,
           screeningAnswers: cand.screeningAnswers || [],
           resume: cand.resume || cand.documents?.resume || '',
           coverLetter: cand.coverLetter || cand.documents?.coverLetter || '',
@@ -169,10 +204,12 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         history.forEach(app => {
           list.push({
             appId: app.appId || `${cand.id}-${app.title}`,
+            applicationNumber: app.applicationNumber,
             jobTitle: app.title || 'Unknown Job',
             status: app.status || 'New',
             statusColor: app.color || '',
             appliedDate: app.date || cand.date,
+            createdAt: app.createdAt || cand.createdAt || app.date,
             screeningAnswers: app.screeningAnswers || [],
             resume: app.resume || cand.resume || cand.documents?.resume || '',
             coverLetter: app.coverLetter || cand.coverLetter || cand.documents?.coverLetter || '',
@@ -182,7 +219,19 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         });
       }
     });
-    return list;
+
+    // Chronological stable sort to assign sequential Application IDs starting from 500101
+    const sortedChronological = [...list].sort((a, b) => new Date(a.createdAt || a.appliedDate || 0) - new Date(b.createdAt || b.appliedDate || 0));
+    const appIdMap = new Map();
+    sortedChronological.forEach((item, index) => {
+      const seqId = 500101 + index;
+      appIdMap.set(item.appId, item.applicationNumber || seqId);
+    });
+
+    return list.map(item => ({
+      ...item,
+      displayAppId: appIdMap.get(item.appId) || 500101
+    }));
   }, [globalCandidates]);
 
   // Unique options for each dropdown filter
@@ -216,6 +265,14 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       const comp = getCurrentCompany(cand);
       const qual = getHighestQualification(cand);
 
+      // 0. Application ID Search
+      if (colFilters.appId.trim()) {
+        const q = colFilters.appId.toLowerCase().trim().replace(/^#/, '');
+        if (!String(item.displayAppId).toLowerCase().includes(q)) {
+          return false;
+        }
+      }
+
       // 1. Candidate Name / Email / Phone Search
       if (colFilters.candidate.trim()) {
         const q = colFilters.candidate.toLowerCase().trim();
@@ -224,6 +281,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         const matchesPhone = (cand.phone || '').includes(q);
         if (!matchesName && !matchesEmail && !matchesPhone) return false;
       }
+
 
       // 2. Job Filter
       if (colFilters.job !== 'All') {
@@ -306,22 +364,88 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return result;
   }, [flattenedApplications, colFilters, dateRange]);
 
-  // Pagination calculation
-  const totalPages = Math.ceil(filteredApplications.length / itemsPerPage) || 1;
-  const paginatedApplications = useMemo(() => {
-    const startIdx = (currentPage - 1) * itemsPerPage;
-    return filteredApplications.slice(startIdx, startIdx + itemsPerPage);
-  }, [filteredApplications, currentPage, itemsPerPage]);
-
-  // Status breakdown metrics
+  // Status breakdown metrics - dynamically scoped to selected job and non-status filters
   const stats = useMemo(() => {
-    const total = flattenedApplications.length;
-    const newCount = flattenedApplications.filter(a => (a.status || 'New').toLowerCase() === 'new').length;
-    const shortlistedCount = flattenedApplications.filter(a => (a.status || '').toLowerCase() === 'shortlisted').length;
-    const viewedCount = flattenedApplications.filter(a => (a.status || '').toLowerCase() === 'viewed').length;
-    const rejectedCount = flattenedApplications.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
+    // Filter applications by all active filters EXCEPT status so pills show accurate category counts
+    const targetPool = flattenedApplications.filter(item => {
+      const cand = item.candidate || {};
+      const workExp = getWorkExp(cand);
+      const func = getFunction(cand);
+      const desig = getCurrentDesignation(cand);
+      const comp = getCurrentCompany(cand);
+      const qual = getHighestQualification(cand);
+
+      // 1. Job Filter
+      if (colFilters.job !== 'All') {
+        if ((item.jobTitle || '').trim().toLowerCase() !== colFilters.job.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 2. Work Exp Filter
+      if (colFilters.workExp !== 'All') {
+        if (workExp.trim().toLowerCase() !== colFilters.workExp.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 3. Function Filter
+      if (colFilters.functionArea !== 'All') {
+        if (func.trim().toLowerCase() !== colFilters.functionArea.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 4. Designation Filter
+      if (colFilters.designation.trim()) {
+        if (!desig.toLowerCase().includes(colFilters.designation.toLowerCase().trim())) {
+          return false;
+        }
+      }
+
+      // 5. Company Filter
+      if (colFilters.company.trim()) {
+        if (!comp.toLowerCase().includes(colFilters.company.toLowerCase().trim())) {
+          return false;
+        }
+      }
+
+      // 6. Qualification Filter
+      if (colFilters.qualification !== 'All') {
+        if (qual.trim().toLowerCase() !== colFilters.qualification.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 7. Date Filter
+      if (dateRange.start || dateRange.end) {
+        try {
+          const appDate = new Date(item.appliedDate);
+          appDate.setHours(0, 0, 0, 0);
+
+          if (dateRange.start) {
+            const startDate = new Date(dateRange.start);
+            startDate.setHours(0, 0, 0, 0);
+            if (appDate < startDate) return false;
+          }
+          if (dateRange.end) {
+            const endDate = new Date(dateRange.end);
+            endDate.setHours(23, 59, 59, 999);
+            if (appDate > endDate) return false;
+          }
+        } catch (_) {}
+      }
+
+      return true;
+    });
+
+    const total = targetPool.length;
+    const newCount = targetPool.filter(a => (a.status || 'New').toLowerCase() === 'new').length;
+    const shortlistedCount = targetPool.filter(a => (a.status || '').toLowerCase() === 'shortlisted').length;
+    const viewedCount = targetPool.filter(a => (a.status || '').toLowerCase() === 'viewed').length;
+    const rejectedCount = targetPool.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
     return { total, newCount, shortlistedCount, viewedCount, rejectedCount };
-  }, [flattenedApplications]);
+  }, [flattenedApplications, colFilters, dateRange]);
 
   const getInstitute = (cand) => {
     if (!cand) return 'N/A';
@@ -337,7 +461,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return 'N/A';
   };
 
-  // Dynamic Sheet File Name: Job Name with Date (e.g. Frontend Devloper - 26-09-2026)
+  // Dynamic Sheet File Name: Job Name with Date (e.g. Frontend Developer - 28-09-2026)
   const getSheetFileName = () => {
     const today = new Date();
     const d = String(today.getDate()).padStart(2, '0');
@@ -346,42 +470,30 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     const dateStr = `${d}-${m}-${y}`;
     
     let jobName = 'All Applications';
-    if (colFilters.job && colFilters.job !== 'All') {
+    if (colFilters && colFilters.job && colFilters.job !== 'All') {
       jobName = colFilters.job;
-    } else if (selectedJob && selectedJob !== 'All Jobs' && selectedJob !== 'All') {
-      jobName = selectedJob;
     }
     const cleanJobName = jobName.replace(/[/\\?%*:|"<>]/g, ' ').trim();
     return `${cleanJobName} - ${dateStr}`;
   };
 
-  // Helper to get raw application data array
+  // Helper to get raw application data array - strictly exports current filtered view
   const getExportData = () => {
-    return filteredApplications.length > 0 ? filteredApplications : flattenedApplications;
+    return filteredApplications;
   };
 
-  // Exact Google Sheet Headers (Column A to P) - Full Form & Title/Camel Case
-  const exportHeaders = [
-    'Candidate Name',
-    'Email Address',
-    'Mobile Number',
-    'Work Experience',
-    'Functional Area',
-    'Current Designation',
-    'Current Company',
-    'Primary Qualification',
-    'Institute Name',
-    'Current Salary',
-    'Expected Salary',
-    'Question 1',
-    'Question 2',
-    'Question 3',
-    'Question 4',
-    'Question 5'
-  ];
+  // Helper to extract the 5 screening questions from the data to be exported
+  const getExportQuestions = (data) => {
+    const questions = [];
+    for (let i = 0; i < 5; i++) {
+      const found = (data || []).find(item => item.screeningAnswers && item.screeningAnswers[i]?.question)?.screeningAnswers?.[i]?.question;
+      questions.push(found ? found.trim() : `Question ${i + 1}`);
+    }
+    return questions;
+  };
 
-  // Helper to format rows
-  const getExportRows = (dataToExport, delimiter = '\t', isCsv = false) => {
+  // Helper to format rows for TSV/CSV
+  const getExportRows = (dataToExport, delimiter = '\t', isCsv = false, isJobFiltered = false) => {
     const escapeCsv = (str) => {
       if (str === null || str === undefined) return isCsv ? '""' : '';
       const s = String(str).replace(/"/g, '""');
@@ -396,113 +508,333 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       const comp = getCurrentCompany(cand);
       const qual = getHighestQualification(cand);
       const institute = getInstitute(cand);
-      const currentSalary = cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary || 'N/A');
-      const expectedSalary = cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary || 'N/A');
+      const currentSalary = cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary ? `₹ ${cand.professionalDetails.currentSalary}` : 'N/A');
+      const expectedSalary = cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary ? `₹ ${cand.professionalDetails.expectedSalary}` : 'N/A');
       
       const qa = item.screeningAnswers || [];
-      const q1 = qa[0]?.answer || '';
-      const q2 = qa[1]?.answer || '';
-      const q3 = qa[2]?.answer || '';
-      const q4 = qa[3]?.answer || '';
-      const q5 = qa[4]?.answer || '';
+      const q1 = qa[0]?.question || '';
+      const a1 = qa[0]?.answer || '';
+      const q2 = qa[1]?.question || '';
+      const a2 = qa[1]?.answer || '';
+      const q3 = qa[2]?.question || '';
+      const a3 = qa[2]?.answer || '';
+      const q4 = qa[3]?.question || '';
+      const a4 = qa[3]?.answer || '';
+      const q5 = qa[4]?.question || '';
+      const a5 = qa[4]?.answer || '';
 
-      return [
+      const appIdStr = item.displayAppId ? `${item.displayAppId}` : (item.applicationNumber ? `${item.applicationNumber}` : (item.appId || ''));
+
+      const baseRow = [
+        escapeCsv(appIdStr),
         escapeCsv(cand.name || ''),
+        escapeCsv(item.jobTitle || ''),
         escapeCsv(cand.email || ''),
-        escapeCsv(cand.phone || ''),
-        escapeCsv(workExp),
-        escapeCsv(func),
-        escapeCsv(desig),
-        escapeCsv(comp),
+        escapeCsv(cand.phone || cand.mobile || ''),
         escapeCsv(qual),
         escapeCsv(institute),
+        escapeCsv(func),
+        escapeCsv(workExp),
+        escapeCsv(desig),
+        escapeCsv(comp),
         escapeCsv(currentSalary),
         escapeCsv(expectedSalary),
-        escapeCsv(q1),
-        escapeCsv(q2),
-        escapeCsv(q3),
-        escapeCsv(q4),
-        escapeCsv(q5)
-      ].join(delimiter);
-    });
-  };
+        escapeCsv(item.appliedDate || ''),
+        escapeCsv(item.status || 'New')
+      ];
 
-  // 1. Export & Open in Google Sheets (Opens Google Sheets directly in new tab & opens interactive viewer)
-  const handleExportGoogleSheets = async () => {
-    const dataToExport = getExportData();
-    if (dataToExport.length === 0) {
-      alert('No application data to export.');
-      return;
-    }
-
-    const fileName = getSheetFileName();
-    const rows = getExportRows(dataToExport, '\t', false);
-    const tsvContent = [exportHeaders.join('\t'), ...rows].join('\n');
-
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(tsvContent);
+      if (isJobFiltered) {
+        // Only 5 answer columns under question headers
+        return [...baseRow, escapeCsv(a1), escapeCsv(a2), escapeCsv(a3), escapeCsv(a4), escapeCsv(a5)].join(delimiter);
+      } else {
+        // 10 Q&A paired columns for All jobs
+        return [
+          ...baseRow,
+          escapeCsv(q1), escapeCsv(a1),
+          escapeCsv(q2), escapeCsv(a2),
+          escapeCsv(q3), escapeCsv(a3),
+          escapeCsv(q4), escapeCsv(a4),
+          escapeCsv(q5), escapeCsv(a5)
+        ].join(delimiter);
       }
-    } catch (_) {}
-
-    // 1. Directly open official Google Sheets in a new tab
-    try {
-      window.open('https://sheets.new', '_blank');
-    } catch (_) {}
-
-    // 2. Open interactive Google Sheets viewer modal in-app
-    setShowOnlineSheetModal(true);
-    setShowExportMenu(false);
-
-    // 3. Show notification
-    setExportNotice({
-      title: 'Google Sheets Viewer Ready',
-      message: `All ${dataToExport.length} candidate application records are formatted with 16 columns (A to P).`
     });
   };
 
-  // 2. Export to CSV / Excel File with Exact Job Name & Date
-  const handleExportCSV = (showNotification = true) => {
+  // 1. Direct 1-Click Native Excel Export (.xlsx)
+  const handleExportExcel = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     const dataToExport = getExportData();
-    if (dataToExport.length === 0) {
-      if (showNotification) alert('No application data to export.');
+    if (!dataToExport || dataToExport.length === 0) {
+      alert('No application data found matching the selected filters.');
       return;
     }
 
-    const fileName = getSheetFileName();
-    const rows = getExportRows(dataToExport, ',', true);
-    const csvContent = '\uFEFF' + [exportHeaders.join(','), ...rows].join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const fullFilename = `${fileName}.csv`;
-    link.setAttribute('href', url);
-    link.setAttribute('download', fullFilename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try {
+      const fileName = getSheetFileName();
+      const isJobFiltered = Boolean(colFilters && colFilters.job && colFilters.job !== 'All');
+      const questions = isJobFiltered ? getExportQuestions(dataToExport) : [];
+      
+      const sheetRows = dataToExport.map(item => {
+        const cand = item.candidate || {};
+        const workExp = getWorkExp(cand);
+        const func = getFunction(cand);
+        const desig = getCurrentDesignation(cand);
+        const comp = getCurrentCompany(cand);
+        const qual = getHighestQualification(cand);
+        const institute = getInstitute(cand);
+        const currentSalary = cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary ? `₹ ${cand.professionalDetails.currentSalary}` : 'N/A');
+        const expectedSalary = cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary ? `₹ ${cand.professionalDetails.expectedSalary}` : 'N/A');
+        
+        const qa = item.screeningAnswers || [];
+        const appIdStr = item.displayAppId ? `${item.displayAppId}` : (item.applicationNumber ? `${item.applicationNumber}` : (item.appId || ''));
 
-    if (showNotification) {
-      setExportNotice({
-        title: 'Spreadsheet File Downloaded!',
-        message: `Saved "${fullFilename}" with ${dataToExport.length} applications. You can open directly in Excel or import into Google Sheets.`
+        const rowObj = {
+          'Application ID': appIdStr,
+          'Candidate Name': cand.name || '',
+          'Job Applied': item.jobTitle || '',
+          'Email Address': cand.email || '',
+          'Mobile Number': cand.phone || cand.mobile || '',
+          'Primary Qualification': qual,
+          'Institute Name': institute,
+          'Functional Area': func,
+          'Work Experience': workExp,
+          'Current Designation': desig,
+          'Current Company': comp,
+          'Current Salary': currentSalary,
+          'Expected Salary': expectedSalary,
+          'Applied Date': item.appliedDate || '',
+          'Status': item.status || 'New'
+        };
+
+        if (isJobFiltered) {
+          // 5 columns with exact Question as header and Answer as value
+          rowObj[questions[0] || 'Question 1'] = qa[0]?.answer || '';
+          rowObj[questions[1] || 'Question 2'] = qa[1]?.answer || '';
+          rowObj[questions[2] || 'Question 3'] = qa[2]?.answer || '';
+          rowObj[questions[3] || 'Question 4'] = qa[3]?.answer || '';
+          rowObj[questions[4] || 'Question 5'] = qa[4]?.answer || '';
+        } else {
+          // All jobs: 10 columns with Question 1, Answer 1 ...
+          rowObj['Question 1'] = qa[0]?.question || '';
+          rowObj['Answer 1'] = qa[0]?.answer || '';
+          rowObj['Question 2'] = qa[1]?.question || '';
+          rowObj['Answer 2'] = qa[1]?.answer || '';
+          rowObj['Question 3'] = qa[2]?.question || '';
+          rowObj['Answer 3'] = qa[2]?.answer || '';
+          rowObj['Question 4'] = qa[3]?.question || '';
+          rowObj['Answer 4'] = qa[3]?.answer || '';
+          rowObj['Question 5'] = qa[4]?.question || '';
+          rowObj['Answer 5'] = qa[4]?.answer || '';
+        }
+
+        return rowObj;
       });
+
+      // Create worksheet & auto-adjust column widths
+      const worksheet = XLSX.utils.json_to_sheet(sheetRows);
+      if (isJobFiltered) {
+        worksheet['!cols'] = [
+          { wch: 16 }, // Application ID
+          { wch: 22 }, // Candidate Name
+          { wch: 24 }, // Job Applied
+          { wch: 26 }, // Email Address
+          { wch: 16 }, // Mobile Number
+          { wch: 22 }, // Primary Qualification
+          { wch: 24 }, // Institute Name
+          { wch: 20 }, // Functional Area
+          { wch: 16 }, // Work Experience
+          { wch: 22 }, // Current Designation
+          { wch: 22 }, // Current Company
+          { wch: 16 }, // Current Salary
+          { wch: 16 }, // Expected Salary
+          { wch: 14 }, // Applied Date
+          { wch: 14 }, // Status
+          { wch: 38 }, // Question 1
+          { wch: 38 }, // Question 2
+          { wch: 38 }, // Question 3
+          { wch: 38 }, // Question 4
+          { wch: 38 }  // Question 5
+        ];
+      } else {
+        worksheet['!cols'] = [
+          { wch: 16 }, // Application ID
+          { wch: 22 }, // Candidate Name
+          { wch: 24 }, // Job Applied
+          { wch: 26 }, // Email Address
+          { wch: 16 }, // Mobile Number
+          { wch: 22 }, // Primary Qualification
+          { wch: 24 }, // Institute Name
+          { wch: 20 }, // Functional Area
+          { wch: 16 }, // Work Experience
+          { wch: 22 }, // Current Designation
+          { wch: 22 }, // Current Company
+          { wch: 16 }, // Current Salary
+          { wch: 16 }, // Expected Salary
+          { wch: 14 }, // Applied Date
+          { wch: 14 }, // Status
+          { wch: 30 }, // Question 1
+          { wch: 30 }, // Answer 1
+          { wch: 30 }, // Question 2
+          { wch: 30 }, // Answer 2
+          { wch: 30 }, // Question 3
+          { wch: 30 }, // Answer 3
+          { wch: 30 }, // Question 4
+          { wch: 30 }, // Answer 4
+          { wch: 30 }, // Question 5
+          { wch: 30 }  // Answer 5
+        ];
+      }
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Candidates');
+
+      // Native .xlsx file download
+      XLSX.writeFile(workbook, `${fileName}.xlsx`);
+
+      setExportNotice({
+        title: 'Excel (.xlsx) File Downloaded!',
+        message: `Successfully downloaded "${fileName}.xlsx" (${dataToExport.length} applications).`
+      });
+      setTimeout(() => setExportNotice(null), 5000);
       setShowExportMenu(false);
+    } catch (err) {
+      console.error('Error exporting Excel file:', err);
+      alert('Export failed: ' + err.message);
+    }
+  };
+
+  // 2. Export to CSV File
+  const handleExportCSV = () => {
+    const dataToExport = getExportData();
+    if (!dataToExport || dataToExport.length === 0) {
+      alert('No application data found matching the selected filters.');
+      return;
+    }
+
+    try {
+      const fileName = getSheetFileName();
+      const isJobFiltered = Boolean(colFilters && colFilters.job && colFilters.job !== 'All');
+      const questions = isJobFiltered ? getExportQuestions(dataToExport) : [];
+
+      const sheetRows = dataToExport.map(item => {
+        const cand = item.candidate || {};
+        const qa = item.screeningAnswers || [];
+        const appIdStr = item.displayAppId ? `${item.displayAppId}` : (item.applicationNumber ? `${item.applicationNumber}` : (item.appId || ''));
+        const rowObj = {
+          'Application ID': appIdStr,
+          'Candidate Name': cand.name || '',
+          'Job Applied': item.jobTitle || '',
+          'Email Address': cand.email || '',
+          'Mobile Number': cand.phone || cand.mobile || '',
+          'Primary Qualification': getHighestQualification(cand),
+          'Institute Name': getInstitute(cand),
+          'Functional Area': getFunction(cand),
+          'Work Experience': getWorkExp(cand),
+          'Current Designation': getCurrentDesignation(cand),
+          'Current Company': getCurrentCompany(cand),
+          'Current Salary': cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary ? `₹ ${cand.professionalDetails.currentSalary}` : 'N/A'),
+          'Expected Salary': cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary ? `₹ ${cand.professionalDetails.expectedSalary}` : 'N/A'),
+          'Applied Date': item.appliedDate || '',
+          'Status': item.status || 'New'
+        };
+
+        if (isJobFiltered) {
+          rowObj[questions[0] || 'Question 1'] = qa[0]?.answer || '';
+          rowObj[questions[1] || 'Question 2'] = qa[1]?.answer || '';
+          rowObj[questions[2] || 'Question 3'] = qa[2]?.answer || '';
+          rowObj[questions[3] || 'Question 4'] = qa[3]?.answer || '';
+          rowObj[questions[4] || 'Question 5'] = qa[4]?.answer || '';
+        } else {
+          rowObj['Question 1'] = qa[0]?.question || '';
+          rowObj['Answer 1'] = qa[0]?.answer || '';
+          rowObj['Question 2'] = qa[1]?.question || '';
+          rowObj['Answer 2'] = qa[1]?.answer || '';
+          rowObj['Question 3'] = qa[2]?.question || '';
+          rowObj['Answer 3'] = qa[2]?.answer || '';
+          rowObj['Question 4'] = qa[3]?.question || '';
+          rowObj['Answer 4'] = qa[3]?.answer || '';
+          rowObj['Question 5'] = qa[4]?.question || '';
+          rowObj['Answer 5'] = qa[4]?.answer || '';
+        }
+
+        return rowObj;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(sheetRows);
+      const csv = XLSX.utils.sheet_to_csv(worksheet);
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${fileName}.csv`);
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 250);
+
+      setExportNotice({
+        title: 'CSV File Downloaded!',
+        message: `Successfully downloaded "${fileName}.csv" (${dataToExport.length} applications).`
+      });
+      setTimeout(() => setExportNotice(null), 5000);
+      setShowExportMenu(false);
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      alert('CSV Export failed: ' + err.message);
     }
   };
 
   // 3. Copy Table Data to Clipboard
   const handleCopyClipboard = async () => {
     const dataToExport = getExportData();
-    const rows = getExportRows(dataToExport, '\t', false);
-    const tsvContent = [exportHeaders.join('\t'), ...rows].join('\n');
+    if (!dataToExport || dataToExport.length === 0) {
+      alert('No application data found to copy.');
+      return;
+    }
+    const isJobFiltered = Boolean(colFilters && colFilters.job && colFilters.job !== 'All');
+    const questions = isJobFiltered ? getExportQuestions(dataToExport) : [];
+    
+    const baseHeaders = [
+      'Application ID',
+      'Candidate Name',
+      'Job Applied',
+      'Email Address',
+      'Mobile Number',
+      'Primary Qualification',
+      'Institute Name',
+      'Functional Area',
+      'Work Experience',
+      'Current Designation',
+      'Current Company',
+      'Current Salary',
+      'Expected Salary',
+      'Applied Date',
+      'Status'
+    ];
+
+    const headers = isJobFiltered
+      ? [...baseHeaders, questions[0], questions[1], questions[2], questions[3], questions[4]]
+      : [
+          ...baseHeaders,
+          'Question 1', 'Answer 1',
+          'Question 2', 'Answer 2',
+          'Question 3', 'Answer 3',
+          'Question 4', 'Answer 4',
+          'Question 5', 'Answer 5'
+        ];
+
+    const rows = getExportRows(dataToExport, '\t', false, isJobFiltered);
+    const tsvContent = [headers.join('\t'), ...rows].join('\n');
     try {
       await navigator.clipboard.writeText(tsvContent);
       setExportNotice({
         title: 'Copied to Clipboard!',
-        message: `All ${dataToExport.length} application rows copied! You can now paste directly with Ctrl + V into any Google Sheet or Excel.`
+        message: `All ${dataToExport.length} application rows copied! You can now paste directly with Ctrl + V into Google Sheets or Excel.`
       });
+      setTimeout(() => setExportNotice(null), 5000);
     } catch (_) {
       alert('Could not copy to clipboard.');
     }
@@ -584,93 +916,18 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             Rejected: {stats.rejectedCount}
           </button>
 
-          {/* Direct 1-Click Google Sheet Open Button */}
+          {/* Direct 1-Click Export to Excel (.xlsx) Button */}
           <button
-            onClick={handleExportGoogleSheets}
-            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 shadow-md shadow-emerald-600/25 cursor-pointer ml-1"
-            title="Directly open applications in Google Sheet (sheets.new)"
+            onClick={handleExportExcel}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer ml-1"
+            title="Download native Excel file (.xlsx) with all candidate details and Application ID in Column A"
           >
-            <svg className="w-4 h-4 text-emerald-200" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
+            <svg className="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            <span>Open in Google Sheets</span>
+            <span>Export to Excel</span>
           </button>
 
-          {/* More Export Options Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all flex items-center justify-center cursor-pointer border border-gray-200"
-              title="More Export Options (.CSV / Copy Data)"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-              </svg>
-            </button>
-
-            {showExportMenu && (
-              <>
-                <div 
-                  className="fixed inset-0 z-30" 
-                  onClick={() => setShowExportMenu(false)}
-                ></div>
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-200/80 p-2 z-40 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3 py-2 border-b border-gray-100">
-                    <p className="text-[11px] font-black text-gray-800 uppercase tracking-wider">Export Applications</p>
-                    <p className="text-[10px] text-gray-500">Export {filteredApplications.length} application records</p>
-                  </div>
-
-                  {/* 1. Google Sheets Option */}
-                  <button
-                    onClick={handleExportGoogleSheets}
-                    className="w-full mt-1.5 flex items-center gap-2.5 px-3 py-2.5 hover:bg-emerald-50 text-gray-800 hover:text-emerald-800 rounded-xl transition-colors text-left cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900">Open in Google Sheets</p>
-                      <p className="text-[10px] text-gray-500">Copies data & opens sheets.new</p>
-                    </div>
-                  </button>
-
-                  {/* 2. Download CSV Option */}
-                  <button
-                    onClick={() => handleExportCSV(true)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-blue-50 text-gray-800 hover:text-blue-800 rounded-xl transition-colors text-left cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900">Download Spreadsheet (.csv)</p>
-                      <p className="text-[10px] text-gray-500">{getSheetFileName()}.csv</p>
-                    </div>
-                  </button>
-
-                  {/* 3. Copy to Clipboard Option */}
-                  <button
-                    onClick={handleCopyClipboard}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-purple-50 text-gray-800 hover:text-purple-800 rounded-xl transition-colors text-left cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900">Copy Table to Clipboard</p>
-                      <p className="text-[10px] text-gray-500">Paste anywhere in Excel / Sheets</p>
-                    </div>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
 
           {hasActiveFilters && (
             <button 
@@ -694,13 +951,14 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             <thead>
               {/* Row 1: Main Column Headers */}
               <tr className="bg-gray-100/90 border-b border-gray-200 text-gray-800 font-black uppercase tracking-wider text-[11px]">
+                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Application ID</th>
                 <th className="py-3 px-3 min-w-[200px] whitespace-nowrap">Candidate Name</th>
                 <th className="py-3 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
-                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
+                <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
                 <th className="py-3 px-3 min-w-[130px] whitespace-nowrap">Functional Area</th>
+                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
                 <th className="py-3 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
                 <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
-                <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Applied Date</th>
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap text-center">Status</th>
                 <th className="py-3 px-3 min-w-[130px] text-right whitespace-nowrap">Actions</th>
@@ -709,6 +967,19 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               {/* Row 2: In-Column Dedicated Filter Inputs & Dropdowns */}
               <tr className="bg-gray-50/95 border-b border-gray-200">
                 
+                {/* 0. Application ID Filter */}
+                <th className="p-2">
+                  <div className="relative">
+                    <input 
+                      type="text"
+                      value={colFilters.appId}
+                      onChange={(e) => handleFilterChange('appId', e.target.value)}
+                      placeholder="🔍 500101..."
+                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 font-mono"
+                    />
+                  </div>
+                </th>
+
                 {/* 1. Candidate Filter */}
                 <th className="p-2">
                   <div className="relative">
@@ -735,15 +1006,15 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   </select>
                 </th>
 
-                {/* 3. Work Exp Filter */}
+                {/* 3. Primary Qualification Filter (Education) */}
                 <th className="p-2">
                   <select
-                    value={colFilters.workExp}
-                    onChange={(e) => handleFilterChange('workExp', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    value={colFilters.qualification}
+                    onChange={(e) => handleFilterChange('qualification', e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
                   >
-                    {uniqueWorkExps.map(exp => (
-                      <option key={exp} value={exp}>{exp === 'All' ? 'All Exp' : exp}</option>
+                    {uniqueQualifications.map(q => (
+                      <option key={q} value={q}>{q === 'All' ? 'All Quals' : q}</option>
                     ))}
                   </select>
                 </th>
@@ -761,7 +1032,20 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   </select>
                 </th>
 
-                {/* 5. Current Designation Filter */}
+                {/* 5. Work Exp Filter */}
+                <th className="p-2">
+                  <select
+                    value={colFilters.workExp}
+                    onChange={(e) => handleFilterChange('workExp', e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {uniqueWorkExps.map(exp => (
+                      <option key={exp} value={exp}>{exp === 'All' ? 'All Exp' : exp}</option>
+                    ))}
+                  </select>
+                </th>
+
+                {/* 6. Current Designation Filter */}
                 <th className="p-2">
                   <input 
                     type="text"
@@ -772,7 +1056,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   />
                 </th>
 
-                {/* 6. Current Company Filter */}
+                {/* 7. Current Company Filter */}
                 <th className="p-2">
                   <input 
                     type="text"
@@ -781,19 +1065,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                     placeholder="🔍 Filter company..."
                     className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400"
                   />
-                </th>
-
-                {/* 7. Primary Qualification Filter */}
-                <th className="p-2">
-                  <select
-                    value={colFilters.qualification}
-                    onChange={(e) => handleFilterChange('qualification', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
-                  >
-                    {uniqueQualifications.map(q => (
-                      <option key={q} value={q}>{q === 'All' ? 'All Quals' : q}</option>
-                    ))}
-                  </select>
                 </th>
 
                 {/* 8. Applied Date Sort Toggle */}
@@ -840,7 +1111,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             <tbody className="divide-y divide-gray-100">
               {filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="py-14 text-center">
+                  <td colSpan="11" className="py-14 text-center">
                     <div className="max-w-md mx-auto flex flex-col items-center justify-center">
                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-400">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -861,7 +1132,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   </td>
                 </tr>
               ) : (
-                paginatedApplications.map((item, idx) => {
+                filteredApplications.map((item, idx) => {
                   const cand = item.candidate;
                   const workExp = getWorkExp(cand);
                   const func = getFunction(cand);
@@ -873,11 +1144,15 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                     <tr 
                       key={item.appId || idx} 
                       className="hover:bg-emerald-50/30 transition-colors group cursor-pointer"
-                      onClick={() => {
-                        setSelectedCandidate(cand);
-                        setSelectedApplication(item);
-                      }}
+                      onClick={() => handleOpenCandidate(cand, item)}
                     >
+                      {/* 0. Application ID */}
+                      <td className="py-3.5 px-3 whitespace-nowrap">
+                        <span className="font-mono font-black text-gray-900 bg-gray-100/90 text-emerald-800 px-2.5 py-1 rounded-lg text-[12px] border border-gray-200/80 shadow-2xs">
+                          #{item.displayAppId}
+                        </span>
+                      </td>
+
                       {/* 1. Candidate Name, Email & Avatar */}
                       <td className="py-3.5 px-3 font-medium text-gray-900">
                         <div className="flex items-center gap-3">
@@ -906,33 +1181,33 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                         </div>
                       </td>
 
-                      {/* 3. Work Exp */}
+                      {/* 3. Primary Qualification (Education) */}
+                      <td className="py-3.5 px-3 whitespace-nowrap">
+                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200/60 inline-block">
+                          {qual}
+                        </span>
+                      </td>
+
+                      {/* 4. Functional Area (Function) */}
+                      <td className="py-3.5 px-3 text-gray-700 font-medium whitespace-nowrap">
+                        {func}
+                      </td>
+
+                      {/* 5. Work Experience (Work Exp) */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block whitespace-nowrap ${workExp === 'Fresher' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-gray-100 text-gray-800 border border-gray-200/60'}`}>
                           {workExp}
                         </span>
                       </td>
 
-                      {/* 4. Function */}
-                      <td className="py-3.5 px-3 text-gray-700 font-medium whitespace-nowrap">
-                        {func}
-                      </td>
-
-                      {/* 5. Current Designation */}
+                      {/* 6. Current Designation */}
                       <td className="py-3.5 px-3 font-semibold text-gray-900 whitespace-nowrap">
                         {desig}
                       </td>
 
-                      {/* 6. Current Company */}
+                      {/* 7. Current Company */}
                       <td className="py-3.5 px-3 text-gray-700 font-medium whitespace-nowrap">
                         {comp}
-                      </td>
-
-                      {/* 7. Primary Qualification */}
-                      <td className="py-3.5 px-3 whitespace-nowrap">
-                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-200/60 inline-block">
-                          {qual}
-                        </span>
                       </td>
 
                       {/* 8. Applied Date */}
@@ -979,10 +1254,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
                           {/* View Profile Drawer */}
                           <button 
-                            onClick={() => {
-                              setSelectedCandidate(cand);
-                              setSelectedApplication(item);
-                            }}
+                            onClick={() => handleOpenCandidate(cand, item)}
                             className="p-1.5 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                             title="View Full Profile Details"
                           >
@@ -1033,46 +1305,15 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           </table>
         </div>
 
-        {/* Real Working Pagination */}
+        {/* Clean Scroll Info Footer */}
         {filteredApplications.length > 0 && (
-          <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-gray-500 font-medium">
-              Showing <span className="font-bold text-gray-800">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-              <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, filteredApplications.length)}</span> of{' '}
-              <span className="font-bold text-gray-800">{filteredApplications.length}</span> application{filteredApplications.length === 1 ? '' : 's'}
+          <div className="p-3.5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs text-gray-500 font-medium">
+            <p>
+              Showing all <span className="font-bold text-gray-900">{filteredApplications.length}</span> application{filteredApplications.length === 1 ? '' : 's'} (scroll down to view all)
             </p>
-
-            <div className="flex items-center gap-1.5">
-              <button 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-all text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                ‹ Prev
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    currentPage === page 
-                      ? 'bg-emerald-600 text-white shadow-xs' 
-                      : 'text-gray-600 hover:bg-white border border-transparent hover:border-gray-200'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-
-              <button 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-all text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Next ›
-              </button>
-            </div>
+            <span className="text-[11px] text-gray-400">
+              Total Database Records: {flattenedApplications.length}
+            </span>
           </div>
         )}
       </div>
@@ -1081,18 +1322,25 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       {selectedCandidate && (
         <>
           <div 
-            className="fixed inset-0 bg-black/30 backdrop-blur-xs z-40 animate-in fade-in duration-200"
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 animate-in fade-in duration-200"
             onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
           ></div>
-          <div className="fixed inset-y-0 right-0 w-full sm:w-[540px] bg-white shadow-2xl z-50 p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-gray-200 font-sans">
+          <div className="fixed inset-y-0 right-0 w-full sm:w-[560px] bg-white shadow-2xl z-50 p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-gray-200 font-sans">
             
             {/* Drawer Header */}
-            <div className="flex justify-between items-start mb-6 shrink-0 border-b border-gray-100 pb-4">
+            <div className="flex justify-between items-start mb-5 shrink-0 border-b border-gray-100 pb-4">
               <div>
-                <span className="text-[10px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-100">
-                  Candidate Profile
-                </span>
-                <h3 className="font-extrabold text-gray-900 text-lg mt-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-100">
+                    Candidate Profile
+                  </span>
+                  {selectedApplication?.appId && (
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">
+                      #{selectedApplication.displayAppId || selectedApplication.applicationNumber || selectedApplication.appId}
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-extrabold text-gray-900 text-xl mt-1">
                   {selectedApplication ? selectedApplication.jobTitle : selectedCandidate.name}
                 </h3>
               </div>
@@ -1100,7 +1348,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
                 className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -1109,68 +1357,345 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             {/* Drawer Body Scroll */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-6">
               
-              {/* Profile Card */}
-              <div className="flex flex-col items-center text-center bg-gray-50/70 p-6 rounded-2xl border border-gray-100">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-2xl mb-3 shadow-xs ring-4 ring-white ${selectedCandidate.bg || 'bg-emerald-600'}`}>
-                  {selectedCandidate.initials || (selectedCandidate.name ? selectedCandidate.name.charAt(0).toUpperCase() : 'C')}
-                </div>
-                <h2 className="text-lg font-black text-gray-900">{selectedCandidate.name}</h2>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">{selectedCandidate.email}</p>
-                <p className="text-xs font-semibold text-gray-400 mt-1">
-                  {selectedCandidate.phone || 'Phone not provided'} • {selectedCandidate.location || 'Location not specified'}
-                </p>
-
-                {/* Status selector inside drawer */}
-                {selectedApplication && (
-                  <div className="mt-4 flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500">Status:</span>
-                    <select 
-                      className={`appearance-none cursor-pointer outline-none transition-all px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(selectedApplication.status)}`}
-                      value={selectedApplication.status || 'New'}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        if (updateCandidateStatus) {
-                          updateCandidateStatus(selectedApplication.appId, newStatus);
-                        }
-                        selectedApplication.status = newStatus;
-                        setSelectedApplication({ ...selectedApplication, status: newStatus });
-                      }}
-                    >
-                      {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                    </select>
+              {/* SECTION 1: BASIC DETAILS */}
+              <div className="space-y-4">
+                <div className="flex flex-col items-center text-center bg-gray-50/80 p-6 rounded-2xl border border-gray-100 shadow-2xs">
+                  <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-black text-3xl mb-3 shadow-sm ring-4 ring-white ${selectedCandidate.bg || 'bg-[#18a058]'}`}>
+                    {selectedCandidate.initials || (selectedCandidate.name ? selectedCandidate.name.charAt(0).toUpperCase() : 'C')}
                   </div>
-                )}
+                  <h2 className="text-xl font-extrabold text-gray-900">{selectedCandidate.name}</h2>
+                  <p className="text-xs text-gray-500 font-medium mt-0.5">{selectedCandidate.email}</p>
+                  <p className="text-xs font-semibold text-gray-400 mt-1">
+                    {(selectedCandidate.mobile || selectedCandidate.phone || 'Phone not provided')} • {(selectedCandidate.location || selectedCandidate.preferredLocation || 'Location not specified')}
+                  </p>
+
+                  {/* Status selector inside drawer */}
+                  {selectedApplication && (
+                    <div className="mt-4 flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-500">Status:</span>
+                      <select 
+                        className={`appearance-none cursor-pointer outline-none transition-all px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(selectedApplication.status)}`}
+                        value={selectedApplication.status || 'New'}
+                        onChange={(e) => {
+                          const newStatus = e.target.value;
+                          if (updateCandidateStatus) {
+                            updateCandidateStatus(selectedApplication.appId, newStatus);
+                          }
+                          selectedApplication.status = newStatus;
+                          setSelectedApplication({ ...selectedApplication, status: newStatus });
+                        }}
+                      >
+                        {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Brief about yourself / Professional Summary */}
+                <div className="bg-white p-4 rounded-2xl border border-gray-200/80">
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Brief About Candidate / Summary</h4>
+                  <p className="text-xs text-gray-700 leading-relaxed">
+                    {selectedCandidate.brief || selectedCandidate.summary || selectedCandidate.bio || (
+                      <span className="text-gray-400 italic">No professional summary provided.</span>
+                    )}
+                  </p>
+                </div>
               </div>
 
-              {/* Grid of Key Candidate Attributes */}
-              <div className="grid grid-cols-2 gap-4 bg-white p-4 rounded-2xl border border-gray-200/80">
-                <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Work Experience</h4>
-                  <p className="text-xs font-extrabold text-gray-900">{getWorkExp(selectedCandidate)}</p>
+              {/* SECTION 2: EDUCATION */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 14l9-5-9-5-9 5 9 5z" />
+                      <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+                    </svg>
+                    Education
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                    Highest: {getHighestQualification(selectedCandidate)}
+                  </span>
                 </div>
-                <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Function / Industry</h4>
-                  <p className="text-xs font-extrabold text-gray-900">{getFunction(selectedCandidate)}</p>
-                </div>
-                <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Designation</h4>
-                  <p className="text-xs font-extrabold text-gray-900">{getCurrentDesignation(selectedCandidate)}</p>
-                </div>
-                <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Company</h4>
-                  <p className="text-xs font-extrabold text-gray-900">{getCurrentCompany(selectedCandidate)}</p>
-                </div>
-                <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Primary Qualification</h4>
-                  <p className="text-xs font-extrabold text-gray-900">{getHighestQualification(selectedCandidate)}</p>
-                </div>
-                <div>
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Applied Date</h4>
-                  <p className="text-xs font-extrabold text-gray-900">{selectedApplication?.appliedDate || selectedCandidate.date}</p>
+
+                <div className="space-y-3 pt-1">
+                  {(selectedCandidate.qualifications || selectedCandidate.education) && (selectedCandidate.qualifications || selectedCandidate.education).length > 0 ? (
+                    (selectedCandidate.qualifications || selectedCandidate.education).map((qual, i) => (
+                      <div key={i} className="relative pl-4 border-l-2 border-[#18a058] ml-1.5 py-0.5">
+                        <div className="absolute w-2 h-2 bg-[#18a058] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
+                        <h5 className="font-bold text-gray-900 text-xs">
+                          {qual.degree || qual.course || qual.educationType || 'Degree'} {qual.fieldOfStudy || qual.specialization ? `in ${qual.fieldOfStudy || qual.specialization}` : ''}
+                        </h5>
+                        <p className="text-[11px] text-[#18a058] font-bold mb-0.5">{qual.graduationYear || qual.passingYear || qual.year || 'Graduation Year'}</p>
+                        <p className="text-xs text-gray-500 leading-relaxed">{qual.institution || qual.college || qual.university || 'Institution / University'}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 italic text-xs">No education details provided.</span>
+                  )}
                 </div>
               </div>
 
-              {/* Screening Questions Section */}
+              {/* SECTION 3: WORK EXPERIENCE */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Work Experience
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                    Total: {getWorkExp(selectedCandidate)}
+                  </span>
+                </div>
+
+                {/* Experience overview chips */}
+                <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Current Designation</span>
+                    <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentDesignation(selectedCandidate)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Current Company</span>
+                    <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentCompany(selectedCandidate)}</p>
+                  </div>
+                </div>
+
+                {/* Experience Timeline */}
+                <div className="space-y-4 ml-1">
+                  {selectedCandidate.experience && selectedCandidate.experience.length > 0 ? (
+                    selectedCandidate.experience.map((exp, i) => (
+                      <div key={i} className="mb-3">
+                        <h5 className="font-bold text-gray-900 text-xs mb-1.5">{exp.company || exp.companyName || 'Company'}</h5>
+                        <div className="border-l-2 border-[#18a058] ml-1.5 space-y-3 py-1">
+                          {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
+                            const formatDate = (dateStr) => {
+                              if (!dateStr) return '';
+                              const d = new Date(dateStr);
+                              return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                            };
+                            const startDate = role.startDate ? formatDate(role.startDate) : (exp.startDate ? formatDate(exp.startDate) : 'Start');
+                            const endDate = role.currentJob || exp.currentJob ? 'Present' : (role.endDate ? formatDate(role.endDate) : (exp.endDate ? formatDate(exp.endDate) : 'Present'));
+
+                            return (
+                              <div key={rIndex} className="relative pl-4">
+                                <div className="absolute w-2 h-2 bg-[#18a058] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
+                                <h5 className="font-bold text-gray-900 text-xs">{role.jobTitle || role.title || role.role || exp.title || 'Role'}</h5>
+                                <p className="text-[11px] text-gray-500 font-medium mb-1">
+                                  {startDate} - {endDate} <span className="text-gray-300 mx-1">|</span> {role.employmentType || exp.employmentType || 'Full-time'}
+                                </p>
+                                <p className="text-xs text-gray-600 leading-relaxed">{role.description || exp.description || 'No description provided.'}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 italic text-xs">No work experience provided (Fresher).</span>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 4: KEY SKILLS & PREFERENCES */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                  Key Skills & Preferences
+                </h4>
+
+                {/* Skills tags */}
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Key Skills</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(() => {
+                      const rawSkills = selectedCandidate.professionalDetails?.skills || selectedCandidate.skills;
+                      const skillsArray = typeof rawSkills === 'string' 
+                        ? rawSkills.split(',').map(s => s.trim()).filter(Boolean)
+                        : Array.isArray(rawSkills) 
+                          ? rawSkills 
+                          : [];
+                      
+                      if (skillsArray.length === 0) {
+                        return <span className="text-gray-400 italic text-xs">No skills listed.</span>;
+                      }
+
+                      return skillsArray.map((skill, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-bold border border-emerald-100">
+                          {skill}
+                        </span>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* Preferences Grid */}
+                <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Function / Industry</h4>
+                    <p className="text-xs font-extrabold text-gray-900">{getFunction(selectedCandidate)}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Preferred Location</h4>
+                    <p className="text-xs font-extrabold text-gray-900">{selectedCandidate.preferredLocation || selectedCandidate.location || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                      Current {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} Salary
+                    </h4>
+                    <p className="text-xs font-extrabold text-gray-900">
+                      {selectedCandidate.professionalDetails?.currentSalary 
+                        ? `₹ ${selectedCandidate.professionalDetails.currentSalary}` 
+                        : (selectedCandidate.currentCTC ? `₹ ${selectedCandidate.currentCTC}` : 'N/A')}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                      Expected {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} Salary
+                    </h4>
+                    <p className="text-xs font-extrabold text-gray-900">
+                      {selectedCandidate.professionalDetails?.expectedSalary 
+                        ? `₹ ${selectedCandidate.professionalDetails.expectedSalary}` 
+                        : (selectedCandidate.expectedCTC ? `₹ ${selectedCandidate.expectedCTC}` : 'N/A')}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Applied Date</h4>
+                    <p className="text-xs font-extrabold text-gray-900">{selectedApplication?.appliedDate || selectedCandidate.date || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Registered On</h4>
+                    <p className="text-xs font-extrabold text-gray-900">
+                      {getRegisteredDate(selectedCandidate)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 5: DOCUMENTS & MEDIA */}
+              {(selectedCandidate.resume || selectedApplication?.resume || selectedCandidate.introVideo || selectedApplication?.introVideo || selectedCandidate.coverLetter || selectedCandidate.documents) && (
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Documents & Media
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    
+                    {/* Introductory Video */}
+                    {(selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo) && (
+                      <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">Introductory Video</p>
+                              <p className="text-[10px] text-gray-500">Candidate Video Introduction</p>
+                            </div>
+                          </div>
+                          <a 
+                            href={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="px-3 py-1.5 bg-[#0c7844] hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1 shadow-2xs"
+                          >
+                            Watch Video
+                          </a>
+                        </div>
+                        <VideoPlayer url={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo} maxPlayerHeight="220px" className="mt-2" />
+                      </div>
+                    )}
+
+                    {/* Resume */}
+                    {(selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume) && (
+                      <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-green-100 text-green-700 flex items-center justify-center shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-900">Resume / CV Document</p>
+                            <p className="text-[10px] text-gray-500">Applicant CV File</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              const resUrl = selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume;
+                              if (resUrl && resUrl.startsWith('http')) {
+                                window.open(resUrl, '_blank');
+                              } else {
+                                setPreviewResume(selectedCandidate);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                          >
+                            Preview
+                          </button>
+                          {(selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume) && (
+                            <a 
+                              href={selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume} 
+                              download 
+                              className="p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
+                              title="Download"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cover Letter */}
+                    {(selectedApplication?.coverLetter || selectedCandidate.coverLetter || selectedCandidate.documents?.coverLetter) && (
+                      <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-900">Cover Letter</p>
+                            <p className="text-[10px] text-gray-500">Applicant Cover Letter</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              const covUrl = selectedApplication?.coverLetter || selectedCandidate.coverLetter || selectedCandidate.documents?.coverLetter;
+                              if (covUrl && covUrl.startsWith('http')) {
+                                window.open(covUrl, '_blank');
+                              } else {
+                                setPreviewCoverLetter(selectedCandidate);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                          >
+                            Preview
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 6: SCREENING QUESTIONS & ANSWERS */}
               {selectedApplication && selectedApplication.screeningAnswers && selectedApplication.screeningAnswers.length > 0 && (
                 <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100 space-y-3">
                   <h4 className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-2">
@@ -1183,75 +1708,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                     {selectedApplication.screeningAnswers.map((item, idx) => (
                       <div key={idx} className="bg-white p-3.5 rounded-xl border border-emerald-100 shadow-2xs">
                         <p className="text-xs font-bold text-gray-900 mb-1">Q{idx + 1}. {item.question}</p>
-                        <p className="text-xs text-gray-700 bg-gray-50 p-2 rounded-lg font-medium">
+                        <p className="text-xs text-gray-700 bg-gray-50 p-2.5 rounded-lg font-medium">
                           {item.answer || <span className="italic text-gray-400">No answer provided</span>}
                         </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Video Player */}
-              {(selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo) && (
-                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-2">
-                  <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Introductory Video</h4>
-                  <VideoPlayer url={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo} maxPlayerHeight="200px" />
-                </div>
-              )}
-
-              {/* Resume & Documents */}
-              <div>
-                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider mb-3">Documents</h4>
-                <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl border border-gray-200/80">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900">Resume / CV Document</p>
-                      <p className="text-[10px] text-gray-500">Applicant CV File</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => {
-                        const resUrl = selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume;
-                        if (resUrl && resUrl.startsWith('http')) {
-                          window.open(resUrl, '_blank');
-                        } else {
-                          setPreviewResume(selectedCandidate);
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-lg transition-colors cursor-pointer"
-                    >
-                      Preview
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Professional Summary */}
-              {selectedCandidate.summary && (
-                <div>
-                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider mb-2">Summary</h4>
-                  <p className="text-xs text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    {selectedCandidate.summary}
-                  </p>
-                </div>
-              )}
-
-              {/* Skills */}
-              {selectedCandidate.skills && selectedCandidate.skills.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider mb-2">Skills</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedCandidate.skills.map(skill => (
-                      <span key={skill} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-bold border border-emerald-100">
-                        {skill}
-                      </span>
                     ))}
                   </div>
                 </div>
@@ -1345,213 +1805,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Interactive Google Spreadsheet Online Viewer Modal */}
-      {showOnlineSheetModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-200">
-            
-            {/* 1. Google Sheets App Header */}
-            <div className="bg-[#f9fbfd] border-b border-gray-200 px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <div className="flex items-center gap-3">
-                {/* Google Sheets Green Icon */}
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
-                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
-                  </svg>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-black text-gray-900 tracking-tight">
-                      {getSheetFileName()}
-                    </h2>
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
-                      Google Sheets
-                    </span>
-                  </div>
-                  {/* Google Sheets Mock Menu */}
-                  <div className="flex items-center gap-3 text-xs text-gray-600 mt-1 font-medium">
-                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">File</span>
-                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Edit</span>
-                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">View</span>
-                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Insert</span>
-                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Format</span>
-                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Data</span>
-                    <span className="hover:bg-gray-200/70 px-1.5 py-0.5 rounded cursor-pointer">Tools</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons in Google Sheets Header */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* 1-Click Open in Official Google Sheets */}
-                <button
-                  onClick={() => {
-                    handleCopyClipboard();
-                    window.open('https://sheets.new', '_blank');
-                  }}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
-                  title="Open in Google Sheets"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H6v-2h3v2zm0-4H6v-2h3v2zm0-4H6V7h3v2zm4 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2zm5 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z" />
-                  </svg>
-                  <span>Open in Google Sheets</span>
-                </button>
-
-                {/* Copy All Data */}
-                <button
-                  onClick={handleCopyClipboard}
-                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                  title="Copy all rows formatted for Google Sheets"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  </svg>
-                  <span>Copy Data</span>
-                </button>
-
-                {/* Download CSV */}
-                <button
-                  onClick={() => handleExportCSV(true)}
-                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                  title="Download offline CSV file"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <span>Download .CSV</span>
-                </button>
-
-                {/* Close Modal */}
-                <button
-                  onClick={() => setShowOnlineSheetModal(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Info Banner with Quick Tip */}
-            <div className="bg-emerald-50 border-b border-emerald-200/80 px-4 py-2 flex items-center justify-between gap-2 text-xs text-emerald-900">
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold flex items-center gap-1 text-emerald-700">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Pre-filled Data Ready:
-                </span>
-                <span>All <b>{getExportData().length} candidate records</b> are pre-loaded with full candidate details across 16 columns (A to P).</span>
-              </div>
-              <span className="text-[11px] text-emerald-700 font-bold shrink-0">16 Columns (A - P)</span>
-            </div>
-
-            {/* 3. Formula Bar */}
-            <div className="bg-gray-50 border-b border-gray-200 px-4 py-1.5 flex items-center gap-2 text-xs font-mono text-gray-600">
-              <span className="font-bold text-gray-400">fx</span>
-              <div className="w-[1px] h-4 bg-gray-300"></div>
-              <span className="font-bold text-gray-700">A1</span>
-              <div className="w-[1px] h-4 bg-gray-300"></div>
-              <span className="text-gray-500 font-sans truncate">{getSheetFileName()} ({getExportData().length} Applications)</span>
-            </div>
-
-            {/* 4. Live Spreadsheet Grid */}
-            <div className="flex-1 overflow-auto bg-white font-sans text-xs select-text">
-              <table className="w-full border-collapse border border-gray-300 text-left min-w-[1700px]">
-                
-                {/* Column Letters Bar (A, B, C, D, E...) */}
-                <thead className="sticky top-0 bg-[#f3f4f6] text-gray-600 font-semibold z-20 shadow-xs">
-                  <tr className="divide-x divide-gray-300 border-b border-gray-300">
-                    <th className="w-12 bg-gray-200 text-center py-1 text-[11px] font-bold text-gray-500 sticky left-0 z-30"></th>
-                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'].map((col, idx) => (
-                      <th key={idx} className="px-3 py-1 text-center text-[11px] font-bold bg-[#f3f4f6] text-gray-600 min-w-[120px]">
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-
-                  {/* Row 1: Header Row in Google Sheets */}
-                  <tr className="divide-x divide-gray-300 border-b-2 border-emerald-600 bg-emerald-50 text-emerald-950 font-black">
-                    <td className="w-12 text-center py-2 bg-gray-200 font-bold text-gray-500 sticky left-0 z-20">1</td>
-                    {exportHeaders.map((hdr, idx) => (
-                      <td key={idx} className="px-3 py-2 font-black text-xs text-emerald-950 bg-emerald-50/80 whitespace-nowrap">
-                        {hdr}
-                      </td>
-                    ))}
-                  </tr>
-                </thead>
-
-                {/* Spreadsheet Data Rows */}
-                <tbody className="divide-y divide-gray-200">
-                  {getExportData().map((item, rowIdx) => {
-                    const cand = item.candidate || {};
-                    const qa = item.screeningAnswers || [];
-
-                    return (
-                      <tr key={rowIdx} className="hover:bg-blue-50/60 transition-colors divide-x divide-gray-200 group">
-                        {/* Row Index on Left (2, 3, 4...) */}
-                        <td className="w-12 text-center py-2 bg-gray-100 font-semibold text-gray-500 group-hover:bg-blue-100 sticky left-0 z-10 text-[11px]">
-                          {rowIdx + 2}
-                        </td>
-                        {/* A: Name */}
-                        <td className="px-3 py-2 font-bold text-gray-900 whitespace-nowrap">{cand.name || 'N/A'}</td>
-                        {/* B: Email ID */}
-                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{cand.email || 'N/A'}</td>
-                        {/* C: Mobile No. */}
-                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{cand.phone || '+91 98765 43210'}</td>
-                        {/* D: Work Exp */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getWorkExp(cand)}</td>
-                        {/* E: Function */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getFunction(cand)}</td>
-                        {/* F: Current designation */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getCurrentDesignation(cand)}</td>
-                        {/* G: Current company */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getCurrentCompany(cand)}</td>
-                        {/* H: Highest/primary Qualification */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getHighestQualification(cand)}</td>
-                        {/* I: Institute */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{getInstitute(cand)}</td>
-                        {/* J: Current Salary */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{cand.currentCTC && cand.currentCTC !== 'N/A' ? cand.currentCTC : (cand.professionalDetails?.currentSalary || 'N/A')}</td>
-                        {/* K: Expected Salary */}
-                        <td className="px-3 py-2 text-gray-800 whitespace-nowrap">{cand.expectedCTC && cand.expectedCTC !== 'N/A' ? cand.expectedCTC : (cand.professionalDetails?.expectedSalary || 'N/A')}</td>
-                        {/* L: Question 1 */}
-                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[0]?.answer || ''}>{qa[0]?.answer || '-'}</td>
-                        {/* M: Question 2 */}
-                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[1]?.answer || ''}>{qa[1]?.answer || '-'}</td>
-                        {/* N: Question 3 */}
-                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[2]?.answer || ''}>{qa[2]?.answer || '-'}</td>
-                        {/* O: Question 4 */}
-                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[3]?.answer || ''}>{qa[3]?.answer || '-'}</td>
-                        {/* P: Question 5 */}
-                        <td className="px-3 py-2 text-gray-700 max-w-[200px] truncate" title={qa[4]?.answer || ''}>{qa[4]?.answer || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 5. Google Sheets Bottom Tab Bar */}
-            <div className="bg-[#f0f3f4] border-t border-gray-300 px-4 py-2 flex items-center justify-between text-xs text-gray-600">
-              <div className="flex items-center gap-1">
-                <button className="p-1 hover:bg-gray-300 rounded text-gray-700 font-bold">+</button>
-                <div className="flex items-center gap-1 bg-white border border-gray-300 px-3 py-1 rounded-t shadow-xs border-b-2 border-b-emerald-600 font-bold text-gray-900">
-                  <span>Sheet1</span>
-                  <span className="text-[9px] text-gray-400">▼</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-xs font-semibold text-gray-600">
-                <span>{getExportData().length} Applications loaded</span>
-                <span>•</span>
-                <span>Columns: A to P (16)</span>
-              </div>
-            </div>
-
           </div>
         </div>
       )}

@@ -1,3 +1,4 @@
+const http = require('http');
 const https = require('https');
 const express = require('express');
 const dotenv = require('dotenv');
@@ -7,6 +8,7 @@ dotenv.config();
 
 const cors = require('cors');
 const connectDB = require('./config/db');
+const { initSocket } = require('./socket');
 const employeeAuthRoutes = require('./employee/routes/authRoutes');
 const employeeProfileRoutes = require('./employee/routes/profileRoutes');
 const employerAuthRoutes = require('./employer/routes/authRoutes');
@@ -14,6 +16,10 @@ const employerAuthRoutes = require('./employer/routes/authRoutes');
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+initSocket(server);
 
 // Transparent proxy for Firebase Auth Handler on custom domain (sahijob.com/__/auth/*)
 app.use('/__/auth', (req, res) => {
@@ -43,6 +49,7 @@ app.use('/api/employer/auth', employerAuthRoutes);
 app.use('/api/employer/jobs', require('./employer/routes/jobRoutes'));
 app.use('/api/employer/employees', require('./employer/routes/employeeRoutes'));
 app.use('/api/employer/messages', require('./employer/routes/messageRoutes'));
+app.use('/api/employer/sheets', require('./employer/routes/googleSheetRoutes'));
 app.use('/api/pages', require('./routes/pageRoutes'));
 app.use('/api/homepage', require('./routes/homepageRoutes'));
 app.use('/api/footer', require('./routes/footerRoutes'));
@@ -65,6 +72,7 @@ app.get('/health', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
