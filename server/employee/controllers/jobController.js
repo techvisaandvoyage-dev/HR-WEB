@@ -125,6 +125,9 @@ exports.applyForJob = async (req, res) => {
           const populatedApp = { ...application.toObject(), jobId: job };
           await googleSheetService.appendApplicationToSpreadsheet(employer.googleSheetId, populatedApp, candidate);
         }
+        // Trigger live candidates & employers sheet update
+        googleSheetService.triggerLiveCandidateSync();
+        googleSheetService.triggerLiveEmployerSync();
       } catch (sheetSyncErr) {
         console.error('[GoogleSheet] Background auto-sync error:', sheetSyncErr.message);
       }

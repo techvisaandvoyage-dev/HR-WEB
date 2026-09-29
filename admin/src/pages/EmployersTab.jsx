@@ -1332,8 +1332,7 @@ export default function EmployersTab() {
 
   // Employer Type Label helper
   const getEmployerTypeLabel = (empr) => {
-    if (empr?.hiringFor === 'consultant' || empr?.isConsultant) return 'Consultant';
-    if (empr?.accountType === 'individual') return 'Individual / Proprietor';
+    if (empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant')) return 'Consultant';
     return 'Company';
   };
 
@@ -2526,24 +2525,25 @@ export default function EmployersTab() {
                       <thead>
                         <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-700 font-extrabold uppercase tracking-wider text-[10px]">
                           <th className="py-3.5 px-4">Company / Business</th>
+                          <th className="py-3.5 px-4">Acc Type</th>
                           <th className="py-3.5 px-4">Recruiter Info</th>
                           <th className="py-3.5 px-4">Industry</th>
                           <th className="py-3.5 px-4">Location</th>
-                          <th className="py-3.5 px-4">Active Jobs</th>
+                          <th className="py-3.5 px-4">Job Posted</th>
                           <th className="py-3.5 px-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {loading ? (
                           <tr>
-                            <td colSpan="6" className="py-12 text-center text-gray-400">
+                            <td colSpan="7" className="py-12 text-center text-gray-400">
                               <RefreshCw className="w-5 h-5 mx-auto animate-spin text-emerald-600 mb-2" />
                               Loading employers directory...
                             </td>
                           </tr>
                         ) : filteredAndSortedEmployers.length === 0 ? (
                           <tr>
-                            <td colSpan="6" className="py-12 text-center text-gray-400">
+                            <td colSpan="7" className="py-12 text-center text-gray-400">
                               No employer records found.
                             </td>
                           </tr>
@@ -2551,6 +2551,7 @@ export default function EmployersTab() {
                           filteredAndSortedEmployers.map((empr) => {
                             const empId = empr._id || empr.id;
                             const isExpanded = expandedEmployers[empId];
+                            const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant');
                             return (
                               <React.Fragment key={empId}>
                                 <tr className="hover:bg-emerald-50/30 transition-colors">
@@ -2562,10 +2563,19 @@ export default function EmployersTab() {
                                       <div>
                                         <span>{empr.companyName || empr.fullName || 'N/A'}</span>
                                         <p className="text-[10px] text-gray-400 font-normal">
-                                          {getEmployerTypeLabel(empr)}
+                                          {empr.employees || 'Team'}
                                         </p>
                                       </div>
                                     </div>
+                                  </td>
+                                  <td className="py-3.5 px-4">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                      isConsultant 
+                                        ? 'bg-amber-100 text-amber-800 border border-amber-200/80' 
+                                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200/80'
+                                    }`}>
+                                      {isConsultant ? 'Consultant' : 'Company'}
+                                    </span>
                                   </td>
                                   <td className="py-3.5 px-4">
                                     <p className="font-semibold text-gray-800">{empr.fullName || 'N/A'}</p>
@@ -2574,8 +2584,8 @@ export default function EmployersTab() {
                                   <td className="py-3.5 px-4 text-gray-600 font-medium">{empr.industry || 'N/A'}</td>
                                   <td className="py-3.5 px-4 text-gray-600">{empr.location || 'N/A'}</td>
                                   <td className="py-3.5 px-4">
-                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px]">
-                                      {empr.activeJobs || 0} active
+                                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px] border border-emerald-200/60">
+                                      {empr.totalJobs !== undefined ? empr.totalJobs : (empr.jobs?.length || empr.activeJobs || 0)} posted
                                     </span>
                                   </td>
                                   <td className="py-3.5 px-4 text-right">

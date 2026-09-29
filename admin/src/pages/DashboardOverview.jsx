@@ -26,7 +26,23 @@ import {
   Sliders,
   SlidersHorizontal,
   Check,
-  AlertCircle
+  AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  RotateCcw,
+  User,
+  Download,
+  Video,
+  Sparkles,
+  BookOpen,
+  Layers,
+  Compass,
+  CheckCircle,
+  Copy,
+  FolderGit2,
+  Settings,
+  Link2
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -64,6 +80,8 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [employeeExpFilter, setEmployeeExpFilter] = useState('All');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [detailEmployee, setDetailEmployee] = useState(null);
+  const [loadingEmployeeDetail, setLoadingEmployeeDetail] = useState(false);
 
   const handleOpenEmployerDrawer = async (employer) => {
     setSelectedEmployer(employer);
@@ -80,6 +98,159 @@ export default function DashboardOverview({ onNavigateTab }) {
       console.error('Error fetching employer detail:', err);
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const handleOpenEmployeeDrawer = async (employee) => {
+    setSelectedEmployee(employee);
+    setDetailEmployee(employee);
+    setLoadingEmployeeDetail(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/employees/${employee._id || employee.id}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setDetailEmployee(data.data);
+        setSelectedEmployee(prev => ({ ...prev, ...data.data }));
+      }
+    } catch (err) {
+      console.error('Error fetching employee detail:', err);
+    } finally {
+      setLoadingEmployeeDetail(false);
+    }
+  };
+
+  // Google Sheets Live Sync State
+  const [sheetStatus, setSheetStatus] = useState({
+    serviceAccountEmail: 'firebase-adminsdk-fbsvc@hr-website-6c387.iam.gserviceaccount.com',
+    candidatesSheetUrl: '',
+    candidatesSheetLastSynced: null,
+    employersSheetUrl: '',
+    employersSheetLastSynced: null
+  });
+  const [syncingCandidatesSheet, setSyncingCandidatesSheet] = useState(false);
+  const [syncingEmployersSheet, setSyncingEmployersSheet] = useState(false);
+
+  const fetchSheetStatus = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/sheets/status`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setSheetStatus(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching sheets status:', err);
+    }
+  };
+
+  const handleOpenCandidatesSheet = async () => {
+    if (sheetStatus.candidatesSheetUrl) {
+      window.open(sheetStatus.candidatesSheetUrl, '_blank');
+      return;
+    }
+    try {
+      setSyncingCandidatesSheet(true);
+      const res = await fetch(`${API_URL}/api/admin/sheets/candidates/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success && data.data?.spreadsheetUrl) {
+        setSheetStatus(prev => ({
+          ...prev,
+          candidatesSheetUrl: data.data.spreadsheetUrl,
+          candidatesSheetLastSynced: data.data.lastSynced
+        }));
+        window.open(data.data.spreadsheetUrl, '_blank');
+      } else {
+        alert(data.message || 'Failed to open candidates sheet');
+      }
+    } catch (err) {
+      alert('Error opening candidates sheet: ' + err.message);
+    } finally {
+      setSyncingCandidatesSheet(false);
+    }
+  };
+
+  const handleSyncCandidatesSheet = async () => {
+    setSyncingCandidatesSheet(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/sheets/candidates/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customUrl: sheetStatus.candidatesSheetUrl || undefined })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSheetStatus(prev => ({
+          ...prev,
+          candidatesSheetUrl: data.data.spreadsheetUrl,
+          candidatesSheetLastSynced: data.data.lastSynced
+        }));
+        showToast(`Live synced ${data.data.count} candidates to Google Sheet!`);
+      } else {
+        alert(data.message || 'Failed to sync candidates sheet');
+      }
+    } catch (err) {
+      console.error('Error syncing candidates sheet:', err);
+      alert('Failed to sync candidates sheet: ' + err.message);
+    } finally {
+      setSyncingCandidatesSheet(false);
+    }
+  };
+
+  const handleOpenEmployersSheet = async () => {
+    if (sheetStatus.employersSheetUrl) {
+      window.open(sheetStatus.employersSheetUrl, '_blank');
+      return;
+    }
+    try {
+      setSyncingEmployersSheet(true);
+      const res = await fetch(`${API_URL}/api/admin/sheets/employers/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success && data.data?.spreadsheetUrl) {
+        setSheetStatus(prev => ({
+          ...prev,
+          employersSheetUrl: data.data.spreadsheetUrl,
+          employersSheetLastSynced: data.data.lastSynced
+        }));
+        window.open(data.data.spreadsheetUrl, '_blank');
+      } else {
+        alert(data.message || 'Failed to open employers sheet');
+      }
+    } catch (err) {
+      alert('Error opening employers sheet: ' + err.message);
+    } finally {
+      setSyncingEmployersSheet(false);
+    }
+  };
+
+  const handleSyncEmployersSheet = async () => {
+    setSyncingEmployersSheet(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/sheets/employers/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customUrl: sheetStatus.employersSheetUrl || undefined })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSheetStatus(prev => ({
+          ...prev,
+          employersSheetUrl: data.data.spreadsheetUrl,
+          employersSheetLastSynced: data.data.lastSynced
+        }));
+        showToast(`Live synced ${data.data.count} employers to Google Sheet!`);
+      } else {
+        alert(data.message || 'Failed to sync employers sheet');
+      }
+    } catch (err) {
+      console.error('Error syncing employers sheet:', err);
+      alert('Failed to sync employers sheet: ' + err.message);
+    } finally {
+      setSyncingEmployersSheet(false);
     }
   };
 
@@ -228,6 +399,7 @@ export default function DashboardOverview({ onNavigateTab }) {
   useEffect(() => {
     fetchStats();
     fetchGlobalSettings();
+    fetchSheetStatus();
   }, []);
 
   useEffect(() => {
@@ -253,58 +425,498 @@ export default function DashboardOverview({ onNavigateTab }) {
 
   // Helper for Employer type label
   const getEmployerTypeLabel = (empr) => {
-    if (empr?.hiringFor === 'consultant' || empr?.isConsultant) return 'Consultant';
-    if (empr?.accountType === 'individual') return 'Individual / Proprietor';
+    if (empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant')) return 'Consultant';
     return 'Company';
   };
 
-  // Filter Employers
-  const filteredEmployers = useMemo(() => {
-    return employers.filter(empr => {
-      const q = employerSearch.toLowerCase().trim();
-      const comp = (empr.companyName || '').toLowerCase();
-      const name = (empr.fullName || '').toLowerCase();
-      const email = (empr.email || '').toLowerCase();
-      const phone = (empr.mobile || '').toLowerCase();
-      const loc = (empr.location || '').toLowerCase();
-      const ind = (empr.industry || '').toLowerCase();
-      const typeStr = getEmployerTypeLabel(empr).toLowerCase();
+  // Employer Column Filters & Sorting State
+  const [emprColFilters, setEmprColFilters] = useState({
+    company: '',
+    accType: 'All',
+    recruiter: '',
+    industry: 'All',
+    location: 'All',
+    jobPosted: 'All',
+    joinedOn: 'All'
+  });
 
-      const matchSearch = !q || comp.includes(q) || name.includes(q) || email.includes(q) || phone.includes(q) || loc.includes(q) || ind.includes(q) || typeStr.includes(q);
-      
-      const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant;
-      const matchType = employerTypeFilter === 'All' || 
-        (employerTypeFilter === 'consultant' && isConsultant) || 
-        (employerTypeFilter === 'company' && !isConsultant);
+  const [emprSort, setEmprSort] = useState({ column: 'joinedOn', direction: 'desc' });
 
-      const matchIndustry = employerIndustryFilter === 'All' || (empr.industry && empr.industry.toLowerCase().includes(employerIndustryFilter.toLowerCase()));
+  const employerDynamicFilterOptions = useMemo(() => {
+    const inds = new Set();
+    const locs = new Set();
 
-      return matchSearch && matchType && matchIndustry;
+    employers.forEach(empr => {
+      if (empr.industry) inds.add(empr.industry.trim());
+      if (empr.location) locs.add(empr.location.trim());
     });
-  }, [employers, employerSearch, employerTypeFilter, employerIndustryFilter]);
+
+    return {
+      industries: ['All', ...Array.from(inds).sort()],
+      locations: ['All', ...Array.from(locs).sort()]
+    };
+  }, [employers]);
+
+  const handleEmployerSort = (column) => {
+    setEmprSort(prev => {
+      if (prev.column === column) {
+        return { column, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { column, direction: 'asc' };
+    });
+  };
+
+  const handleClearAllEmployerFilters = () => {
+    setEmployerSearch('');
+    setEmployerTypeFilter('All');
+    setEmployerIndustryFilter('All');
+    setEmprColFilters({
+      company: '',
+      accType: 'All',
+      recruiter: '',
+      industry: 'All',
+      location: 'All',
+      jobPosted: 'All',
+      joinedOn: 'All'
+    });
+  };
+
+  const activeEmployerFiltersCount = useMemo(() => {
+    let count = 0;
+    if (employerSearch) count++;
+    if (employerTypeFilter !== 'All') count++;
+    if (employerIndustryFilter !== 'All') count++;
+    if (emprColFilters.company) count++;
+    if (emprColFilters.accType !== 'All') count++;
+    if (emprColFilters.recruiter) count++;
+    if (emprColFilters.industry !== 'All') count++;
+    if (emprColFilters.location !== 'All') count++;
+    if (emprColFilters.jobPosted !== 'All') count++;
+    if (emprColFilters.joinedOn !== 'All') count++;
+    return count;
+  }, [employerSearch, employerTypeFilter, employerIndustryFilter, emprColFilters]);
+
+  // Filter & Sort Employers
+  const filteredAndSortedEmployers = useMemo(() => {
+    return employers
+      .filter(empr => {
+        // Global Search
+        if (employerSearch.trim()) {
+          const q = employerSearch.toLowerCase().trim();
+          const comp = (empr.companyName || '').toLowerCase();
+          const name = (empr.fullName || '').toLowerCase();
+          const email = (empr.email || '').toLowerCase();
+          const phone = (empr.mobile || '').toLowerCase();
+          const loc = (empr.location || '').toLowerCase();
+          const ind = (empr.industry || '').toLowerCase();
+          const typeStr = getEmployerTypeLabel(empr).toLowerCase();
+          if (!comp.includes(q) && !name.includes(q) && !email.includes(q) && !phone.includes(q) && !loc.includes(q) && !ind.includes(q) && !typeStr.includes(q)) {
+            return false;
+          }
+        }
+
+        const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant');
+        const accTypeLabel = isConsultant ? 'Consultant' : 'Company';
+
+        // Top Header Dropdown: Type
+        if (employerTypeFilter !== 'All') {
+          if (employerTypeFilter === 'consultant' && !isConsultant) return false;
+          if (employerTypeFilter === 'company' && isConsultant) return false;
+        }
+
+        // Top Header Dropdown: Industry
+        if (employerIndustryFilter !== 'All') {
+          if (!empr.industry || !empr.industry.toLowerCase().includes(employerIndustryFilter.toLowerCase())) return false;
+        }
+
+        // Column Filter 1: Company
+        if (emprColFilters.company.trim()) {
+          const cQ = emprColFilters.company.toLowerCase().trim();
+          const comp = (empr.companyName || '').toLowerCase();
+          const empSize = (empr.employees || '').toLowerCase();
+          if (!comp.includes(cQ) && !empSize.includes(cQ)) return false;
+        }
+
+        // Column Filter 2: Acc Type
+        if (emprColFilters.accType !== 'All') {
+          if (emprColFilters.accType.toLowerCase() !== accTypeLabel.toLowerCase()) return false;
+        }
+
+        // Column Filter 3: Recruiter
+        if (emprColFilters.recruiter.trim()) {
+          const rQ = emprColFilters.recruiter.toLowerCase().trim();
+          const rName = (empr.fullName || '').toLowerCase();
+          const rEmail = (empr.email || '').toLowerCase();
+          const rPhone = (empr.mobile || '').toLowerCase();
+          if (!rName.includes(rQ) && !rEmail.includes(rQ) && !rPhone.includes(rQ)) return false;
+        }
+
+        // Column Filter 4: Industry
+        if (emprColFilters.industry !== 'All') {
+          if (empr.industry !== emprColFilters.industry) return false;
+        }
+
+        // Column Filter 5: Location
+        if (emprColFilters.location !== 'All') {
+          if (empr.location !== emprColFilters.location) return false;
+        }
+
+        // Column Filter 6: Job Posted
+        if (emprColFilters.jobPosted !== 'All') {
+          const posted = empr.totalJobs !== undefined ? empr.totalJobs : (empr.jobs?.length || empr.activeJobs || 0);
+          if (emprColFilters.jobPosted === '0' && posted > 0) return false;
+          if (emprColFilters.jobPosted === '1+' && posted < 1) return false;
+          if (emprColFilters.jobPosted === '5+' && posted < 5) return false;
+          if (emprColFilters.jobPosted === '10+' && posted < 10) return false;
+        }
+
+        // Column Filter 8: Joined On Date
+        if (emprColFilters.joinedOn !== 'All') {
+          if (!empr.createdAt) return false;
+          const created = new Date(empr.createdAt);
+          const now = new Date();
+          const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+          if (emprColFilters.joinedOn === 'today' && diffDays > 1) return false;
+          if (emprColFilters.joinedOn === '7d' && diffDays > 7) return false;
+          if (emprColFilters.joinedOn === '30d' && diffDays > 30) return false;
+          if (emprColFilters.joinedOn === '90d' && diffDays > 90) return false;
+          if (emprColFilters.joinedOn === 'thisYear' && created.getFullYear() !== now.getFullYear()) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const dir = emprSort.direction === 'asc' ? 1 : -1;
+        switch (emprSort.column) {
+          case 'company':
+            return (a.companyName || a.fullName || '').localeCompare(b.companyName || b.fullName || '') * dir;
+          case 'accType': {
+            const isConsA = a?.hiringFor === 'consultant' || a?.isConsultant || a?.accountType === 'individual';
+            const isConsB = b?.hiringFor === 'consultant' || b?.isConsultant || b?.accountType === 'individual';
+            return ((isConsA ? 'Consultant' : 'Company').localeCompare(isConsB ? 'Consultant' : 'Company')) * dir;
+          }
+          case 'recruiter':
+            return (a.fullName || a.email || '').localeCompare(b.fullName || b.email || '') * dir;
+          case 'industry':
+            return (a.industry || '').localeCompare(b.industry || '') * dir;
+          case 'location':
+            return (a.location || '').localeCompare(b.location || '') * dir;
+          case 'jobPosted': {
+            const jA = a.totalJobs !== undefined ? a.totalJobs : (a.jobs?.length || a.activeJobs || 0);
+            const jB = b.totalJobs !== undefined ? b.totalJobs : (b.jobs?.length || b.activeJobs || 0);
+            return (jA - jB) * dir;
+          }
+          case 'joinedOn':
+          default: {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return (dateA - dateB) * dir;
+          }
+        }
+      });
+  }, [employers, employerSearch, employerTypeFilter, employerIndustryFilter, emprColFilters, emprSort]);
+
+  const filteredEmployers = filteredAndSortedEmployers;
 
   const employerIndustries = useMemo(() => {
     return ['All', ...new Set(employers.map(e => e.industry).filter(Boolean))];
   }, [employers]);
 
-  // Filter Employees
+  // Candidate Column Filters & Sorting State
+  const [empFilters, setEmpFilters] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    qualification: 'All',
+    functionArea: 'All',
+    experience: 'All',
+    designation: 'All',
+    company: 'All',
+    jobsApplied: 'All',
+    lastUpdate: 'All'
+  });
+
+  const [empSort, setEmpSort] = useState({ column: 'lastUpdate', direction: 'desc' });
+
+  // Helpers for extracting candidate detailed attributes
+  const getPrimaryQualification = (emp) => {
+    if (!emp) return 'N/A';
+    if (emp.primaryQualification) return emp.primaryQualification;
+    const quals = emp.qualifications || [];
+    if (!Array.isArray(quals) || quals.length === 0) return 'N/A';
+    const primary = quals.find(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)) || quals[0];
+    return primary?.course || primary?.educationType || primary?.degree || primary?.university || 'N/A';
+  };
+
+  const getFunctionArea = (emp) => {
+    if (!emp) return 'N/A';
+    return emp.function || emp.functionalArea || emp.industry || emp.professionalDetails?.functionalArea || 'N/A';
+  };
+
+  const getWorkExp = (emp) => {
+    if (!emp) return 'Fresher';
+    if (emp.totalExperience) return emp.totalExperience;
+    if (emp.workExp || emp.experienceYears) return emp.workExp || emp.experienceYears;
+    if (emp.isFresher) return 'Fresher';
+    if (Array.isArray(emp.experience) && emp.experience.length > 0) return `${emp.experience.length} Year(s)`;
+    return 'Fresher';
+  };
+
+  const getCurrentDesignation = (emp) => {
+    if (!emp) return 'N/A';
+    if (emp.currentDesignation) return emp.currentDesignation;
+    if (emp.designation) return emp.designation;
+    const exps = emp.experience || [];
+    if (Array.isArray(exps)) {
+      const currentRole = exps.find(e => e.roles?.some(r => r.currentCompany))?.roles?.find(r => r.currentCompany);
+      if (currentRole?.jobTitle) return currentRole.jobTitle;
+      if (exps[0]?.roles?.[0]?.jobTitle) return exps[0].roles[0].jobTitle;
+      if (exps[0]?.designation) return exps[0].designation;
+    }
+    return 'N/A';
+  };
+
+  const getCurrentCompany = (emp) => {
+    if (!emp) return 'N/A';
+    if (emp.currentCompany) return emp.currentCompany;
+    const exps = emp.experience || [];
+    if (Array.isArray(exps)) {
+      const currentExp = exps.find(e => e.roles?.some(r => r.currentCompany)) || exps[0];
+      if (currentExp?.companyName) return currentExp.companyName;
+    }
+    return emp.professionalDetails?.currentCompany || 'N/A';
+  };
+
+  const getLastProfileUpdate = (emp) => {
+    if (!emp) return 'N/A';
+    const d = emp.updatedAt || emp.lastLogin || emp.createdAt;
+    if (!d) return 'N/A';
+    return new Date(d).toLocaleDateString();
+  };
+
+  // Dynamic filter options generated from candidate data
+  const candidateFilterOptions = useMemo(() => {
+    const quals = new Set();
+    const funcs = new Set();
+    const desigs = new Set();
+    const comps = new Set();
+
+    employees.forEach(emp => {
+      const q = getPrimaryQualification(emp);
+      if (q && q !== 'N/A') quals.add(q);
+
+      const f = getFunctionArea(emp);
+      if (f && f !== 'N/A') funcs.add(f);
+
+      const d = getCurrentDesignation(emp);
+      if (d && d !== 'N/A') desigs.add(d);
+
+      const c = getCurrentCompany(emp);
+      if (c && c !== 'N/A') comps.add(c);
+    });
+
+    return {
+      qualifications: ['All', ...Array.from(quals).sort()],
+      functions: ['All', ...Array.from(funcs).sort()],
+      designations: ['All', ...Array.from(desigs).sort()],
+      companies: ['All', ...Array.from(comps).sort()]
+    };
+  }, [employees]);
+
+  const handleSort = (column) => {
+    setEmpSort(prev => {
+      if (prev.column === column) {
+        return { column, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { column, direction: 'asc' };
+    });
+  };
+
+  const handleClearAllEmpFilters = () => {
+    setEmployeeSearch('');
+    setEmpFilters({
+      name: '',
+      email: '',
+      phone: '',
+      qualification: 'All',
+      functionArea: 'All',
+      experience: 'All',
+      designation: 'All',
+      company: 'All',
+      jobsApplied: 'All',
+      lastUpdate: 'All'
+    });
+  };
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (employeeSearch.trim()) count++;
+    if (empFilters.name.trim()) count++;
+    if (empFilters.email.trim()) count++;
+    if (empFilters.phone.trim()) count++;
+    if (empFilters.qualification !== 'All') count++;
+    if (empFilters.functionArea !== 'All') count++;
+    if (empFilters.experience !== 'All') count++;
+    if (empFilters.designation !== 'All') count++;
+    if (empFilters.company !== 'All') count++;
+    if (empFilters.jobsApplied !== 'All') count++;
+    if (empFilters.lastUpdate !== 'All') count++;
+    return count;
+  }, [employeeSearch, empFilters]);
+
+  const hasActiveFilters = activeFiltersCount > 0;
+
+  // Filter & Sort Employees
   const filteredEmployees = useMemo(() => {
-    return employees.filter(emp => {
+    let result = employees.filter(emp => {
       const q = employeeSearch.toLowerCase().trim();
       const name = (emp.name || '').toLowerCase();
       const email = (emp.email || '').toLowerCase();
-      const mobile = (emp.mobile || '').toLowerCase();
-      const desig = (emp.designation || '').toLowerCase();
-      const loc = (emp.location || '').toLowerCase();
-      const skills = (Array.isArray(emp.skills) ? emp.skills.join(' ') : (emp.skills || '')).toLowerCase();
+      const mobile = (emp.mobile || emp.phone || '').toLowerCase();
+      const qual = getPrimaryQualification(emp);
+      const func = getFunctionArea(emp);
+      const exp = getWorkExp(emp);
+      const desig = getCurrentDesignation(emp);
+      const comp = getCurrentCompany(emp);
+      const apps = emp.applicationsCount || 0;
+      const updateDate = emp.updatedAt || emp.lastLogin || emp.createdAt;
 
-      const matchSearch = !q || name.includes(q) || email.includes(q) || mobile.includes(q) || desig.includes(q) || loc.includes(q) || skills.includes(q);
+      // 1. Global Search
+      if (q) {
+        const matchGlobal = name.includes(q) || 
+          email.includes(q) || 
+          mobile.includes(q) || 
+          qual.toLowerCase().includes(q) || 
+          func.toLowerCase().includes(q) || 
+          exp.toLowerCase().includes(q) || 
+          desig.toLowerCase().includes(q) || 
+          comp.toLowerCase().includes(q);
+        if (!matchGlobal) return false;
+      }
 
-      const matchExp = employeeExpFilter === 'All' || emp.totalExperience === employeeExpFilter;
+      // 2. Name column filter
+      if (empFilters.name.trim() && !name.includes(empFilters.name.toLowerCase().trim())) {
+        return false;
+      }
 
-      return matchSearch && matchExp;
+      // 3. Email column filter
+      if (empFilters.email.trim() && !email.includes(empFilters.email.toLowerCase().trim())) {
+        return false;
+      }
+
+      // 4. Phone column filter
+      if (empFilters.phone.trim() && !mobile.includes(empFilters.phone.toLowerCase().trim())) {
+        return false;
+      }
+
+      // 5. Qualification filter
+      if (empFilters.qualification !== 'All' && qual !== empFilters.qualification) {
+        return false;
+      }
+
+      // 6. Function / Industry filter
+      if (empFilters.functionArea !== 'All' && func !== empFilters.functionArea) {
+        return false;
+      }
+
+      // 7. Work Exp filter
+      if (empFilters.experience !== 'All') {
+        const expLower = exp.toLowerCase();
+        if (empFilters.experience === 'Fresher') {
+          if (!expLower.includes('fresh') && expLower !== '0' && expLower !== '0 years') return false;
+        } else if (empFilters.experience === '1-2 Years') {
+          if (!expLower.includes('1') && !expLower.includes('2')) return false;
+        } else if (empFilters.experience === '3-5 Years') {
+          if (!expLower.includes('3') && !expLower.includes('4') && !expLower.includes('5')) return false;
+        } else if (empFilters.experience === '5+ Years') {
+          const num = parseInt(expLower);
+          if (isNaN(num) || num < 5) return false;
+        } else {
+          if (exp !== empFilters.experience) return false;
+        }
+      }
+
+      // 8. Designation filter
+      if (empFilters.designation !== 'All' && desig !== empFilters.designation) {
+        return false;
+      }
+
+      // 9. Company filter
+      if (empFilters.company !== 'All' && comp !== empFilters.company) {
+        return false;
+      }
+
+      // 10. Jobs Applied filter
+      if (empFilters.jobsApplied !== 'All') {
+        if (empFilters.jobsApplied === '0' && apps !== 0) return false;
+        if (empFilters.jobsApplied === '1-2' && (apps < 1 || apps > 2)) return false;
+        if (empFilters.jobsApplied === '3+' && apps < 3) return false;
+      }
+
+      // 11. Last Profile Update filter
+      if (empFilters.lastUpdate !== 'All' && updateDate) {
+        const updateTime = new Date(updateDate).getTime();
+        const now = Date.now();
+        if (empFilters.lastUpdate === 'today' && now - updateTime > 24 * 60 * 60 * 1000) return false;
+        if (empFilters.lastUpdate === 'week' && now - updateTime > 7 * 24 * 60 * 60 * 1000) return false;
+        if (empFilters.lastUpdate === 'month' && now - updateTime > 30 * 24 * 60 * 60 * 1000) return false;
+      }
+
+      return true;
     });
-  }, [employees, employeeSearch, employeeExpFilter]);
+
+    // Sort
+    result.sort((a, b) => {
+      let valA = '';
+      let valB = '';
+
+      switch (empSort.column) {
+        case 'name':
+          valA = a.name || '';
+          valB = b.name || '';
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'email':
+          valA = a.email || '';
+          valB = b.email || '';
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'phone':
+          valA = a.mobile || a.phone || '';
+          valB = b.mobile || b.phone || '';
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'qualification':
+          valA = getPrimaryQualification(a);
+          valB = getPrimaryQualification(b);
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'functionArea':
+          valA = getFunctionArea(a);
+          valB = getFunctionArea(b);
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'experience':
+          valA = getWorkExp(a);
+          valB = getWorkExp(b);
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'designation':
+          valA = getCurrentDesignation(a);
+          valB = getCurrentDesignation(b);
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'company':
+          valA = getCurrentCompany(a);
+          valB = getCurrentCompany(b);
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'jobsApplied':
+          valA = a.applicationsCount || 0;
+          valB = b.applicationsCount || 0;
+          return empSort.direction === 'asc' ? valA - valB : valB - valA;
+        case 'lastUpdate':
+        default:
+          valA = new Date(a.updatedAt || a.lastLogin || a.createdAt || 0).getTime();
+          valB = new Date(b.updatedAt || b.lastLogin || b.createdAt || 0).getTime();
+          return empSort.direction === 'asc' ? valA - valB : valB - valA;
+      }
+    });
+
+    return result;
+  }, [employees, employeeSearch, empFilters, empSort]);
 
   return (
     <div className="p-6 lg:p-8 w-full h-full overflow-y-auto space-y-8 animate-in fade-in duration-300 relative">
@@ -358,7 +970,7 @@ export default function DashboardOverview({ onNavigateTab }) {
           }`}
         >
           <Users className="w-4 h-4" />
-          Employees ({totals.totalEmployees})
+          Candidates ({totals.totalEmployees})
         </button>
 
         <button
@@ -614,10 +1226,36 @@ export default function DashboardOverview({ onNavigateTab }) {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Open Live Sheet Button */}
+              <button
+                onClick={handleOpenCandidatesSheet}
+                disabled={syncingCandidatesSheet}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                title="Open Live Candidates Google Sheet in new tab"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm0-4H6v-2h6v2zm0-4H6V7h6v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z"/>
+                </svg>
+                <span>{syncingCandidatesSheet ? 'Opening...' : 'Open Candidates Sheet'}</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </button>
+
+              {/* Sync Sheet Now Button */}
+              <button
+                onClick={handleSyncCandidatesSheet}
+                disabled={syncingCandidatesSheet}
+                className="px-3.5 py-2 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Manually sync all candidates to Google Sheet"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${syncingCandidatesSheet ? 'animate-spin' : ''}`} />
+                <span>{syncingCandidatesSheet ? 'Syncing...' : 'Sync Sheet'}</span>
+              </button>
+
               <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-xl border border-emerald-200">
                 {filteredEmployees.length} Candidates
               </span>
+
               <button
                 onClick={fetchEmployees}
                 disabled={loadingEmployees}
@@ -630,14 +1268,14 @@ export default function DashboardOverview({ onNavigateTab }) {
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col md:flex-row items-center gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={employeeSearch}
                 onChange={(e) => setEmployeeSearch(e.target.value)}
-                placeholder="Search candidates by name, email, phone, designation, or skills..."
+                placeholder="Global search across all candidate fields (name, email, phone, role, company, skills, etc.)..."
                 className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
               />
               {employeeSearch && (
@@ -650,98 +1288,333 @@ export default function DashboardOverview({ onNavigateTab }) {
               )}
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <select
-                value={employeeExpFilter}
-                onChange={(e) => setEmployeeExpFilter(e.target.value)}
-                className="px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
-              >
-                <option value="All">All Experience Levels</option>
-                <option value="Fresher">Fresher (0 Years)</option>
-                <option value="1-2 Years">1-2 Years</option>
-                <option value="3-5 Years">3-5 Years</option>
-                <option value="5+ Years">5+ Years</option>
-              </select>
+            <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+              {hasActiveFilters && (
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                    <Filter className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{activeFiltersCount} Filter{activeFiltersCount > 1 ? 's' : ''} Active</span>
+                  </span>
+                  <button
+                    onClick={handleClearAllEmpFilters}
+                    className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl border border-red-200 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset All</span>
+                  </button>
+                </div>
+              )}
+
+              <span className="text-xs font-bold text-gray-400 px-1">
+                Showing <strong className="text-gray-900">{filteredEmployees.length}</strong> of {employees.length}
+              </span>
             </div>
           </div>
 
-          {/* Employees Table */}
+          {/* Employees Table with Column-Level Filters */}
           <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50/80 border-b border-gray-200/80 text-[11px] font-black uppercase text-gray-500 tracking-wider">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="bg-gray-50/90 border-b border-gray-200/80 text-[11px] font-black uppercase text-gray-600 tracking-wider">
+                  {/* Row 1: Sortable Column Headers */}
                   <tr>
-                    <th className="px-5 py-3.5">Candidate Name</th>
-                    <th className="px-5 py-3.5">Contact Details</th>
-                    <th className="px-5 py-3.5">Role / Designation</th>
-                    <th className="px-5 py-3.5">Location</th>
-                    <th className="px-5 py-3.5">Applications</th>
-                    <th className="px-5 py-3.5">Joined Date</th>
-                    <th className="px-5 py-3.5 text-right">Actions</th>
+                    <th onClick={() => handleSort('name')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Name</span>
+                        {empSort.column === 'name' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('email')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Email</span>
+                        {empSort.column === 'email' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('phone')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Phone</span>
+                        {empSort.column === 'phone' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('qualification')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Primary Qualification</span>
+                        {empSort.column === 'qualification' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('functionArea')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Function</span>
+                        {empSort.column === 'functionArea' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('experience')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Work Exp</span>
+                        {empSort.column === 'experience' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('designation')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Current Designation</span>
+                        {empSort.column === 'designation' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('company')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Current Company</span>
+                        {empSort.column === 'company' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('jobsApplied')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Jobs Applied</span>
+                        {empSort.column === 'jobsApplied' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('lastUpdate')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Last Profile Update</span>
+                        {empSort.column === 'lastUpdate' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+
+                  {/* Row 2: Per-Column Dynamic Filter Controls */}
+                  <tr className="bg-gray-100/80 border-b border-gray-200/80">
+                    {/* Name Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        placeholder="Filter Name..."
+                        value={empFilters.name}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-2.5 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 placeholder-gray-400"
+                      />
+                    </th>
+
+                    {/* Email Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        placeholder="Filter Email..."
+                        value={empFilters.email}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full px-2.5 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 placeholder-gray-400"
+                      />
+                    </th>
+
+                    {/* Phone Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        placeholder="Filter Phone..."
+                        value={empFilters.phone}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-2.5 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 placeholder-gray-400"
+                      />
+                    </th>
+
+                    {/* Qualification Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.qualification}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, qualification: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[140px] truncate"
+                      >
+                        <option value="All">All Qualifications</option>
+                        {candidateFilterOptions.qualifications.filter(q => q !== 'All').map(q => (
+                          <option key={q} value={q}>{q}</option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Function Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.functionArea}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, functionArea: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
+                      >
+                        <option value="All">All Functions</option>
+                        {candidateFilterOptions.functions.filter(f => f !== 'All').map(f => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Work Exp Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.experience}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, experience: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[110px]"
+                      >
+                        <option value="All">All Exp</option>
+                        <option value="Fresher">Fresher (0 Yrs)</option>
+                        <option value="1-2 Years">1-2 Years</option>
+                        <option value="3-5 Years">3-5 Years</option>
+                        <option value="5+ Years">5+ Years</option>
+                      </select>
+                    </th>
+
+                    {/* Current Designation Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.designation}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, designation: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[140px] truncate"
+                      >
+                        <option value="All">All Designations</option>
+                        {candidateFilterOptions.designations.filter(d => d !== 'All').map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Current Company Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.company}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, company: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
+                      >
+                        <option value="All">All Companies</option>
+                        {candidateFilterOptions.companies.filter(c => c !== 'All').map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Jobs Applied Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.jobsApplied}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, jobsApplied: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[110px]"
+                      >
+                        <option value="All">All Applied</option>
+                        <option value="0">0 Applied</option>
+                        <option value="1-2">1-2 Applied</option>
+                        <option value="3+">3+ Applied</option>
+                      </select>
+                    </th>
+
+                    {/* Last Profile Update Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.lastUpdate}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, lastUpdate: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[110px]"
+                      >
+                        <option value="All">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                      </select>
+                    </th>
+
+                    {/* Reset Button */}
+                    <th className="p-2 text-right">
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={handleClearAllEmpFilters}
+                          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg transition-colors cursor-pointer text-xs inline-flex items-center gap-1"
+                          title="Reset All Filters"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {loadingEmployees ? (
                     <tr>
-                      <td colSpan="7" className="py-16 text-center text-gray-400">
+                      <td colSpan="11" className="py-16 text-center text-gray-400">
                         <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                         Loading candidate records...
                       </td>
                     </tr>
                   ) : filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="py-16 text-center text-gray-400">
+                      <td colSpan="11" className="py-16 text-center text-gray-400">
                         No candidate records found matching your filters.
                       </td>
                     </tr>
                   ) : (
                     filteredEmployees.map((emp) => (
                       <tr key={emp._id || emp.id} className="hover:bg-emerald-50/30 transition-colors">
+                        {/* Name */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-sm border border-emerald-200 shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0">
                               {emp.name ? emp.name.charAt(0).toUpperCase() : 'U'}
                             </div>
-                            <div>
-                              <div className="font-bold text-gray-900 text-xs">{emp.name || 'Candidate'}</div>
-                              <span className="text-[11px] text-gray-400">{emp.totalExperience || 'Fresher'}</span>
-                            </div>
+                            <span className="font-bold text-gray-900 text-xs">{emp.name || 'Candidate'}</span>
                           </div>
                         </td>
 
-                        <td className="px-5 py-4">
-                          <div className="font-medium text-gray-800">{emp.email}</div>
-                          {emp.mobile && (
-                            <div className="text-[11px] text-gray-400">{emp.mobile}</div>
-                          )}
+                        {/* Email */}
+                        <td className="px-5 py-4 text-gray-700 font-medium">
+                          {emp.email || 'N/A'}
                         </td>
 
+                        {/* Phone */}
+                        <td className="px-5 py-4 text-gray-700 font-medium">
+                          {emp.mobile || emp.phone || 'N/A'}
+                        </td>
+
+                        {/* Primary Qualification */}
                         <td className="px-5 py-4">
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100">
-                            {emp.designation || 'Job Seeker'}
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100/80">
+                            {getPrimaryQualification(emp)}
                           </span>
                         </td>
 
-                        <td className="px-5 py-4 text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                            <span>{emp.location || emp.preferredLocation || 'N/A'}</span>
-                          </div>
+                        {/* Function */}
+                        <td className="px-5 py-4 text-gray-700 font-medium">
+                          {getFunctionArea(emp)}
                         </td>
 
+                        {/* Work Exp */}
                         <td className="px-5 py-4">
-                          <span className="px-2.5 py-1 bg-gray-100 text-gray-700 font-bold rounded-full text-[11px]">
+                          <span className="px-2.5 py-1 bg-gray-100 text-gray-700 font-semibold rounded-md text-[11px]">
+                            {getWorkExp(emp)}
+                          </span>
+                        </td>
+
+                        {/* Current Designation */}
+                        <td className="px-5 py-4">
+                          <span className="text-gray-900 font-bold">
+                            {getCurrentDesignation(emp)}
+                          </span>
+                        </td>
+
+                        {/* Current Company */}
+                        <td className="px-5 py-4 text-gray-700 font-medium">
+                          {getCurrentCompany(emp)}
+                        </td>
+
+                        {/* Jobs Applied */}
+                        <td className="px-5 py-4">
+                          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px] border border-emerald-200/80">
                             {emp.applicationsCount || 0} applied
                           </span>
                         </td>
 
-                        <td className="px-5 py-4 text-gray-400 text-[11px]">
-                          {emp.createdAt ? new Date(emp.createdAt).toLocaleDateString() : 'N/A'}
+                        {/* Last Profile Update */}
+                        <td className="px-5 py-4 text-gray-500 text-[11px]">
+                          {getLastProfileUpdate(emp)}
                         </td>
 
+                        {/* Actions */}
                         <td className="px-5 py-4 text-right">
                           <button
-                            onClick={() => setSelectedEmployee(emp)}
+                            onClick={() => handleOpenEmployeeDrawer(emp)}
                             className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
                           >
                             View Profile
@@ -775,10 +1648,36 @@ export default function DashboardOverview({ onNavigateTab }) {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Open Live Employers Sheet Button */}
+              <button
+                onClick={handleOpenEmployersSheet}
+                disabled={syncingEmployersSheet}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                title="Open Live Employers Google Sheet in new tab"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm0-4H6v-2h6v2zm0-4H6V7h6v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z"/>
+                </svg>
+                <span>{syncingEmployersSheet ? 'Opening...' : 'Open Employers Sheet'}</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </button>
+
+              {/* Sync Sheet Now Button */}
+              <button
+                onClick={handleSyncEmployersSheet}
+                disabled={syncingEmployersSheet}
+                className="px-3.5 py-2 bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Manually sync all employers to Google Sheet"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${syncingEmployersSheet ? 'animate-spin' : ''}`} />
+                <span>{syncingEmployersSheet ? 'Syncing...' : 'Sync Sheet'}</span>
+              </button>
+
               <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-xl border border-emerald-200">
-                {filteredEmployers.length} Companies
+                {filteredAndSortedEmployers.length} Companies
               </span>
+
               <button
                 onClick={() => { fetchEmployers(); fetchGlobalSettings(); }}
                 disabled={loadingEmployers}
@@ -841,15 +1740,216 @@ export default function DashboardOverview({ onNavigateTab }) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-gray-50/80 border-b border-gray-200/80 text-[11px] font-black uppercase text-gray-500 tracking-wider">
+                      {/* Row 1: Sortable Column Headers */}
                       <tr>
-                        <th className="px-5 py-3.5">Company / Business</th>
-                        <th className="px-5 py-3.5">Recruiter Info</th>
-                        <th className="px-5 py-3.5">Industry</th>
-                        <th className="px-5 py-3.5">Location</th>
-                        <th className="px-5 py-3.5">Recruiter Card</th>
-                        <th className="px-5 py-3.5">Active Jobs</th>
-                        <th className="px-5 py-3.5">Joined On</th>
-                        <th className="px-5 py-3.5 text-right">Actions</th>
+                        <th 
+                          onClick={() => handleEmployerSort('company')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Company / Business</span>
+                            {emprSort.column === 'company' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('accType')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Acc Type</span>
+                            {emprSort.column === 'accType' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('recruiter')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Recruiter Info</span>
+                            {emprSort.column === 'recruiter' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('industry')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Industry</span>
+                            {emprSort.column === 'industry' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('location')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Location</span>
+                            {emprSort.column === 'location' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('jobPosted')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Job Posted</span>
+                            {emprSort.column === 'jobPosted' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('joinedOn')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Joined On</span>
+                            {emprSort.column === 'joinedOn' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+
+                      {/* Row 2: Per-Column Filter Inputs & Dropdowns */}
+                      <tr className="bg-gray-100/70 border-t border-gray-200 text-gray-600 font-normal">
+                        {/* 1. Company Filter */}
+                        <th className="p-2">
+                          <input
+                            type="text"
+                            value={emprColFilters.company}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, company: e.target.value }))}
+                            placeholder="Filter company..."
+                            className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                          />
+                        </th>
+
+                        {/* 2. Acc Type Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.accType}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, accType: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="All">All Types</option>
+                            <option value="Company">Company</option>
+                            <option value="Consultant">Consultant</option>
+                          </select>
+                        </th>
+
+                        {/* 3. Recruiter Info Filter */}
+                        <th className="p-2">
+                          <input
+                            type="text"
+                            value={emprColFilters.recruiter}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, recruiter: e.target.value }))}
+                            placeholder="Filter recruiter..."
+                            className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                          />
+                        </th>
+
+                        {/* 4. Industry Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.industry}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, industry: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer max-w-[140px] truncate"
+                          >
+                            {employerDynamicFilterOptions.industries.map(ind => (
+                              <option key={ind} value={ind}>{ind === 'All' ? 'All Industries' : ind}</option>
+                            ))}
+                          </select>
+                        </th>
+
+                        {/* 5. Location Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.location}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, location: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer max-w-[130px] truncate"
+                          >
+                            {employerDynamicFilterOptions.locations.map(loc => (
+                              <option key={loc} value={loc}>{loc === 'All' ? 'All Locations' : loc}</option>
+                            ))}
+                          </select>
+                        </th>
+
+                        {/* 6. Job Posted Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.jobPosted}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, jobPosted: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="All">All Posted</option>
+                            <option value="0">0 Posted</option>
+                            <option value="1+">1+ Posted</option>
+                            <option value="5+">5+ Posted</option>
+                            <option value="10+">10+ Posted</option>
+                          </select>
+                        </th>
+
+                        {/* 8. Joined On Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.joinedOn}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, joinedOn: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="All">All Dates</option>
+                            <option value="today">Today</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                            <option value="thisYear">This Year</option>
+                          </select>
+                        </th>
+
+                        {/* 9. Reset Button */}
+                        <th className="p-2 text-right">
+                          {activeEmployerFiltersCount > 0 && (
+                            <button
+                              onClick={handleClearAllEmployerFilters}
+                              title="Reset all employer filters"
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-colors border border-red-200 cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Reset</span>
+                            </button>
+                          )}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
@@ -860,17 +1960,15 @@ export default function DashboardOverview({ onNavigateTab }) {
                             Loading employer records...
                           </td>
                         </tr>
-                      ) : filteredEmployers.length === 0 ? (
+                      ) : filteredAndSortedEmployers.length === 0 ? (
                         <tr>
                           <td colSpan="8" className="py-16 text-center text-gray-400">
                             No employer records found matching your filters.
                           </td>
                         </tr>
                       ) : (
-                        filteredEmployers.map((empr) => {
-                          const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant;
-                          const isCardVisible = !empr.hidePostedByCard;
-                          const isUpdating = updatingControlId === (empr._id || empr.id);
+                        filteredAndSortedEmployers.map((empr) => {
+                          const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant');
 
                           return (
                             <tr key={empr._id || empr.id} className="hover:bg-emerald-50/30 transition-colors">
@@ -880,17 +1978,22 @@ export default function DashboardOverview({ onNavigateTab }) {
                                     {empr.companyName ? empr.companyName.charAt(0).toUpperCase() : 'C'}
                                   </div>
                                   <div>
-                                    <div className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
-                                      <span>{empr.companyName || empr.fullName || 'N/A'}</span>
-                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
-                                        isConsultant ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-                                      }`}>
-                                        {getEmployerTypeLabel(empr)}
-                                      </span>
+                                    <div className="font-bold text-gray-900 text-xs">
+                                      {empr.companyName || empr.fullName || 'N/A'}
                                     </div>
                                     <span className="text-[11px] text-gray-400">{empr.employees || 'Team'}</span>
                                   </div>
                                 </div>
+                              </td>
+
+                              <td className="px-5 py-4">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                  isConsultant 
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200/80' 
+                                    : 'bg-emerald-100 text-emerald-800 border border-emerald-200/80'
+                                }`}>
+                                  {isConsultant ? 'Consultant' : 'Company'}
+                                </span>
                               </td>
 
                               <td className="px-5 py-4">
@@ -914,33 +2017,9 @@ export default function DashboardOverview({ onNavigateTab }) {
                                 </div>
                               </td>
 
-                              {/* Recruiter Card Toggle in Table */}
                               <td className="px-5 py-4">
-                                <button
-                                  type="button"
-                                  disabled={isUpdating}
-                                  onClick={() => handleToggleEmployerControl(empr._id || empr.id, 'hidePostedByCard', empr.hidePostedByCard)}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer disabled:opacity-50 ${
-                                    isCardVisible 
-                                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                  }`}
-                                  title="Click to toggle recruiter card visibility for this employer"
-                                >
-                                  {isUpdating ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />
-                                  ) : isCardVisible ? (
-                                    <Eye className="w-3 h-3 text-emerald-600" />
-                                  ) : (
-                                    <EyeOff className="w-3 h-3 text-gray-400" />
-                                  )}
-                                  <span>{isCardVisible ? 'Visible' : 'Hidden'}</span>
-                                </button>
-                              </td>
-
-                              <td className="px-5 py-4">
-                                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px]">
-                                  {empr.activeJobs || 0} active
+                                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px] border border-emerald-200/60">
+                                  {empr.totalJobs !== undefined ? empr.totalJobs : (empr.jobs?.length || empr.activeJobs || 0)} posted
                                 </span>
                               </td>
 
@@ -1113,78 +2192,451 @@ export default function DashboardOverview({ onNavigateTab }) {
         </div>
       )}
 
-      {/* Employee Details Modal */}
+      {/* ========================================================================= */}
+      {/* 5. CANDIDATE / EMPLOYEE DETAILS SLIDE-OUT SIDEBAR DRAWER                   */}
+      {/* ========================================================================= */}
       {selectedEmployee && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
-                  {selectedEmployee.name?.charAt(0) || 'U'}
+        <div className="fixed inset-0 z-[200] flex justify-end animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
+          />
+
+          <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300 font-sans border-l border-gray-200">
+            {/* Drawer Header */}
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white font-black text-lg flex items-center justify-center tracking-wider shrink-0 shadow-xs ring-4 ring-emerald-50">
+                  {selectedEmployee.name ? selectedEmployee.name.charAt(0).toUpperCase() : 'C'}
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-gray-900 text-base">{selectedEmployee.name || 'Candidate Profile'}</h3>
-                  <span className="text-[11px] text-emerald-700 font-bold uppercase">{selectedEmployee.designation || 'Job Seeker'}</span>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-gray-900 text-base leading-tight">
+                      {selectedEmployee.name || 'Candidate Profile'}
+                    </h3>
+                    <span className="text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                      Candidate
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-700 font-bold mt-0.5">
+                    {getCurrentDesignation(selectedEmployee) !== 'N/A' ? getCurrentDesignation(selectedEmployee) : (selectedEmployee.designation || 'Job Seeker')}
+                  </p>
                 </div>
               </div>
+
               <button
-                onClick={() => setSelectedEmployee(null)}
-                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 cursor-pointer"
+                onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
+                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <span className="text-gray-400 font-bold block text-[10px] uppercase">Email</span>
-                <span className="font-bold text-gray-900">{selectedEmployee.email}</span>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <span className="text-gray-400 font-bold block text-[10px] uppercase">Mobile</span>
-                <span className="font-bold text-gray-900">{selectedEmployee.mobile || 'N/A'}</span>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <span className="text-gray-400 font-bold block text-[10px] uppercase">Experience</span>
-                <span className="font-bold text-gray-900">{selectedEmployee.totalExperience || 'Fresher'}</span>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <span className="text-gray-400 font-bold block text-[10px] uppercase">Location</span>
-                <span className="font-bold text-gray-900">{selectedEmployee.location || selectedEmployee.preferredLocation || 'N/A'}</span>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-xl col-span-2">
-                <span className="text-gray-400 font-bold block text-[10px] uppercase">Applications Submitted</span>
-                <span className="font-bold text-emerald-700">{selectedEmployee.applicationsCount || 0} job applications</span>
-              </div>
-            </div>
+            {/* Drawer Body Scroll */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs bg-gray-50/30">
+              
+              {loadingEmployeeDetail && (
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-semibold animate-pulse">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                  <span>Loading complete profile details & application history...</span>
+                </div>
+              )}
 
-            {selectedEmployee.skills && (
-              <div className="p-3 bg-gray-50 rounded-xl text-xs space-y-1">
-                <span className="text-gray-400 font-bold block text-[10px] uppercase">Key Skills</span>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {(Array.isArray(selectedEmployee.skills) ? selectedEmployee.skills : selectedEmployee.skills.split(',')).map((sk, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-white border border-gray-200 rounded-md font-bold text-gray-700 text-[11px]">
-                      {sk.trim()}
+              {/* 1. PERSONAL & CONTACT DETAILS */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <User className="w-4 h-4 text-emerald-600" />
+                  Personal & Contact Information
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-y-3.5 gap-x-4">
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Full Name</span>
+                    <span className="font-bold text-gray-900 text-xs">{selectedEmployee.name || 'N/A'}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Email Address</span>
+                    <a href={`mailto:${selectedEmployee.email}`} className="font-bold text-emerald-700 hover:underline text-xs truncate block">
+                      {selectedEmployee.email || 'N/A'}
+                    </a>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Mobile / Phone</span>
+                    <span className="font-bold text-gray-900 text-xs">{selectedEmployee.mobile || selectedEmployee.phone || 'N/A'}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Current Location</span>
+                    <span className="font-bold text-gray-900 text-xs">{selectedEmployee.location || 'N/A'}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Preferred Location</span>
+                    <span className="font-bold text-gray-900 text-xs">{selectedEmployee.preferredLocation || selectedEmployee.location || 'N/A'}</span>
+                  </div>
+
+                  {(selectedEmployee.gender || selectedEmployee.personalDetails?.gender) && (
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Gender</span>
+                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.gender || selectedEmployee.personalDetails?.gender}</span>
+                    </div>
+                  )}
+
+                  {(selectedEmployee.dob || selectedEmployee.personalDetails?.dob) && (
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Date of Birth</span>
+                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.dob || selectedEmployee.personalDetails?.dob}</span>
+                    </div>
+                  )}
+
+                  {(selectedEmployee.maritalStatus || selectedEmployee.personalDetails?.maritalStatus) && (
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Marital Status</span>
+                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.maritalStatus || selectedEmployee.personalDetails?.maritalStatus}</span>
+                    </div>
+                  )}
+
+                  {(selectedEmployee.category || selectedEmployee.personalDetails?.category) && (
+                    <div>
+                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Category</span>
+                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.category || selectedEmployee.personalDetails?.category}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Registered On</span>
+                    <span className="font-bold text-gray-900 text-xs">
+                      {selectedEmployee.createdAt ? new Date(selectedEmployee.createdAt).toLocaleDateString() : 'N/A'}
                     </span>
-                  ))}
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Last Profile Update</span>
+                    <span className="font-bold text-gray-900 text-xs">{getLastProfileUpdate(selectedEmployee)}</span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {selectedEmployee.resumeUrl && (
-              <div className="pt-2">
-                <a
-                  href={selectedEmployee.resumeUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-colors"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>View Candidate Resume</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
+              {/* 2. PROFESSIONAL SUMMARY / ABOUT */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-2">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  Professional Summary / Bio
+                </h4>
+                <p className="text-xs text-gray-700 leading-relaxed pt-1">
+                  {selectedEmployee.brief || selectedEmployee.summary || selectedEmployee.bio || selectedEmployee.professionalDetails?.about || (
+                    <span className="text-gray-400 italic">No professional summary provided.</span>
+                  )}
+                </p>
               </div>
-            )}
+
+              {/* 3. PROFESSIONAL HIGHLIGHTS & PREFERENCES */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-3">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <Compass className="w-4 h-4 text-emerald-600" />
+                  Professional Highlights & Preferences
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-100">
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Function / Industry</span>
+                    <span className="font-extrabold text-gray-900 text-xs">{getFunctionArea(selectedEmployee)}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Total Experience</span>
+                    <span className="font-extrabold text-gray-900 text-xs">{getWorkExp(selectedEmployee)}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Current Designation</span>
+                    <span className="font-extrabold text-gray-900 text-xs">{getCurrentDesignation(selectedEmployee)}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Current Company</span>
+                    <span className="font-extrabold text-gray-900 text-xs">{getCurrentCompany(selectedEmployee)}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Current Salary (CTC)</span>
+                    <span className="font-extrabold text-gray-900 text-xs">
+                      {selectedEmployee.professionalDetails?.currentSalary 
+                        ? `₹ ${selectedEmployee.professionalDetails.currentSalary}` 
+                        : (selectedEmployee.currentCTC ? `₹ ${selectedEmployee.currentCTC}` : 'N/A')}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Expected Salary (CTC)</span>
+                    <span className="font-extrabold text-gray-900 text-xs">
+                      {selectedEmployee.professionalDetails?.expectedSalary 
+                        ? `₹ ${selectedEmployee.professionalDetails.expectedSalary}` 
+                        : (selectedEmployee.expectedCTC ? `₹ ${selectedEmployee.expectedCTC}` : 'N/A')}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Notice Period</span>
+                    <span className="font-extrabold text-gray-900 text-xs">
+                      {selectedEmployee.noticePeriod || selectedEmployee.professionalDetails?.noticePeriod || 'Immediate / N/A'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Primary Qualification</span>
+                    <span className="font-extrabold text-gray-900 text-xs">{getPrimaryQualification(selectedEmployee)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. WORK EXPERIENCE TIMELINE */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-emerald-600" />
+                    Work Experience History
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                    Total: {getWorkExp(selectedEmployee)}
+                  </span>
+                </div>
+
+                <div className="space-y-4 pt-1">
+                  {selectedEmployee.experience && selectedEmployee.experience.length > 0 ? (
+                    selectedEmployee.experience.map((exp, i) => (
+                      <div key={i} className="mb-3 border-l-2 border-emerald-500 pl-4 ml-1.5 relative space-y-1">
+                        <div className="absolute w-2.5 h-2.5 bg-emerald-500 rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50" />
+                        <h5 className="font-extrabold text-gray-900 text-xs">
+                          {exp.company || exp.companyName || 'Company Name'}
+                        </h5>
+                        {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIdx) => (
+                          <div key={rIdx} className="pt-1">
+                            <p className="font-bold text-emerald-800 text-xs">
+                              {role.jobTitle || role.title || role.role || exp.title || exp.designation || 'Position'}
+                            </p>
+                            <p className="text-[11px] text-gray-400 font-medium">
+                              {role.startDate || exp.startDate || 'Start'} - {role.currentJob || exp.currentJob ? 'Present' : (role.endDate || exp.endDate || 'End')} 
+                              {role.employmentType && ` • ${role.employmentType}`}
+                            </p>
+                            {(role.description || exp.description) && (
+                              <p className="text-xs text-gray-600 leading-relaxed mt-1">
+                                {role.description || exp.description}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 italic text-xs block py-1">No prior work experience recorded (Fresher).</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 5. EDUCATION & QUALIFICATIONS TIMELINE */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-emerald-600" />
+                    Education & Qualifications
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                    Highest: {getPrimaryQualification(selectedEmployee)}
+                  </span>
+                </div>
+
+                <div className="space-y-4 pt-1">
+                  {(selectedEmployee.qualifications || selectedEmployee.education) && (selectedEmployee.qualifications || selectedEmployee.education).length > 0 ? (
+                    (selectedEmployee.qualifications || selectedEmployee.education).map((qual, i) => (
+                      <div key={i} className="border-l-2 border-emerald-500 pl-4 ml-1.5 relative space-y-1">
+                        <div className="absolute w-2.5 h-2.5 bg-emerald-500 rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50" />
+                        <h5 className="font-extrabold text-gray-900 text-xs">
+                          {qual.degree || qual.course || qual.educationType || 'Degree'} 
+                          {(qual.fieldOfStudy || qual.specialization) ? ` in ${qual.fieldOfStudy || qual.specialization}` : ''}
+                        </h5>
+                        <p className="text-[11px] text-emerald-700 font-bold">
+                          {qual.graduationYear || qual.passingYear || qual.year || 'Passing Year'}
+                          {qual.percentage || qual.cgpa || qual.score ? ` • ${qual.percentage || qual.cgpa || qual.score}` : ''}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {qual.institution || qual.college || qual.university || qual.board || 'Institution / Board'}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 italic text-xs block py-1">No education details recorded.</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 6. KEY SKILLS & LANGUAGES */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  Key Skills & Languages
+                </h4>
+
+                {/* Skills tags */}
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Key Skills</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(() => {
+                      const rawSkills = selectedEmployee.professionalDetails?.skills || selectedEmployee.skills;
+                      const skillsArray = typeof rawSkills === 'string' 
+                        ? rawSkills.split(',').map(s => s.trim()).filter(Boolean)
+                        : Array.isArray(rawSkills) 
+                          ? rawSkills 
+                          : [];
+                      
+                      if (skillsArray.length === 0) {
+                        return <span className="text-gray-400 italic text-xs">No skills listed.</span>;
+                      }
+
+                      return skillsArray.map((skill, idx) => (
+                        <span key={idx} className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-bold border border-emerald-100">
+                          {skill}
+                        </span>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* Languages if available */}
+                {selectedEmployee.languages && Array.isArray(selectedEmployee.languages) && selectedEmployee.languages.length > 0 && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Languages Known</span>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedEmployee.languages.map((lang, idx) => (
+                        <span key={idx} className="px-2.5 py-1 bg-gray-100 text-gray-700 font-bold rounded-lg text-xs">
+                          {typeof lang === 'string' ? lang : lang.language || lang.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 7. DOCUMENTS & RESUME */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  Documents & Resume
+                </h4>
+
+                <div className="space-y-3">
+                  {/* Resume Card */}
+                  {(selectedEmployee.resume || selectedEmployee.resumeUrl || selectedEmployee.documents?.resume) ? (
+                    <div className="flex items-center justify-between p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">Resume / CV Document</p>
+                          <p className="text-[10px] text-gray-500">Official candidate attachment</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={selectedEmployee.resume || selectedEmployee.resumeUrl || selectedEmployee.documents?.resume}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                        >
+                          <span>Open Resume</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-gray-50 rounded-xl text-center text-gray-400 text-xs italic border border-gray-100">
+                      No resume file uploaded.
+                    </div>
+                  )}
+
+                  {/* Intro Video */}
+                  {(selectedEmployee.introVideo || selectedEmployee.documents?.introVideo) && (
+                    <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                            <Video className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-900">Introductory Video</p>
+                            <p className="text-[10px] text-gray-500">Candidate video introduction</p>
+                          </div>
+                        </div>
+                        <a
+                          href={selectedEmployee.introVideo || selectedEmployee.documents?.introVideo}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1 shadow-2xs"
+                        >
+                          Watch Video
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 8. JOB APPLICATIONS HISTORY */}
+              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-emerald-600" />
+                    Job Applications History
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                    {(detailEmployee?.applications || selectedEmployee?.applications || []).length || selectedEmployee.applicationsCount || 0} Applied
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 pt-1">
+                  {!(detailEmployee?.applications || selectedEmployee?.applications) || (detailEmployee?.applications || selectedEmployee?.applications).length === 0 ? (
+                    <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-400 font-medium border border-gray-100">
+                      No job applications submitted yet.
+                    </div>
+                  ) : (
+                    (detailEmployee?.applications || selectedEmployee?.applications).map((app, idx) => (
+                      <div key={app._id || app.id || idx} className="p-3 bg-gray-50/70 border border-gray-200/70 rounded-xl flex items-center justify-between">
+                        <div>
+                          <p className="font-bold text-gray-900 text-xs">
+                            {app.jobId?.title || app.jobTitle || 'Job Application'}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            {app.jobId?.company || app.employerId?.companyName || 'Company'} • {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-full text-[10px] font-black uppercase tracking-wider">
+                          {app.status || 'Applied'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-gray-100 bg-white flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-gray-400 font-medium">
+                ID: <span className="font-mono">{selectedEmployee._id || selectedEmployee.id}</span>
+              </span>
+              <button
+                onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
+                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                Close Drawer
+              </button>
+            </div>
           </div>
         </div>
       )}

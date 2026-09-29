@@ -11,6 +11,12 @@ const generateToken = (id) => {
   });
 };
 
+// Helper: generate next sequential Candidate ID starting from 300301
+const getNextCandidateId = async () => {
+  const lastCand = await Employee.findOne({ candidateId: { $exists: true, $ne: null } }).sort({ candidateId: -1 });
+  return (lastCand && lastCand.candidateId) ? lastCand.candidateId + 1 : 300301;
+};
+
 // Helper: validate email format + DNS MX lookup to confirm domain is real
 const validateEmailDomain = async (email) => {
   const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/;
@@ -137,7 +143,9 @@ const registerEmployee = async (req, res) => {
     }
 
     // Create employee
+    const candidateId = await getNextCandidateId();
     const employee = await Employee.create({
+      candidateId,
       name: name || 'Anonymous User',
       email,
       password,
@@ -205,7 +213,9 @@ const quickRegisterCandidate = async (req, res) => {
       }
     }
 
+    const candidateId = await getNextCandidateId();
     const employee = await Employee.create({
+      candidateId,
       name: (name && String(name).trim()) ? String(name).trim() : cleanEmail.split('@')[0],
       email: cleanEmail,
       password,
@@ -742,7 +752,9 @@ const googleAuth = async (req, res) => {
     if (!employee) {
       // Register
       isNewUser = true;
+      const candidateId = await getNextCandidateId();
       employee = await Employee.create({
+        candidateId,
         name: name || email.split('@')[0],
         email,
         avatar: picture || '',

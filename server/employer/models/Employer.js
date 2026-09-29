@@ -122,4 +122,14 @@ EmployerSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// Automatically trigger live Google Sheet sync on employer save/create
+EmployerSchema.post('save', function () {
+  try {
+    const { triggerLiveEmployerSync } = require('../../services/googleSheetService');
+    triggerLiveEmployerSync();
+  } catch (err) {
+    console.warn('[GoogleSheet] Live employer sync trigger error:', err.message);
+  }
+});
+
 module.exports = mongoose.model('Employer', EmployerSchema);

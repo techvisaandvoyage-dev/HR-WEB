@@ -32,7 +32,7 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
     },
     {
       id: 'employees',
-      label: 'Employees',
+      label: 'Candidates',
       icon: Users
     },
     {

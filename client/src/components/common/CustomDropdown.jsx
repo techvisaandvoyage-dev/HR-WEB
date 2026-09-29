@@ -107,8 +107,8 @@ const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select o
     <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
         onClick={() => setIsOpen(true)}
-        className={`w-full px-4 py-2.5 bg-white border ${
-          isOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : 'border-gray-200')
+        className={`w-full ${className.includes('px-') ? '' : 'px-4'} ${className.includes('py-') ? '' : 'py-2.5'} bg-white border ${
+          isOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : (className.includes('border-') ? '' : 'border-gray-200'))
         } ${rounded} text-gray-700 flex justify-between items-center transition-all shadow-2xs cursor-text text-sm ${className}`}
       >
         <div className="flex-1 overflow-hidden pr-2">

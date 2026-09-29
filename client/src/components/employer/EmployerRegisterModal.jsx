@@ -1082,6 +1082,9 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                         if (errors.designation) setErrors(prev => ({ ...prev, designation: '' }));
                       }}
                       placeholder={industryCfg.placeholder}
+                      error={Boolean(errors.industry)}
+                      rounded="rounded-full"
+                      className="px-5 py-3.5 border-gray-300"
                     />
                     {errors.industry && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1106,6 +1109,9 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                         if (errors.employees) setErrors({ ...errors, employees: '' });
                       }}
                       placeholder={employeesCfg.placeholder}
+                      error={Boolean(errors.employees)}
+                      rounded="rounded-full"
+                      className="px-5 py-3.5 border-gray-300"
                     />
                     {errors.employees && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
@@ -1133,6 +1139,9 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                         if (errors.designation) setErrors({ ...errors, designation: '' });
                       }}
                       placeholder={industry ? `Select your role in ${industry}` : (designationCfg.placeholder || 'Select designation')}
+                      error={Boolean(errors.designation)}
+                      rounded="rounded-full"
+                      className="px-5 py-3.5 border-gray-300"
                     />
                     {errors.designation && (
                       <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">

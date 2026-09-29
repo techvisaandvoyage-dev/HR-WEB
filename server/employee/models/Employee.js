@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const EmployeeSchema = new mongoose.Schema({
+  candidateId: {
+    type: Number,
+    unique: true,
+    sparse: true
+  },
   name: {
     type: String,
     required: [true, 'Please add a name']
@@ -126,5 +131,15 @@ EmployeeSchema.pre('save', async function () {
 EmployeeSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
+
+// Automatically trigger live Google Sheet sync on candidate save/create
+EmployeeSchema.post('save', function () {
+  try {
+    const { triggerLiveCandidateSync } = require('../../services/googleSheetService');
+    triggerLiveCandidateSync();
+  } catch (err) {
+    console.warn('[GoogleSheet] Live sync trigger error:', err.message);
+  }
+});
 
 module.exports = mongoose.model('Employee', EmployeeSchema);

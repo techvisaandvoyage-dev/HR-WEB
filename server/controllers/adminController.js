@@ -232,8 +232,9 @@ exports.getAllEmployers = async (req, res) => {
         jobsByEmployerMap[empIdStr] = [];
       }
       jobStatsMap[empIdStr].totalJobs += 1;
-      if (job.status === 'Active') jobStatsMap[empIdStr].activeJobs += 1;
-      if (job.status === 'Closed') jobStatsMap[empIdStr].closedJobs += 1;
+      const statusLower = (job.status || '').toLowerCase();
+      if (statusLower === 'active') jobStatsMap[empIdStr].activeJobs += 1;
+      if (statusLower === 'closed') jobStatsMap[empIdStr].closedJobs += 1;
       jobsByEmployerMap[empIdStr].push(job);
     });
 
@@ -281,11 +282,17 @@ exports.getEmployerById = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const activeJobs = jobs.filter(j => (j.status || '').toLowerCase() === 'active').length;
+    const closedJobs = jobs.filter(j => (j.status || '').toLowerCase() === 'closed').length;
+
     res.json({
       success: true,
       data: {
         ...employer,
         id: employer._id,
+        totalJobs: jobs.length,
+        activeJobs,
+        closedJobs,
         jobs
       }
     });
@@ -397,6 +404,12 @@ exports.updateSiteSettings = async (req, res) => {
 
     await settings.save();
 
+    // Trigger live employer sync
+    try {
+      const { triggerLiveEmployerSync } = require('../services/googleSheetService');
+      triggerLiveEmployerSync();
+    } catch (_) {}
+
     res.json({
       success: true,
       message: `Global Recruiter Card display updated to ${settings.hidePostedByCardGlobally ? 'HIDDEN (OFF)' : 'VISIBLE (ON)'} for all employers across the website`,
@@ -405,6 +418,79 @@ exports.updateSiteSettings = async (req, res) => {
   } catch (error) {
     console.error('Error updating site settings:', error);
     res.status(500).json({ success: false, message: 'Failed to update site settings', error: error.message });
+  }
+};
+
+// @desc    Get Google Sheets sync status for Candidates & Employers
+// @route   GET /api/admin/sheets/status
+// @access  Admin
+exports.getSheetsStatus = async (req, res) => {
+  try {
+    const { extractSpreadsheetId } = require('../services/googleSheetService');
+    let settings = await SiteSettings.findOne();
+    if (!settings) {
+      settings = await SiteSettings.create({});
+    }
+
+    const envCand = process.env.CANDIDATES_SHEET_ID || process.env.EMPLOYEE_SHEET_ID || process.env.CANDIDATE_SHEET_URL || process.env.EMPLOYEE_SHEET_URL || '';
+    const candId = settings.candidatesSheetId || (envCand ? extractSpreadsheetId(envCand) : '');
+    const candUrl = settings.candidatesSheetUrl || (candId ? `https://docs.google.com/spreadsheets/d/${candId}/edit` : '');
+
+    const envEmpr = process.env.EMPLOYERS_SHEET_ID || process.env.EMPLOYER_SHEET_ID || process.env.EMPLOYERS_SHEET_URL || process.env.EMPLOYER_SHEET_URL || '';
+    const emprId = settings.employersSheetId || (envEmpr ? extractSpreadsheetId(envEmpr) : '');
+    const emprUrl = settings.employersSheetUrl || (emprId ? `https://docs.google.com/spreadsheets/d/${emprId}/edit` : '');
+
+    res.json({
+      success: true,
+      data: {
+        serviceAccountEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
+        candidatesSheetUrl: candUrl,
+        candidatesSheetLastSynced: settings.candidatesSheetLastSynced || null,
+        employersSheetUrl: emprUrl,
+        employersSheetLastSynced: settings.employersSheetLastSynced || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching sheet status:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch sheet status', error: error.message });
+  }
+};
+
+// @desc    Manually trigger sync for Candidates Google Sheet
+// @route   POST /api/admin/sheets/candidates/sync
+// @access  Admin
+exports.syncCandidatesSheetAdmin = async (req, res) => {
+  try {
+    const { syncCandidatesSheet } = require('../services/googleSheetService');
+    const { customUrl } = req.body || {};
+    const result = await syncCandidatesSheet(customUrl);
+    res.json({
+      success: true,
+      message: `Successfully live synced ${result.count} candidates to Google Sheet!`,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error syncing candidates sheet:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to sync candidates sheet' });
+  }
+};
+
+// @desc    Manually trigger sync for Employers Google Sheet
+// @route   POST /api/admin/sheets/employers/sync
+// @access  Admin
+exports.syncEmployersSheetAdmin = async (req, res) => {
+  try {
+    const { syncEmployersSheet } = require('../services/googleSheetService');
+    const { customUrl } = req.body || {};
+    const result = await syncEmployersSheet(customUrl);
+    res.json({
+      success: true,
+      message: `Successfully live synced ${result.count} employers to Google Sheet!`,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error syncing employers sheet:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to sync employers sheet' });
   }
 };
 

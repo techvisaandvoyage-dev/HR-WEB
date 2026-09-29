@@ -144,6 +144,12 @@ const updateProfile = async (req, res) => {
         onboardingStep: updatedEmployee.onboardingStep || 1
       }
     });
+
+    // Trigger live Google Sheet sync for candidate
+    try {
+      const { triggerLiveCandidateSync } = require('../../services/googleSheetService');
+      triggerLiveCandidateSync();
+    } catch (_) {}
   } catch (error) {
     console.error('updateProfile error:', error);
     res.status(500).json({ message: error.message || 'Server Error' });
