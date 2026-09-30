@@ -987,35 +987,6 @@ const triggerLiveEmployerSync = () => {
   }, 2500);
 };
 
-/**
- * Start background automatic sync scheduler
- * - Runs sync on startup
- * - Runs periodic sync every 2 minutes automatically
- */
-const startAutoSyncScheduler = () => {
-  // Initial sync after 3 seconds of server start
-  setTimeout(async () => {
-    try {
-      console.log('[GoogleSheet AutoSync] Running initial startup auto-sync...');
-      await syncCandidatesSheet();
-      await syncEmployersSheet();
-      console.log('[GoogleSheet AutoSync] Startup auto-sync completed!');
-    } catch (err) {
-      console.warn('[GoogleSheet AutoSync] Startup sync warning:', err.message);
-    }
-  }, 3000);
-
-  // Auto-sync every 2 minutes in background
-  setInterval(async () => {
-    try {
-      await syncCandidatesSheet();
-      await syncEmployersSheet();
-    } catch (err) {
-      console.warn('[GoogleSheet AutoSync] Periodic background sync warning:', err.message);
-    }
-  }, 2 * 60 * 1000);
-};
-
 module.exports = {
   createEmployerSpreadsheet,
   connectExistingSpreadsheet,
@@ -1026,7 +997,6 @@ module.exports = {
   syncEmployersSheet,
   triggerLiveCandidateSync,
   triggerLiveEmployerSync,
-  startAutoSyncScheduler,
   CANDIDATE_SHEET_HEADERS,
   EMPLOYER_SHEET_HEADERS,
   SHEET_HEADERS,

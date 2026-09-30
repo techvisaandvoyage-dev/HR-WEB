@@ -70,13 +70,9 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date() });
 });
 
-const { startAutoSyncScheduler } = require('./services/googleSheetService');
-
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  // Start automatic background Google Sheet synchronization
-  startAutoSyncScheduler();
 });
 
