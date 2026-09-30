@@ -177,9 +177,18 @@ const AllEmployeesTab = ({ portalConfig }) => {
       {/* Top Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">
-            {portalConfig?.title || 'Candidates'}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">
+              {portalConfig?.title || 'Candidates'}
+            </h1>
+            {!loading && (
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/90 rounded-full text-xs font-black tracking-wide shadow-2xs">
+                {hasActiveFilters 
+                  ? `${filteredEmployees.length} of ${employees.length} Total` 
+                  : `${employees.length} Total`}
+              </span>
+            )}
+          </div>
           <p className="text-gray-500 text-sm mt-1">
             {portalConfig?.subtitle || 'Browse and discover qualified candidates & talent on the platform.'}
           </p>
@@ -315,48 +324,89 @@ const AllEmployeesTab = ({ portalConfig }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filteredEmployees.map((emp) => (
-                  <tr key={emp._id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#29953f] flex items-center justify-center text-white font-bold text-xs shrink-0">
-                          {emp.name ? emp.name.charAt(0).toUpperCase() : '?'}
+                {filteredEmployees.map((emp) => {
+                  const isPrivate = Boolean(emp.isPrivate || (emp.isProfilePrivate && !emp.appliedToYou));
+
+                  return (
+                    <tr key={emp._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-[#29953f] flex items-center justify-center text-white font-bold text-xs shrink-0">
+                            {emp.name ? emp.name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-gray-900 text-sm">{emp.name}</h4>
+                              {isPrivate && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
+                                  🔒 Private
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {isPrivate ? (
+                                <span className="text-gray-400 italic">Confidential profile</span>
+                              ) : (
+                                emp.email
+                              )}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-sm">{emp.name}</h4>
-                          <p className="text-xs text-gray-500 mt-0.5">{emp.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-800 text-sm">{emp.designation || 'Not specified'}</span>
-                        <span className="text-xs text-gray-500 mt-0.5">{emp.totalExperience ? `${emp.totalExperience} Exp.` : 'N/A Exp.'}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                      {emp.industry || 'Not specified'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                      {emp.mobile || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
-                      {emp.location || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 font-medium">
-                      {new Date(emp.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => setSelectedEmployee(emp)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex" 
-                        title="View Profile"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isPrivate ? (
+                          <span className="text-xs text-gray-400 font-medium italic">Confidential</span>
+                        ) : (
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-800 text-sm">{emp.designation || 'Not specified'}</span>
+                            <span className="text-xs text-gray-500 mt-0.5">{emp.totalExperience ? `${emp.totalExperience} Exp.` : 'N/A Exp.'}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                        {isPrivate ? (
+                          <span className="text-xs text-gray-400 font-medium italic">Private</span>
+                        ) : (
+                          emp.industry || 'Not specified'
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                        {isPrivate ? (
+                          <span className="text-xs text-gray-400 font-medium italic">Hidden</span>
+                        ) : (
+                          emp.mobile || 'N/A'
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                        {isPrivate ? (
+                          <span className="text-xs text-gray-400 font-medium italic">Hidden</span>
+                        ) : (
+                          emp.location || 'N/A'
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 font-medium">
+                        {new Date(emp.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => setSelectedEmployee(emp)}
+                          className={`p-2 rounded-lg transition-colors inline-flex ${
+                            isPrivate ? 'text-amber-600 hover:bg-amber-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                          }`} 
+                          title={isPrivate ? "Confidential Profile" : "View Profile"}
+                        >
+                          {isPrivate ? (
+                            <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -365,24 +415,53 @@ const AllEmployeesTab = ({ portalConfig }) => {
       </div>
 
       {/* Slide-over Profile Details Sidebar */}
-      {selectedEmployee && createPortal(
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedEmployee(null)}></div>
-          <div className="fixed inset-y-0 right-0 max-w-full flex">
-            <div className="relative w-screen max-w-md transform transition ease-in-out duration-500 bg-white shadow-xl flex flex-col">
-              
-              <div className="px-6 py-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">Profile Details</h2>
-                <button 
-                  onClick={() => setSelectedEmployee(null)}
-                  className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6">
+      {selectedEmployee && (() => {
+        const isSelectedPrivate = Boolean(selectedEmployee.isPrivate || (selectedEmployee.isProfilePrivate && !selectedEmployee.appliedToYou));
+        return createPortal(
+          <div className="fixed inset-0 z-50 overflow-hidden">
+            <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedEmployee(null)}></div>
+            <div className="fixed inset-y-0 right-0 max-w-full flex">
+              <div className="relative w-screen max-w-md transform transition ease-in-out duration-500 bg-white shadow-xl flex flex-col">
                 
+                <div className="px-6 py-6 border-b border-gray-100 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {isSelectedPrivate ? 'Confidential Candidate' : 'Profile Details'}
+                  </h2>
+                  <button 
+                    onClick={() => setSelectedEmployee(null)}
+                    className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
+                  
+                  {isSelectedPrivate ? (
+                    <div className="flex flex-col items-center justify-center text-center py-8 px-2 space-y-5">
+                      <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-sm">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h3>
+                        <span className="inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          🔒 Confidential / Private Profile
+                        </span>
+                      </div>
+                      <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-gray-600 max-w-sm leading-relaxed text-left space-y-2">
+                        <p className="font-bold text-gray-800">Privacy Notice:</p>
+                        <p>
+                          This candidate has set their profile visibility to <strong>Private</strong>. Their contact info, work history, education, and resume are confidential.
+                        </p>
+                        <p className="text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200/70 font-medium">
+                          ✓ Candidate profile details will automatically unlock and become viewable once they submit an application to any of your active job listings.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                 {/* Header (Avatar, Name, Email, Location) */}
                 <div className="flex flex-col items-center text-center mb-6">
                   <div className="w-20 h-20 rounded-full bg-[#18a058] flex items-center justify-center text-white font-bold text-3xl mb-3">
@@ -622,21 +701,33 @@ const AllEmployeesTab = ({ portalConfig }) => {
                   )}
 
                 </div>
+                </>
+                )}
               </div>
 
               <div className="mt-auto pt-6 border-t border-[#ECECEC] flex gap-3 shrink-0 p-6 bg-white">
-                <button 
-                  onClick={() => setSelectedEmployee(null)}
-                  className="w-full py-3 bg-[#111] hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm"
-                >
-                  Message Candidate
-                </button>
+                {selectedEmployee.isPrivate ? (
+                  <button 
+                    onClick={() => setSelectedEmployee(null)}
+                    className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors"
+                  >
+                    Close
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setSelectedEmployee(null)}
+                    className="w-full py-3 bg-[#111] hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm"
+                  >
+                    Message Candidate
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>,
         document.body
-      )}
+      );
+    })()}
     </div>
   );
 };

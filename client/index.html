@@ -6,7 +6,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('sahijob_typography_cache');
+          if (raw) {
+            var typo = JSON.parse(raw);
+            var pFam = (typo.primaryFont && typo.primaryFont.family) ? typo.primaryFont.family.trim() : 'Inter';
+            var hFam = (typo.headingFont && typo.headingFont.family) ? typo.headingFont.family.trim() : 'Plus Jakarta Sans';
+            var sFam = (typo.secondaryFont && typo.secondaryFont.family) ? typo.secondaryFont.family.trim() : 'Roboto';
+
+            document.documentElement.style.setProperty('--font-primary', "'" + pFam + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif");
+            document.documentElement.style.setProperty('--font-heading', "'" + hFam + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif");
+            document.documentElement.style.setProperty('--font-secondary', "'" + sFam + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif");
+
+            var googleFams = [];
+            if (typo.primaryFont && typo.primaryFont.source !== 'custom' && pFam) googleFams.push(pFam);
+            if (typo.headingFont && typo.headingFont.source !== 'custom' && hFam && googleFams.indexOf(hFam) === -1) googleFams.push(hFam);
+            if (typo.secondaryFont && typo.secondaryFont.source !== 'custom' && sFam && googleFams.indexOf(sFam) === -1) googleFams.push(sFam);
+
+            if (googleFams.length > 0) {
+              var link = document.createElement('link');
+              link.id = 'cached-google-fonts';
+              link.rel = 'stylesheet';
+              link.href = 'https://fonts.googleapis.com/css2?' + googleFams.map(function(f) {
+                return 'family=' + encodeURIComponent(f).replace(/%20/g, '+') + ':ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700';
+              }).join('&') + '&display=swap';
+              document.head.appendChild(link);
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>sahijob.com - Find Jobs &amp; Hire Talent</title>
   </head>
   <body>

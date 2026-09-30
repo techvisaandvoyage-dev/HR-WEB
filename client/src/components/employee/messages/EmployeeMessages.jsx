@@ -59,10 +59,31 @@ const EmployeeMessages = () => {
       setRefreshNav(prev => !prev);
     };
 
+    const handleConversationBlockToggled = (data) => {
+      setConversations(prev => prev.map(c => 
+        c.applicationId === data.applicationId 
+          ? { ...c, isBlocked: data.isBlocked, blockedBy: data.blockedBy, blockedAt: data.blockedAt }
+          : c
+      ));
+      setSelectedChat(prev => {
+        if (prev?.applicationId === data.applicationId) {
+          return {
+            ...prev,
+            isBlocked: data.isBlocked,
+            blockedBy: data.blockedBy,
+            blockedAt: data.blockedAt
+          };
+        }
+        return prev;
+      });
+    };
+
     socket.on('conversation_updated', handleConversationUpdated);
+    socket.on('conversation_block_toggled', handleConversationBlockToggled);
 
     return () => {
       socket.off('conversation_updated', handleConversationUpdated);
+      socket.off('conversation_block_toggled', handleConversationBlockToggled);
     };
   }, [selectedChat]);
 
@@ -98,6 +119,12 @@ const EmployeeMessages = () => {
             return [...prev, msg];
           });
           if (msg.senderModel === 'Employer') {
+            fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/applications/${appId}`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
+            }).catch(() => {});
+            setConversations(prev => prev.map(c => 
+              c.applicationId === appId ? { ...c, unreadCount: 0 } : c
+            ));
             setRefreshNav(prev => !prev);
           }
         }
@@ -138,7 +165,7 @@ const EmployeeMessages = () => {
       setMessages([]);
       setIsTyping(false);
     }
-  }, [selectedChat]);
+  }, [selectedChat?.applicationId]);
 
   const fetchMessages = async (applicationId) => {
     try {
@@ -148,6 +175,14 @@ const EmployeeMessages = () => {
       const data = await res.json();
       if (data.success) {
         setMessages(data.data);
+        if (data.application) {
+          setSelectedChat(prev => ({
+            ...prev,
+            isBlocked: data.application.isBlocked,
+            blockedBy: data.application.blockedBy,
+            blockedAt: data.application.blockedAt
+          }));
+        }
         // Clear unread count for this app in conversations
         setConversations(prev => prev.map(c => 
           c.applicationId === applicationId ? { ...c, unreadCount: 0 } : c
@@ -159,11 +194,56 @@ const EmployeeMessages = () => {
     }
   };
 
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isBlockLoading, setIsBlockLoading] = useState(false);
+
+  const openBlockModal = () => {
+    if (!selectedChat) return;
+    if (selectedChat.isBlocked && selectedChat.blockedBy === 'Employer') {
+      return;
+    }
+    setIsBlockModalOpen(true);
+  };
+
+  const handleConfirmToggleBlock = async () => {
+    if (!selectedChat) return;
+    setIsBlockLoading(true);
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/messages/applications/${selectedChat.applicationId}/toggle-block`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedChat(prev => ({
+          ...prev,
+          isBlocked: data.data.isBlocked,
+          blockedBy: data.data.blockedBy,
+          blockedAt: data.data.blockedAt
+        }));
+        setConversations(prev => prev.map(c => 
+          c.applicationId === selectedChat.applicationId
+            ? { ...c, isBlocked: data.data.isBlocked, blockedBy: data.data.blockedBy, blockedAt: data.data.blockedAt }
+            : c
+        ));
+        setIsBlockModalOpen(false);
+      } else {
+        alert(data.message || 'Action failed');
+      }
+    } catch (err) {
+      console.error("Error toggling block:", err);
+      alert("Failed to toggle block status.");
+    } finally {
+      setIsBlockLoading(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const val = e.target.value;
     setNewMessage(val);
 
-    if (selectedChat) {
+    if (selectedChat && !selectedChat.isBlocked) {
       socket.emit('typing', {
         applicationId: selectedChat.applicationId,
         senderModel: 'Employee'
@@ -180,7 +260,7 @@ const EmployeeMessages = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedChat) return;
+    if (!newMessage.trim() || !selectedChat || selectedChat.isBlocked) return;
     
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     socket.emit('stop_typing', {
@@ -214,12 +294,13 @@ const EmployeeMessages = () => {
             ? { ...c, lastMessage: data.data.content, lastMessageTime: data.data.createdAt }
             : c
         ));
+      } else {
+        alert(data.message || 'Failed to send message');
       }
     } catch (err) {
       console.error("Error sending message:", err);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -251,7 +332,14 @@ const EmployeeMessages = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1">
-                      <h3 className="font-bold text-gray-900 text-sm truncate">{chat.companyName}</h3>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h3 className="font-bold text-gray-900 text-sm truncate">{chat.companyName}</h3>
+                        {chat.isBlocked && (
+                          <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded shrink-0">
+                            Blocked
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-gray-400 shrink-0 ml-2 font-medium">
                         {new Date(chat.lastMessageTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>
@@ -260,7 +348,7 @@ const EmployeeMessages = () => {
                     <p className={`text-xs truncate leading-relaxed ${chat.unreadCount > 0 ? 'font-bold text-[#166534]' : 'text-gray-500'}`}>
                       {chat.lastMessage}
                     </p>
-                    {chat.unreadCount > 0 && (
+                    {chat.unreadCount > 0 && !chat.isBlocked && (
                       <div className="mt-1 flex justify-end">
                         <span className="bg-[#29953f] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{chat.unreadCount} new</span>
                       </div>
@@ -288,6 +376,29 @@ const EmployeeMessages = () => {
                     <h2 className="font-bold text-gray-900 text-sm truncate">{selectedChat.jobTitle || 'Job Title'}</h2>
                     <p className="text-xs text-gray-500 truncate">{selectedChat.companyName}</p>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {selectedChat.isBlocked ? (
+                    selectedChat.blockedBy === 'Employee' && (
+                      <button 
+                        onClick={openBlockModal}
+                        className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                        Unblock this chat
+                      </button>
+                    )
+                  ) : (
+                    <button 
+                      onClick={openBlockModal}
+                      className="px-3 py-1.5 text-xs font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                      title="Block this chat"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                      Block this chat
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -322,7 +433,7 @@ const EmployeeMessages = () => {
                 )}
 
                 {/* Real-time Typing Indicator */}
-                {isTyping && (
+                {isTyping && !selectedChat.isBlocked && (
                   <div className="flex flex-col items-start animate-fade-in">
                     <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
@@ -336,24 +447,42 @@ const EmployeeMessages = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Chat Input Area */}
-              <div className="p-4 border-t border-gray-100 bg-white shrink-0">
-                <div className="flex flex-col gap-3 min-h-[120px]">
-                  <textarea 
-                    value={newMessage}
-                    onChange={handleInputChange}
-                    onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                    className="w-full flex-1 resize-none bg-transparent outline-none text-sm text-gray-900 placeholder-gray-500 p-2"
-                    placeholder="Write your message"
-                  ></textarea>
-                  <div className="flex justify-between items-end px-2">
-                    <button className="text-gray-500 hover:text-gray-700 p-1">
-                      <svg className="w-5 h-5 transform rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+              {/* Blocked Notice & Chat Input Area */}
+              {selectedChat.isBlocked ? (
+                <div className="p-5 border-t border-gray-200 bg-red-50/70 shrink-0 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-lg shrink-0">
+                      🚫
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-red-900">Conversation Blocked</h4>
+                      <p className="text-xs text-red-700 mt-0.5">
+                        {selectedChat.blockedBy === 'Employee' 
+                          ? 'You have blocked this company. You cannot send or receive messages in this conversation.'
+                          : 'This conversation has been blocked by the employer.'}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedChat.blockedBy === 'Employee' && (
+                    <button
+                      onClick={openBlockModal}
+                      className="px-4 py-2 bg-white hover:bg-gray-50 text-red-700 border border-red-300 rounded-lg text-xs font-bold shrink-0 transition-colors shadow-sm"
+                    >
+                      Unblock
                     </button>
-                    <div className="flex items-center gap-3">
-                      <button className="text-gray-500 hover:text-gray-700 p-1 hidden sm:block">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                      </button>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 border-t border-gray-100 bg-white shrink-0">
+                  <div className="flex flex-col gap-3 min-h-[120px]">
+                    <textarea 
+                      value={newMessage}
+                      onChange={handleInputChange}
+                      onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                      className="w-full flex-1 resize-none bg-transparent outline-none text-sm text-gray-900 placeholder-gray-500 p-2"
+                      placeholder="Write your message"
+                    ></textarea>
+                    <div className="flex justify-end items-end px-2">
                       <button 
                         onClick={sendMessage}
                         disabled={!newMessage.trim()}
@@ -364,7 +493,7 @@ const EmployeeMessages = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
             </div>
 
@@ -451,7 +580,14 @@ const EmployeeMessages = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
-                    <h3 className="font-bold text-gray-900 text-sm truncate">{chat.companyName}</h3>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-sm truncate">{chat.companyName}</h3>
+                      {chat.isBlocked && (
+                        <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded shrink-0">
+                          Blocked
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[10px] text-gray-400 shrink-0 ml-2 font-medium">
                       {new Date(chat.lastMessageTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
@@ -467,6 +603,70 @@ const EmployeeMessages = () => {
         </div>
 
       </div>
+
+      {/* Themed Confirmation Modal for Block / Unblock */}
+      {isBlockModalOpen && selectedChat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={() => !isBlockLoading && setIsBlockModalOpen(false)}
+          ></div>
+
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 z-10 transform transition-all border border-gray-100 flex flex-col items-center text-center animate-in zoom-in-95 duration-200 font-sans">
+            {selectedChat.isBlocked ? (
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mb-4 border border-emerald-100 shadow-sm">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-2xl mb-4 border border-red-100 shadow-sm">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+              </div>
+            )}
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {selectedChat.isBlocked 
+                ? `Unblock this chat?` 
+                : `Block this chat?`}
+            </h3>
+
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
+              {selectedChat.isBlocked
+                ? `Are you sure you want to unblock this chat? You will be able to send and receive messages again.`
+                : `Are you sure you want to block this chat? You will not be able to send or receive messages for this job until unblocked.`}
+            </p>
+
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                disabled={isBlockLoading}
+                onClick={() => setIsBlockModalOpen(false)}
+                className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isBlockLoading}
+                onClick={handleConfirmToggleBlock}
+                className={`flex-1 py-2.5 px-4 text-white font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 ${
+                  selectedChat.isBlocked 
+                    ? 'bg-[#29953f] hover:bg-[#207a32]' 
+                    : 'bg-red-600 hover:bg-red-700'
+                } ${isBlockLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {isBlockLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Please wait...
+                  </>
+                ) : (
+                  selectedChat.isBlocked ? 'Unblock this chat' : 'Block this chat'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Right Side Bar Slide-over for Job Details */}
       {isJobDetailsOpen && selectedChat && (

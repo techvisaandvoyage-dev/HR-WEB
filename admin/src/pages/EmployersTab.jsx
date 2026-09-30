@@ -1344,6 +1344,7 @@ export default function EmployersTab() {
     return employers.filter(empr => {
       if (search.trim()) {
         const q = search.toLowerCase().trim();
+        const empIdStr = (empr.employerId || '').toString();
         const comp = (empr.companyName || '').toLowerCase();
         const name = (empr.fullName || '').toLowerCase();
         const email = (empr.email || '').toLowerCase();
@@ -1352,7 +1353,7 @@ export default function EmployersTab() {
         const ind = (empr.industry || '').toLowerCase();
         const desig = (empr.designation || '').toLowerCase();
         const hiringType = getEmployerTypeLabel(empr).toLowerCase();
-        if (!comp.includes(q) && !name.includes(q) && !email.includes(q) && !phone.includes(q) && !loc.includes(q) && !ind.includes(q) && !desig.includes(q) && !hiringType.includes(q)) {
+        if (!empIdStr.includes(q.replace(/^#/, '')) && !comp.includes(q) && !name.includes(q) && !email.includes(q) && !phone.includes(q) && !loc.includes(q) && !ind.includes(q) && !desig.includes(q) && !hiringType.includes(q)) {
           return false;
         }
       }
@@ -2524,6 +2525,7 @@ export default function EmployersTab() {
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-700 font-extrabold uppercase tracking-wider text-[10px]">
+                          <th className="py-3.5 px-4 whitespace-nowrap">Employer ID</th>
                           <th className="py-3.5 px-4">Company / Business</th>
                           <th className="py-3.5 px-4">Acc Type</th>
                           <th className="py-3.5 px-4">Recruiter Info</th>
@@ -2536,14 +2538,14 @@ export default function EmployersTab() {
                       <tbody className="divide-y divide-gray-100">
                         {loading ? (
                           <tr>
-                            <td colSpan="7" className="py-12 text-center text-gray-400">
+                            <td colSpan="8" className="py-12 text-center text-gray-400">
                               <RefreshCw className="w-5 h-5 mx-auto animate-spin text-emerald-600 mb-2" />
                               Loading employers directory...
                             </td>
                           </tr>
                         ) : filteredAndSortedEmployers.length === 0 ? (
                           <tr>
-                            <td colSpan="7" className="py-12 text-center text-gray-400">
+                            <td colSpan="8" className="py-12 text-center text-gray-400">
                               No employer records found.
                             </td>
                           </tr>
@@ -2555,13 +2557,20 @@ export default function EmployersTab() {
                             return (
                               <React.Fragment key={empId}>
                                 <tr className="hover:bg-emerald-50/30 transition-colors">
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    <span className="font-mono font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80 text-[11px] inline-block shadow-2xs">
+                                      #{empr.employerId || 'N/A'}
+                                    </span>
+                                  </td>
                                   <td className="py-3.5 px-4 font-bold text-gray-900">
                                     <div className="flex items-center gap-2">
                                       <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 font-black text-xs flex items-center justify-center shrink-0">
                                         {(empr.companyName || empr.fullName || 'CO').substring(0, 2).toUpperCase()}
                                       </div>
                                       <div>
-                                        <span>{empr.companyName || empr.fullName || 'N/A'}</span>
+                                        <p className="text-xs font-bold text-gray-900">
+                                          {empr.companyName || empr.fullName || 'N/A'}
+                                        </p>
                                         <p className="text-[10px] text-gray-400 font-normal">
                                           {empr.employees || 'Team'}
                                         </p>

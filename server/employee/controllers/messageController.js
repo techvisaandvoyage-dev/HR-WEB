@@ -52,6 +52,9 @@ exports.getConversations = async (req, res) => {
         jobTitle: app.jobId?.title || 'Unknown Job',
         location: app.jobId?.location || '',
         jobType: app.jobId?.jobType || [],
+        isBlocked: app.isBlocked || false,
+        blockedBy: app.blockedBy || null,
+        blockedAt: app.blockedAt || null,
         lastMessage,
         lastMessageTime,
         unreadCount
@@ -79,6 +82,11 @@ exports.getMessages = async (req, res) => {
     const employeeId = req.employee.id;
     const applicationId = req.params.applicationId;
 
+    const application = await Application.findOne({ _id: applicationId, employeeId });
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
     const messages = await Message.find({
       employeeId,
       applicationId
@@ -102,7 +110,12 @@ exports.getMessages = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: messages
+      data: messages,
+      application: {
+        isBlocked: application.isBlocked || false,
+        blockedBy: application.blockedBy || null,
+        blockedAt: application.blockedAt || null
+      }
     });
   } catch (error) {
     console.error(error);
@@ -127,6 +140,15 @@ exports.sendMessage = async (req, res) => {
     const application = await Application.findOne({ _id: applicationId, employeeId });
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found or unauthorized' });
+    }
+
+    if (application.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: application.blockedBy === 'Employee' 
+          ? 'You have blocked this conversation. Unblock it to send messages.' 
+          : 'This conversation has been blocked by the employer.'
+      });
     }
 
     const newMessage = await Message.create({
@@ -158,6 +180,68 @@ exports.sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Toggle block/unblock conversation by employee
+// @route   POST /api/employee/messages/applications/:applicationId/toggle-block
+// @access  Private
+exports.toggleBlock = async (req, res) => {
+  try {
+    const employeeId = req.employee.id;
+    const applicationId = req.params.applicationId;
+
+    const application = await Application.findOne({ _id: applicationId, employeeId });
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found or unauthorized' });
+    }
+
+    if (application.isBlocked) {
+      if (application.blockedBy !== 'Employee') {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot unblock conversation blocked by the employer.'
+        });
+      }
+      application.isBlocked = false;
+      application.blockedBy = null;
+      application.blockedAt = null;
+    } else {
+      application.isBlocked = true;
+      application.blockedBy = 'Employee';
+      application.blockedAt = new Date();
+    }
+
+    await application.save();
+
+    const io = getIO();
+    if (io) {
+      io.to(`chat_${applicationId}`).emit('conversation_block_toggled', {
+        applicationId,
+        isBlocked: application.isBlocked,
+        blockedBy: application.blockedBy,
+        blockedAt: application.blockedAt
+      });
+      io.emit('conversation_block_toggled', {
+        applicationId,
+        isBlocked: application.isBlocked,
+        blockedBy: application.blockedBy,
+        blockedAt: application.blockedAt
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        applicationId,
+        isBlocked: application.isBlocked,
+        blockedBy: application.blockedBy,
+        blockedAt: application.blockedAt
+      }
+    });
+  } catch (error) {
+    console.error("TOGGLE_BLOCK_EMPLOYEE_ERROR:", error);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };

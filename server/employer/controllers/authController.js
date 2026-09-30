@@ -22,6 +22,12 @@ const validateEmailDomain = async (email) => {
   }
 };
 
+// Helper: get next sequential employerId starting from 400201
+const getNextEmployerId = async () => {
+  const lastEmp = await Employer.findOne({ employerId: { $exists: true, $ne: null } }).sort({ employerId: -1 });
+  return (lastEmp && lastEmp.employerId) ? lastEmp.employerId + 1 : 400201;
+};
+
 // Generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
@@ -215,6 +221,9 @@ exports.register = async (req, res) => {
 
     if (employer) {
       // Existing Google user completing Company Details
+      if (!employer.employerId) {
+        employer.employerId = await getNextEmployerId();
+      }
       if (fullName) employer.fullName = fullName;
       if (accountType) employer.accountType = accountType;
       if (mobile) employer.mobile = mobile;
@@ -230,7 +239,9 @@ exports.register = async (req, res) => {
       await employer.save();
     } else {
       // Create new user
+      const employerId = await getNextEmployerId();
       const createData = {
+        employerId,
         mobile: mobile || '',
         accountType: accountType || 'company',
         fullName,
@@ -655,7 +666,9 @@ exports.googleAuth = async (req, res) => {
 
     if (!employer) {
       isNewUser = true;
+      const employerId = await getNextEmployerId();
       employer = await Employer.create({
+        employerId,
         fullName: name || cleanEmail.split('@')[0],
         email: cleanEmail,
         mobile: '',

@@ -55,4 +55,14 @@ const JobSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
+// Automatically trigger live Google Sheet sync on Job create/update
+JobSchema.post('save', function () {
+  try {
+    const { triggerLiveEmployerSync } = require('../services/googleSheetService');
+    triggerLiveEmployerSync();
+  } catch (err) {
+    console.warn('[GoogleSheet] Job sync trigger error:', err.message);
+  }
+});
+
 module.exports = mongoose.model('Job', JobSchema);

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const EmployerSchema = new mongoose.Schema({
+  employerId: {
+    type: Number,
+    unique: true,
+    sparse: true
+  },
   mobile: {
     type: String,
     default: ''

@@ -53,6 +53,22 @@ exports.getConversations = async (req, res) => {
       }
     }
 
+    const appIds = Object.keys(conversationsMap);
+    if (appIds.length > 0) {
+      const apps = await Application.find({ _id: { $in: appIds } }).select('_id isBlocked blockedBy blockedAt');
+      const appMap = {};
+      apps.forEach(a => {
+        appMap[a._id.toString()] = a;
+      });
+      appIds.forEach(id => {
+        if (appMap[id]) {
+          conversationsMap[id].isBlocked = appMap[id].isBlocked || false;
+          conversationsMap[id].blockedBy = appMap[id].blockedBy || null;
+          conversationsMap[id].blockedAt = appMap[id].blockedAt || null;
+        }
+      });
+    }
+
     const conversations = Object.values(conversationsMap).sort((a, b) => b.lastMessageTime - a.lastMessageTime);
 
     res.status(200).json({
@@ -72,6 +88,11 @@ exports.getMessages = async (req, res) => {
   try {
     const employerId = req.user.id;
     const applicationId = req.params.applicationId;
+
+    const application = await Application.findOne({ _id: applicationId, employerId });
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
 
     const messages = await Message.find({
       employerId,
@@ -96,7 +117,12 @@ exports.getMessages = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: messages
+      data: messages,
+      application: {
+        isBlocked: application.isBlocked || false,
+        blockedBy: application.blockedBy || null,
+        blockedAt: application.blockedAt || null
+      }
     });
   } catch (error) {
     console.error(error);
@@ -121,6 +147,15 @@ exports.sendMessage = async (req, res) => {
     const application = await Application.findOne({ _id: applicationId, employerId });
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found or unauthorized' });
+    }
+
+    if (application.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: application.blockedBy === 'Employer'
+          ? 'You have blocked this candidate. Unblock to send messages.'
+          : 'This conversation has been blocked by the candidate.'
+      });
     }
 
     const newMessage = await Message.create({
@@ -153,6 +188,68 @@ exports.sendMessage = async (req, res) => {
   } catch (error) {
     console.error("SEND_MESSAGE_ERROR:", error);
     res.status(500).json({ success: false, message: error.message, stack: error.stack });
+  }
+};
+
+// @desc    Toggle block/unblock conversation by employer
+// @route   POST /api/employer/messages/applications/:applicationId/toggle-block
+// @access  Private
+exports.toggleBlock = async (req, res) => {
+  try {
+    const employerId = req.user.id;
+    const applicationId = req.params.applicationId;
+
+    const application = await Application.findOne({ _id: applicationId, employerId });
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found or unauthorized' });
+    }
+
+    if (application.isBlocked) {
+      if (application.blockedBy !== 'Employer') {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot unblock conversation blocked by the candidate.'
+        });
+      }
+      application.isBlocked = false;
+      application.blockedBy = null;
+      application.blockedAt = null;
+    } else {
+      application.isBlocked = true;
+      application.blockedBy = 'Employer';
+      application.blockedAt = new Date();
+    }
+
+    await application.save();
+
+    const io = getIO();
+    if (io) {
+      io.to(`chat_${applicationId}`).emit('conversation_block_toggled', {
+        applicationId,
+        isBlocked: application.isBlocked,
+        blockedBy: application.blockedBy,
+        blockedAt: application.blockedAt
+      });
+      io.emit('conversation_block_toggled', {
+        applicationId,
+        isBlocked: application.isBlocked,
+        blockedBy: application.blockedBy,
+        blockedAt: application.blockedAt
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        applicationId,
+        isBlocked: application.isBlocked,
+        blockedBy: application.blockedBy,
+        blockedAt: application.blockedAt
+      }
+    });
+  } catch (error) {
+    console.error("TOGGLE_BLOCK_EMPLOYER_ERROR:", error);
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 

@@ -637,6 +637,7 @@ const EmployeeProfile = () => {
     industry: '',
     designation: '',
     totalExperience: '',
+    isProfilePrivate: false,
     professionalDetails: {
       currentSalary: '',
       expectedSalary: '',

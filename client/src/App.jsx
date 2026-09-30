@@ -71,6 +71,11 @@ function App() {
         const json = await res.json();
         if (json.success && json.data) {
           setHomepageConfig(json.data);
+          if (json.data.typography) {
+            try {
+              localStorage.setItem('sahijob_typography_cache', JSON.stringify(json.data.typography));
+            } catch (_) {}
+          }
           if (json.data.jobCards?.initialCount !== undefined && json.data.jobCards?.initialCount !== null) {
             setVisibleJobsCount(json.data.jobCards.initialCount);
           }
@@ -109,29 +114,42 @@ function App() {
     });
   }, [homepageConfig?.customFontsLibrary]);
 
-  // Dynamically load & apply typography configured in CMS
+  // Dynamically load & apply typography configured in CMS (Zero-flicker link injection)
   useEffect(() => {
     if (!homepageConfig?.typography) return;
     const { primaryFont, headingFont, secondaryFont } = homepageConfig.typography;
 
-    const applyFont = (font, defaultFamily, cssVar) => {
-      if (!font) return;
-      const family = (font.family || defaultFamily).trim();
-      if (font.source === 'google' && family) {
-        const linkId = `google-font-${family.replace(/\s+/g, '-').toLowerCase()}`;
-        if (!document.getElementById(linkId)) {
-          const link = document.createElement('link');
-          link.id = linkId;
-          link.rel = 'stylesheet';
-          link.href = `https://fonts.googleapis.com/css2?family=${family.replace(/\s+/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap`;
-          link.onerror = () => {
-            link.href = `https://fonts.googleapis.com/css2?family=${family.replace(/\s+/g, '+')}&display=swap`;
-          };
-          document.head.appendChild(link);
-        }
-      } else if (font.source === 'custom' && font.customUrl) {
+    const pFamily = (primaryFont?.family || 'Inter').trim();
+    const hFamily = (headingFont?.family || 'Plus Jakarta Sans').trim();
+    const sFamily = (secondaryFont?.family || 'Roboto').trim();
+
+    // Collect Google Fonts that need loading
+    const googleFamilies = [];
+    if (primaryFont?.source !== 'custom' && pFamily) googleFamilies.push(pFamily);
+    if (headingFont?.source !== 'custom' && hFamily && !googleFamilies.includes(hFamily)) googleFamilies.push(hFamily);
+    if (secondaryFont?.source !== 'custom' && sFamily && !googleFamilies.includes(sFamily)) googleFamilies.push(sFamily);
+
+    if (googleFamilies.length > 0) {
+      const linkId = 'cms-google-fonts';
+      let link = document.getElementById(linkId);
+      const fontUrl = `https://fonts.googleapis.com/css2?${googleFamilies.map(f => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700`).join('&')}&display=swap`;
+      if (!link) {
+        link = document.createElement('link');
+        link.id = linkId;
+        link.rel = 'stylesheet';
+        link.href = fontUrl;
+        document.head.appendChild(link);
+      } else if (link.href !== fontUrl) {
+        link.href = fontUrl;
+      }
+    }
+
+    // Custom fonts injection
+    [primaryFont, headingFont, secondaryFont].forEach(font => {
+      if (font?.source === 'custom' && font?.customUrl) {
+        const family = font.family?.trim();
+        if (!family) return;
         if (font.urlType === 'stylesheet') {
-          // Inject as a <link> stylesheet (Google Fonts link, CDN, etc.)
           const linkId = `font-link-${family.replace(/\s+/g, '-').toLowerCase()}`;
           if (!document.getElementById(linkId)) {
             const link = document.createElement('link');
@@ -141,7 +159,6 @@ function App() {
             document.head.appendChild(link);
           }
         } else {
-          // Inject as @font-face (uploaded file)
           const styleId = `custom-font-${family.replace(/\s+/g, '-').toLowerCase()}`;
           let style = document.getElementById(styleId);
           if (!style) {
@@ -156,59 +173,14 @@ function App() {
               font-display: swap;
             }
           `;
-          try {
-            if (typeof FontFace !== 'undefined') {
-              const fontFace = new FontFace(family, `url('${font.customUrl}')`);
-              fontFace.load().then(loaded => document.fonts.add(loaded)).catch(() => {});
-            }
-          } catch (_) {}
         }
       }
-      document.documentElement.style.setProperty(cssVar, `'${family}', sans-serif`);
-    };
+    });
 
-    if (primaryFont) applyFont(primaryFont, 'Inter', '--font-primary');
-    if (headingFont) applyFont(headingFont, 'Plus Jakarta Sans', '--font-heading');
-    if (secondaryFont) applyFont(secondaryFont, 'Roboto', '--font-secondary');
-
-    const pFamily = (primaryFont?.family || 'Inter').trim();
-    const hFamily = (headingFont?.family || 'Plus Jakarta Sans').trim();
-    const sFamily = (secondaryFont?.family || 'Roboto').trim();
-
-    let dynamicStyle = document.getElementById('dynamic-typography-styles');
-    if (!dynamicStyle) {
-      dynamicStyle = document.createElement('style');
-      dynamicStyle.id = 'dynamic-typography-styles';
-      document.head.appendChild(dynamicStyle);
-    }
-    // Build Google Fonts @import only for google-sourced fonts
-    const googleFamilies = [
-      primaryFont?.source !== 'custom' ? pFamily : null,
-      headingFont?.source !== 'custom' ? hFamily : null,
-      secondaryFont?.source !== 'custom' ? sFamily : null,
-    ].filter(Boolean);
-    const googleImport = googleFamilies.length > 0
-      ? `@import url('https://fonts.googleapis.com/css2?${googleFamilies.map(f => `family=${f.replace(/\s+/g, '+')}:ital,wght@0,300..900;1,300..900`).join('&')}&display=swap');`
-      : '';
-
-    dynamicStyle.innerHTML = `
-      ${googleImport}
-      :root {
-        --font-primary: '${pFamily}', sans-serif;
-        --font-heading: '${hFamily}', sans-serif;
-        --font-secondary: '${sFamily}', serif, sans-serif;
-      }
-      body, button, input, select, textarea, p, div, a, li, label, table, td, th {
-        font-family: '${pFamily}', sans-serif;
-      }
-      h1, h2, h3, h4, h5, h6, .font-heading {
-        font-family: '${hFamily}', sans-serif !important;
-      }
-      .font-secondary, .font-accent, .hero-highlight, [data-typography="secondary"],
-      .rounded-full, .rounded-full *, .tag, .badge, .chip, [class*="bg-green-50"], [class*="bg-emerald-50"], [class*="bg-blue-50"], [class*="bg-purple-50"] {
-        font-family: '${sFamily}', serif, sans-serif !important;
-      }
-    `;
+    // Update CSS variables smoothly on root
+    document.documentElement.style.setProperty('--font-primary', `'${pFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
+    document.documentElement.style.setProperty('--font-heading', `'${hFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
+    document.documentElement.style.setProperty('--font-secondary', `'${sFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
   }, [homepageConfig?.typography]);
 
   useEffect(() => {
@@ -286,6 +258,9 @@ function App() {
                   title: app.jobId?.title || 'Unknown Job',
                   status: app.status,
                   color: app.statusColor,
+                  isBlocked: app.isBlocked || false,
+                  blockedBy: app.blockedBy || null,
+                  blockedAt: app.blockedAt || null,
                   date: new Date(app.createdAt).toLocaleDateString(),
                   screeningAnswers: app.screeningAnswers || [],
                   resume: app.resume || emp.resume || emp.documents?.resume || '',

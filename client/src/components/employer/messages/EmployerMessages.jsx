@@ -82,12 +82,33 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       if (triggerNavRefresh) triggerNavRefresh();
     };
 
+    const handleConversationBlockToggled = (data) => {
+      setBackendConversations(prev => prev.map(c => 
+        c.applicationId === data.applicationId 
+          ? { ...c, isBlocked: data.isBlocked, blockedBy: data.blockedBy, blockedAt: data.blockedAt }
+          : c
+      ));
+      setSelectedApplication(prev => {
+        if (prev?.appId === data.applicationId) {
+          return {
+            ...prev,
+            isBlocked: data.isBlocked,
+            blockedBy: data.blockedBy,
+            blockedAt: data.blockedAt
+          };
+        }
+        return prev;
+      });
+    };
+
     socket.on('conversation_updated', handleConversationUpdated);
+    socket.on('conversation_block_toggled', handleConversationBlockToggled);
 
     return () => {
       socket.off('conversation_updated', handleConversationUpdated);
+      socket.off('conversation_block_toggled', handleConversationBlockToggled);
     };
-  }, [selectedApplication, triggerNavRefresh]);
+  }, [selectedApplication?.appId, triggerNavRefresh]);
 
   const fetchConversations = async () => {
     try {
@@ -140,8 +161,14 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
             if (prev.some(m => m._id === msg._id)) return prev;
             return [...prev, msg];
           });
-          // Mark read locally and notify nav
+          // Mark read locally and on server
           if (msg.senderModel === 'Employee') {
+            fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${appId}`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
+            }).catch(() => {});
+            setBackendConversations(prev => prev.map(c => 
+              c.applicationId === appId ? { ...c, unreadCount: 0 } : c
+            ));
             if (triggerNavRefresh) triggerNavRefresh();
           }
         }
@@ -182,7 +209,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       setMessages([]);
       setIsTyping(false);
     }
-  }, [selectedApplication]);
+  }, [selectedApplication?.appId]);
 
   const fetchMessages = async (appId) => {
     try {
@@ -192,9 +219,21 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       const data = await res.json();
       if (data.success) {
         setMessages(data.data);
+        if (data.application) {
+          setSelectedApplication(prev => ({
+            ...prev,
+            isBlocked: data.application.isBlocked,
+            blockedBy: data.application.blockedBy,
+            blockedAt: data.application.blockedAt
+          }));
+        }
         // Clear unread count for this app in backendConversations
         setBackendConversations(prev => prev.map(c => 
-          c.applicationId === appId ? { ...c, unreadCount: 0 } : c
+          c.applicationId === appId ? { 
+            ...c, 
+            unreadCount: 0,
+            ...(data.application ? { isBlocked: data.application.isBlocked, blockedBy: data.application.blockedBy } : {})
+          } : c
         ));
         if (triggerNavRefresh) triggerNavRefresh();
       }
@@ -203,11 +242,56 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
     }
   };
 
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isBlockLoading, setIsBlockLoading] = useState(false);
+
+  const openBlockModal = () => {
+    if (!selectedApplication) return;
+    if (selectedApplication.isBlocked && selectedApplication.blockedBy === 'Employee') {
+      return;
+    }
+    setIsBlockModalOpen(true);
+  };
+
+  const handleConfirmToggleBlock = async () => {
+    if (!selectedApplication) return;
+    setIsBlockLoading(true);
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedApplication.appId}/toggle-block`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedApplication(prev => ({
+          ...prev,
+          isBlocked: data.data.isBlocked,
+          blockedBy: data.data.blockedBy,
+          blockedAt: data.data.blockedAt
+        }));
+        setBackendConversations(prev => prev.map(c => 
+          c.applicationId === selectedApplication.appId
+            ? { ...c, isBlocked: data.data.isBlocked, blockedBy: data.data.blockedBy, blockedAt: data.data.blockedAt }
+            : c
+        ));
+        setIsBlockModalOpen(false);
+      } else {
+        alert(data.message || 'Action failed');
+      }
+    } catch (err) {
+      console.error("Error toggling block:", err);
+      alert("Failed to toggle block status.");
+    } finally {
+      setIsBlockLoading(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const val = e.target.value;
     setNewMessage(val);
 
-    if (selectedApplication) {
+    if (selectedApplication && !selectedApplication.isBlocked) {
       socket.emit('typing', {
         applicationId: selectedApplication.appId,
         senderModel: 'Employer'
@@ -224,7 +308,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedApplication) return;
+    if (!newMessage.trim() || !selectedApplication || selectedApplication.isBlocked) return;
     
     // Stop typing immediately
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -376,7 +460,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
               <p className="text-xs text-gray-500">Select an application to view conversation</p>
             </div>
             
-            <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-3 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-2.5 pt-2 pb-4 space-y-3 custom-scrollbar">
               {(selectedEmployee.history || []).length === 0 ? (
                 <div className="text-center p-6 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">No applications yet.</div>
               ) : (
@@ -388,15 +472,22 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
                     <div 
                       key={app.appId}
                       onClick={() => setSelectedApplication(app)}
-                      className={`p-4 rounded-2xl cursor-pointer transition-all border bg-white shadow-sm ${isSelected ? 'border-[#29953f] ring-1 ring-[#29953f]' : 'border-gray-200 hover:border-gray-300'}`}
+                      className={`p-4 rounded-2xl cursor-pointer transition-all border bg-white shadow-sm ${isSelected ? 'border-[#29953f] ring-2 ring-[#29953f]/15' : 'border-gray-200 hover:border-gray-300'}`}
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-xl shrink-0 border border-gray-100">
                             💼
                           </div>
-                          <div>
-                            <h4 className={`text-sm font-bold ${isSelected ? 'text-gray-900' : 'text-gray-800'}`}>{app.title}</h4>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h4 className={`text-sm font-bold truncate ${isSelected ? 'text-gray-900' : 'text-gray-800'}`}>{app.title}</h4>
+                              {(app.isBlocked || convState?.isBlocked) && (
+                                <span className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded shrink-0">
+                                  Blocked
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500 font-medium mt-0.5">{selectedEmployee.skills?.[0] || 'Role'}</p>
                           </div>
                         </div>
@@ -447,19 +538,41 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
         {selectedApplication ? (
           <>
             <div className="p-4 sm:p-6 border-b border-gray-100 bg-white shrink-0 flex justify-between items-center z-10 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl border border-gray-100 shadow-sm shrink-0">
                   💼
                 </div>
-                <div>
-                  <h2 className="font-bold text-gray-900 text-lg leading-tight">{selectedApplication.title}</h2>
-                  <p className="text-sm text-gray-500 font-medium">{selectedEmployee.skills?.[0] || 'Role'}</p>
+                <div className="min-w-0">
+                  <h2 className="font-bold text-gray-900 text-lg leading-tight truncate">{selectedApplication.title}</h2>
+                  <p className="text-sm text-gray-500 font-medium truncate">{selectedEmployee.skills?.[0] || 'Role'}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${selectedApplication.color || 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
                   {selectedApplication.status || 'Under Review'}
                 </div>
+
+                {selectedApplication.isBlocked ? (
+                  selectedApplication.blockedBy === 'Employer' && (
+                    <button 
+                      onClick={openBlockModal}
+                      className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm shrink-0"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                      Unblock this chat
+                    </button>
+                  )
+                ) : (
+                  <button 
+                    onClick={openBlockModal}
+                    className="px-3 py-1.5 text-xs font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm shrink-0"
+                    title="Block this chat"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                    Block this chat
+                  </button>
+                )}
+
                 <button 
                   onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}
                   className={`p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors border ${isAppDetailsOpen ? 'bg-gray-50 border-gray-200 text-gray-700' : 'border-transparent'}`}
@@ -507,7 +620,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
               )}
 
               {/* Real-time Typing Indicator */}
-              {isTyping && (
+              {isTyping && !selectedApplication.isBlocked && (
                 <div className="flex flex-col items-start animate-fade-in">
                   <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
@@ -521,28 +634,52 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-white shrink-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
-              <div className="flex items-end gap-3 bg-[#FAFAFA] rounded-xl p-2 border border-gray-200 focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f] transition-all">
-                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                </button>
-                <textarea 
-                  value={newMessage}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  className="w-full flex-1 resize-none bg-transparent outline-none text-sm text-gray-900 placeholder-gray-500 py-2.5 max-h-[120px]"
-                  placeholder="Type a message..."
-                  rows="1"
-                ></textarea>
-                <button 
-                  onClick={sendMessage} 
-                  disabled={!newMessage.trim()}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${!newMessage.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#29953f] text-white hover:bg-[#207a32] shadow-sm'}`}
-                >
-                  Send
-                </button>
+            {/* Blocked Notice & Chat Input Area */}
+            {selectedApplication.isBlocked ? (
+              <div className="p-4 border-t border-gray-200 bg-red-50/70 shrink-0 z-10 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-lg shrink-0">
+                    🚫
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-red-900">Conversation Blocked</h4>
+                    <p className="text-xs text-red-700 mt-0.5">
+                      {selectedApplication.blockedBy === 'Employer' 
+                        ? 'You have blocked this candidate for this job application. Messages are disabled.' 
+                        : 'The candidate has blocked this conversation. You cannot send messages.'}
+                    </p>
+                  </div>
+                </div>
+                {selectedApplication.blockedBy === 'Employer' && (
+                  <button
+                    onClick={openBlockModal}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-red-700 border border-red-300 rounded-lg text-xs font-bold shrink-0 transition-colors shadow-sm"
+                  >
+                    Unblock
+                  </button>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="p-4 border-t border-gray-100 bg-white shrink-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
+                <div className="flex items-end gap-3 bg-[#FAFAFA] rounded-xl p-2 border border-gray-200 focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f] transition-all">
+                  <textarea 
+                    value={newMessage}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    className="w-full flex-1 resize-none bg-transparent outline-none text-sm text-gray-900 placeholder-gray-500 py-2.5 px-2 max-h-[120px]"
+                    placeholder="Type a message..."
+                    rows="1"
+                  ></textarea>
+                  <button 
+                    onClick={sendMessage} 
+                    disabled={!newMessage.trim()}
+                    className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${!newMessage.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#29953f] text-white hover:bg-[#207a32] shadow-sm'}`}
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-[#FAFAFA]">
@@ -992,6 +1129,69 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
             </div>
           </div>
         </>
+      )}
+      {/* Themed Confirmation Modal for Block / Unblock */}
+      {isBlockModalOpen && selectedApplication && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={() => !isBlockLoading && setIsBlockModalOpen(false)}
+          ></div>
+
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 z-10 transform transition-all border border-gray-100 flex flex-col items-center text-center animate-in zoom-in-95 duration-200 font-sans">
+            {selectedApplication.isBlocked ? (
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mb-4 border border-emerald-100 shadow-sm">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-2xl mb-4 border border-red-100 shadow-sm">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+              </div>
+            )}
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {selectedApplication.isBlocked 
+                ? `Unblock this chat?` 
+                : `Block this chat?`}
+            </h3>
+
+            <p className="text-sm text-gray-500 leading-relaxed mb-6">
+              {selectedApplication.isBlocked
+                ? `Are you sure you want to unblock this chat? You will be able to send and receive messages again for this job application.`
+                : `Are you sure you want to block this chat? You will not be able to send or receive messages for this job application until unblocked.`}
+            </p>
+
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                disabled={isBlockLoading}
+                onClick={() => setIsBlockModalOpen(false)}
+                className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isBlockLoading}
+                onClick={handleConfirmToggleBlock}
+                className={`flex-1 py-2.5 px-4 text-white font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 ${
+                  selectedApplication.isBlocked 
+                    ? 'bg-[#29953f] hover:bg-[#207a32]' 
+                    : 'bg-red-600 hover:bg-red-700'
+                } ${isBlockLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {isBlockLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Please wait...
+                  </>
+                ) : (
+                  selectedApplication.isBlocked ? 'Unblock this chat' : 'Block this chat'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

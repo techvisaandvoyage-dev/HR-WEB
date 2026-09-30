@@ -133,8 +133,8 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               <div className="flex items-center gap-3 relative w-full">
                 {item.icon}
                 <span className="flex-1">{item.name}</span>
-                {item.key === 'messages' && totalUnread > 0 && (
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ml-auto ${location.pathname === item.path ? 'bg-white text-[#29953f]' : 'bg-[#29953f] text-white'}`}>
+                {item.key === 'messages' && totalUnread > 0 && location.pathname !== item.path && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm ml-auto bg-[#29953f] text-white">
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}

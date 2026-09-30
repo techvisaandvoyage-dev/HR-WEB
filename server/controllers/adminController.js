@@ -51,21 +51,51 @@ exports.getDashboardStats = async (req, res) => {
       .populate('employeeId', 'name email mobile')
       .populate('employerId', 'companyName fullName email');
 
-    // 7-day registration chart data
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
+    // Registration chart data (7, 14, or 30 days)
+    const daysRange = parseInt(req.query.days) || 7;
+    const registrationTrends = [];
+    let periodCandidates = 0;
+    let periodEmployers = 0;
+    let periodApplications = 0;
+    let maxDayActivity = -1;
+    let peakDayLabel = '';
+
+    for (let i = daysRange - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dayStart = new Date(d.setHours(0, 0, 0, 0));
-      const dayEnd = new Date(d.setHours(23, 59, 59, 999));
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
       
-      const [empCount, emprCount] = await Promise.all([
+      const [empCount, emprCount, appCount] = await Promise.all([
         Employee.countDocuments({ createdAt: { $gte: dayStart, $lte: dayEnd } }),
-        Employer.countDocuments({ createdAt: { $gte: dayStart, $lte: dayEnd } })
+        Employer.countDocuments({ createdAt: { $gte: dayStart, $lte: dayEnd } }),
+        Application.countDocuments({ createdAt: { $gte: dayStart, $lte: dayEnd } })
       ]);
 
+      periodCandidates += empCount;
+      periodEmployers += emprCount;
+      periodApplications += appCount;
+
+      const totalDay = empCount + emprCount + appCount;
+      if (totalDay > maxDayActivity) {
+        maxDayActivity = totalDay;
+        peakDayLabel = dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+
       const label = dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      last7Days.push({ date: label, employees: empCount, employers: emprCount });
+      const dayOfWeek = dayStart.toLocaleDateString('en-US', { weekday: 'short' });
+      const fullDate = dayStart.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      registrationTrends.push({
+        date: label,
+        label,
+        dayOfWeek,
+        fullDate,
+        employees: empCount,
+        employers: emprCount,
+        applications: appCount,
+        total: totalDay
+      });
     }
 
     res.json({
@@ -79,11 +109,20 @@ exports.getDashboardStats = async (req, res) => {
           closedJobs,
           totalApplications
         },
+        trendsSummary: {
+          daysRange,
+          periodCandidates,
+          periodEmployers,
+          periodApplications,
+          peakDay: peakDayLabel,
+          peakCount: maxDayActivity,
+          avgPerDay: (periodCandidates / daysRange).toFixed(1)
+        },
         recentEmployees,
         recentEmployers,
         recentJobs,
         recentApplications,
-        registrationTrends: last7Days
+        registrationTrends
       }
     });
   } catch (error) {

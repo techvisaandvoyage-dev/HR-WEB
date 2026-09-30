@@ -83,6 +83,10 @@ const EmployeeSchema = new mongoose.Schema({
     enum: ['everyone', 'applied'],
     default: 'everyone'
   },
+  isProfilePrivate: {
+    type: Boolean,
+    default: false
+  },
   isFresher: {
     type: Boolean,
     default: true

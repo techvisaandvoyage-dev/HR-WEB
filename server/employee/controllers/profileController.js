@@ -32,6 +32,7 @@ const getProfile = async (req, res) => {
         coverLetter: employee.coverLetter || '',
         introVideo: employee.introVideo || '',
         videoVisibility: employee.videoVisibility || 'everyone',
+        isProfilePrivate: employee.isProfilePrivate ?? false,
         isOnboardingCompleted: employee.isOnboardingCompleted ?? false,
         onboardingStep: employee.onboardingStep || 1
       });
@@ -108,6 +109,7 @@ const updateProfile = async (req, res) => {
       : req.body.videoVisibility;
     if (videoVisibility !== undefined) updateData.videoVisibility = videoVisibility;
 
+    if (req.body.isProfilePrivate !== undefined) updateData.isProfilePrivate = Boolean(req.body.isProfilePrivate);
     if (req.body.isOnboardingCompleted !== undefined) updateData.isOnboardingCompleted = Boolean(req.body.isOnboardingCompleted);
     if (req.body.onboardingStep !== undefined) updateData.onboardingStep = Number(req.body.onboardingStep);
 
@@ -140,6 +142,7 @@ const updateProfile = async (req, res) => {
         coverLetter: updatedEmployee.coverLetter,
         introVideo: updatedEmployee.introVideo,
         videoVisibility: updatedEmployee.videoVisibility || 'everyone',
+        isProfilePrivate: updatedEmployee.isProfilePrivate ?? false,
         isOnboardingCompleted: updatedEmployee.isOnboardingCompleted ?? false,
         onboardingStep: updatedEmployee.onboardingStep || 1
       }
