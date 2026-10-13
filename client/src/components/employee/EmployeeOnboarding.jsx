@@ -1579,19 +1579,33 @@ const EmployeeOnboarding = () => {
 
   const handleAddEducation = (e) => {
     if (e) e.preventDefault();
-    const result = validateEducationData();
-    if (!result.isValid) {
-      setExpandedEduIndex(result.eduIdx);
-      setEduFieldErrors(result.errors);
-      setEduError('Fill details');
-      scrollToFirstError(result.targetFieldId);
-      return;
+    const quals = formData.qualifications || [];
+    if (quals.length > 0 && expandedEduIndex >= 0) {
+      const result = validateEducationData(expandedEduIndex);
+      if (!result.isValid) {
+        setExpandedEduIndex(result.eduIdx !== undefined ? result.eduIdx : expandedEduIndex);
+        setEduFieldErrors(result.errors || {});
+        setEduError('Fill details');
+        scrollToFirstError(result.targetFieldId);
+        return;
+      }
     }
     setEduError('');
     setEduFieldErrors({});
-    const newIdx = (formData.qualifications || []).length;
+    const newIdx = quals.length;
     setExpandedEduIndex(newIdx);
-    addArrayItem('qualifications', { educationType: '', board: '', endYear: '', schoolMedium: '', percentage: '', university: '', course: '', startYear: '', gradingSystem: '', isPrimary: false });
+    addArrayItem('qualifications', { 
+      educationType: '', 
+      board: '', 
+      endYear: '', 
+      schoolMedium: '', 
+      percentage: '', 
+      university: '', 
+      course: '', 
+      startYear: '', 
+      gradingSystem: '', 
+      isPrimary: newIdx === 0 
+    });
     scrollToFirstError(`field-edu-type-${newIdx}`);
   };
 
@@ -1767,8 +1781,12 @@ const EmployeeOnboarding = () => {
             <p className="text-sm text-gray-500 mt-1">{s2Subtitle}</p>
           </div>
           <div className="flex items-center gap-3">
-            {eduError && <span className="text-red-500 text-xs font-medium">{eduError}</span>}
-            <button type="button" onClick={handleAddEducation} className="text-green-500 hover:text-green-600 font-semibold text-sm">
+            {eduError && (
+              <button type="button" onClick={handleAddEducation} className="text-red-500 text-xs font-medium hover:underline cursor-pointer">
+                {eduError}
+              </button>
+            )}
+            <button type="button" onClick={handleAddEducation} className="text-green-500 hover:text-green-600 font-semibold text-sm cursor-pointer">
               {s2AddBtn}
             </button>
           </div>
@@ -2179,14 +2197,42 @@ const EmployeeOnboarding = () => {
                     );
                   })}
                   
-                  <div className="pt-4">
-                    <div className="flex items-center gap-3 mt-4 md:mt-0">
-                      {eduError && <span className="text-red-500 text-xs font-medium">{eduError}</span>}
-                      <button type="button" onClick={handleAddEducation} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                        Add +
+                  {(!formData.qualifications || formData.qualifications.length === 0) ? (
+                    <div 
+                      onClick={handleAddEducation}
+                      className="p-8 border-2 border-dashed border-gray-200 hover:border-green-400 rounded-2xl bg-gray-50/50 hover:bg-green-50/20 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 group"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-bold text-gray-800">Add Your Education</p>
+                      <p className="text-xs text-gray-500 max-w-sm">
+                        Click here to add your degree, diploma, school, or other educational qualifications.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAddEducation}
+                        className="mt-2 px-5 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-full shadow-sm transition-colors cursor-pointer"
+                      >
+                        + Add Education Details
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="pt-4">
+                      <div className="flex items-center gap-3 mt-4 md:mt-0">
+                        {eduError && (
+                          <button type="button" onClick={handleAddEducation} className="text-red-500 text-xs font-medium hover:underline cursor-pointer">
+                            {eduError}
+                          </button>
+                        )}
+                        <button type="button" onClick={handleAddEducation} className="text-green-500 font-semibold hover:text-green-600 text-sm cursor-pointer">
+                          Add +
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>); };
 

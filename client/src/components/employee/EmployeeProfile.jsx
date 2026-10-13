@@ -1630,19 +1630,33 @@ const EmployeeProfile = () => {
 
   const handleAddEducation = (e) => {
     if (e) e.preventDefault();
-    const result = validateEducationData();
-    if (!result.isValid) {
-      setExpandedEduIndex(result.eduIdx);
-      setEduFieldErrors(result.errors);
-      setEduError('Fill details');
-      scrollToTarget(result.targetFieldId);
-      return;
+    const quals = formData.qualifications || [];
+    if (quals.length > 0 && expandedEduIndex >= 0) {
+      const result = validateEducationData(expandedEduIndex);
+      if (!result.isValid) {
+        setExpandedEduIndex(result.eduIdx !== undefined ? result.eduIdx : expandedEduIndex);
+        setEduFieldErrors(result.errors || {});
+        setEduError('Fill details');
+        scrollToTarget(result.targetFieldId);
+        return;
+      }
     }
     setEduError('');
     setEduFieldErrors({});
-    const newIdx = (formData.qualifications || []).length;
+    const newIdx = quals.length;
     setExpandedEduIndex(newIdx);
-    addArrayItem('qualifications', { educationType: '', board: '', endYear: '', schoolMedium: '', percentage: '', university: '', course: '', startYear: '', gradingSystem: '', isPrimary: false });
+    addArrayItem('qualifications', { 
+      educationType: '', 
+      board: '', 
+      endYear: '', 
+      schoolMedium: '', 
+      percentage: '', 
+      university: '', 
+      course: '', 
+      startYear: '', 
+      gradingSystem: '', 
+      isPrimary: newIdx === 0 
+    });
     scrollToTarget(`field-edu-type-${newIdx}`);
   };
 
