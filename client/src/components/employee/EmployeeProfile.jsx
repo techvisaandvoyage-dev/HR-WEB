@@ -12,8 +12,8 @@ import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
 import { compressFileIfNeeded } from '../../utils/fileCompressor';
-import VideoPlayer from '../common/VideoPlayer';
 import AccountSecuritySection from './AccountSecuritySection';
+import PrivacySettingsSection from './PrivacySettingsSection';
 import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, sortQualifications, sortExperience } from './EmployeeOnboarding';
 
@@ -557,6 +557,9 @@ const EmployeeProfile = () => {
     if (location.state?.tab === 'security' || location.search.includes('tab=security') || location.hash === '#security') {
       return 'security';
     }
+    if (location.state?.tab === 'privacy' || location.search.includes('tab=privacy') || location.hash === '#privacy') {
+      return 'privacy';
+    }
     return location.state?.tab || 'basic';
   });
 
@@ -564,8 +567,8 @@ const EmployeeProfile = () => {
     isProgrammaticScrollRef.current = true;
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     setActiveTab(tabId);
-    if (tabId === 'security') {
-      scrollToSecurity();
+    if (tabId === 'security' || tabId === 'privacy') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       setTimeout(() => {
         document.getElementById(tabId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -577,32 +580,23 @@ const EmployeeProfile = () => {
   };
 
   const scrollToSecurity = () => {
-    const performScroll = () => {
-      const el = document.getElementById('security');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return true;
-      }
-      return false;
-    };
-    performScroll();
-    requestAnimationFrame(performScroll);
-    setTimeout(performScroll, 50);
-    setTimeout(performScroll, 150);
-    setTimeout(performScroll, 300);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
-    if (activeTab === 'security') {
-      scrollToSecurity();
+    if (activeTab === 'security' || activeTab === 'privacy') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [activeTab]);
 
   useEffect(() => {
     if (location.state?.tab === 'security' || location.search.includes('tab=security') || location.hash === '#security') {
       setActiveTab('security');
-      scrollToSecurity();
-    } else if (location.state?.tab && location.state.tab !== 'security') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (location.state?.tab === 'privacy' || location.search.includes('tab=privacy') || location.hash === '#privacy') {
+      setActiveTab('privacy');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (location.state?.tab && location.state.tab !== 'security' && location.state.tab !== 'privacy') {
       setActiveTab(location.state.tab);
     }
   }, [location.state, location.search, location.hash]);
@@ -1051,10 +1045,11 @@ const EmployeeProfile = () => {
     { id: 'professional', label: cmsConfig?.step4?.title || 'Professional Overview' },
     { id: 'documents', label: cmsConfig?.step5?.title || 'Documents' },
     { id: 'security', label: 'Security & Password' },
+    { id: 'privacy', label: 'Privacy Settings' },
   ];
 
   useEffect(() => {
-    if (activeTab === 'security') return;
+    if (activeTab === 'security' || activeTab === 'privacy') return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1068,7 +1063,7 @@ const EmployeeProfile = () => {
       { rootMargin: '-20% 0px -70% 0px' }
     );
 
-    tabs.filter(tab => tab.id !== 'security').forEach(tab => {
+    tabs.filter(tab => tab.id !== 'security' && tab.id !== 'privacy').forEach(tab => {
       const el = document.getElementById(tab.id);
       if (el) observer.observe(el);
     });
@@ -1314,12 +1309,12 @@ const EmployeeProfile = () => {
       <p className="text-[13px] text-gray-500 mb-6">Last updated today</p>
 
       {/* Mobile Tab Switcher */}
-      <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+      <div className="flex bg-gray-100 p-1 rounded-xl mb-6 gap-1">
         <button
           type="button"
           onClick={() => handleTabClick('basic')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-            activeTab !== 'security'
+          className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-all text-center ${
+            activeTab !== 'security' && activeTab !== 'privacy'
               ? 'bg-white text-gray-900 shadow-xs'
               : 'text-gray-500 hover:text-gray-700'
           }`}
@@ -1329,19 +1324,34 @@ const EmployeeProfile = () => {
         <button
           type="button"
           onClick={() => handleTabClick('security')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+          className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-all text-center ${
             activeTab === 'security'
               ? 'bg-white text-emerald-700 shadow-xs'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          Security &amp; Password
+          Security
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabClick('privacy')}
+          className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-all text-center ${
+            activeTab === 'privacy'
+              ? 'bg-white text-emerald-700 shadow-xs'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Privacy
         </button>
       </div>
 
       {activeTab === 'security' ? (
         <div className="mb-6">
           <AccountSecuritySection userEmail={formData.email} />
+        </div>
+      ) : activeTab === 'privacy' ? (
+        <div className="mb-6">
+          <PrivacySettingsSection userEmail={formData.email} />
         </div>
       ) : (
         <>
@@ -2083,7 +2093,7 @@ const EmployeeProfile = () => {
               <p className="px-3.5 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                 Profile
               </p>
-              {tabs.filter(t => t.id !== 'security').map((tab) => (
+              {tabs.filter(t => t.id !== 'security' && t.id !== 'privacy').map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
@@ -2122,6 +2132,25 @@ const EmployeeProfile = () => {
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                 )}
               </button>
+              <button
+                type="button"
+                onClick={() => handleTabClick('privacy')}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm flex items-center justify-between transition-all duration-150 ${
+                  activeTab === 'privacy'
+                    ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/80 shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <svg className={`w-4 h-4 ${activeTab === 'privacy' ? 'text-emerald-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                  </svg>
+                  <span>Privacy Settings</span>
+                </div>
+                {activeTab === 'privacy' && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                )}
+              </button>
             </div>
 
           </div>
@@ -2131,6 +2160,8 @@ const EmployeeProfile = () => {
 
             {activeTab === 'security' ? (
               <AccountSecuritySection userEmail={formData.email} />
+            ) : activeTab === 'privacy' ? (
+              <PrivacySettingsSection userEmail={formData.email} />
             ) : (
               <>
                 {/* Continuous Sections */}

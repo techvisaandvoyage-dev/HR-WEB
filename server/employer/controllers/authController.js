@@ -44,8 +44,8 @@ exports.sendRegistrationOtp = async (req, res) => {
     const cleanEmail = String(email).trim().toLowerCase();
     const userExists = await Employer.findOne({ email: cleanEmail });
     if (userExists) {
-      const isTargetConsultant = Boolean(isConsultant === true || hiringFor === 'consultant');
-      const isExistingConsultant = userExists.hiringFor === 'consultant';
+      const isTargetConsultant = Boolean(isConsultant === true);
+      const isExistingConsultant = Boolean(userExists.isConsultant === true);
 
       if (isTargetConsultant) {
         if (!isExistingConsultant) {
@@ -177,8 +177,8 @@ exports.register = async (req, res) => {
     let employer = await Employer.findOne({ email: cleanEmail });
 
     if (employer && employer.companyName && employer.companyName.trim() !== '') {
-      const isTargetConsultant = Boolean(req.body.isConsultant === true || hiringFor === 'consultant');
-      const isExistingConsultant = employer.hiringFor === 'consultant';
+      const isTargetConsultant = Boolean(req.body.isConsultant === true);
+      const isExistingConsultant = Boolean(employer.isConsultant === true);
 
       if (isTargetConsultant && !isExistingConsultant) {
         return res.status(400).json({ 
@@ -224,6 +224,9 @@ exports.register = async (req, res) => {
       if (mobile) employer.mobile = mobile;
       if (password && String(password).trim() !== '') employer.password = password;
       if (hiringFor) employer.hiringFor = hiringFor;
+      if (req.body.isConsultant !== undefined) {
+        employer.isConsultant = Boolean(req.body.isConsultant === true);
+      }
       employer.companyName = companyName;
       employer.industry = industry;
       employer.employees = employees;
@@ -241,7 +244,8 @@ exports.register = async (req, res) => {
         accountType: accountType || 'company',
         fullName,
         email: cleanEmail,
-        hiringFor,
+        isConsultant: Boolean(req.body.isConsultant === true),
+        hiringFor: hiringFor || 'your_company',
         companyName,
         industry,
         employees,
@@ -263,6 +267,7 @@ exports.register = async (req, res) => {
         fullName: employer.fullName,
         email: employer.email,
         companyName: employer.companyName,
+        isConsultant: Boolean(employer.isConsultant === true),
         token: generateToken(employer._id),
       });
     } else {
@@ -308,8 +313,8 @@ exports.login = async (req, res) => {
 
     // Check portal type collision
     if (isConsultant !== undefined) {
-      const isTargetConsultant = Boolean(isConsultant);
-      const isExistingConsultant = employer.hiringFor === 'consultant';
+      const isTargetConsultant = Boolean(isConsultant === true);
+      const isExistingConsultant = Boolean(employer.isConsultant === true);
 
       if (isTargetConsultant && !isExistingConsultant) {
         return res.status(400).json({
@@ -353,6 +358,7 @@ exports.login = async (req, res) => {
       fullName: employer.fullName,
       email: employer.email,
       companyName: employer.companyName,
+      isConsultant: Boolean(employer.isConsultant === true),
       token: generateToken(employer._id),
     });
   } catch (error) {
@@ -620,8 +626,8 @@ exports.checkEmail = async (req, res) => {
     const employer = await Employer.findOne({ email: cleanEmail });
 
     if (employer) {
-      const isTargetConsultant = Boolean(isConsultant === true || hiringFor === 'consultant');
-      const isExistingConsultant = employer.hiringFor === 'consultant';
+      const isTargetConsultant = Boolean(isConsultant === true);
+      const isExistingConsultant = Boolean(employer.isConsultant === true);
 
       if (isTargetConsultant && !isExistingConsultant) {
         return res.status(400).json({ message: 'An employer account is already registered with this email. Please use Employer Login or use a different email.' });
@@ -657,7 +663,7 @@ exports.googleAuth = async (req, res) => {
     const cleanEmail = email.toLowerCase().trim();
     let employer = await Employer.findOne({ email: cleanEmail });
     let isNewUser = false;
-    const isTargetConsultant = Boolean(isConsultant === true || hiringFor === 'consultant');
+    const isTargetConsultant = Boolean(isConsultant === true);
 
     if (!employer) {
       isNewUser = true;
@@ -669,12 +675,13 @@ exports.googleAuth = async (req, res) => {
         mobile: '',
         companyName: '',
         industry: '',
-        hiringFor: isTargetConsultant ? 'consultant' : 'your_company',
+        isConsultant: isTargetConsultant,
+        hiringFor: hiringFor || (isTargetConsultant ? 'consultant' : 'your_company'),
         googleId: sub || uid || '',
         authProvider: 'google',
       });
     } else {
-      const isExistingConsultant = employer.hiringFor === 'consultant';
+      const isExistingConsultant = Boolean(employer.isConsultant === true);
       const hasCompletedProfile = Boolean(employer.companyName && employer.companyName.trim() !== '');
 
       if (hasCompletedProfile && isConsultant !== undefined) {
@@ -693,8 +700,8 @@ exports.googleAuth = async (req, res) => {
 
       if (!employer.companyName || employer.companyName.trim() === '') {
         isNewUser = true;
-        if (isTargetConsultant) {
-          employer.hiringFor = 'consultant';
+        if (req.body.isConsultant !== undefined) {
+          employer.isConsultant = isTargetConsultant;
         }
       }
       if (!employer.googleId) {
@@ -712,26 +719,27 @@ exports.googleAuth = async (req, res) => {
       fullName: employer.fullName,
       email: employer.email,
       companyName: employer.companyName,
+      isConsultant: Boolean(employer.isConsultant === true),
       token: generateToken(employer._id)
     });
-  } catch (error) {
-    console.error('Employer Google Auth Error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-// @desc    Send OTP to email for employer login
-// @route   POST /api/employer/auth/login/send-otp
-// @access  Public
-exports.sendLoginOtp = async (req, res) => {
-  try {
-    const { email, isConsultant } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Please enter your email address.' });
+    } catch (error) {
+      console.error('Employer Google Auth Error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
     }
+  };
 
-    const cleanEmail = email.toLowerCase().trim();
+  // @desc    Send OTP to email for employer login
+  // @route   POST /api/employer/auth/login/send-otp
+  // @access  Public
+  exports.sendLoginOtp = async (req, res) => {
+    try {
+      const { email, isConsultant } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ success: false, message: 'Please enter your email address.' });
+      }
+
+      const cleanEmail = email.toLowerCase().trim();
     const employer = await Employer.findOne({ email: cleanEmail });
 
     if (!employer) {
@@ -744,8 +752,8 @@ exports.sendLoginOtp = async (req, res) => {
     }
 
     if (isConsultant !== undefined) {
-      const isTargetConsultant = Boolean(isConsultant);
-      const isExistingConsultant = employer.hiringFor === 'consultant';
+      const isTargetConsultant = Boolean(isConsultant === true);
+      const isExistingConsultant = Boolean(employer.isConsultant === true);
 
       if (isTargetConsultant && !isExistingConsultant) {
         return res.status(400).json({
@@ -860,6 +868,7 @@ exports.verifyLoginOtp = async (req, res) => {
       fullName: employer.fullName,
       email: employer.email,
       companyName: employer.companyName,
+      isConsultant: Boolean(employer.isConsultant === true),
       token: generateToken(employer._id),
     });
   } catch (error) {

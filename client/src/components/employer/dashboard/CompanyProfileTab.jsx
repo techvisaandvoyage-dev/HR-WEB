@@ -344,7 +344,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
     );
   };
 
-  const isConsultant = companyData.hiringFor === 'consultant' || employerProfile?.hiringFor === 'consultant' || accountData.accountType === 'Consultant/agency';
+  const isConsultant = Boolean(employerProfile?.isConsultant === true || companyData?.isConsultant === true);
 
   const pageTitle = isConsultant 
     ? (portalConfig?.consultantTitle || 'Consultant Profile')

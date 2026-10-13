@@ -117,6 +117,55 @@ const AccountSecuritySection = ({ userEmail }) => {
     resending: false,
   });
 
+  // 4-Digit OTP Array for Change Password Modal
+  const [changeOtp, setChangeOtp] = useState(['', '', '', '']);
+
+  const handleOtpChange = (index, value) => {
+    if (changeForm.error) {
+      setChangeForm(prev => ({ ...prev, error: '' }));
+    }
+
+    // Handle full paste of code (e.g. 4 digits copied)
+    if (value.length > 1) {
+      const pasteData = value.replace(/\D/g, '').slice(0, 4).split('');
+      const newOtp = [...changeOtp];
+      pasteData.forEach((char, idx) => {
+        if (index + idx < 4) newOtp[index + idx] = char;
+      });
+      setChangeOtp(newOtp);
+      const combined = newOtp.join('');
+      setChangeForm(prev => ({ ...prev, otp: combined }));
+      const nextIdx = Math.min(index + pasteData.length, 3);
+      document.getElementById(`security-otp-${nextIdx}`)?.focus();
+      return;
+    }
+
+    const val = value.replace(/\D/g, '');
+    const newOtp = [...changeOtp];
+    newOtp[index] = val;
+    setChangeOtp(newOtp);
+    const combined = newOtp.join('');
+    setChangeForm(prev => ({ ...prev, otp: combined }));
+
+    // Auto move to next input if digit entered
+    if (val && index < 3) {
+      document.getElementById(`security-otp-${index + 1}`)?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      if (!changeOtp[index] && index > 0) {
+        e.preventDefault();
+        const newOtp = [...changeOtp];
+        newOtp[index - 1] = '';
+        setChangeOtp(newOtp);
+        setChangeForm(prev => ({ ...prev, otp: newOtp.join('') }));
+        document.getElementById(`security-otp-${index - 1}`)?.focus();
+      }
+    }
+  };
+
   // Alert/Toast State
   const [toastMessage, setToastMessage] = useState(null); // { type: 'success' | 'error', text: '' }
 
@@ -146,14 +195,6 @@ const AccountSecuritySection = ({ userEmail }) => {
     return `${user.slice(0, 2)}${'*'.repeat(Math.min(user.length - 2, 5))}@${domain}`;
   };
 
-  const [isProfilePrivate, setIsProfilePrivate] = useState(() => {
-    try {
-      const p = localStorage.getItem('userProfile');
-      if (p) return Boolean(JSON.parse(p).isProfilePrivate);
-    } catch (_) {}
-    return false;
-  });
-  const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
 
   const fetchSecurityStatus = async () => {
     const token = localStorage.getItem('employeeToken');
@@ -182,16 +223,6 @@ const AccountSecuritySection = ({ userEmail }) => {
         setSecurityData(prev => ({ ...prev, loading: false }));
       }
 
-      // Fetch profile privacy status
-      const profRes = await fetch(`${API_BASE}/api/employee/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const profData = await profRes.json();
-      if (profData && profData.isProfilePrivate !== undefined) {
-        setIsProfilePrivate(Boolean(profData.isProfilePrivate));
-      }
     } catch (err) {
       console.error('Failed to fetch security status:', err);
       setSecurityData(prev => ({ ...prev, loading: false }));
@@ -202,44 +233,6 @@ const AccountSecuritySection = ({ userEmail }) => {
     fetchSecurityStatus();
   }, []);
 
-  const handleTogglePrivacy = async () => {
-    if (isUpdatingPrivacy) return;
-    const newStatus = !isProfilePrivate;
-    setIsUpdatingPrivacy(true);
-    try {
-      const token = localStorage.getItem('employeeToken');
-      const res = await fetch(`${API_BASE}/api/employee/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ isProfilePrivate: newStatus })
-      });
-      if (res.ok) {
-        setIsProfilePrivate(newStatus);
-        try {
-          const saved = localStorage.getItem('userProfile');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            parsed.isProfilePrivate = newStatus;
-            localStorage.setItem('userProfile', JSON.stringify(parsed));
-          }
-        } catch (_) {}
-        showToast(
-          newStatus
-            ? 'Private Mode Enabled! Your profile is now hidden from the candidate search directory. Only employers of jobs you apply to will be able to view your complete profile.'
-            : 'Private Mode Disabled! Your profile is now visible to all employers.'
-        );
-      } else {
-        showToast('Failed to update privacy settings. Please try again.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error while updating privacy setting.', 'error');
-    } finally {
-      setIsUpdatingPrivacy(false);
-    }
-  };
 
   // Handle Submit: Set Password (For Google Users)
   const handleSetPasswordSubmit = async (e) => {
@@ -347,6 +340,7 @@ const AccountSecuritySection = ({ userEmail }) => {
 
       if (res.ok && data.success) {
         setChangeStep('otp');
+        setChangeOtp(['', '', '', '']);
         setChangeCooldown(data.cooldownSeconds || 30);
         setChangeForm(prev => ({
           ...prev,
@@ -388,8 +382,10 @@ const AccountSecuritySection = ({ userEmail }) => {
 
       if (res.ok && data.success) {
         setChangeCooldown(data.cooldownSeconds || 30);
+        setChangeOtp(['', '', '', '']);
         setChangeForm(prev => ({
           ...prev,
+          otp: '',
           resending: false,
           successInfo: 'A fresh verification OTP has been sent to your email.'
         }));
@@ -440,6 +436,7 @@ const AccountSecuritySection = ({ userEmail }) => {
       if (res.ok && data.success) {
         setIsChangeModalOpen(false);
         setChangeStep('form');
+        setChangeOtp(['', '', '', '']);
         setChangeForm({
           currentPassword: '',
           newPassword: '',
@@ -473,6 +470,7 @@ const AccountSecuritySection = ({ userEmail }) => {
   const handleCloseChangeModal = () => {
     setIsChangeModalOpen(false);
     setChangeStep('form');
+    setChangeOtp(['', '', '', '']);
     setChangeForm({
       currentPassword: '',
       newPassword: '',
@@ -697,53 +695,6 @@ const AccountSecuritySection = ({ userEmail }) => {
         </div>
       </div>
 
-      {/* 3. PROFILE PRIVACY & SEARCH VISIBILITY CARD */}
-      <div className="border border-gray-200 rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-white to-gray-50/60 shadow-xs mt-6">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                </svg>
-              </div>
-              <h4 className="text-base font-bold text-gray-900">Hide Profile from Candidate Directory (Private Mode)</h4>
-              {isProfilePrivate ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                  🔒 Private (Hidden)
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                  Public
-                </span>
-              )}
-            </div>
-            <p className="text-xs sm:text-sm text-gray-600 max-w-2xl leading-relaxed">
-              Your profile details will be private. Only employers of jobs you have applied to will be able to view your profile.
-            </p>
-          </div>
-
-          <div className="flex-shrink-0 flex items-center gap-3">
-            <button
-              type="button"
-              disabled={isUpdatingPrivacy}
-              onClick={handleTogglePrivacy}
-              aria-label="Toggle profile privacy"
-              className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-                isProfilePrivate ? 'bg-emerald-600' : 'bg-gray-300'
-              } ${isUpdatingPrivacy ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  isProfilePrivate ? 'translate-x-7' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* MODAL 1: SET PASSWORD (For Google / Passwordless users)                    */}
@@ -1163,21 +1114,34 @@ const AccountSecuritySection = ({ userEmail }) => {
                   </div>
                 )}
 
-                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center space-y-3">
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Enter Verification Code
+                <div className="p-5 sm:p-6 bg-gray-50/70 border border-gray-200/80 rounded-2xl text-center space-y-4">
+                  <label className="block text-sm font-extrabold text-gray-900 tracking-tight">
+                    Enter 4-digit OTP
                   </label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    autoFocus
-                    value={changeForm.otp}
-                    onChange={e => setChangeForm(prev => ({ ...prev, otp: e.target.value.replace(/[^0-9]/g, '') }))}
-                    placeholder="• • • •"
-                    className="w-44 mx-auto px-4 py-3 bg-white border-2 border-blue-400 rounded-xl text-center font-mono font-bold text-xl tracking-[0.3em] text-gray-900 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all shadow-inner"
-                    required
-                  />
-                  <p className="text-[11px] text-gray-500">
+                  
+                  {/* 4-Digit OTP Boxes */}
+                  <div className="flex justify-center items-center gap-3 sm:gap-4">
+                    {changeOtp.map((digit, index) => (
+                      <input
+                        key={index}
+                        id={`security-otp-${index}`}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength="1"
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        autoFocus={index === 0}
+                        className={`w-14 h-14 sm:w-16 sm:h-16 text-center text-2xl font-bold rounded-2xl bg-white border-2 transition-all outline-none shadow-xs ${
+                          digit
+                            ? 'border-emerald-500 text-gray-900 shadow-sm'
+                            : 'border-gray-200 text-gray-900 hover:border-gray-300'
+                        } focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/15`}
+                      />
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-gray-500 font-medium">
                     A security code was sent to verify your identity before saving the new password.
                   </p>
                 </div>

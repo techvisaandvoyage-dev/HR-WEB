@@ -40,9 +40,12 @@ const EmployerSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  isConsultant: {
+    type: Boolean,
+    default: false
+  },
   hiringFor: {
     type: String,
-    enum: ['your_company', 'consultant'],
     default: 'your_company'
   },
   companyName: {

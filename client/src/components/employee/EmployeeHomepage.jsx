@@ -719,7 +719,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
                           <span>{job.company}</span>
                           {job.rating && <span className="text-xs text-gray-500">{job.rating}★</span>}
-                          {job.employerId?.hiringFor === 'consultant' && (
+                          {job.employerId?.isConsultant === true && (
                             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                               <svg className="w-2.5 h-2.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
                               Consultant
@@ -803,7 +803,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <h2 className="text-xl font-semibold text-gray-900">{selectedJob.company}</h2>
-                            {selectedJob.employerId?.hiringFor === 'consultant' && (
+                            {selectedJob.employerId?.isConsultant === true && (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
                                 <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
                                 Consultant
@@ -930,8 +930,8 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                                     {selectedJob.employerId?.designation || 'HR Professional'} {selectedJob.employerId?.companyName ? `at ${selectedJob.employerId.companyName}` : ''}
                                   </p>
                                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${selectedJob.employerId?.hiringFor === 'consultant' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-                                      {selectedJob.employerId?.hiringFor === 'consultant' ? 'Consultant' : 'Company / Business'}
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${selectedJob.employerId?.isConsultant === true ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                      {selectedJob.employerId?.isConsultant === true ? 'Consultant' : 'Company / Business'}
                                     </span>
                                     {selectedJob.employerId?.employees && (
                                       <span className="text-xs text-gray-500 font-medium">
@@ -1066,8 +1066,8 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                                     {selectedJob.employerId?.designation || 'HR Professional'} {selectedJob.employerId?.companyName ? `at ${selectedJob.employerId.companyName}` : ''}
                                   </p>
                                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${selectedJob.employerId?.hiringFor === 'consultant' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-                                      {selectedJob.employerId?.hiringFor === 'consultant' ? 'Consultant' : 'Company / Business'}
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${selectedJob.employerId?.isConsultant === true ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                      {selectedJob.employerId?.isConsultant === true ? 'Consultant' : 'Company / Business'}
                                     </span>
                                     {selectedJob.employerId?.employees && (
                                       <span className="text-xs text-gray-500 font-medium">
@@ -1189,7 +1189,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           <div>
                             <p className="flex items-center gap-1.5 flex-wrap">
                               <strong>Hiring Type:</strong>{' '}
-                              {selectedJob.employerId?.hiringFor === 'consultant' ? (
+                              {selectedJob.employerId?.isConsultant === true ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                                   <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
                                   Consultant
