@@ -664,15 +664,14 @@ const forgotPasswordOtp = async (req, res) => {
     const { identifier } = req.body;
     
     if (!identifier) {
-      return res.status(400).json({ message: 'Please provide mobile number or email' });
+      return res.status(400).json({ message: 'Please provide your registered email address' });
     }
 
-    const employee = await Employee.findOne({
-      $or: [{ email: identifier.toLowerCase().trim() }, { mobile: identifier.trim() }]
-    }).select('+password');
+    const cleanEmail = identifier.toLowerCase().trim();
+    const employee = await Employee.findOne({ email: cleanEmail }).select('+password');
 
     if (!employee) {
-      return res.status(404).json({ message: 'No account found with this email or mobile' });
+      return res.status(404).json({ message: 'No account found with this email address' });
     }
 
     if (!employee.password && employee.authProvider === 'google') {
@@ -707,15 +706,14 @@ const resendForgotPasswordOtp = async (req, res) => {
     const { identifier } = req.body;
     
     if (!identifier) {
-      return res.status(400).json({ message: 'Please provide mobile number or email' });
+      return res.status(400).json({ message: 'Please provide your registered email address' });
     }
 
-    const employee = await Employee.findOne({
-      $or: [{ email: identifier.toLowerCase().trim() }, { mobile: identifier.trim() }]
-    });
+    const cleanEmail = identifier.toLowerCase().trim();
+    const employee = await Employee.findOne({ email: cleanEmail });
 
     if (!employee) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'No account found with this email address' });
     }
 
     const result = await resendOtp({

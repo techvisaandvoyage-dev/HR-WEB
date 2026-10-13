@@ -1005,42 +1005,6 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                 )}
 
                 <form className="space-y-4" onSubmit={handleFinalRegister}>
-                  {/* Hiring For (Only for Employer, hidden for Consultant) */}
-                  {!isConsultantMode && (
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        {cmsConfig?.hiringForLabel || 'Hiring For'}
-                      </label>
-                      <div className="flex flex-wrap gap-4">
-                        {(cmsConfig?.hiringForOptions && cmsConfig.hiringForOptions.length > 0
-                          ? cmsConfig.hiringForOptions
-                          : [
-                              { id: 'your_company', value: 'your_company', label: cmsConfig?.hiringForCompanyLabel || 'Your Company' },
-                              { id: 'consultant', value: 'consultant', label: cmsConfig?.hiringForConsultantLabel || 'Consultant' }
-                            ]
-                        ).map((opt) => {
-                          const optVal = opt.value || opt.id;
-                          return (
-                            <label key={optVal} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                name="hiringFor"
-                                value={optVal}
-                                checked={hiringFor === optVal}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setHiringFor(val);
-                                  setAccountType(val.toLowerCase().includes('company') || val.toLowerCase().includes('business') ? 'company' : 'individual');
-                                }}
-                                className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600"
-                              />
-                              <span className="text-sm font-medium text-gray-700">{opt.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Company Name */}
                   <div className="space-y-1.5">

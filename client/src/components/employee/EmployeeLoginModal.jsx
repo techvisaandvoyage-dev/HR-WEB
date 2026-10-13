@@ -365,7 +365,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setErrors({});
     setSuccessMessage('');
     if (!forgotIdentifier) {
-      setErrors({ forgot: 'Please enter your mobile number or email.' });
+      setErrors({ forgot: 'Please enter your registered email address.' });
       return;
     }
     setIsLoading(true);
@@ -527,12 +527,12 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                 <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleForgotGetOtp(); }}>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">Reset Password</h3>
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-bold text-gray-900">Mobile Number or Email</label>
+                    <label className="block text-sm font-bold text-gray-900">Email Address</label>
                     <input 
-                      type="text" 
+                      type="email" 
                       value={forgotIdentifier}
                       onChange={(e) => { setForgotIdentifier(e.target.value); setErrors({...errors, forgot: ''}); }}
-                      placeholder="Enter mobile no. or email"
+                      placeholder="Enter your registered email"
                       className="w-full px-5 py-3.5 rounded-full border border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400 outline-none transition-all"
                     />
                     {errors.forgot && (
