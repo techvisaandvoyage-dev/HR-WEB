@@ -200,6 +200,11 @@ export const DEFAULT_POST_JOB_SCREENING_QUESTIONS = [
 ];
 
 export const DEFAULT_EMPLOYER_POST_JOB_CONFIG = {
+  dailyJobLimit: {
+    enabled: false,
+    maxJobsPerDay: 5,
+    errorMessage: 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.'
+  },
   header: {
     title: 'POST A NEW JOB',
     subtitle: 'Fill in the details to create a new job posting.',
@@ -421,6 +426,13 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
           setPostJobConfig({
             ...DEFAULT_EMPLOYER_POST_JOB_CONFIG,
             ...fetched,
+            dailyJobLimit: {
+              ...DEFAULT_EMPLOYER_POST_JOB_CONFIG.dailyJobLimit,
+              ...(fetched.dailyJobLimit || {}),
+              errorMessage: (fetched.dailyJobLimit?.errorMessage && fetched.dailyJobLimit.errorMessage.trim())
+                ? fetched.dailyJobLimit.errorMessage
+                : 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.'
+            },
             header: {
               ...DEFAULT_EMPLOYER_POST_JOB_CONFIG.header,
               ...(fetched.header || {})
@@ -510,6 +522,16 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
         const json = await res.json();
         if (json.success && json.data) {
           setGlobalCardVisible(!json.data.hidePostedByCardGlobally);
+          if (typeof json.data.dailyJobLimitEnabled !== 'undefined') {
+            setPostJobConfig(prev => ({
+              ...prev,
+              dailyJobLimit: {
+                enabled: Boolean(json.data.dailyJobLimitEnabled),
+                maxJobsPerDay: Number(json.data.maxJobsPerDay) || prev.dailyJobLimit?.maxJobsPerDay || 5,
+                errorMessage: json.data.limitErrorMessage || prev.dailyJobLimit?.errorMessage || 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.'
+              }
+            }));
+          }
         }
       } catch (err) {
         console.error('Error fetching site settings:', err);
@@ -546,7 +568,19 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
 
   // Save Settings Function
   const handleSavePostJobConfig = async (customConfig) => {
-    const configToSave = customConfig || postJobConfig;
+    const rawConfig = customConfig || postJobConfig;
+    const defaultAlertMsg = 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.';
+    const cleanedDailyLimit = {
+      enabled: Boolean(rawConfig.dailyJobLimit?.enabled),
+      maxJobsPerDay: Math.max(1, parseInt(rawConfig.dailyJobLimit?.maxJobsPerDay, 10) || 5),
+      errorMessage: (rawConfig.dailyJobLimit?.errorMessage && rawConfig.dailyJobLimit.errorMessage.trim())
+        ? rawConfig.dailyJobLimit.errorMessage.trim()
+        : defaultAlertMsg
+    };
+    const configToSave = {
+      ...rawConfig,
+      dailyJobLimit: cleanedDailyLimit
+    };
     try {
       setSaving(true);
       setToastMessage('');
@@ -1249,6 +1283,192 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
             </button>
           );
         })}
+      </div>
+
+      {/* DAILY JOB POSTING LIMIT CONTROLS (EMPLOYERS & CONSULTANTS) */}
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+          <div>
+            <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+              <Clock className="w-4 h-4 text-emerald-600" />
+              Daily Job Posting Limit Controls (Employers & Consultants)
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Control the maximum number of job postings an employer or consultant can publish per 24 hours. Prevents spam and bot submissions.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Applies to Employers & Consultants
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs pt-1">
+          {/* 1. Toggle Limit Enabled */}
+          <div className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-gray-900 text-xs">Enable Daily Limit</p>
+                <p className="text-[11px] text-gray-500">Turn on/off quota restriction</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPostJobConfig(prev => ({
+                    ...prev,
+                    dailyJobLimit: {
+                      ...prev.dailyJobLimit,
+                      enabled: !prev.dailyJobLimit?.enabled
+                    }
+                  }));
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  postJobConfig.dailyJobLimit?.enabled ? 'bg-emerald-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    postJobConfig.dailyJobLimit?.enabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            <p className={`text-[11px] font-bold ${postJobConfig.dailyJobLimit?.enabled ? 'text-emerald-700' : 'text-gray-500'}`}>
+              Status: {postJobConfig.dailyJobLimit?.enabled ? 'Limit is ACTIVE' : 'UNLIMITED (No restriction)'}
+            </p>
+          </div>
+
+          {/* 2. Max Jobs Per Day */}
+          <div className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-xl space-y-1.5">
+            <label className="block font-bold text-gray-900 text-xs">
+              Max Jobs Allowed Per Day
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="relative inline-flex items-center">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  disabled={!postJobConfig.dailyJobLimit?.enabled}
+                  value={postJobConfig.dailyJobLimit?.maxJobsPerDay === undefined || postJobConfig.dailyJobLimit?.maxJobsPerDay === null ? '' : postJobConfig.dailyJobLimit?.maxJobsPerDay}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '');
+                    setPostJobConfig(prev => ({
+                      ...prev,
+                      dailyJobLimit: {
+                        ...prev.dailyJobLimit,
+                        maxJobsPerDay: digits
+                      }
+                    }));
+                  }}
+                  onBlur={() => {
+                    const currentStr = String(postJobConfig.dailyJobLimit?.maxJobsPerDay ?? '').trim();
+                    const num = parseInt(currentStr, 10);
+                    setPostJobConfig(prev => ({
+                      ...prev,
+                      dailyJobLimit: {
+                        ...prev.dailyJobLimit,
+                        maxJobsPerDay: (!currentStr || isNaN(num) || num < 1) ? 1 : num
+                      }
+                    }));
+                  }}
+                  placeholder="5"
+                  className="w-28 px-3 py-2 pr-7 bg-white border border-gray-200 rounded-xl font-bold text-gray-900 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                />
+                <div className="absolute right-1.5 flex flex-col items-center justify-center">
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    disabled={!postJobConfig.dailyJobLimit?.enabled}
+                    onClick={() => {
+                      const current = parseInt(postJobConfig.dailyJobLimit?.maxJobsPerDay, 10) || 0;
+                      setPostJobConfig(prev => ({
+                        ...prev,
+                        dailyJobLimit: {
+                          ...prev.dailyJobLimit,
+                          maxJobsPerDay: current + 1
+                        }
+                      }));
+                    }}
+                    className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 leading-none p-0.5 text-[9px] hover:bg-gray-100 rounded"
+                    title="Increase"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    disabled={!postJobConfig.dailyJobLimit?.enabled}
+                    onClick={() => {
+                      const current = parseInt(postJobConfig.dailyJobLimit?.maxJobsPerDay, 10) || 1;
+                      setPostJobConfig(prev => ({
+                        ...prev,
+                        dailyJobLimit: {
+                          ...prev.dailyJobLimit,
+                          maxJobsPerDay: Math.max(1, current - 1)
+                        }
+                      }));
+                    }}
+                    className="text-gray-400 hover:text-emerald-600 disabled:opacity-30 leading-none p-0.5 text-[9px] hover:bg-gray-100 rounded"
+                    title="Decrease"
+                  >
+                    ▼
+                  </button>
+                </div>
+              </div>
+              <span className="text-[11px] font-semibold text-gray-500">jobs / 24 hours</span>
+            </div>
+            <p className="text-[10px] text-gray-400">
+              Each employer or consultant account can post up to this limit every day.
+            </p>
+          </div>
+
+          {/* 3. Custom Error Message */}
+          <div className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block font-bold text-gray-900 text-xs">
+                Limit Reached Alert Message
+              </label>
+              <button
+                type="button"
+                disabled={!postJobConfig.dailyJobLimit?.enabled}
+                onClick={() => {
+                  setPostJobConfig(prev => ({
+                    ...prev,
+                    dailyJobLimit: {
+                      ...prev.dailyJobLimit,
+                      errorMessage: 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.'
+                    }
+                  }));
+                }}
+                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:underline disabled:opacity-40"
+              >
+                Reset Default
+              </button>
+            </div>
+            <input
+              type="text"
+              disabled={!postJobConfig.dailyJobLimit?.enabled}
+              value={postJobConfig.dailyJobLimit?.errorMessage || ''}
+              onChange={(e) => {
+                setPostJobConfig(prev => ({
+                  ...prev,
+                  dailyJobLimit: {
+                    ...prev.dailyJobLimit,
+                    errorMessage: e.target.value
+                  }
+                }));
+              }}
+              placeholder="Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow."
+              className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl font-medium text-gray-800 text-xs focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+            />
+            <p className="text-[10px] text-gray-400">
+              Tip: <span className="font-mono text-emerald-700">&#123;limit&#125;</span> will be replaced dynamically with the configured number.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Global Page Header & Action Buttons Control Card (Exact Employee Style) */}

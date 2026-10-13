@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllJobs, getJobById, applyForJob, getMyApplications, incrementJobViews } = require('../controllers/jobController');
+const { getAllJobs, getJobById, applyForJob, getMyApplications, incrementJobViews, recordJobVisitAction } = require('../controllers/jobController');
 const { protectEmployee } = require('../../middleware/authMiddleware');
 
 const router = express.Router();
@@ -13,6 +13,7 @@ router.get('/my-applications', protectEmployee, getMyApplications);
 // Public routes with :id param
 router.get('/:id', getJobById);
 router.post('/:id/view', incrementJobViews);
+router.post('/:id/visit', recordJobVisitAction);
 
 // Apply for a job (protected)
 router.post('/:id/apply', protectEmployee, applyForJob);

@@ -1,10 +1,12 @@
 const express = require('express');
-const { createJob, getEmployerJobs, updateJob, toggleJobStatus, getApplicationsForEmployer, updateApplicationStatus } = require('../controllers/jobController');
+const { createJob, getEmployerJobs, updateJob, toggleJobStatus, getApplicationsForEmployer, updateApplicationStatus, getDailyJobQuota } = require('../controllers/jobController');
 const { protectEmployer } = require('../../middleware/authMiddleware');
 
 const router = express.Router();
 
 router.use(protectEmployer); // All routes here require employer auth
+
+router.get('/daily-quota', getDailyJobQuota);
 
 router.route('/')
   .post(createJob)

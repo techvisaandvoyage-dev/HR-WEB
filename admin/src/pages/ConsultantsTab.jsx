@@ -165,6 +165,7 @@ export default function ConsultantsTab() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [registerConfig, setRegisterConfig] = useState(DEFAULT_CONSULTANT_REGISTER_CONFIG);
   const [loginConfig, setLoginConfig] = useState(DEFAULT_CONSULTANT_LOGIN_CONFIG);
+  const [dailyJobLimit, setDailyJobLimit] = useState({ enabled: false, maxJobsPerDay: 5 });
 
   // Live Preview states
   const [previewRegisterStep, setPreviewRegisterStep] = useState(1);
@@ -222,6 +223,10 @@ export default function ConsultantsTab() {
       const res = await fetch(`${API_URL}/api/homepage`);
       const data = await res.json();
       if (data.success && data.data) {
+        const limitCfg = data.data.employerPostJob?.dailyJobLimit || data.data.consultantPostJob?.dailyJobLimit;
+        if (limitCfg) {
+          setDailyJobLimit(limitCfg);
+        }
         if (data.data.consultantRegister && Object.keys(data.data.consultantRegister).length > 0) {
           setRegisterConfig({
             ...DEFAULT_CONSULTANT_REGISTER_CONFIG,
@@ -498,6 +503,36 @@ export default function ConsultantsTab() {
                 <FileText className="w-4 h-4" />
                 <span>Register</span>
               </button>
+            </div>
+
+            {/* Daily Job Posting Limit Card (Synchronized with Employers) */}
+            <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-black uppercase text-gray-900 tracking-wider">
+                      Daily Job Posting Limit (Consultants & Employers)
+                    </h3>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      dailyJobLimit?.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {dailyJobLimit?.enabled ? 'Active Limit' : 'Unlimited'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {dailyJobLimit?.enabled
+                      ? `Independent consultants can publish up to ${dailyJobLimit.maxJobsPerDay || 5} jobs per day.`
+                      : 'Consultants can currently post unlimited jobs per day.'}
+                    <span className="text-emerald-700 font-semibold ml-1">(Configured in Employers → Post a Job CMS)</span>
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold text-gray-700 bg-gray-50 px-3.5 py-1.5 rounded-xl border border-gray-200 shrink-0">
+                Quota: {dailyJobLimit?.enabled ? `${dailyJobLimit.maxJobsPerDay || 5} jobs/day` : 'No limit'}
+              </span>
             </div>
 
             {/* SubTab 1: REGISTER CMS */}

@@ -112,6 +112,17 @@ exports.applyForJob = async (req, res) => {
       screeningAnswers: req.body.screeningAnswers || []
     });
 
+    // Record 'applied' event in JobLinkVisits
+    try {
+      const attributionService = require('../../services/attributionService');
+      attributionService.recordJobVisit({
+        candidateId: employeeId,
+        jobId: job._id,
+        utmSource: req.body.utmSource || null,
+        event: 'applied'
+      });
+    } catch (_) {}
+
     // Increment applications count
     job.applications = (job.applications || 0) + 1;
     await job.save();
@@ -152,3 +163,38 @@ exports.getMyApplications = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Record job link interaction event (landed, started_application, etc.)
+// @route   POST /api/employee/jobs/:id/visit
+// @access  Public
+exports.recordJobVisitAction = async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const { event, utmSource } = req.body;
+    let candidateId = req.body.candidateId || null;
+
+    if (!candidateId && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded && decoded.id) {
+          candidateId = decoded.id;
+        }
+      } catch (_) {}
+    }
+
+    const attributionService = require('../../services/attributionService');
+    const visit = await attributionService.recordJobVisit({
+      candidateId,
+      jobId,
+      utmSource,
+      event: event || 'landed'
+    });
+
+    res.status(200).json({ success: true, visitId: visit?._id || null });
+  } catch (error) {
+    res.status(200).json({ success: true, error: error.message });
+  }
+};
+

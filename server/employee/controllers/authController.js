@@ -154,6 +154,21 @@ const registerEmployee = async (req, res) => {
     });
 
     if (employee) {
+      // Apply First-Touch Attribution
+      try {
+        const attributionService = require('../../services/attributionService');
+        await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
+        if (req.body.attribution?.jobId) {
+          await attributionService.recordJobVisit({
+            candidateId: employee._id,
+            jobId: req.body.attribution.jobId,
+            utmSource: req.body.attribution.utmSource,
+            event: 'signed_up'
+          });
+        }
+      } catch (attrErr) {
+        console.warn('[Auth] Attribution error:', attrErr.message);
+      }
       res.status(201).json({
         _id: employee.id,
         name: employee.name,
@@ -222,6 +237,22 @@ const quickRegisterCandidate = async (req, res) => {
       mobile: mobile ? String(mobile).trim() : '',
       location: location ? String(location).trim() : ''
     });
+
+    // Apply First-Touch Attribution
+    try {
+      const attributionService = require('../../services/attributionService');
+      await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
+      if (req.body.attribution?.jobId) {
+        await attributionService.recordJobVisit({
+          candidateId: employee._id,
+          jobId: req.body.attribution.jobId,
+          utmSource: req.body.attribution.utmSource,
+          event: 'signed_up'
+        });
+      }
+    } catch (attrErr) {
+      console.warn('[Auth] Attribution error:', attrErr.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -308,6 +339,26 @@ const loginEmployee = async (req, res) => {
     }
 
     await Employee.findByIdAndUpdate(employee._id, { lastLogin: new Date() });
+
+    // Handle Job Link attribution / interaction for candidate
+    try {
+      const attributionService = require('../../services/attributionService');
+      if (req.body.attribution) {
+        if (!employee.acquisition?.firstTouchJob && employee.acquisition?.sourceType !== 'job_link') {
+          await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
+        }
+        if (req.body.attribution.jobId) {
+          await attributionService.recordJobVisit({
+            candidateId: employee._id,
+            jobId: req.body.attribution.jobId,
+            utmSource: req.body.attribution.utmSource,
+            event: 'logged_in'
+          });
+        }
+      }
+    } catch (attrErr) {
+      console.warn('[Auth] Login attribution error:', attrErr.message);
+    }
 
     const isCompleted = employee.isOnboardingCompleted !== undefined 
       ? Boolean(employee.isOnboardingCompleted) 
@@ -460,6 +511,26 @@ const verifyLoginOtp = async (req, res) => {
     }
 
     await Employee.findByIdAndUpdate(employee._id, { lastLogin: new Date() });
+
+    // Handle Job Link attribution / interaction for candidate
+    try {
+      const attributionService = require('../../services/attributionService');
+      if (req.body.attribution) {
+        if (!employee.acquisition?.firstTouchJob && employee.acquisition?.sourceType !== 'job_link') {
+          await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
+        }
+        if (req.body.attribution.jobId) {
+          await attributionService.recordJobVisit({
+            candidateId: employee._id,
+            jobId: req.body.attribution.jobId,
+            utmSource: req.body.attribution.utmSource,
+            event: 'logged_in'
+          });
+        }
+      }
+    } catch (attrErr) {
+      console.warn('[Auth] OTP login attribution error:', attrErr.message);
+    }
 
     const isCompleted = employee.isOnboardingCompleted !== undefined 
       ? Boolean(employee.isOnboardingCompleted) 
@@ -771,8 +842,39 @@ const googleAuth = async (req, res) => {
       employee.lastLogin = new Date();
       await employee.save();
     } else {
-      employee.lastLogin = new Date();
       await employee.save();
+    }
+
+    // Handle Job Link attribution / interaction for candidate
+    try {
+      const attributionService = require('../../services/attributionService');
+      if (req.body.attribution) {
+        if (isNewUser) {
+          await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
+          if (req.body.attribution.jobId) {
+            await attributionService.recordJobVisit({
+              candidateId: employee._id,
+              jobId: req.body.attribution.jobId,
+              utmSource: req.body.attribution.utmSource,
+              event: 'signed_up'
+            });
+          }
+        } else {
+          if (!employee.acquisition?.firstTouchJob && employee.acquisition?.sourceType !== 'job_link') {
+            await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
+          }
+          if (req.body.attribution.jobId) {
+            await attributionService.recordJobVisit({
+              candidateId: employee._id,
+              jobId: req.body.attribution.jobId,
+              utmSource: req.body.attribution.utmSource,
+              event: 'logged_in'
+            });
+          }
+        }
+      }
+    } catch (attrErr) {
+      console.warn('[Auth] Google attribution error:', attrErr.message);
     }
 
     const isCompleted = employee.isOnboardingCompleted !== undefined 

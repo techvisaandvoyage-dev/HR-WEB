@@ -4,6 +4,7 @@ import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
+import { captureJobAttribution, getStoredAttribution, clearStoredAttribution, logJobVisitEvent } from '../../utils/attribution';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India (+91)' },
@@ -402,6 +403,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     };
 
     if (jobId) {
+      captureJobAttribution(jobId);
+      logJobVisitEvent(jobId, 'landed');
       fetchJob();
     }
   }, [jobId]);
@@ -542,6 +545,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     setAuthLoading(true);
     try {
       const cleanMobile = authMobile.replace(/\D/g, '');
+      const storedAttribution = getStoredAttribution();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -550,7 +554,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           email: authEmail.trim().toLowerCase(),
           password: authPassword,
           mobile: cleanMobile || undefined,
-          otp: enteredOtp
+          otp: enteredOtp,
+          attribution: storedAttribution
         })
       });
 
@@ -561,6 +566,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         setAuthLoading(false);
         return;
       }
+
+      // Attribution confirmed & applied on backend, safe to clear stored attribution
+      clearStoredAttribution();
 
       // Save token and user in localStorage
       const authToken = data.token;
@@ -577,6 +585,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
  
       // Move to Step 2 (Questions & CV Upload)
       setStep(2);
+      logJobVisitEvent(jobId, 'started_application');
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setAuthError('Server connection error. Please try again.');
@@ -609,17 +618,20 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
     setAuthLoading(true);
     try {
+      const storedAttribution = getStoredAttribution();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: authEmail.trim().toLowerCase(),
-          password: authPassword
+          password: authPassword,
+          attribution: storedAttribution
         })
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
+        clearStoredAttribution();
         const authToken = data.token;
         setToken(authToken);
         setUser(data);
@@ -639,6 +651,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
         // Move to Step 2
         setStep(2);
+        logJobVisitEvent(jobId, 'started_application');
       } else {
         setAuthError(data.message || 'Invalid email or password');
       }
@@ -657,13 +670,15 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
+      const storedAttribution = getStoredAttribution();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken })
+        body: JSON.stringify({ id_token: idToken, attribution: storedAttribution })
       });
       const data = await res.json();
       if (res.ok && data.token) {
+        clearStoredAttribution();
         const authToken = data.token;
         setToken(authToken);
         setUser(data);
@@ -684,6 +699,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
         // Move to Step 2
         setStep(2);
+        logJobVisitEvent(jobId, 'started_application');
       } else {
         setAuthError(data.message || 'Google login failed');
       }
@@ -699,6 +715,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   // Continue with already logged-in account
   const handleContinueAsLoggedIn = () => {
     setStep(2);
+    logJobVisitEvent(jobId, 'started_application');
   };
 
   // Logout/switch account
@@ -841,13 +858,15 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           screeningAnswers: formattedAnswers,
           resume: resumeUrl,
           mobile: authMobile || user?.mobile || user?.phone,
-          name: authName || user?.name
+          name: authName || user?.name,
+          utmSource: getStoredAttribution()?.utmSource || undefined
         })
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
+        logJobVisitEvent(jobId, 'applied');
         // Sync appliedJobs in scoped storage so MyJobs immediately reflects this application as 'Applied'
         try {
           const jobIdentifier = job?._id || job?.id || jobId;

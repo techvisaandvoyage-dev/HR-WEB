@@ -111,6 +111,41 @@ const EmployeeSchema = new mongoose.Schema({
     type: Number,
     default: 1
   },
+  acquisition: {
+    firstTouchJob: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Job',
+      default: null,
+      index: true
+    },
+    firstTouchEmployer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Employer',
+      default: null
+    },
+    sourceType: {
+      type: String,
+      enum: ['job_link', 'direct'],
+      default: 'direct',
+      index: true
+    },
+    utmSource: {
+      type: String,
+      default: null
+    },
+    landedAt: {
+      type: Date,
+      default: null
+    },
+    registeredAt: {
+      type: Date,
+      default: null
+    },
+    jobSnapshot: {
+      title: { type: String, default: '' },
+      companyName: { type: String, default: '' }
+    }
+  },
   lastLogin: {
     type: Date,
     default: Date.now

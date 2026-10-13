@@ -762,6 +762,14 @@ function App() {
           path="/apply/:jobId" 
           element={<DirectJobApply onAuthSuccess={handleDirectApplyAuthSuccess} />} 
         />
+        <Route 
+          path="/jobs/:jobId" 
+          element={<DirectJobApply onAuthSuccess={handleDirectApplyAuthSuccess} />} 
+        />
+        <Route 
+          path="/job/:jobId" 
+          element={<DirectJobApply onAuthSuccess={handleDirectApplyAuthSuccess} />} 
+        />
         
         <Route 
           path="/employee" 

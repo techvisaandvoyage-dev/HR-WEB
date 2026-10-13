@@ -837,6 +837,10 @@ export default function DashboardOverview({ onNavigateTab }) {
     name: '',
     email: '',
     phone: '',
+    source: 'All',
+    job: 'All',
+    employer: 'All',
+    utmSource: 'All',
     qualification: 'All',
     functionArea: 'All',
     experience: 'All',
@@ -910,6 +914,9 @@ export default function DashboardOverview({ onNavigateTab }) {
     const funcs = new Set();
     const desigs = new Set();
     const comps = new Set();
+    const jobsList = new Set();
+    const employersList = new Set();
+    const utmsList = new Set();
 
     employees.forEach(emp => {
       const q = getPrimaryQualification(emp);
@@ -923,13 +930,25 @@ export default function DashboardOverview({ onNavigateTab }) {
 
       const c = getCurrentCompany(emp);
       if (c && c !== 'N/A') comps.add(c);
+
+      const j = emp.firstTouchJob?.title || emp.acquisition?.jobSnapshot?.title;
+      if (j && j.trim()) jobsList.add(j.trim());
+
+      const e = emp.firstTouchEmployer?.companyName || emp.acquisition?.jobSnapshot?.companyName;
+      if (e && e.trim()) employersList.add(e.trim());
+
+      const u = emp.utmSource || emp.acquisition?.utmSource;
+      if (u && u.trim()) utmsList.add(u.trim());
     });
 
     return {
       qualifications: ['All', ...Array.from(quals).sort()],
       functions: ['All', ...Array.from(funcs).sort()],
       designations: ['All', ...Array.from(desigs).sort()],
-      companies: ['All', ...Array.from(comps).sort()]
+      companies: ['All', ...Array.from(comps).sort()],
+      jobs: ['All', ...Array.from(jobsList).sort()],
+      employers: ['All', ...Array.from(employersList).sort()],
+      utmSources: ['All', ...Array.from(utmsList).sort()]
     };
   }, [employees]);
 
@@ -948,6 +967,10 @@ export default function DashboardOverview({ onNavigateTab }) {
       name: '',
       email: '',
       phone: '',
+      source: 'All',
+      job: 'All',
+      employer: 'All',
+      utmSource: 'All',
       qualification: 'All',
       functionArea: 'All',
       experience: 'All',
@@ -964,6 +987,10 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (empFilters.name.trim()) count++;
     if (empFilters.email.trim()) count++;
     if (empFilters.phone.trim()) count++;
+    if (empFilters.source !== 'All') count++;
+    if (empFilters.job !== 'All') count++;
+    if (empFilters.employer !== 'All') count++;
+    if (empFilters.utmSource !== 'All') count++;
     if (empFilters.qualification !== 'All') count++;
     if (empFilters.functionArea !== 'All') count++;
     if (empFilters.experience !== 'All') count++;
@@ -990,12 +1017,20 @@ export default function DashboardOverview({ onNavigateTab }) {
       const comp = getCurrentCompany(emp);
       const apps = emp.applicationsCount || 0;
       const updateDate = emp.updatedAt || emp.lastLogin || emp.createdAt;
+      const src = emp.sourceType || emp.acquisition?.sourceType || 'direct';
+      const refJob = emp.firstTouchJob?.title || emp.acquisition?.jobSnapshot?.title || '';
+      const refEmployer = emp.firstTouchEmployer?.companyName || emp.acquisition?.jobSnapshot?.companyName || '';
+      const utm = emp.utmSource || emp.acquisition?.utmSource || '';
 
-      // 1. Global Search
+      // 1. Global Search across candidate fields, job title, company name, UTM source
       if (q) {
         const matchGlobal = name.includes(q) || 
           email.includes(q) || 
           mobile.includes(q) || 
+          src.toLowerCase().includes(q) ||
+          refJob.toLowerCase().includes(q) ||
+          refEmployer.toLowerCase().includes(q) ||
+          utm.toLowerCase().includes(q) ||
           qual.toLowerCase().includes(q) || 
           func.toLowerCase().includes(q) || 
           exp.toLowerCase().includes(q) || 
@@ -1019,17 +1054,38 @@ export default function DashboardOverview({ onNavigateTab }) {
         return false;
       }
 
-      // 5. Qualification filter
+      // 5. Source filter (All / job_link / direct)
+      if (empFilters.source !== 'All') {
+        if (empFilters.source === 'job_link' && src !== 'job_link') return false;
+        if (empFilters.source === 'direct' && src !== 'direct') return false;
+      }
+
+      // 6. Referred Job filter
+      if (empFilters.job !== 'All') {
+        if (refJob !== empFilters.job) return false;
+      }
+
+      // 7. Employer filter
+      if (empFilters.employer !== 'All') {
+        if (refEmployer !== empFilters.employer) return false;
+      }
+
+      // 8. UTM Source filter
+      if (empFilters.utmSource !== 'All') {
+        if (utm !== empFilters.utmSource) return false;
+      }
+
+      // 9. Qualification filter
       if (empFilters.qualification !== 'All' && qual !== empFilters.qualification) {
         return false;
       }
 
-      // 6. Function / Industry filter
+      // 10. Function / Industry filter
       if (empFilters.functionArea !== 'All' && func !== empFilters.functionArea) {
         return false;
       }
 
-      // 7. Work Exp filter
+      // 11. Work Exp filter
       if (empFilters.experience !== 'All') {
         const expLower = exp.toLowerCase();
         if (empFilters.experience === 'Fresher') {
@@ -1046,24 +1102,24 @@ export default function DashboardOverview({ onNavigateTab }) {
         }
       }
 
-      // 8. Designation filter
+      // 12. Designation filter
       if (empFilters.designation !== 'All' && desig !== empFilters.designation) {
         return false;
       }
 
-      // 9. Company filter
+      // 13. Company filter
       if (empFilters.company !== 'All' && comp !== empFilters.company) {
         return false;
       }
 
-      // 10. Jobs Applied filter
+      // 14. Jobs Applied filter
       if (empFilters.jobsApplied !== 'All') {
         if (empFilters.jobsApplied === '0' && apps !== 0) return false;
         if (empFilters.jobsApplied === '1-2' && (apps < 1 || apps > 2)) return false;
         if (empFilters.jobsApplied === '3+' && apps < 3) return false;
       }
 
-      // 11. Last Profile Update filter
+      // 15. Last Profile Update filter
       if (empFilters.lastUpdate !== 'All' && updateDate) {
         const updateTime = new Date(updateDate).getTime();
         const now = Date.now();
@@ -1092,6 +1148,18 @@ export default function DashboardOverview({ onNavigateTab }) {
         case 'phone':
           valA = a.mobile || a.phone || '';
           valB = b.mobile || b.phone || '';
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'sourceType':
+          valA = a.sourceType || a.acquisition?.sourceType || 'direct';
+          valB = b.sourceType || b.acquisition?.sourceType || 'direct';
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'referredJob':
+          valA = a.firstTouchJob?.title || a.acquisition?.jobSnapshot?.title || '';
+          valB = b.firstTouchJob?.title || b.acquisition?.jobSnapshot?.title || '';
+          return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'employer':
+          valA = a.firstTouchEmployer?.companyName || a.acquisition?.jobSnapshot?.companyName || '';
+          valB = b.firstTouchEmployer?.companyName || b.acquisition?.jobSnapshot?.companyName || '';
           return empSort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         case 'qualification':
           valA = getPrimaryQualification(a);
@@ -2250,6 +2318,27 @@ export default function DashboardOverview({ onNavigateTab }) {
                         {empSort.column === 'phone' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
                       </div>
                     </th>
+                    {/* Source Column Header */}
+                    <th onClick={() => handleSort('sourceType')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Source</span>
+                        {empSort.column === 'sourceType' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    {/* Referred Job Header */}
+                    <th onClick={() => handleSort('referredJob')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Referred Job</span>
+                        {empSort.column === 'referredJob' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    {/* Employer Header */}
+                    <th onClick={() => handleSort('employer')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Employer</span>
+                        {empSort.column === 'employer' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
                     <th onClick={() => handleSort('qualification')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
                       <div className="flex items-center gap-1.5">
                         <span>Primary Qualification</span>
@@ -2328,6 +2417,47 @@ export default function DashboardOverview({ onNavigateTab }) {
                         onChange={(e) => setEmpFilters(prev => ({ ...prev, phone: e.target.value }))}
                         className="w-full px-2.5 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 placeholder-gray-400"
                       />
+                    </th>
+
+                    {/* Source Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.source}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, source: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[120px]"
+                      >
+                        <option value="All">All Sources</option>
+                        <option value="job_link">Job Link</option>
+                        <option value="direct">Direct</option>
+                      </select>
+                    </th>
+
+                    {/* Referred Job Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.job}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, job: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[150px] truncate"
+                      >
+                        <option value="All">All Jobs</option>
+                        {candidateFilterOptions.jobs.filter(j => j !== 'All').map(j => (
+                          <option key={j} value={j}>{j}</option>
+                        ))}
+                      </select>
+                    </th>
+
+                    {/* Employer Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.employer}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, employer: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[140px] truncate"
+                      >
+                        <option value="All">All Employers</option>
+                        {candidateFilterOptions.employers.filter(e => e !== 'All').map(e => (
+                          <option key={e} value={e}>{e}</option>
+                        ))}
+                      </select>
                     </th>
 
                     {/* Qualification Filter */}
@@ -2448,94 +2578,146 @@ export default function DashboardOverview({ onNavigateTab }) {
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {loadingEmployees ? (
                     <tr>
-                      <td colSpan="11" className="py-16 text-center text-gray-400">
+                      <td colSpan="14" className="py-16 text-center text-gray-400">
                         <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                         Loading candidate records...
                       </td>
                     </tr>
                   ) : filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="11" className="py-16 text-center text-gray-400">
+                      <td colSpan="14" className="py-16 text-center text-gray-400">
                         No candidate records found matching your filters.
                       </td>
                     </tr>
                   ) : (
-                    filteredEmployees.map((emp) => (
-                      <tr key={emp._id || emp.id} className="hover:bg-emerald-50/30 transition-colors">
-                        {/* Name */}
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0">
-                              {emp.name ? emp.name.charAt(0).toUpperCase() : 'U'}
+                    filteredEmployees.map((emp) => {
+                      const isJobLink = (emp.sourceType || emp.acquisition?.sourceType) === 'job_link';
+                      const refJobTitle = emp.firstTouchJob?.title || emp.acquisition?.jobSnapshot?.title;
+                      const refEmployerName = emp.firstTouchEmployer?.companyName || emp.acquisition?.jobSnapshot?.companyName;
+                      const utm = emp.utmSource || emp.acquisition?.utmSource;
+
+                      return (
+                        <tr key={emp._id || emp.id} className="hover:bg-emerald-50/30 transition-colors">
+                          {/* Name */}
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0">
+                                {emp.name ? emp.name.charAt(0).toUpperCase() : 'U'}
+                              </div>
+                              <span className="font-bold text-gray-900 text-xs">{emp.name || 'Candidate'}</span>
                             </div>
-                            <span className="font-bold text-gray-900 text-xs">{emp.name || 'Candidate'}</span>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Email */}
-                        <td className="px-5 py-4 text-gray-700 font-medium">
-                          {emp.email || 'N/A'}
-                        </td>
+                          {/* Email */}
+                          <td className="px-5 py-4 text-gray-700 font-medium">
+                            {emp.email || 'N/A'}
+                          </td>
 
-                        {/* Phone */}
-                        <td className="px-5 py-4 text-gray-700 font-medium">
-                          {emp.mobile || emp.phone || 'N/A'}
-                        </td>
+                          {/* Phone */}
+                          <td className="px-5 py-4 text-gray-700 font-medium">
+                            {emp.mobile || emp.phone || 'N/A'}
+                          </td>
 
-                        {/* Primary Qualification */}
-                        <td className="px-5 py-4">
-                          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100/80">
-                            {getPrimaryQualification(emp)}
-                          </span>
-                        </td>
+                          {/* Source */}
+                          <td className="px-5 py-4">
+                            {isJobLink ? (
+                              <div className="inline-flex flex-col gap-1 items-start">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  <Link2 className="w-3 h-3 text-emerald-600" />
+                                  Job Link
+                                </span>
+                                {utm && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 uppercase tracking-wider">
+                                    {utm}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                                Direct
+                              </span>
+                            )}
+                          </td>
 
-                        {/* Function */}
-                        <td className="px-5 py-4 text-gray-700 font-medium">
-                          {getFunctionArea(emp)}
-                        </td>
+                          {/* Referred Job */}
+                          <td className="px-5 py-4 max-w-[200px]">
+                            {refJobTitle ? (
+                              <button
+                                onClick={() => handleOpenEmployeeDrawer(emp)}
+                                className="text-left font-bold text-emerald-700 hover:text-emerald-900 hover:underline truncate block max-w-full cursor-pointer"
+                                title={refJobTitle}
+                              >
+                                {refJobTitle}
+                              </button>
+                            ) : (
+                              <span className="text-gray-400 italic text-[11px]">Direct / None</span>
+                            )}
+                          </td>
 
-                        {/* Work Exp */}
-                        <td className="px-5 py-4">
-                          <span className="px-2.5 py-1 bg-gray-100 text-gray-700 font-semibold rounded-md text-[11px]">
-                            {getWorkExp(emp)}
-                          </span>
-                        </td>
+                          {/* Employer */}
+                          <td className="px-5 py-4 text-gray-700 font-medium max-w-[180px] truncate" title={refEmployerName || 'Direct / None'}>
+                            {refEmployerName ? (
+                              <span className="font-semibold text-gray-900">{refEmployerName}</span>
+                            ) : (
+                              <span className="text-gray-400 italic text-[11px]">Direct / None</span>
+                            )}
+                          </td>
 
-                        {/* Current Designation */}
-                        <td className="px-5 py-4">
-                          <span className="text-gray-900 font-bold">
-                            {getCurrentDesignation(emp)}
-                          </span>
-                        </td>
+                          {/* Primary Qualification */}
+                          <td className="px-5 py-4">
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-100/80">
+                              {getPrimaryQualification(emp)}
+                            </span>
+                          </td>
 
-                        {/* Current Company */}
-                        <td className="px-5 py-4 text-gray-700 font-medium">
-                          {getCurrentCompany(emp)}
-                        </td>
+                          {/* Function */}
+                          <td className="px-5 py-4 text-gray-700 font-medium">
+                            {getFunctionArea(emp)}
+                          </td>
 
-                        {/* Jobs Applied */}
-                        <td className="px-5 py-4">
-                          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px] border border-emerald-200/80">
-                            {emp.applicationsCount || 0} applied
-                          </span>
-                        </td>
+                          {/* Work Exp */}
+                          <td className="px-5 py-4">
+                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 font-semibold rounded-md text-[11px]">
+                              {getWorkExp(emp)}
+                            </span>
+                          </td>
 
-                        {/* Last Profile Update */}
-                        <td className="px-5 py-4 text-gray-500 text-[11px]">
-                          {getLastProfileUpdate(emp)}
-                        </td>
+                          {/* Current Designation */}
+                          <td className="px-5 py-4">
+                            <span className="text-gray-900 font-bold">
+                              {getCurrentDesignation(emp)}
+                            </span>
+                          </td>
 
-                        {/* Actions */}
-                        <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => handleOpenEmployeeDrawer(emp)}
-                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                          >
-                            View Profile
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                          {/* Current Company */}
+                          <td className="px-5 py-4 text-gray-700 font-medium">
+                            {getCurrentCompany(emp)}
+                          </td>
+
+                          {/* Jobs Applied */}
+                          <td className="px-5 py-4">
+                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px] border border-emerald-200/80">
+                              {emp.applicationsCount || 0} applied
+                            </span>
+                          </td>
+
+                          {/* Last Profile Update */}
+                          <td className="px-5 py-4 text-gray-500 text-[11px]">
+                            {getLastProfileUpdate(emp)}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-5 py-4 text-right">
+                            <button
+                              onClick={() => handleOpenEmployeeDrawer(emp)}
+                              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                            >
+                              View Profile
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -3193,9 +3375,378 @@ export default function DashboardOverview({ onNavigateTab }) {
               {loadingEmployeeDetail && (
                 <div className="p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl flex items-center gap-2 text-emerald-800 text-xs font-semibold animate-pulse">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600" />
-                  <span>Loading complete profile details & application history...</span>
+                  <span>Loading complete profile details, attribution & application history...</span>
                 </div>
               )}
+
+              {/* ATTRIBUTION & REFERRED SOURCE CARDS */}
+              {(() => {
+                const candidate = detailEmployee || selectedEmployee;
+                const acq = candidate?.acquisition || {};
+                const isJobLink = (candidate?.sourceType || acq.sourceType) === 'job_link';
+                const firstTouchJob = candidate?.firstTouchJob || detailEmployee?.firstTouchJob;
+                const employer = candidate?.employer || candidate?.firstTouchEmployer || detailEmployee?.firstTouchEmployer;
+                const jobSnapshot = acq.jobSnapshot || {};
+                const utmSource = candidate?.utmSource || acq.utmSource;
+                const landedAt = acq.landedAt;
+                const registeredAt = acq.registeredAt || candidate?.createdAt;
+                const visits = detailEmployee?.visits || [];
+
+                return (
+                  <div className="space-y-6">
+                    {/* 1. REGISTRATION SOURCE CARD */}
+                    <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <Link2 className="w-4 h-4 text-emerald-600" />
+                          Registration Source & Attribution
+                        </h4>
+                        {isJobLink ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Job Link Referral
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                            Direct / Organic
+                          </span>
+                        )}
+                      </div>
+
+                      {isJobLink ? (
+                        <div className="grid grid-cols-2 gap-y-3.5 gap-x-4">
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Source Type</span>
+                            <span className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+                              <Link2 className="w-3.5 h-3.5 text-emerald-600" />
+                              Job Link Referral
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">UTM / Campaign Source</span>
+                            {utmSource ? (
+                              <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-800 text-[11px] font-bold rounded-md border border-emerald-200/80 uppercase tracking-wider">
+                                {utmSource}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-xs">None (Organic Link)</span>
+                            )}
+                          </div>
+
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Landed At</span>
+                            <span className="font-bold text-gray-900 text-xs">
+                              {landedAt ? new Date(landedAt).toLocaleString() : 'N/A'}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Registered At</span>
+                            <span className="font-bold text-gray-900 text-xs">
+                              {registeredAt ? new Date(registeredAt).toLocaleString() : 'N/A'}
+                            </span>
+                          </div>
+
+                          <div className="col-span-2">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Origin Job Link URL</span>
+                            {firstTouchJob?._id || acq.firstTouchJob ? (
+                              <a
+                                href={`/apply-job/${firstTouchJob?._id || acq.firstTouchJob}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-700 hover:text-emerald-900 hover:underline font-bold text-xs inline-flex items-center gap-1.5 bg-emerald-50/80 px-3 py-1.5 rounded-xl border border-emerald-200/80 max-w-full truncate"
+                              >
+                                <span className="truncate">/apply-job/{firstTouchJob?._id || acq.firstTouchJob}{utmSource ? `?utm_source=${utmSource}` : ''}</span>
+                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 italic text-xs">No link URL recorded</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center shrink-0">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800 text-xs">Registered directly, no job link</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              Candidate registered organically via standard portal sign up.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 2. JOB DETAILS CARD (when job_link) */}
+                    {isJobLink && (
+                      <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                          <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-emerald-600" />
+                            Referred Job Details
+                          </h4>
+                          {firstTouchJob?.status ? (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              firstTouchJob.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {firstTouchJob.status}
+                            </span>
+                          ) : jobSnapshot.title ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                              Snapshot (Job Closed/Archived)
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {firstTouchJob ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                              <div className="col-span-2">
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Job Title</span>
+                                <span className="font-bold text-gray-900 text-sm">{firstTouchJob.title || firstTouchJob.jobTitle}</span>
+                              </div>
+
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Location</span>
+                                <span className="font-bold text-gray-900 text-xs flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-emerald-600" />
+                                  {firstTouchJob.location || 'Remote / Unspecified'}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Employment Type</span>
+                                <span className="font-bold text-gray-900 text-xs">{firstTouchJob.jobType || 'Full-time'}</span>
+                              </div>
+
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Salary Range</span>
+                                <span className="font-bold text-gray-900 text-xs">
+                                  {firstTouchJob.salaryRange || (firstTouchJob.salaryMin ? `₹${firstTouchJob.salaryMin} - ₹${firstTouchJob.salaryMax}` : 'Not disclosed')}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Total Applicants</span>
+                                <span className="font-bold text-emerald-700 text-xs">
+                                  {firstTouchJob.applicantsCount || firstTouchJob.applicationsCount || 0} applicants
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Posted On</span>
+                                <span className="font-bold text-gray-900 text-xs">
+                                  {firstTouchJob.createdAt ? new Date(firstTouchJob.createdAt).toLocaleDateString() : 'N/A'}
+                                </span>
+                              </div>
+
+                              {firstTouchJob.description && (
+                                <div className="col-span-2">
+                                  <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Job Summary</span>
+                                  <p className="text-gray-600 text-xs line-clamp-3 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                                    {firstTouchJob.description}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="pt-2 flex items-center gap-2">
+                              <a
+                                href={firstTouchJob.publicUrl || `/apply-job/${firstTouchJob._id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-2xs inline-flex items-center gap-1.5"
+                              >
+                                <span>View Job Page</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          </div>
+                        ) : jobSnapshot.title ? (
+                          <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-2">
+                            <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
+                              <AlertCircle className="w-4 h-4 text-amber-600" />
+                              <span>Job no longer available in active database</span>
+                            </div>
+                            <p className="text-gray-700 text-xs">
+                              Candidate originally registered from: <strong className="text-gray-900">{jobSnapshot.title}</strong>
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-400 italic">
+                            Job details unavailable
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 3. EMPLOYER DETAILS CARD (when job_link) */}
+                    {isJobLink && (
+                      <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                          <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-emerald-600" />
+                            Employer / Recruiter Details
+                          </h4>
+                          {employer?.companyName && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
+                              Registered Employer
+                            </span>
+                          )}
+                        </div>
+
+                        {employer ? (
+                          <div className="grid grid-cols-2 gap-y-3.5 gap-x-4">
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Company Name</span>
+                              <span className="font-bold text-gray-900 text-xs">{employer.companyName || jobSnapshot.companyName || 'N/A'}</span>
+                            </div>
+
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Contact Person</span>
+                              <span className="font-bold text-gray-900 text-xs">{employer.fullName || employer.contactPerson || 'N/A'}</span>
+                            </div>
+
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Contact Email</span>
+                              {employer.email ? (
+                                <a href={`mailto:${employer.email}`} className="text-emerald-700 hover:underline font-bold text-xs truncate block">
+                                  {employer.email}
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 italic text-xs">N/A</span>
+                              )}
+                            </div>
+
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Contact Phone</span>
+                              <span className="font-bold text-gray-900 text-xs">{employer.mobile || employer.phone || 'N/A'}</span>
+                            </div>
+
+                            {employer.website && (
+                              <div className="col-span-2">
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Website</span>
+                                <a href={employer.website} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline font-bold text-xs inline-flex items-center gap-1">
+                                  {employer.website} <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            )}
+
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Location</span>
+                              <span className="font-bold text-gray-900 text-xs">{employer.location || 'N/A'}</span>
+                            </div>
+
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Total Jobs Posted</span>
+                              <span className="font-bold text-gray-900 text-xs">{employer.totalJobs || employer.activeJobs || 0} jobs</span>
+                            </div>
+
+                            {employer._id && (
+                              <div className="col-span-2 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEmployerDrawer(employer)}
+                                  className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl transition-all border border-emerald-200 inline-flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <span>View Employer Directory Profile</span>
+                                  <Building2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : jobSnapshot.companyName ? (
+                          <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-1">
+                            <p className="text-amber-800 font-bold text-xs flex items-center gap-1.5">
+                              <AlertCircle className="w-4 h-4 text-amber-600" />
+                              Employer record no longer available
+                            </p>
+                            <p className="text-gray-700 text-xs">
+                              Captured company name: <strong className="text-gray-900">{jobSnapshot.companyName}</strong>
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-400 italic">
+                            Employer details unavailable
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 4. ACTIVITY TIMELINE CARD */}
+                    <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-emerald-600" />
+                          Candidate Job-Link Activity Timeline
+                        </h4>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                          {visits.length} Events Logged
+                        </span>
+                      </div>
+
+                      {visits.length === 0 ? (
+                        <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-400 font-medium border border-gray-100">
+                          {isJobLink 
+                            ? 'No secondary telemetry visits logged yet for this candidate.' 
+                            : 'Registered directly — no job link visits recorded.'}
+                        </div>
+                      ) : (
+                        <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-gray-100">
+                          {visits.map((v, i) => {
+                            let badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
+                            let eventLabel = 'Landed on Link';
+                            if (v.event === 'signed_up') {
+                              badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                              eventLabel = 'Signed Up via Link';
+                            } else if (v.event === 'logged_in') {
+                              badgeColor = 'bg-purple-100 text-purple-800 border-purple-200';
+                              eventLabel = 'Logged In via Link';
+                            } else if (v.event === 'started_application') {
+                              badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+                              eventLabel = 'Started Application';
+                            } else if (v.event === 'applied') {
+                              badgeColor = 'bg-green-100 text-green-800 border-green-200';
+                              eventLabel = 'Applied for Job';
+                            }
+
+                            return (
+                              <div key={v._id || i} className="relative flex items-start gap-3 pl-1">
+                                <div className="w-6 h-6 rounded-full bg-white border-2 border-emerald-500 flex items-center justify-center shrink-0 z-10 shadow-2xs">
+                                  <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                                </div>
+                                <div className="flex-1 p-3 bg-gray-50/80 rounded-xl border border-gray-200/70">
+                                  <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
+                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border ${badgeColor}`}>
+                                      {eventLabel}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 font-medium">
+                                      {v.createdAt ? new Date(v.createdAt).toLocaleString() : 'N/A'}
+                                    </span>
+                                  </div>
+                                  <p className="font-bold text-gray-900 text-xs">
+                                    {v.jobTitle || 'Job Opening'}
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-gray-500">
+                                    {v.employerName && <span>Company: <strong className="text-gray-700">{v.employerName}</strong></span>}
+                                    {v.utmSource && (
+                                      <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100">
+                                        UTM: {v.utmSource}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 1. PERSONAL & CONTACT DETAILS */}
               <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">

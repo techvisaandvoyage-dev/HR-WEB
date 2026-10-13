@@ -7,6 +7,59 @@ const Application = require('../../models/Application');
 exports.createJob = async (req, res) => {
   try {
     const employerId = req.user.id;
+
+    // -------------------------------------------------------------------------
+    // Daily Job Post Limit Check (Applies to both Employers and Consultants)
+    // -------------------------------------------------------------------------
+    const SiteSettings = require('../../models/SiteSettings');
+    const HomepageConfig = require('../../models/HomepageConfig');
+
+    let isLimitEnabled = false;
+    let maxLimit = 5;
+    let limitMessage = 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.';
+
+    try {
+      const siteSettings = await SiteSettings.findOne().lean();
+      if (siteSettings && typeof siteSettings.dailyJobLimitEnabled !== 'undefined') {
+        isLimitEnabled = Boolean(siteSettings.dailyJobLimitEnabled);
+        if (siteSettings.maxJobsPerDay) maxLimit = Number(siteSettings.maxJobsPerDay);
+        if (siteSettings.limitErrorMessage) limitMessage = siteSettings.limitErrorMessage;
+      } else {
+        const hpConfig = await HomepageConfig.findOne().lean();
+        const limitCfg = hpConfig?.employerPostJob?.dailyJobLimit || hpConfig?.consultantPostJob?.dailyJobLimit;
+        if (limitCfg) {
+          isLimitEnabled = Boolean(limitCfg.enabled);
+          if (limitCfg.maxJobsPerDay) maxLimit = Number(limitCfg.maxJobsPerDay);
+          if (limitCfg.errorMessage) limitMessage = limitCfg.errorMessage;
+        }
+      }
+    } catch (cfgErr) {
+      console.warn('[JobController] Could not load daily limit config:', cfgErr.message);
+    }
+
+    if (isLimitEnabled && maxLimit > 0) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const todayJobsCount = await Job.countDocuments({
+        employerId,
+        createdAt: { $gte: startOfDay, $lte: endOfDay }
+      });
+
+      if (todayJobsCount >= maxLimit) {
+        const formattedMsg = limitMessage.replace('{limit}', String(maxLimit));
+        return res.status(403).json({
+          success: false,
+          message: formattedMsg,
+          limitReached: true,
+          dailyLimit: maxLimit,
+          todayJobsCount
+        });
+      }
+    }
+
     let {
       company, companyInitial, companyLogo, title, location, salary, employerProvided,
       easyApply, qualifications, details, screeningQuestions
@@ -196,6 +249,68 @@ exports.updateApplicationStatus = async (req, res) => {
     await application.save();
     res.status(200).json({ success: true, data: application });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get Daily Job Posting Limit and Quota for logged in Employer / Consultant
+// @route   GET /api/employer/jobs/daily-quota
+// @access  Private
+exports.getDailyJobQuota = async (req, res) => {
+  try {
+    const employerId = req.user.id;
+    const SiteSettings = require('../../models/SiteSettings');
+    const HomepageConfig = require('../../models/HomepageConfig');
+
+    let isLimitEnabled = false;
+    let maxLimit = 5;
+    let limitMessage = 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.';
+
+    try {
+      const siteSettings = await SiteSettings.findOne().lean();
+      if (siteSettings && typeof siteSettings.dailyJobLimitEnabled !== 'undefined') {
+        isLimitEnabled = Boolean(siteSettings.dailyJobLimitEnabled);
+        if (siteSettings.maxJobsPerDay) maxLimit = Number(siteSettings.maxJobsPerDay);
+        if (siteSettings.limitErrorMessage) limitMessage = siteSettings.limitErrorMessage;
+      } else {
+        const hpConfig = await HomepageConfig.findOne().lean();
+        const limitCfg = hpConfig?.employerPostJob?.dailyJobLimit || hpConfig?.consultantPostJob?.dailyJobLimit;
+        if (limitCfg) {
+          isLimitEnabled = Boolean(limitCfg.enabled);
+          if (limitCfg.maxJobsPerDay) maxLimit = Number(limitCfg.maxJobsPerDay);
+          if (limitCfg.errorMessage) limitMessage = limitCfg.errorMessage;
+        }
+      }
+    } catch (cfgErr) {
+      console.warn('[JobController] Could not load daily limit config:', cfgErr.message);
+    }
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const todayJobsCount = await Job.countDocuments({
+      employerId,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    const remainingJobs = isLimitEnabled ? Math.max(0, maxLimit - todayJobsCount) : null;
+    const limitReached = isLimitEnabled ? (todayJobsCount >= maxLimit) : false;
+
+    res.json({
+      success: true,
+      data: {
+        limitEnabled: isLimitEnabled,
+        maxLimit: isLimitEnabled ? maxLimit : null,
+        todayJobsCount,
+        remainingJobs,
+        limitReached,
+        message: limitReached ? limitMessage.replace('{limit}', String(maxLimit)) : null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching daily job quota:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

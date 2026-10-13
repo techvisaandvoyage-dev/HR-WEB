@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
+import { getStoredAttribution, clearStoredAttribution } from '../../utils/attribution';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India (+91)' },
@@ -183,13 +184,15 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
+      const storedAttribution = getStoredAttribution();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken })
+        body: JSON.stringify({ id_token: idToken, attribution: storedAttribution })
       });
       const data = await res.json();
       if (res.ok) {
+        clearStoredAttribution();
         localStorage.setItem('employeeToken', data.token);
         if (data.isOnboardingCompleted) {
           localStorage.setItem('hasProfile', 'true');
@@ -366,10 +369,11 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     
     setIsLoading(true);
     try {
+      const storedAttribution = getStoredAttribution();
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, mobile, otp: enteredOtp }),
+        body: JSON.stringify({ name, email, password, mobile, otp: enteredOtp, attribution: storedAttribution }),
       });
       const data = await response.json();
 
@@ -384,6 +388,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
           setErrors({ general: data.message || 'Registration failed' });
         }
       } else {
+        clearStoredAttribution();
         localStorage.setItem('employeeToken', data.token);
         
         // Initialize profile with registered data

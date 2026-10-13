@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
+import { getStoredAttribution, clearStoredAttribution } from '../../utils/attribution';
 
 const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }) => {
   const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'otp' | 'forgot'
@@ -50,13 +51,15 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
+      const storedAttribution = getStoredAttribution();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken })
+        body: JSON.stringify({ id_token: idToken, attribution: storedAttribution })
       });
       const data = await res.json();
       if (res.ok) {
+        clearStoredAttribution();
         localStorage.setItem('employeeToken', data.token);
         if (data.isOnboardingCompleted) {
           localStorage.setItem('hasProfile', 'true');
@@ -165,10 +168,11 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setIsLoading(true);
 
     try {
+      const storedAttribution = getStoredAttribution();
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, attribution: storedAttribution }),
       });
       const data = await response.json();
 
@@ -185,6 +189,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
         }
         setErrors(errorState);
       } else {
+        clearStoredAttribution();
         localStorage.setItem('employeeToken', data.token);
         
         let newProfile = data.profile || {
@@ -300,16 +305,18 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setErrors({});
     setIsLoading(true);
     try {
+      const storedAttribution = getStoredAttribution();
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/login/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), otp: enteredOtp }),
+        body: JSON.stringify({ email: email.trim(), otp: enteredOtp, attribution: storedAttribution }),
       });
       const data = await response.json();
 
       if (!response.ok) {
         setErrors({ otp: data.message || 'Invalid or expired OTP' });
       } else {
+        clearStoredAttribution();
         localStorage.setItem('employeeToken', data.token);
 
         let newProfile = data.profile || {

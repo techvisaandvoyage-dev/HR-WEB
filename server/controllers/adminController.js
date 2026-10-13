@@ -136,7 +136,7 @@ exports.getDashboardStats = async (req, res) => {
 // @access  Admin
 exports.getAllEmployees = async (req, res) => {
   try {
-    const { search, experience, industry } = req.query;
+    const { search, experience, industry, sourceType, jobId, employerId, utmSource } = req.query;
     let query = {};
 
     if (search) {
@@ -147,7 +147,10 @@ exports.getAllEmployees = async (req, res) => {
         { mobile: searchRegex },
         { designation: searchRegex },
         { location: searchRegex },
-        { preferredLocation: searchRegex }
+        { preferredLocation: searchRegex },
+        { 'acquisition.jobSnapshot.title': searchRegex },
+        { 'acquisition.jobSnapshot.companyName': searchRegex },
+        { 'acquisition.utmSource': searchRegex }
       ];
     }
 
@@ -159,8 +162,26 @@ exports.getAllEmployees = async (req, res) => {
       query.industry = new RegExp(industry, 'i');
     }
 
+    if (sourceType && sourceType !== 'All') {
+      query['acquisition.sourceType'] = sourceType;
+    }
+
+    if (jobId && jobId !== 'All') {
+      query['acquisition.firstTouchJob'] = jobId;
+    }
+
+    if (employerId && employerId !== 'All') {
+      query['acquisition.firstTouchEmployer'] = employerId;
+    }
+
+    if (utmSource && utmSource !== 'All') {
+      query['acquisition.utmSource'] = new RegExp(utmSource, 'i');
+    }
+
     const employees = await Employee.find(query)
       .select('-password')
+      .populate('acquisition.firstTouchJob', 'title company location status salary createdAt')
+      .populate('acquisition.firstTouchEmployer', 'companyName fullName email mobile location')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -174,11 +195,38 @@ exports.getAllEmployees = async (req, res) => {
       applicationCountMap[idStr] = (applicationCountMap[idStr] || 0) + 1;
     });
 
-    const enrichedEmployees = employees.map(emp => ({
-      ...emp,
-      id: emp._id,
-      applicationsCount: applicationCountMap[String(emp._id)] || 0
-    }));
+    const enrichedEmployees = employees.map(emp => {
+      const acq = emp.acquisition || {};
+      const job = acq.firstTouchJob || null;
+      const employer = acq.firstTouchEmployer || null;
+
+      return {
+        ...emp,
+        id: emp._id,
+        sourceType: acq.sourceType || 'direct',
+        utmSource: acq.utmSource || null,
+        firstTouchJob: job ? {
+          _id: job._id,
+          title: job.title,
+          status: job.status,
+          location: job.location
+        } : (acq.jobSnapshot?.title ? {
+          _id: null,
+          title: acq.jobSnapshot.title,
+          status: 'Closed',
+          isDeleted: true
+        } : null),
+        firstTouchEmployer: employer ? {
+          _id: employer._id,
+          companyName: employer.companyName || employer.fullName
+        } : (acq.jobSnapshot?.companyName ? {
+          _id: null,
+          companyName: acq.jobSnapshot.companyName,
+          isDeleted: true
+        } : null),
+        applicationsCount: applicationCountMap[String(emp._id)] || 0
+      };
+    });
 
     res.json({
       success: true,
@@ -191,12 +239,17 @@ exports.getAllEmployees = async (req, res) => {
   }
 };
 
-// @desc    Get single employee by ID with full details and applications history
+// @desc    Get single employee by ID with full details, attribution, visits & applications history
 // @route   GET /api/admin/employees/:id
 // @access  Admin
 exports.getEmployeeById = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id).select('-password').lean();
+    const employee = await Employee.findById(req.params.id)
+      .select('-password')
+      .populate('acquisition.firstTouchJob')
+      .populate('acquisition.firstTouchEmployer')
+      .lean();
+
     if (!employee) {
       return res.status(404).json({ success: false, message: 'Employee not found' });
     }
@@ -204,7 +257,7 @@ exports.getEmployeeById = async (req, res) => {
     const applications = await Application.find({ employeeId: employee._id })
       .populate({
         path: 'jobId',
-        select: 'title company location salary status'
+        select: 'title company location salary status details'
       })
       .populate({
         path: 'employerId',
@@ -213,11 +266,83 @@ exports.getEmployeeById = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    // Fetch candidate activity timeline (job link visits)
+    const attributionService = require('../services/attributionService');
+    const visits = await attributionService.getCandidateVisits(employee._id);
+
+    // Format firstTouchJob full details
+    let firstTouchJob = null;
+    if (employee.acquisition?.firstTouchJob) {
+      const job = employee.acquisition.firstTouchJob;
+      firstTouchJob = {
+        _id: job._id,
+        title: job.title || employee.acquisition?.jobSnapshot?.title || 'Job Opening',
+        descriptionSummary: job.details?.aboutRole || job.details?.responsibilities || job.details?.skillsRequired || 'No role summary provided.',
+        location: job.location || 'Not specified',
+        salaryRange: job.salary || (job.details?.salary ? `${job.details.salary} ${job.details.salaryType || ''}` : 'Not specified'),
+        jobType: job.details?.employmentType || 'Full-time',
+        status: job.status || 'Active',
+        postedDate: job.createdAt || null,
+        publicJobUrl: `/apply-job/${job._id}`,
+        applicantsCount: job.applications || 0,
+        isDeleted: false
+      };
+    } else if (employee.acquisition?.sourceType === 'job_link') {
+      firstTouchJob = {
+        _id: null,
+        title: employee.acquisition?.jobSnapshot?.title || 'Job no longer available',
+        descriptionSummary: 'This job posting was archived or removed.',
+        location: 'N/A',
+        salaryRange: 'N/A',
+        jobType: 'N/A',
+        status: 'Closed',
+        postedDate: null,
+        publicJobUrl: null,
+        applicantsCount: 0,
+        isDeleted: true
+      };
+    }
+
+    // Format employer details
+    let employer = null;
+    if (employee.acquisition?.firstTouchEmployer) {
+      const empr = employee.acquisition.firstTouchEmployer;
+      const totalJobs = await Job.countDocuments({ employerId: empr._id });
+      employer = {
+        _id: empr._id,
+        companyName: empr.companyName || employee.acquisition?.jobSnapshot?.companyName || empr.fullName || 'Company',
+        contactPerson: empr.fullName || 'Recruiter',
+        email: empr.email || '',
+        phone: empr.mobile || '',
+        website: empr.website || '',
+        location: empr.location || '',
+        totalJobsPosted: totalJobs,
+        isDeleted: false
+      };
+    } else if (employee.acquisition?.sourceType === 'job_link') {
+      employer = {
+        _id: null,
+        companyName: employee.acquisition?.jobSnapshot?.companyName || 'Employer record no longer available',
+        contactPerson: 'N/A',
+        email: '',
+        phone: '',
+        website: '',
+        location: '',
+        totalJobsPosted: 0,
+        isDeleted: true
+      };
+    }
+
     res.json({
       success: true,
       data: {
         ...employee,
         id: employee._id,
+        sourceType: employee.acquisition?.sourceType || 'direct',
+        utmSource: employee.acquisition?.utmSource || null,
+        firstTouchJob,
+        employer,
+        visits,
         applications
       }
     });
@@ -429,7 +554,7 @@ exports.getSiteSettings = async (req, res) => {
 // @access  Admin
 exports.updateSiteSettings = async (req, res) => {
   try {
-    const { hidePostedByCardGlobally } = req.body;
+    const { hidePostedByCardGlobally, dailyJobLimitEnabled, maxJobsPerDay, limitErrorMessage } = req.body;
     let settings = await SiteSettings.findOne();
     if (!settings) {
       settings = new SiteSettings({});
@@ -439,6 +564,21 @@ exports.updateSiteSettings = async (req, res) => {
       settings.hidePostedByCardGlobally = Boolean(hidePostedByCardGlobally);
       // Synchronize all existing employers
       await Employer.updateMany({}, { $set: { hidePostedByCard: Boolean(hidePostedByCardGlobally) } });
+    }
+
+    if (typeof dailyJobLimitEnabled !== 'undefined') {
+      settings.dailyJobLimitEnabled = Boolean(dailyJobLimitEnabled);
+    }
+
+    if (typeof maxJobsPerDay !== 'undefined') {
+      const parsedMax = parseInt(maxJobsPerDay, 10);
+      if (!isNaN(parsedMax) && parsedMax > 0) {
+        settings.maxJobsPerDay = parsedMax;
+      }
+    }
+
+    if (typeof limitErrorMessage !== 'undefined') {
+      settings.limitErrorMessage = String(limitErrorMessage).trim();
     }
 
     await settings.save();

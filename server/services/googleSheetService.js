@@ -504,6 +504,11 @@ const CANDIDATE_SHEET_HEADERS = [
   'Candidate Name',
   'Email Address',
   'Mobile Number',
+  'Source',
+  'UTM Source',
+  'Referred Job Title',
+  'Job ID',
+  'Employer Name',
   'Current Location',
   'Preferred Location',
   'Highest Qualification',
@@ -588,11 +593,24 @@ const formatCandidateRow = (cand, appCount = 0) => {
 
   const candIdDisplay = cand.candidateId ? String(cand.candidateId) : String(cand._id || cand.id || '');
 
+  // Attribution Data
+  const acq = cand.acquisition || {};
+  const sourceType = acq.sourceType === 'job_link' ? 'Job Link' : 'Direct';
+  const utmSource = acq.utmSource || 'N/A';
+  const referredJobTitle = acq.firstTouchJob?.title || acq.jobSnapshot?.title || (acq.firstTouchJob ? 'Job Opening' : 'N/A');
+  const referredJobId = acq.firstTouchJob?._id ? String(acq.firstTouchJob._id) : (acq.firstTouchJob ? String(acq.firstTouchJob) : 'N/A');
+  const employerName = acq.firstTouchEmployer?.companyName || acq.firstTouchEmployer?.fullName || acq.jobSnapshot?.companyName || 'N/A';
+
   return [
     candIdDisplay,
     cand.name || 'N/A',
     cand.email || 'N/A',
     cand.mobile || cand.phone || 'N/A',
+    sourceType,
+    utmSource,
+    referredJobTitle,
+    referredJobId,
+    employerName,
     cand.location || 'N/A',
     cand.preferredLocation || cand.location || 'N/A',
     qual,
@@ -716,7 +734,11 @@ const syncCandidatesSheet = async (customUrl = null) => {
 
   await ensureSheetPermissions(drive, spreadsheetId);
 
-  const candidates = await Employee.find().sort({ createdAt: -1 }).lean();
+  const candidates = await Employee.find()
+    .populate('acquisition.firstTouchJob', 'title company')
+    .populate('acquisition.firstTouchEmployer', 'companyName fullName')
+    .sort({ createdAt: -1 })
+    .lean();
   const applications = await Application.find().lean();
   const appCounts = {};
   applications.forEach(a => {

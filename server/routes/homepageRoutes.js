@@ -30,6 +30,33 @@ router.put('/', async (req, res) => {
     delete updateData._id;
     delete updateData.__v;
 
+    // Synchronize daily job post limit to consultantPostJob if provided in employerPostJob
+    if (updateData.employerPostJob && updateData.employerPostJob.dailyJobLimit) {
+      const limitCfg = updateData.employerPostJob.dailyJobLimit;
+      if (!updateData.consultantPostJob) {
+        updateData.consultantPostJob = {};
+      }
+      updateData.consultantPostJob.dailyJobLimit = limitCfg;
+
+      // Also persist to SiteSettings for fast global lookups
+      try {
+        const SiteSettings = require('../models/SiteSettings');
+        await SiteSettings.findOneAndUpdate(
+          {},
+          {
+            $set: {
+              dailyJobLimitEnabled: Boolean(limitCfg.enabled),
+              maxJobsPerDay: Number(limitCfg.maxJobsPerDay) || 5,
+              limitErrorMessage: limitCfg.errorMessage || 'Daily job post limit reached ({limit} jobs/day). You can post new jobs tomorrow.'
+            }
+          },
+          { upsert: true }
+        );
+      } catch (siteErr) {
+        console.warn('Could not sync dailyJobLimit to SiteSettings:', siteErr.message);
+      }
+    }
+
     const updated = await HomepageConfig.findOneAndUpdate(
       {},
       { $set: updateData },
