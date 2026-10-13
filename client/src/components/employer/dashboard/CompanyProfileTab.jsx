@@ -289,6 +289,15 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 rows="3"
                 autoFocus
               />
+            ) : type === 'select-hiringFor' ? (
+              <select 
+                value={companyData.hiringFor || 'your_company'} 
+                onChange={(e) => handleChange(section, field, e.target.value)} 
+                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white"
+              >
+                <option value="your_company">Your Company</option>
+                <option value="consultant">Consultant</option>
+              </select>
             ) : type === 'select-industry' ? (
               <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white">
                 <option>Information Technology</option><option>Finance</option><option>Healthcare</option><option>Manufacturing</option><option>Education</option><option>Other</option>
@@ -513,7 +522,14 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                       </div>
                     </div>
                   </div>
-                  {renderRow('company', 'hiringFor', 'Hiring for', companyData.hiringFor === 'consultant' ? 'Consultant' : 'Your Company', 'text', false)}
+                  {renderRow(
+                    'company', 
+                    'hiringFor', 
+                    'Hiring for', 
+                    companyData.hiringFor === 'consultant' ? 'Consultant' : 'Your Company', 
+                    'select-hiringFor', 
+                    true
+                  )}
                   {renderRow('company', 'companyName', 'Company Name', companyData.companyName)}
                   {renderRow('company', 'industry', 'Industry', companyData.industry, 'select-industry')}
                   {renderRow('company', 'employees', 'Number of Employees', companyData.employees, 'select-employees')}

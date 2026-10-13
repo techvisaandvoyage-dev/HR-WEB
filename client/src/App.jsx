@@ -839,7 +839,7 @@ function App() {
       />
       <EmployerRegisterModal 
         isOpen={isEmployerRegisterOpen}
-        isConsultant={isConsultantMode || employerRegisterInitialData?.isConsultant}
+        isConsultant={employerRegisterInitialData?.isConsultant !== undefined ? employerRegisterInitialData.isConsultant : isConsultantMode}
         initialData={employerRegisterInitialData}
         onClose={() => { setIsEmployerRegisterOpen(false); setEmployerRegisterInitialData(null); setIsConsultantMode(false); }}
         onLoginClick={openEmployerLogin}

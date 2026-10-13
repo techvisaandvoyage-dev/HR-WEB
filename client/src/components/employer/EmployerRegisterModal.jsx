@@ -7,7 +7,7 @@ import CustomDropdown from '../common/CustomDropdown';
 import { EMPLOYER_INDUSTRIES, getDesignationsForIndustry } from '../../data/employerIndustryDesignations';
 
 const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onClose, onLoginClick, onLoginSuccess }) => {
-  const isConsultantMode = Boolean(isConsultant || initialData?.isConsultant);
+  const isConsultantMode = Boolean(initialData?.isConsultant !== undefined ? initialData.isConsultant : isConsultant);
   const [step, setStep] = useState(1); // 1: Email & Account, 2: Company Details, 3: Success
   const [isGoogleAuth, setIsGoogleAuth] = useState(false);
 
