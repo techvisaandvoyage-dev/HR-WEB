@@ -1332,7 +1332,7 @@ export default function EmployersTab() {
 
   // Employer Type Label helper
   const getEmployerTypeLabel = (empr) => {
-    if (empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant')) return 'Consultant';
+    if (empr?.isConsultant) return 'Consultant';
     return 'Company';
   };
 
@@ -1359,9 +1359,8 @@ export default function EmployersTab() {
       }
 
       if (hiringForFilter !== 'All') {
-        const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant;
-        if (hiringForFilter === 'consultant' && !isConsultant) return false;
-        if (hiringForFilter === 'your_company' && isConsultant) return false;
+        const matchesHiringFor = empr?.hiringFor === hiringForFilter;
+        if (!matchesHiringFor) return false;
       }
 
       if (industryFilter !== 'All') {
@@ -2553,7 +2552,7 @@ export default function EmployersTab() {
                           filteredAndSortedEmployers.map((empr) => {
                             const empId = empr._id || empr.id;
                             const isExpanded = expandedEmployers[empId];
-                            const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant');
+                            const isConsultant = Boolean(empr?.isConsultant);
                             return (
                               <React.Fragment key={empId}>
                                 <tr className="hover:bg-emerald-50/30 transition-colors">

@@ -200,13 +200,13 @@ export default function ConsultantsTab() {
       const res = await fetch(`${API_URL}/api/admin/employers`, { headers });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        const consultantList = data.data.filter(emp => emp.hiringFor === 'consultant');
+        const consultantList = data.data.filter(emp => emp.isConsultant === true);
         setConsultants(consultantList);
       } else {
         const directRes = await fetch(`${API_URL}/api/employer/all`, { headers });
         const directData = await directRes.json();
         if (directData.success && Array.isArray(directData.data)) {
-          setConsultants(directData.data.filter(emp => emp.hiringFor === 'consultant'));
+          setConsultants(directData.data.filter(emp => emp.isConsultant === true));
         }
       }
     } catch (err) {

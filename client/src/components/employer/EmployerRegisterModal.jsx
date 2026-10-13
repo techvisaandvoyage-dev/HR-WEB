@@ -88,6 +88,30 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
         { value: '500+', label: '500+' },
       ];
 
+  // Hiring For options: from CMS config or defaults
+  const hiringForOptions = useMemo(() => {
+    const rawOptions = (cmsConfig?.hiringForOptions && cmsConfig.hiringForOptions.length > 0)
+      ? cmsConfig.hiringForOptions
+      : (cmsConfig?.step2?.hiringForOptions && cmsConfig.step2.hiringForOptions.length > 0)
+        ? cmsConfig.step2.hiringForOptions
+        : null;
+
+    if (rawOptions && Array.isArray(rawOptions) && rawOptions.length > 0) {
+      return rawOptions.map(opt => {
+        if (typeof opt === 'string') return { value: opt, label: opt };
+        return { 
+          value: opt.value || opt.id || opt.label, 
+          label: opt.label || opt.value || opt.id 
+        };
+      });
+    }
+
+    return [
+      { value: 'your_company', label: cmsConfig?.hiringForCompanyLabel || 'Your Company' },
+      { value: 'consultant', label: cmsConfig?.hiringForConsultantLabel || 'Consultant' }
+    ];
+  }, [cmsConfig]);
+
   // Designation options: dynamic based on selected industry and CMS industriesData
   const designationOptions = useMemo(() => {
     // 1. Check if CMS has specific designations for this industry in industriesData
@@ -132,6 +156,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
   const passwordCfg = getFieldConfig('step1', 'password', 'Create Password', 'Enter strong password', true);
   const confirmPasswordCfg = getFieldConfig('step1', 'confirmPassword', 'Confirm Password', 'Re-enter password', true);
 
+  const hiringForCfg = getFieldConfig('step2', 'hiringFor', cmsConfig?.hiringForLabel || 'Hiring For', 'Select hiring requirement', true);
   const companyNameCfg = getFieldConfig('step2', 'companyName', 'Company / Business Name', 'Enter registered company or organization name', true);
   const industryCfg = getFieldConfig('step2', 'industry', 'Industry Domain', 'Select Industry', true);
   const employeesCfg = getFieldConfig('step2', 'employees', 'Company Size (Employees)', 'Select Number of Employees', true);
@@ -162,12 +187,14 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
         setEmail(initialData.email || '');
         setMobile(initialData.mobile || '');
         setIsGoogleAuth(initialData.isGoogleAuth || false);
+        setHiringFor(initialData.hiringFor || (isConsultantMode ? 'consultant' : 'your_company'));
       } else {
         setStep(1);
         setFullName('');
         setEmail('');
         setMobile('');
         setIsGoogleAuth(false);
+        setHiringFor(isConsultantMode ? 'consultant' : 'your_company');
       }
       setAccountType('company');
       setPassword('');
@@ -448,6 +475,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     e.preventDefault();
 
     const newErrors = {};
+    if (hiringForCfg.isRequired && !hiringFor) newErrors.hiringFor = `${hiringForCfg.label} is required`;
     if (companyNameCfg.isRequired && !companyName.trim()) newErrors.companyName = `${companyNameCfg.label} is required`;
     if (industryCfg.isRequired && !industry) newErrors.industry = `${industryCfg.label} is required`;
     if (employeesCfg.isRequired && !employees) newErrors.employees = `${employeesCfg.label} is required`;
@@ -1005,6 +1033,54 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                 )}
 
                 <form className="space-y-4" onSubmit={handleFinalRegister}>
+
+                  {/* Hiring For */}
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-gray-900">
+                      {hiringForCfg.label} {hiringForCfg.isRequired && <span className="text-red-500">*</span>}
+                    </label>
+                    <div className={`grid gap-3 ${
+                      hiringForOptions.length === 2 
+                        ? 'grid-cols-2' 
+                        : hiringForOptions.length === 3 
+                          ? 'grid-cols-1 sm:grid-cols-3' 
+                          : 'grid-cols-1 sm:grid-cols-2'
+                    }`}>
+                      {hiringForOptions.map((opt) => {
+                        const isSelected = hiringFor === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setHiringFor(opt.value);
+                              if (errors.hiringFor) setErrors({ ...errors, hiringFor: '' });
+                            }}
+                            className={`flex items-center justify-center gap-2.5 py-3 px-4 rounded-full border text-sm font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-palette-400 bg-palette-200/20 text-palette-900 ring-2 ring-palette-400/30 font-bold shadow-xs'
+                                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected ? 'border-palette-400 bg-palette-400' : 'border-gray-300 bg-white'
+                            }`}>
+                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
+                            </span>
+                            <span className="truncate">{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.hiringFor && (
+                      <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {errors.hiringFor}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Company Name */}
                   <div className="space-y-1.5">

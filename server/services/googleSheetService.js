@@ -634,7 +634,7 @@ const formatCandidateRow = (cand, appCount = 0) => {
  * Format single Employer into row array
  */
 const formatEmployerRow = (empr, stats = {}) => {
-  const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant');
+  const isConsultant = Boolean(empr?.isConsultant);
   const accType = isConsultant ? 'Consultant' : 'Company';
 
   const regDate = empr.createdAt ? new Date(empr.createdAt).toLocaleDateString() : 'N/A';

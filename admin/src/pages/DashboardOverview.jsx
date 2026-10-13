@@ -622,7 +622,7 @@ export default function DashboardOverview({ onNavigateTab }) {
 
   // Helper for Employer type label
   const getEmployerTypeLabel = (empr) => {
-    if (empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant')) return 'Consultant';
+    if (empr?.isConsultant) return 'Consultant';
     return 'Company';
   };
 
@@ -723,7 +723,7 @@ export default function DashboardOverview({ onNavigateTab }) {
           if (!idStr.includes(idQ)) return false;
         }
 
-        const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant');
+        const isConsultant = Boolean(empr?.isConsultant);
         const accTypeLabel = isConsultant ? 'Consultant' : 'Company';
 
         // Top Header Dropdown: Type
@@ -801,8 +801,8 @@ export default function DashboardOverview({ onNavigateTab }) {
           case 'company':
             return (a.companyName || a.fullName || '').localeCompare(b.companyName || b.fullName || '') * dir;
           case 'accType': {
-            const isConsA = a?.hiringFor === 'consultant' || a?.isConsultant || a?.accountType === 'individual';
-            const isConsB = b?.hiringFor === 'consultant' || b?.isConsultant || b?.accountType === 'individual';
+            const isConsA = Boolean(a?.isConsultant);
+            const isConsB = Boolean(b?.isConsultant);
             return ((isConsA ? 'Consultant' : 'Company').localeCompare(isConsB ? 'Consultant' : 'Company')) * dir;
           }
           case 'recruiter':
@@ -3090,7 +3090,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                         </tr>
                       ) : (
                         filteredAndSortedEmployers.map((empr) => {
-                          const isConsultant = empr?.hiringFor === 'consultant' || empr?.isConsultant || empr?.accountType === 'individual' || empr?.accountType?.toLowerCase()?.includes('consultant');
+                          const isConsultant = Boolean(empr?.isConsultant);
 
                           return (
                             <tr key={empr._id || empr.id} className="hover:bg-emerald-50/30 transition-colors">
