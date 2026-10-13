@@ -222,11 +222,11 @@ exports.register = async (req, res) => {
       if (fullName) employer.fullName = fullName;
       if (accountType) employer.accountType = accountType;
       if (mobile) employer.mobile = mobile;
-      if (password && String(password).trim() !== '') employer.password = password;
-      if (hiringFor) employer.hiringFor = hiringFor;
-      if (req.body.isConsultant !== undefined) {
-        employer.isConsultant = Boolean(req.body.isConsultant === true);
-      }
+      const isTargetConsultant = req.body.isConsultant !== undefined 
+        ? Boolean(req.body.isConsultant === true)
+        : Boolean(employer.isConsultant === true);
+      employer.isConsultant = isTargetConsultant;
+      employer.hiringFor = isTargetConsultant ? 'consultant' : (hiringFor && hiringFor !== 'consultant' ? hiringFor : 'employer');
       employer.companyName = companyName;
       employer.industry = industry;
       employer.employees = employees;
@@ -238,14 +238,15 @@ exports.register = async (req, res) => {
     } else {
       // Create new user
       const employerId = await getNextEmployerId();
+      const isTargetConsultant = Boolean(req.body.isConsultant === true);
       const createData = {
         employerId,
         mobile: mobile || '',
         accountType: accountType || 'company',
         fullName,
         email: cleanEmail,
-        isConsultant: Boolean(req.body.isConsultant === true),
-        hiringFor: hiringFor || 'your_company',
+        isConsultant: isTargetConsultant,
+        hiringFor: isTargetConsultant ? 'consultant' : (hiringFor && hiringFor !== 'consultant' ? hiringFor : 'employer'),
         companyName,
         industry,
         employees,
@@ -676,7 +677,7 @@ exports.googleAuth = async (req, res) => {
         companyName: '',
         industry: '',
         isConsultant: isTargetConsultant,
-        hiringFor: hiringFor || (isTargetConsultant ? 'consultant' : 'your_company'),
+        hiringFor: isTargetConsultant ? 'consultant' : (hiringFor && hiringFor !== 'consultant' ? hiringFor : 'employer'),
         googleId: sub || uid || '',
         authProvider: 'google',
       });

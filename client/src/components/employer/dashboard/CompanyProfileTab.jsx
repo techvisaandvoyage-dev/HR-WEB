@@ -45,6 +45,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
 
   const [companyData, setCompanyData] = useState({
     hiringFor: 'your_company',
+    isConsultant: false,
     companyName: '',
     companyLogo: '',
     industry: '',
@@ -55,7 +56,67 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
     website: ''
   });
 
+  const [cmsHiringForOptions, setCmsHiringForOptions] = useState([]);
+  const [cmsHiringForLabel, setCmsHiringForLabel] = useState('Hiring for');
+
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  const isConsultant = Boolean(employerProfile?.isConsultant === true || companyData?.isConsultant === true);
+
+  // Fetch Homepage CMS config to dynamically read Hiring For options and label
+  useEffect(() => {
+    const fetchCmsConfig = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/homepage`);
+        const data = await res.json();
+        if (data.success && data.data) {
+          const regConfig = (isConsultant && data.data.consultantRegister && Object.keys(data.data.consultantRegister).length > 0)
+            ? data.data.consultantRegister
+            : data.data.employerRegister;
+
+          if (regConfig?.hiringForLabel) {
+            setCmsHiringForLabel(regConfig.hiringForLabel);
+          }
+
+          const rawOptions = (regConfig?.hiringForOptions && regConfig.hiringForOptions.length > 0)
+            ? regConfig.hiringForOptions
+            : (regConfig?.step2?.hiringForOptions && regConfig.step2.hiringForOptions.length > 0)
+              ? regConfig.step2.hiringForOptions
+              : null;
+
+          if (rawOptions && Array.isArray(rawOptions) && rawOptions.length > 0) {
+            const formatted = rawOptions.map(opt => {
+              if (typeof opt === 'string') return { value: opt, label: opt };
+              return {
+                value: opt.value || opt.id || opt.label,
+                label: opt.label || opt.value || opt.id
+              };
+            });
+            setCmsHiringForOptions(formatted);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching CMS config in CompanyProfileTab:', err);
+      }
+    };
+
+    fetchCmsConfig();
+  }, [isConsultant]);
+
+  const getHiringForDisplayLabel = (value) => {
+    if (!value) return 'N/A';
+    const match = cmsHiringForOptions.find(opt => 
+      String(opt.value || '').trim().toLowerCase() === String(value).trim().toLowerCase() ||
+      String(opt.id || '').trim().toLowerCase() === String(value).trim().toLowerCase() ||
+      String(opt.label || '').trim().toLowerCase() === String(value).trim().toLowerCase()
+    );
+    if (match) return match.label;
+
+    if (value === 'your_company') return 'Company Business';
+    if (value === 'consultant') return 'Individual  Proprietor';
+
+    return value;
+  };
 
   const fetchProfile = async () => {
     try {
@@ -77,6 +138,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
         });
         setCompanyData({
           hiringFor: emp.hiringFor || 'your_company',
+          isConsultant: Boolean(emp.isConsultant === true),
           companyName: emp.companyName || '',
           companyLogo: emp.companyLogo || '',
           industry: emp.industry || '',
@@ -119,7 +181,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
         location: companyData.location,
         aboutCompany: companyData.about,
         website: companyData.website,
-        hiringFor: companyData.hiringFor
+        hiringFor: isConsultant ? 'consultant' : 'employer'
       };
       
       const response = await fetch(`${apiUrl}/api/employer/auth/update`, {
@@ -291,12 +353,20 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
               />
             ) : type === 'select-hiringFor' ? (
               <select 
-                value={companyData.hiringFor || 'your_company'} 
+                value={companyData.hiringFor || (cmsHiringForOptions[0]?.value || 'your_company')} 
                 onChange={(e) => handleChange(section, field, e.target.value)} 
-                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white"
+                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white font-medium"
               >
-                <option value="your_company">Your Company</option>
-                <option value="consultant">Consultant</option>
+                {cmsHiringForOptions.length > 0 ? (
+                  cmsHiringForOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="your_company">Company Business</option>
+                    <option value="consultant">Individual  Proprietor</option>
+                  </>
+                )}
               </select>
             ) : type === 'select-industry' ? (
               <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white">
@@ -352,8 +422,6 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
       </div>
     );
   };
-
-  const isConsultant = Boolean(employerProfile?.isConsultant === true || companyData?.isConsultant === true);
 
   const pageTitle = isConsultant 
     ? (portalConfig?.consultantTitle || 'Consultant Profile')
@@ -526,9 +594,9 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                     'company', 
                     'hiringFor', 
                     'Hiring for', 
-                    companyData.hiringFor === 'consultant' ? 'Consultant' : 'Your Company', 
-                    'select-hiringFor', 
-                    true
+                    isConsultant ? 'Consultant' : 'Employer', 
+                    'text', 
+                    false
                   )}
                   {renderRow('company', 'companyName', 'Company Name', companyData.companyName)}
                   {renderRow('company', 'industry', 'Industry', companyData.industry, 'select-industry')}
