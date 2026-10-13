@@ -422,8 +422,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
     if (emailConfig.isRequired && !authEmail.trim()) {
       errors.email = `Please enter your ${emailConfig.label.toLowerCase() || 'email address'}.`;
-    } else if (authEmail.trim() && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(authEmail.trim())) {
-      errors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
+    } else if (authEmail.trim()) {
+      const cleanEmail = authEmail.trim().toLowerCase();
+      if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}$/.test(cleanEmail)) {
+        errors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
+      } else if (!cleanEmail.endsWith('@gmail.com')) {
+        errors.email = 'Only Google (@gmail.com) email addresses are accepted.';
+      }
     }
 
     const cleanMobile = authMobile.replace(/\D/g, '');

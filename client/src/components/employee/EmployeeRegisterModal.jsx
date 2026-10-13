@@ -259,10 +259,13 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
 
     if (emailConfig.isRequired && !email.trim()) {
       newErrors.email = 'Please enter your email address.';
-    } else if (email.trim() && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(email.trim())) {
-      newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
-    } else if (email.trim() && /^[^@]+@[^.]+$/.test(email.trim())) {
-      newErrors.email = 'Email domain must include a valid extension like .com or .in.';
+    } else if (email.trim()) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}$/.test(cleanEmail)) {
+        newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
+      } else if (!cleanEmail.endsWith('@gmail.com')) {
+        newErrors.email = 'Only Google (@gmail.com) email addresses are accepted.';
+      }
     }
     
     if (mobileConfig.isRequired && !mobile.trim()) {
@@ -542,6 +545,16 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 autoComplete="off" 
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: ''}); }}
+                onBlur={() => {
+                  if (email.trim()) {
+                    const clean = email.trim().toLowerCase();
+                    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}$/.test(clean)) {
+                      setErrors(prev => ({ ...prev, email: 'Please enter a valid email address (e.g. name@gmail.com).' }));
+                    } else if (!clean.endsWith('@gmail.com')) {
+                      setErrors(prev => ({ ...prev, email: 'Only Google (@gmail.com) email addresses are accepted.' }));
+                    }
+                  }
+                }}
                 placeholder={emailConfig.placeholder}
                 style={{ WebkitBoxShadow: '0 0 0 30px white inset' }}
                 className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}

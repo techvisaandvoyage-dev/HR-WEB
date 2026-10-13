@@ -4,22 +4,17 @@ const Employer = require('../models/Employer');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
 const { sendOtp, resendOtp, verifyOtp } = require('../../utils/email');
 
-// Helper: validate email format + DNS MX lookup to confirm domain is real
+// Helper: validate email format + require Google @gmail.com
 const validateEmailDomain = async (email) => {
+  const cleanEmail = String(email || '').trim().toLowerCase();
   const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/;
-  if (!emailRegex.test(email)) {
+  if (!emailRegex.test(cleanEmail)) {
     return { valid: false, message: 'Please enter a valid email address (e.g. name@gmail.com)' };
   }
-  const domain = email.split('@')[1];
-  try {
-    const mxRecords = await dns.resolveMx(domain);
-    if (!mxRecords || mxRecords.length === 0) {
-      return { valid: false, message: 'Email domain does not exist. Please use a real email address.' };
-    }
-    return { valid: true };
-  } catch (err) {
-    return { valid: false, message: 'Email domain does not exist. Please use a real email address (e.g. name@gmail.com).' };
+  if (!cleanEmail.endsWith('@gmail.com')) {
+    return { valid: false, message: 'Only Google (@gmail.com) email addresses are accepted. Other email domains are not allowed.' };
   }
+  return { valid: true };
 };
 
 // Helper: get next sequential employerId starting from 400201

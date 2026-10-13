@@ -17,22 +17,17 @@ const getNextCandidateId = async () => {
   return (lastCand && lastCand.candidateId) ? lastCand.candidateId + 1 : 300301;
 };
 
-// Helper: validate email format + DNS MX lookup to confirm domain is real
+// Helper: validate email format + require Google @gmail.com
 const validateEmailDomain = async (email) => {
+  const cleanEmail = String(email || '').trim().toLowerCase();
   const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/;
-  if (!emailRegex.test(email)) {
+  if (!emailRegex.test(cleanEmail)) {
     return { valid: false, message: 'Please enter a valid email address (e.g. name@gmail.com)' };
   }
-  const domain = email.split('@')[1];
-  try {
-    const mxRecords = await dns.resolveMx(domain);
-    if (!mxRecords || mxRecords.length === 0) {
-      return { valid: false, message: 'Email domain does not exist. Please use a real email address.' };
-    }
-    return { valid: true };
-  } catch (err) {
-    return { valid: false, message: 'Email domain does not exist. Please use a real email address (e.g. name@gmail.com).' };
+  if (!cleanEmail.endsWith('@gmail.com')) {
+    return { valid: false, message: 'Only Google (@gmail.com) email addresses are accepted. Other email domains are not allowed.' };
   }
+  return { valid: true };
 };
 
 // @desc    Send registration OTP to email
@@ -113,6 +108,11 @@ const registerEmployee = async (req, res) => {
     // Check for empty fields
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
+    }
+
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    if (!cleanEmail.endsWith('@gmail.com')) {
+      return res.status(400).json({ message: 'Only Google (@gmail.com) email addresses are accepted.', field: 'email' });
     }
 
     if (!otp || String(otp).length < 4) {
@@ -206,6 +206,13 @@ const quickRegisterCandidate = async (req, res) => {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
+    if (!cleanEmail.endsWith('@gmail.com')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Only Google (@gmail.com) email addresses are accepted.',
+        field: 'email'
+      });
+    }
     const existing = await Employee.findOne({ 
       email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
     });

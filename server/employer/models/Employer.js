@@ -25,8 +25,8 @@ const EmployerSchema = new mongoose.Schema({
     required: [true, 'Please add an email'],
     unique: true,
     match: [
-      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-      'Please add a valid email'
+      /^[a-zA-Z0-9._%+-]+@gmail\.com$/i,
+      'Only @gmail.com email addresses are allowed'
     ]
   },
   password: {

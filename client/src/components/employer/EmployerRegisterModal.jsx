@@ -283,8 +283,13 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     
     if (emailCfg.isRequired && !email.trim()) {
       newErrors.email = `${emailCfg.label} is required`;
-    } else if (email.trim() && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(email.trim())) {
-      newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com)';
+    } else if (email.trim()) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(cleanEmail)) {
+        newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com)';
+      } else if (!cleanEmail.endsWith('@gmail.com')) {
+        newErrors.email = 'Only Google (@gmail.com) email addresses are accepted.';
+      }
     }
 
     if (mobileCfg.isRequired && !mobile.trim()) {
