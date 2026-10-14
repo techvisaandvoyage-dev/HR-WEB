@@ -326,14 +326,27 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
   // Check initial user login from localStorage
   useEffect(() => {
-    const storedToken = localStorage.getItem('token') || localStorage.getItem('employeeToken');
-    const storedUserStr = localStorage.getItem('employeeUser') || localStorage.getItem('user');
+    // Clean up generic keys that might conflict
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    // If current browser session is an employer/consultant, do NOT treat them as candidate/employee!
+    // Employer and employee accounts are strictly separate.
+    if (localStorage.getItem('employerToken')) {
+      setUser(null);
+      setToken('');
+      return;
+    }
+
+    // ONLY check specific employeeToken and employeeUser
+    const storedToken = localStorage.getItem('employeeToken');
+    const storedUserStr = localStorage.getItem('employeeUser');
     
-    if (storedToken) {
-      setToken(storedToken);
-      if (storedUserStr) {
-        try {
-          const parsed = JSON.parse(storedUserStr);
+    if (storedToken && storedUserStr) {
+      try {
+        const parsed = JSON.parse(storedUserStr);
+        if (parsed && (parsed.role === 'employee' || parsed.email)) {
+          setToken(storedToken);
           setUser(parsed);
           if (parsed.resume) {
             setResumeUrl(parsed.resume);
@@ -342,22 +355,22 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           if (parsed.mobile) setAuthMobile(parsed.mobile);
           if (parsed.name) setAuthName(parsed.name);
           if (parsed.email) setAuthEmail(parsed.email);
-        } catch (e) {
-          console.error(e);
+          fetchUserProfile(storedToken);
         }
+      } catch (e) {
+        console.error(e);
       }
-      // Keep on Step 1 (Account / Login) so user can see/confirm their account or login first
-      fetchUserProfile(storedToken);
     }
   }, []);
 
   const fetchUserProfile = async (authToken) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employee/profile`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
       const data = await res.json();
-      if (res.ok && data) {
+      if (res.ok && data && data.success !== false) {
         setUser(prev => ({ ...prev, ...data }));
         if (data.resume) {
           setResumeUrl(data.resume);
@@ -366,6 +379,12 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         if (data.phone) setAuthMobile(data.phone);
         if (data.email) setAuthEmail(data.email);
         if (data.firstName) setAuthName(`${data.firstName} ${data.lastName || ''}`.trim());
+      } else {
+        // Not a valid employee token! Clear state so clean candidate login form is shown
+        setUser(null);
+        setToken('');
+        localStorage.removeItem('employeeToken');
+        localStorage.removeItem('employeeUser');
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -578,10 +597,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       const authToken = data.token;
       setToken(authToken);
       setUser(data);
-      localStorage.setItem('token', authToken);
       localStorage.setItem('employeeToken', authToken);
       localStorage.setItem('employeeUser', JSON.stringify(data));
-      localStorage.setItem('user', JSON.stringify(data));
       localStorage.setItem('userRole', 'employee');
       setIsOtpStep(false);
 
@@ -639,7 +656,6 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         const authToken = data.token;
         setToken(authToken);
         setUser(data);
-        localStorage.setItem('token', authToken);
         localStorage.setItem('employeeToken', authToken);
         localStorage.setItem('employeeUser', JSON.stringify(data));
         localStorage.setItem('userRole', 'employee');
@@ -686,7 +702,6 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         const authToken = data.token;
         setToken(authToken);
         setUser(data);
-        localStorage.setItem('token', authToken);
         localStorage.setItem('employeeToken', authToken);
         localStorage.setItem('employeeUser', JSON.stringify(data));
         localStorage.setItem('userRole', 'employee');
