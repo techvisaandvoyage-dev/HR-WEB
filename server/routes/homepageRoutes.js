@@ -57,13 +57,14 @@ router.put('/', async (req, res) => {
       }
     }
 
-    // Synchronize employerRegister settings to consultantRegister so that any changes
-    // in Employer Auth & Controls (industries & roles, company sizes, designation options, field configurations)
+    // Synchronize employerRegister OPTIONS to consultantRegister so that any changes
+    // in Employer Auth & Controls (industries & roles, company sizes, designation options)
     // automatically update the Consultant registration form as well.
+    // NOTE: Text labels & placeholders are NOT synced — consultant admin can set them independently.
     if (updateData.employerRegister) {
       const empReg = updateData.employerRegister;
 
-      // If consultantRegister is not explicitly sent or only partially sent, merge with existing from DB
+      // If consultantRegister is not explicitly sent, fetch existing from DB
       let currentConsReg = updateData.consultantRegister;
       if (!currentConsReg || Object.keys(currentConsReg).length === 0) {
         const currentCfg = await HomepageConfig.findOne();
@@ -71,47 +72,31 @@ router.put('/', async (req, res) => {
       }
 
       const mergedConsReg = {
+        // Keep all existing consultant settings as base
         ...currentConsReg,
-        // Preserve consultant modal titles / subtitles if present, otherwise fallback
+        // Preserve consultant-specific modal titles
         modalTitle: currentConsReg.modalTitle || 'Create Consultant Account',
         modalSubtitle: currentConsReg.modalSubtitle || 'Register to find qualified talent and post jobs for clients on sahijob.com',
-        
-        // Sync hiring / account type labels
-        ...(empReg.accountTypeCompanyLabel ? { accountTypeCompanyLabel: empReg.accountTypeCompanyLabel } : {}),
-        ...(empReg.accountTypeIndividualLabel ? { accountTypeIndividualLabel: empReg.accountTypeIndividualLabel } : {}),
-        ...(empReg.termsText ? { termsText: empReg.termsText } : {}),
-        ...(empReg.hiringForLabel ? { hiringForLabel: empReg.hiringForLabel } : {}),
+
+        // Sync hiringFor options from employer (consultant admin can still override label)
         ...(empReg.hiringForOptions ? { hiringForOptions: empReg.hiringForOptions } : {}),
 
-        // Sync Step 1 fields (labels, placeholders, isRequired)
+        // Step 1: Keep consultant's own fields/labels intact — DO NOT overwrite with employer labels
         step1: {
           ...(currentConsReg.step1 || {}),
-          ...(empReg.step1 || {}),
-          title: currentConsReg.step1?.title || empReg.step1?.title || 'Account Information',
-          subtitle: currentConsReg.step1?.subtitle || empReg.step1?.subtitle || 'Enter your basic contact details',
-          fields: {
-            ...(currentConsReg.step1?.fields || {}),
-            ...(empReg.step1?.fields || {})
-          }
+          // Only preserve consultant's own step1 settings
         },
 
-        // Sync Step 2 options and fields (industries, roles, company sizes, designations, fields)
+        // Step 2: Only sync OPTIONS, keep consultant's own labels/fields
         step2: {
           ...(currentConsReg.step2 || {}),
-          ...(empReg.step2 || {}),
-          title: currentConsReg.step2?.title || empReg.step2?.title || 'Company Details',
-          subtitle: currentConsReg.step2?.subtitle || empReg.step2?.subtitle || 'Tell us about your organization & hiring requirements',
-          // Industries with custom roles
-          industriesData: empReg.step2?.industriesData || currentConsReg.step2?.industriesData,
-          industryOptions: empReg.step2?.industryOptions || currentConsReg.step2?.industryOptions,
-          // Company sizes
-          employeeSizeOptions: empReg.step2?.employeeSizeOptions || currentConsReg.step2?.employeeSizeOptions,
-          // Designations
-          designationOptions: empReg.step2?.designationOptions || currentConsReg.step2?.designationOptions,
-          fields: {
-            ...(currentConsReg.step2?.fields || {}),
-            ...(empReg.step2?.fields || {})
-          }
+          // Sync only option arrays from employer
+          ...(empReg.step2?.industriesData ? { industriesData: empReg.step2.industriesData } : {}),
+          ...(empReg.step2?.industryOptions ? { industryOptions: empReg.step2.industryOptions } : {}),
+          ...(empReg.step2?.employeeSizeOptions ? { employeeSizeOptions: empReg.step2.employeeSizeOptions } : {}),
+          ...(empReg.step2?.designationOptions ? { designationOptions: empReg.step2.designationOptions } : {}),
+          // Keep consultant's own field labels/placeholders — DO NOT overwrite
+          fields: currentConsReg.step2?.fields || {}
         }
       };
 

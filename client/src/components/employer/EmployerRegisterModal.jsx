@@ -55,29 +55,39 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
 
           if (isConsultantMode) {
             const mergedConsultantConfig = {
-              ...consCfg,
+              // Base: employer settings
               ...empCfg,
+              // Consultant-specific overrides everything from employer (labels, texts, etc.)
+              ...consCfg,
+              // These are strictly consultant-branding — never override with employer
               modalTitle: consCfg.modalTitle || 'Create Consultant Account',
               modalSubtitle: consCfg.modalSubtitle || 'Register to find qualified talent and post jobs for clients on sahijob.com',
               loginLinkText: consCfg.loginLinkText || 'Already registered? Consultant Login',
               step1: {
-                ...(consCfg.step1 || {}),
+                // Base: employer step1 settings
                 ...(empCfg.step1 || {}),
+                // Consultant overrides labels/titles
+                ...(consCfg.step1 || {}),
+                // Field-level: consultant labels/placeholders win (admin can edit them)
                 fields: {
-                  ...(consCfg.step1?.fields || {}),
-                  ...(empCfg.step1?.fields || {})
+                  ...(empCfg.step1?.fields || {}),
+                  ...(consCfg.step1?.fields || {})  // consCfg LAST = wins
                 }
               },
               step2: {
-                ...(consCfg.step2 || {}),
+                // Base: employer step2 settings
                 ...(empCfg.step2 || {}),
+                // Consultant overrides labels/titles
+                ...(consCfg.step2 || {}),
+                // OPTIONS: employer always wins (original sync requirement)
                 industriesData: empCfg.step2?.industriesData || consCfg.step2?.industriesData,
                 industryOptions: empCfg.step2?.industryOptions || consCfg.step2?.industryOptions,
                 employeeSizeOptions: empCfg.step2?.employeeSizeOptions || consCfg.step2?.employeeSizeOptions,
                 designationOptions: empCfg.step2?.designationOptions || consCfg.step2?.designationOptions,
+                // Field-level labels/placeholders: consultant wins
                 fields: {
-                  ...(consCfg.step2?.fields || {}),
-                  ...(empCfg.step2?.fields || {})
+                  ...(empCfg.step2?.fields || {}),
+                  ...(consCfg.step2?.fields || {})  // consCfg LAST = wins
                 }
               }
             };
