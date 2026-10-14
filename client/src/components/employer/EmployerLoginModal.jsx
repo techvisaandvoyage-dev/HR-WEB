@@ -130,6 +130,10 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       const data = await res.json();
       if (res.ok && data.success) {
         localStorage.setItem('employerToken', data.token);
+        try {
+          sessionStorage.removeItem('emp_register_draft_employer');
+          sessionStorage.removeItem('emp_register_draft_consultant');
+        } catch (_) {}
         if (data.isNewUser) {
           // New user -> open Company Details form
           if (onRegisterClick) {

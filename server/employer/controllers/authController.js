@@ -214,28 +214,41 @@ exports.register = async (req, res) => {
     // Check if user exists
     let employer = await Employer.findOne({ email: cleanEmail });
 
-    if (employer && employer.companyName && employer.companyName.trim() !== '') {
-      const isTargetConsultant = Boolean(req.body.isConsultant === true);
-      const isExistingConsultant = Boolean(employer.isConsultant === true);
+    if (employer) {
+      const empWithPass = await Employer.findById(employer._id).select('+password');
+      const hasPassword = Boolean(empWithPass && empWithPass.password);
+      const isAlreadyRegistered = Boolean(
+        hasPassword ||
+        employer.authProvider === 'local' ||
+        (employer.mobile && employer.mobile.trim() !== '') ||
+        (employer.companyName && employer.companyName.trim() !== '') ||
+        (employer.industry && employer.industry.trim() !== '') ||
+        (employer.location && employer.location.trim() !== '')
+      );
 
-      if (isTargetConsultant && !isExistingConsultant) {
+      if (isAlreadyRegistered) {
+        const isTargetConsultant = Boolean(req.body.isConsultant === true);
+        const isExistingConsultant = Boolean(employer.isConsultant === true);
+
+        if (isTargetConsultant && !isExistingConsultant) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'An employer account is already registered with this email. Please use Employer Login or use a different email.' 
+          });
+        } else if (!isTargetConsultant && isExistingConsultant) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'A consultant account is already registered with this email. Please use Consultant Login or use a different email.' 
+          });
+        }
+
         return res.status(400).json({ 
           success: false, 
-          message: 'An employer account is already registered with this email. Please use Employer Login or use a different email.' 
-        });
-      } else if (!isTargetConsultant && isExistingConsultant) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'A consultant account is already registered with this email. Please use Consultant Login or use a different email.' 
+          message: isTargetConsultant
+            ? 'A consultant account is already registered with this email. Please log in directly.'
+            : 'An employer account is already registered with this email. Please log in directly.'
         });
       }
-
-      return res.status(400).json({ 
-        success: false, 
-        message: isTargetConsultant
-          ? 'A consultant account is already registered with this email. Please log in directly.'
-          : 'An employer account is already registered with this email. Please log in directly.'
-      });
     }
 
     // If OTP was provided, verify and consume it
@@ -801,31 +814,49 @@ exports.googleAuth = async (req, res) => {
       });
     } else {
       const isExistingConsultant = Boolean(employer.isConsultant === true);
-      const hasCompletedProfile = Boolean(employer.companyName && employer.companyName.trim() !== '');
 
-      if (hasCompletedProfile && isConsultant !== undefined) {
-        if (isTargetConsultant && !isExistingConsultant) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'This email is already registered as an Employer account. Please use Employer Login.' 
-          });
-        } else if (!isTargetConsultant && isExistingConsultant) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'This email is already registered as a Consultant account. Please use Consultant Login.' 
-          });
+      // Check if user has an existing registered account
+      const empWithPass = await Employer.findById(employer._id).select('+password');
+      const hasPassword = Boolean(empWithPass && empWithPass.password);
+
+      const isRegisteredAccount = Boolean(
+        hasPassword ||
+        employer.authProvider === 'local' ||
+        (employer.mobile && employer.mobile.trim() !== '') ||
+        (employer.companyName && employer.companyName.trim() !== '') ||
+        (employer.industry && employer.industry.trim() !== '') ||
+        (employer.location && employer.location.trim() !== '') ||
+        employer.employerId
+      );
+
+      if (isRegisteredAccount) {
+        // User already has an account -> NEVER send to new account creation!
+        isNewUser = false;
+
+        // Role check: if role was explicitly targeted and does not match existing registered role
+        if (isConsultant !== undefined) {
+          if (isTargetConsultant && !isExistingConsultant) {
+            return res.status(400).json({ 
+              success: false, 
+              message: 'This email is already registered as an Employer account. Please use Employer Login.' 
+            });
+          } else if (!isTargetConsultant && isExistingConsultant) {
+            return res.status(400).json({ 
+              success: false, 
+              message: 'This email is already registered as a Consultant account. Please use Consultant Login.' 
+            });
+          }
         }
-      }
-
-      if (!employer.companyName || employer.companyName.trim() === '') {
+      } else {
+        // Only mark as new user if they previously created an incomplete Google shell without finishing step 2
         isNewUser = true;
         if (req.body.isConsultant !== undefined) {
           employer.isConsultant = isTargetConsultant;
         }
       }
+
       if (!employer.googleId) {
         employer.googleId = sub || uid || '';
-        if (!employer.authProvider) employer.authProvider = 'google';
       }
       employer.lastLogin = new Date();
       await employer.save();

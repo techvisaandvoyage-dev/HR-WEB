@@ -1220,7 +1220,14 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                     <p className="text-sm text-gray-600">
                       {cmsConfig?.loginLinkText ? (
                         <button
-                          onClick={onLoginClick}
+                          type="button"
+                          onClick={() => {
+                            try {
+                              sessionStorage.removeItem('emp_register_draft_employer');
+                              sessionStorage.removeItem('emp_register_draft_consultant');
+                            } catch (_) {}
+                            onLoginClick?.({ isConsultant: isConsultantMode });
+                          }}
                           className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
                         >
                           {cmsConfig.loginLinkText}
@@ -1229,7 +1236,14 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                         <>
                           Already have an account?{' '}
                           <button
-                            onClick={onLoginClick}
+                            type="button"
+                            onClick={() => {
+                              try {
+                                sessionStorage.removeItem('emp_register_draft_employer');
+                                sessionStorage.removeItem('emp_register_draft_consultant');
+                              } catch (_) {}
+                              onLoginClick?.({ isConsultant: isConsultantMode });
+                            }}
                             className="text-palette-400 font-bold hover:text-palette-900 transition-colors"
                           >
                             Login
