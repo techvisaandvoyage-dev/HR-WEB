@@ -403,9 +403,12 @@ function App() {
     setIsEmployerRegisterOpen(true);
   };
 
-  const openEmployerLogin = () => {
+  const openEmployerLogin = (options = null) => {
     setIsEmployerRegisterOpen(false);
     setEmployerRegisterInitialData(null);
+    if (options && options.isConsultant !== undefined) {
+      setIsConsultantMode(Boolean(options.isConsultant));
+    }
     setIsEmployerLoginOpen(true);
   };
 

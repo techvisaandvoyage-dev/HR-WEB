@@ -15,6 +15,7 @@ const {
   verifyForgotPasswordOtp,
   resetPassword,
   checkMobile,
+  checkMobileAvailable,
   checkEmail,
   googleAuth,
   getSecurityStatus,
@@ -34,6 +35,7 @@ router.post('/login/resend-otp', resendLoginOtp);
 router.post('/login/verify-otp', verifyLoginOtp);
 router.post('/google', googleAuth);
 router.post('/check-mobile', checkMobile);
+router.post('/check-mobile-available', checkMobileAvailable);
 router.post('/check-email', checkEmail);
 router.post('/send-otp', sendRegistrationOtp);
 router.post('/resend-otp', resendRegistrationOtp);

@@ -42,7 +42,9 @@ exports.sendRegistrationOtp = async (req, res) => {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-    const userExists = await Employer.findOne({ email: cleanEmail });
+    const userExists = await Employer.findOne({ 
+      email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+    });
     if (userExists) {
       const isTargetConsultant = Boolean(isConsultant === true);
       const isExistingConsultant = Boolean(userExists.isConsultant === true);
@@ -50,34 +52,70 @@ exports.sendRegistrationOtp = async (req, res) => {
       if (isTargetConsultant) {
         if (!isExistingConsultant) {
           return res.status(400).json({ 
-            message: 'An employer account is already registered with this email. Please use Employer Login or use a different email.', 
-            field: 'email' 
+            message: 'This account is already registered as an employer. Please use Employer Login or use a different email.', 
+            field: 'email',
+            registeredRole: 'employer'
           });
         } else {
           return res.status(400).json({ 
             message: 'A consultant account is already registered with this email. Please log in directly.', 
-            field: 'email' 
+            field: 'email',
+            registeredRole: 'consultant'
           });
         }
       } else {
         if (isExistingConsultant) {
           return res.status(400).json({ 
-            message: 'A consultant account is already registered with this email. Please use Consultant Login or use a different email.', 
-            field: 'email' 
+            message: 'This account is already registered as a consultant. Please use Consultant Login or use a different email.', 
+            field: 'email',
+            registeredRole: 'consultant'
           });
         } else {
           return res.status(400).json({ 
             message: 'An employer account is already registered with this email. Please log in directly.', 
-            field: 'email' 
+            field: 'email',
+            registeredRole: 'employer'
           });
         }
       }
     }
 
     if (mobile) {
-      const mobileExists = await Employer.findOne({ mobile });
+      const cleanMobile = String(mobile).trim();
+      const mobileExists = await Employer.findOne({ mobile: cleanMobile });
       if (mobileExists) {
-        return res.status(400).json({ message: 'Mobile number already registered', field: 'mobile' });
+        const isTargetConsultant = Boolean(isConsultant === true);
+        const isExistingConsultant = Boolean(mobileExists.isConsultant === true);
+
+        if (isTargetConsultant) {
+          if (!isExistingConsultant) {
+            return res.status(400).json({ 
+              message: 'This mobile number is already registered with an employer account. Please use Employer Login or use a different mobile number.', 
+              field: 'mobile',
+              registeredRole: 'employer'
+            });
+          } else {
+            return res.status(400).json({ 
+              message: 'A consultant account is already registered with this mobile number. Please log in directly.', 
+              field: 'mobile',
+              registeredRole: 'consultant'
+            });
+          }
+        } else {
+          if (isExistingConsultant) {
+            return res.status(400).json({ 
+              message: 'This mobile number is already registered with a consultant account. Please use Consultant Login or use a different mobile number.', 
+              field: 'mobile',
+              registeredRole: 'consultant'
+            });
+          } else {
+            return res.status(400).json({ 
+              message: 'An employer account is already registered with this mobile number. Please log in directly.', 
+              field: 'mobile',
+              registeredRole: 'employer'
+            });
+          }
+        }
       }
     }
 
@@ -612,6 +650,61 @@ exports.checkMobile = async (req, res) => {
   }
 };
 
+// @desc    Check if mobile is available for registration
+// @route   POST /api/employer/auth/check-mobile-available
+// @access  Public
+exports.checkMobileAvailable = async (req, res) => {
+  try {
+    const { mobile, isConsultant } = req.body;
+    
+    if (!mobile || !String(mobile).trim()) {
+      return res.status(400).json({ message: 'Please provide mobile number' });
+    }
+
+    const cleanMobile = String(mobile).trim();
+    const employer = await Employer.findOne({ mobile: cleanMobile });
+
+    if (employer) {
+      const isTargetConsultant = Boolean(isConsultant === true);
+      const isExistingConsultant = Boolean(employer.isConsultant === true);
+
+      if (isTargetConsultant && !isExistingConsultant) {
+        return res.status(400).json({ 
+          success: false, 
+          field: 'mobile',
+          registeredRole: 'employer',
+          message: 'This mobile number is already registered with an employer account. Please use Employer Login or use a different mobile number.' 
+        });
+      } else if (!isTargetConsultant && isExistingConsultant) {
+        return res.status(400).json({ 
+          success: false, 
+          field: 'mobile',
+          registeredRole: 'consultant',
+          message: 'This mobile number is already registered with a consultant account. Please use Consultant Login or use a different mobile number.' 
+        });
+      } else if (isTargetConsultant && isExistingConsultant) {
+        return res.status(400).json({ 
+          success: false, 
+          field: 'mobile',
+          registeredRole: 'consultant',
+          message: 'A consultant account is already registered with this mobile number. Please log in directly.' 
+        });
+      } else {
+        return res.status(400).json({ 
+          success: false, 
+          field: 'mobile',
+          registeredRole: 'employer',
+          message: 'An employer account is already registered with this mobile number. Please log in directly.' 
+        });
+      }
+    }
+
+    res.json({ success: true, available: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // @desc    Check if email exists
 // @route   POST /api/employer/auth/check-email
 // @access  Public
@@ -624,21 +717,46 @@ exports.checkEmail = async (req, res) => {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-    const employer = await Employer.findOne({ email: cleanEmail });
+    const employer = await Employer.findOne({ 
+      email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+    });
 
     if (employer) {
       const isTargetConsultant = Boolean(isConsultant === true);
       const isExistingConsultant = Boolean(employer.isConsultant === true);
 
       if (isTargetConsultant && !isExistingConsultant) {
-        return res.status(400).json({ message: 'An employer account is already registered with this email. Please use Employer Login or use a different email.' });
+        return res.status(400).json({ 
+          success: false,
+          field: 'email',
+          registeredRole: 'employer',
+          message: 'This account is already registered as an employer. Please use Employer Login or use a different email.' 
+        });
       } else if (!isTargetConsultant && isExistingConsultant) {
-        return res.status(400).json({ message: 'A consultant account is already registered with this email. Please use Consultant Login or use a different email.' });
+        return res.status(400).json({ 
+          success: false,
+          field: 'email',
+          registeredRole: 'consultant',
+          message: 'This account is already registered as a consultant. Please use Consultant Login or use a different email.' 
+        });
+      } else if (isTargetConsultant && isExistingConsultant) {
+        return res.status(400).json({ 
+          success: false,
+          field: 'email',
+          registeredRole: 'consultant',
+          message: 'A consultant account is already registered with this email. Please log in directly.' 
+        });
+      } else {
+        return res.status(400).json({ 
+          success: false,
+          field: 'email',
+          registeredRole: 'employer',
+          message: 'An employer account is already registered with this email. Please log in directly.' 
+        });
       }
-      return res.status(400).json({ message: 'Email is already registered' });
     }
 
-    res.json({ success: true });
+    res.json({ success: true, available: true });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

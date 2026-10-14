@@ -226,6 +226,95 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     }
   }, [showOtpBox]);
 
+  // Check email availability (role conflict check for employer / consultant)
+  const checkEmailAvailability = async (emailToCheck) => {
+    const clean = (emailToCheck || '').trim().toLowerCase();
+    if (!clean) return;
+    if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(clean)) return;
+    if (!clean.endsWith('@gmail.com')) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employer/auth/check-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: clean, 
+          isConsultant: isConsultantMode,
+          hiringFor: isConsultantMode ? 'consultant' : 'your_company' 
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrors(prev => ({ ...prev, email: data.message || 'This email is already registered.' }));
+      } else {
+        setErrors(prev => {
+          const next = { ...prev };
+          if (next.email && typeof next.email === 'string' && (next.email.includes('registered') || next.email.includes('consultant') || next.email.includes('employer'))) {
+            delete next.email;
+          }
+          return next;
+        });
+      }
+    } catch (err) {
+      // Ignore network errors during background check
+    }
+  };
+
+  // Check mobile availability (role conflict check for employer / consultant)
+  const checkMobileAvailability = async (mobileToCheck) => {
+    const clean = (mobileToCheck || '').trim();
+    if (!clean || clean.length !== 10) return;
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employer/auth/check-mobile-available`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          mobile: clean, 
+          isConsultant: isConsultantMode 
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrors(prev => ({ ...prev, mobile: data.message || 'This mobile number is already registered.' }));
+      } else {
+        setErrors(prev => {
+          const next = { ...prev };
+          if (next.mobile && typeof next.mobile === 'string' && (next.mobile.includes('registered') || next.mobile.includes('consultant') || next.mobile.includes('employer'))) {
+            delete next.mobile;
+          }
+          return next;
+        });
+      }
+    } catch (err) {
+      // Ignore network errors during background check
+    }
+  };
+
+  // Debounced auto-check for email
+  useEffect(() => {
+    if (!isOpen) return;
+    const clean = email.trim().toLowerCase();
+    if (clean && clean.endsWith('@gmail.com') && /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(clean)) {
+      const timer = setTimeout(() => {
+        checkEmailAvailability(clean);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, email, isConsultantMode]);
+
+  // Debounced auto-check for mobile
+  useEffect(() => {
+    if (!isOpen) return;
+    const clean = mobile.trim();
+    if (clean && clean.length === 10) {
+      const timer = setTimeout(() => {
+        checkMobileAvailability(clean);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, mobile, isConsultantMode]);
+
   if (!isOpen) return null;
 
   const handleOtpChange = (index, value) => {
@@ -329,6 +418,10 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     if (confirmPasswordCfg.isRequired && !confirmPassword) {
       newErrors.confirmPassword = `${confirmPasswordCfg.label} is required`;
     }
+
+    // Preserve existing email / mobile errors if already present
+    if (errors.email) newErrors.email = errors.email;
+    if (errors.mobile) newErrors.mobile = errors.mobile;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -700,6 +793,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                           setEmail(e.target.value);
                           if (errors.email) setErrors({ ...errors, email: '' });
                         }}
+                        onBlur={() => checkEmailAvailability(email)}
                         placeholder={emailCfg.placeholder}
                         className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                           errors.email
@@ -708,11 +802,37 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                         }`}
                       />
                       {errors.email && (
-                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-xs sm:text-sm font-semibold pl-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
-                          {errors.email}
+                          <div className="flex flex-col gap-1">
+                            <span>{errors.email}</span>
+                            {errors.email.toLowerCase().includes('consultant login') && onLoginClick && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onClose?.();
+                                  onLoginClick?.({ isConsultant: true });
+                                }}
+                                className="text-palette-900 underline hover:text-palette-700 font-bold text-xs text-left cursor-pointer"
+                              >
+                                Go to Consultant Login →
+                              </button>
+                            )}
+                            {errors.email.toLowerCase().includes('employer login') && onLoginClick && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onClose?.();
+                                  onLoginClick?.({ isConsultant: false });
+                                }}
+                                className="text-palette-900 underline hover:text-palette-700 font-bold text-xs text-left cursor-pointer"
+                              >
+                                Go to Employer Login →
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -731,6 +851,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                           if (val.length <= 10) setMobile(val);
                           if (errors.mobile) setErrors({ ...errors, mobile: '' });
                         }}
+                        onBlur={() => checkMobileAvailability(mobile)}
                         placeholder={mobileCfg.placeholder}
                         className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
                           errors.mobile
@@ -739,11 +860,37 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                         }`}
                       />
                       {errors.mobile && (
-                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-xs sm:text-sm font-semibold pl-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
-                          {errors.mobile}
+                          <div className="flex flex-col gap-1">
+                            <span>{errors.mobile}</span>
+                            {errors.mobile.toLowerCase().includes('consultant login') && onLoginClick && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onClose?.();
+                                  onLoginClick?.({ isConsultant: true });
+                                }}
+                                className="text-palette-900 underline hover:text-palette-700 font-bold text-xs text-left cursor-pointer"
+                              >
+                                Go to Consultant Login →
+                              </button>
+                            )}
+                            {errors.mobile.toLowerCase().includes('employer login') && onLoginClick && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onClose?.();
+                                  onLoginClick?.({ isConsultant: false });
+                                }}
+                                className="text-palette-900 underline hover:text-palette-700 font-bold text-xs text-left cursor-pointer"
+                              >
+                                Go to Employer Login →
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
