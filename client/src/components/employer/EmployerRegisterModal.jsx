@@ -50,12 +50,40 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
         const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
         const data = await res.json();
         if (data.success && data.data) {
-          if (isConsultantMode && data.data?.consultantRegister && Object.keys(data.data.consultantRegister).length > 0) {
-            setCmsConfig(data.data.consultantRegister);
-          } else if (!isConsultantMode && data.data?.employerRegister && Object.keys(data.data.employerRegister).length > 0) {
-            setCmsConfig(data.data.employerRegister);
-          } else if (isConsultantMode && data.data?.employerRegister) {
-            setCmsConfig(data.data.employerRegister);
+          const empCfg = data.data?.employerRegister || {};
+          const consCfg = data.data?.consultantRegister || {};
+
+          if (isConsultantMode) {
+            const mergedConsultantConfig = {
+              ...consCfg,
+              ...empCfg,
+              modalTitle: consCfg.modalTitle || 'Create Consultant Account',
+              modalSubtitle: consCfg.modalSubtitle || 'Register to find qualified talent and post jobs for clients on sahijob.com',
+              loginLinkText: consCfg.loginLinkText || 'Already registered? Consultant Login',
+              step1: {
+                ...(consCfg.step1 || {}),
+                ...(empCfg.step1 || {}),
+                fields: {
+                  ...(consCfg.step1?.fields || {}),
+                  ...(empCfg.step1?.fields || {})
+                }
+              },
+              step2: {
+                ...(consCfg.step2 || {}),
+                ...(empCfg.step2 || {}),
+                industriesData: empCfg.step2?.industriesData || consCfg.step2?.industriesData,
+                industryOptions: empCfg.step2?.industryOptions || consCfg.step2?.industryOptions,
+                employeeSizeOptions: empCfg.step2?.employeeSizeOptions || consCfg.step2?.employeeSizeOptions,
+                designationOptions: empCfg.step2?.designationOptions || consCfg.step2?.designationOptions,
+                fields: {
+                  ...(consCfg.step2?.fields || {}),
+                  ...(empCfg.step2?.fields || {})
+                }
+              }
+            };
+            setCmsConfig(mergedConsultantConfig);
+          } else {
+            setCmsConfig(empCfg);
           }
         }
       } catch (err) {
@@ -178,41 +206,90 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     };
   }, [resendTimer]);
 
-  // Reset form when modal opens/closes
+  // Restore draft from sessionStorage on open
   useEffect(() => {
     if (isOpen) {
-      if (initialData?.step === 2) {
+      // Check if there's a saved step-2 draft (e.g., from page refresh)
+      const draftKey = isConsultantMode ? 'emp_register_draft_consultant' : 'emp_register_draft_employer';
+      const savedDraft = (() => { try { const s = sessionStorage.getItem(draftKey); return s ? JSON.parse(s) : null; } catch { return null; } })();
+
+      if (savedDraft && savedDraft.step === 2) {
+        // Restore step 2 with saved data
+        setStep(2);
+        setFullName(savedDraft.fullName || '');
+        setEmail(savedDraft.email || '');
+        setMobile(savedDraft.mobile || '');
+        setIsGoogleAuth(savedDraft.isGoogleAuth || false);
+        setAccountType(savedDraft.accountType || 'company');
+        setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setShowOtpBox(false);
+        setOtp(['', '', '', '']);
+        setResendTimer(0);
+        setCompanyName('');
+        setIndustry('');
+        setEmployees('');
+        setDesignation('');
+        setLocation('');
+        setAboutCompany('');
+        setWebsite('');
+        setError('');
+        setErrors({});
+        setSuccessMessage('');
+        setLoading(false);
+      } else if (initialData?.step === 2) {
         setStep(2);
         setFullName(initialData.fullName || '');
         setEmail(initialData.email || '');
         setMobile(initialData.mobile || '');
         setIsGoogleAuth(initialData.isGoogleAuth || false);
+        setAccountType('company');
+        setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setShowOtpBox(false);
+        setOtp(['', '', '', '']);
+        setResendTimer(0);
+        setCompanyName('');
+        setIndustry('');
+        setEmployees('');
+        setDesignation('');
+        setLocation('');
+        setAboutCompany('');
+        setWebsite('');
+        setError('');
+        setErrors({});
+        setSuccessMessage('');
+        setLoading(false);
       } else {
         setStep(1);
         setFullName('');
         setEmail('');
         setMobile('');
         setIsGoogleAuth(false);
+        setAccountType('company');
+        setPassword('');
+        setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setShowOtpBox(false);
+        setOtp(['', '', '', '']);
+        setResendTimer(0);
+        setCompanyName('');
+        setIndustry('');
+        setEmployees('');
+        setDesignation('');
+        setLocation('');
+        setAboutCompany('');
+        setWebsite('');
+        setError('');
+        setErrors({});
+        setSuccessMessage('');
+        setLoading(false);
       }
-      setAccountType('company');
-      setPassword('');
-      setConfirmPassword('');
-      setShowPassword(false);
-      setShowConfirmPassword(false);
-      setShowOtpBox(false);
-      setOtp(['', '', '', '']);
-      setResendTimer(0);
-      setCompanyName('');
-      setIndustry('');
-      setEmployees('');
-      setDesignation('');
-      setLocation('');
-      setAboutCompany('');
-      setWebsite('');
-      setError('');
-      setErrors({});
-      setSuccessMessage('');
-      setLoading(false);
     }
   }, [isOpen, initialData, isConsultantMode]);
 
@@ -361,10 +438,25 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
         localStorage.setItem('employerToken', data.token);
         if (data.isNewUser) {
           // New user -> Go directly to Step 2 (Company Details)!
-          setFullName(data.fullName || '');
-          setEmail(data.email || '');
+          const gFullName = data.fullName || '';
+          const gEmail = data.email || '';
+          setFullName(gFullName);
+          setEmail(gEmail);
           setIsGoogleAuth(true);
           setStep(2);
+          // Save draft so page refresh restores step 2
+          try {
+            const draftKey = isConsultantMode ? 'emp_register_draft_consultant' : 'emp_register_draft_employer';
+            sessionStorage.setItem(draftKey, JSON.stringify({
+              step: 2,
+              fullName: gFullName,
+              email: gEmail,
+              mobile: '',
+              isGoogleAuth: true,
+              accountType: 'company',
+              isConsultant: isConsultantMode
+            }));
+          } catch (_) {}
         } else {
           onLoginSuccess?.(data);
         }
@@ -552,6 +644,19 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
         setSuccessMessage('');
         setError('');
         setStep(2);
+        // Save draft so page refresh restores step 2
+        try {
+          const draftKey = isConsultantMode ? 'emp_register_draft_consultant' : 'emp_register_draft_employer';
+          sessionStorage.setItem(draftKey, JSON.stringify({
+            step: 2,
+            fullName: fullName.trim(),
+            email: email.trim(),
+            mobile: mobile.trim(),
+            isGoogleAuth: false,
+            accountType,
+            isConsultant: isConsultantMode
+          }));
+        } catch (_) {}
       }
     } catch (err) {
       setError('Failed to verify OTP. Please try again.');
@@ -616,6 +721,11 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
 
       if (data.success) {
         localStorage.setItem('employerToken', data.token);
+        // Clear draft on successful registration
+        try {
+          sessionStorage.removeItem('emp_register_draft_employer');
+          sessionStorage.removeItem('emp_register_draft_consultant');
+        } catch (_) {}
         if (isGoogleAuth) {
           // Google user: skip the success screen and go straight to dashboard
           onLoginSuccess?.(data);

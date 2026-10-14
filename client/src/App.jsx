@@ -381,8 +381,23 @@ function App() {
   const [isEmployeeLoginOpen, setIsEmployeeLoginOpen] = useState(false);
   const [isEmployeeRegisterOpen, setIsEmployeeRegisterOpen] = useState(false);
   const [isEmployerLoginOpen, setIsEmployerLoginOpen] = useState(false);
-  const [isEmployerRegisterOpen, setIsEmployerRegisterOpen] = useState(false);
-  const [isConsultantMode, setIsConsultantMode] = useState(false);
+  // Auto-restore employer register modal if a step-2 draft exists in sessionStorage
+  const [isConsultantMode, setIsConsultantMode] = useState(() => {
+    try {
+      const consultDraft = sessionStorage.getItem('emp_register_draft_consultant');
+      if (consultDraft) { const d = JSON.parse(consultDraft); if (d?.step === 2) return true; }
+    } catch (_) {}
+    return false;
+  });
+  const [isEmployerRegisterOpen, setIsEmployerRegisterOpen] = useState(() => {
+    try {
+      const empDraft = sessionStorage.getItem('emp_register_draft_employer');
+      const consDraft = sessionStorage.getItem('emp_register_draft_consultant');
+      if (empDraft) { const d = JSON.parse(empDraft); if (d?.step === 2) return true; }
+      if (consDraft) { const d = JSON.parse(consDraft); if (d?.step === 2) return true; }
+    } catch (_) {}
+    return false;
+  });
   const [employerRegisterInitialData, setEmployerRegisterInitialData] = useState(null);
   const navigate = useNavigate();
 
@@ -440,6 +455,11 @@ function App() {
     setUserRole('employer');
     setIsEmployerLoginOpen(false);
     setIsEmployerRegisterOpen(false);
+    // Clear any registration draft on successful login/registration
+    try {
+      sessionStorage.removeItem('emp_register_draft_employer');
+      sessionStorage.removeItem('emp_register_draft_consultant');
+    } catch (_) {}
     navigate('/employer');
   };
 
@@ -844,7 +864,16 @@ function App() {
         isOpen={isEmployerRegisterOpen}
         isConsultant={employerRegisterInitialData?.isConsultant !== undefined ? employerRegisterInitialData.isConsultant : isConsultantMode}
         initialData={employerRegisterInitialData}
-        onClose={() => { setIsEmployerRegisterOpen(false); setEmployerRegisterInitialData(null); setIsConsultantMode(false); }}
+        onClose={() => { 
+          setIsEmployerRegisterOpen(false); 
+          setEmployerRegisterInitialData(null); 
+          setIsConsultantMode(false);
+          // Clear any saved draft when user manually closes modal
+          try { 
+            sessionStorage.removeItem('emp_register_draft_employer');
+            sessionStorage.removeItem('emp_register_draft_consultant');
+          } catch (_) {}
+        }}
         onLoginClick={openEmployerLogin}
         onLoginSuccess={handleEmployerLoginSuccess}
       />
