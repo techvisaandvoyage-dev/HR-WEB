@@ -346,8 +346,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           console.error(e);
         }
       }
-      // If user already logged in, automatically proceed directly to Step 2 (Questions)
-      setStep(2);
+      // Keep on Step 1 (Account / Login) so user can see/confirm their account or login first
       fetchUserProfile(storedToken);
     }
   }, []);

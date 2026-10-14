@@ -44,6 +44,8 @@ function App() {
     return () => document.removeEventListener('mousedown', handleClickOutsideSearch);
   }, []);
   const [jobs, setJobs] = useState([]);
+  const [homepageJobs, setHomepageJobs] = useState([]);
+  const [employerJobs, setEmployerJobs] = useState([]);
   const [candidates, setCandidates] = useState([]);
 
   const location = useLocation();
@@ -60,6 +62,8 @@ function App() {
       setUserRole('employer');
     } else if (!isEmployerRoute && localStorage.getItem('employeeToken')) {
       setUserRole('employee');
+    } else if (!isEmployerRoute && !localStorage.getItem('employeeToken')) {
+      setUserRole(null);
     }
   }, [location.pathname, location.state]);
 
@@ -183,140 +187,163 @@ function App() {
     document.documentElement.style.setProperty('--font-secondary', `'${sFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
   }, [homepageConfig?.typography]);
 
+  // 1. Always fetch public active jobs for Homepage & Employee
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchPublicJobs = async () => {
       try {
-        if (userRole === 'employer') {
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/jobs`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
-          });
-          const data = await res.json();
-          if (data.success) {
-            setJobs(data.data.map(job => ({ ...job, id: job._id })));
-          }
-          
-          const appRes = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/jobs/applications`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
-          });
-          const appData = await appRes.json();
-          if (appData.success) {
-            const candidatesMap = {};
-            
-            appData.data.forEach(app => {
-              try {
-                const emp = app.employeeId;
-                if (!emp || !app.jobId) return;
-                if (!candidatesMap[emp._id]) {
-                  candidatesMap[emp._id] = {
-                    id: emp._id,
-                    name: emp.name || 'Unknown Candidate',
-                    email: emp.email,
-                    phone: emp.mobile,
-                    mobile: emp.mobile,
-                    location: emp.location,
-                    initials: emp.name ? emp.name.charAt(0).toUpperCase() : 'C',
-                    bg: 'bg-green-600',
-                    date: new Date(app.createdAt).toLocaleDateString(),
-                    createdAt: emp.createdAt || emp.registrationDate || app.createdAt,
-                    registeredOn: emp.createdAt || emp.registrationDate || app.createdAt,
-                    history: [],
-                    // Additional profile data for the Candidate Profile sidebar
-                    brief: emp.brief || '',
-                    summary: emp.brief || (emp.professionalDetails && emp.professionalDetails.majorAchievements) || '',
-                    skills: (emp.professionalDetails && emp.professionalDetails.skills) ? emp.professionalDetails.skills.split(',').map(s => s.trim()) : [],
-                    experience: emp.experience || [],
-                    education: (emp.qualifications || []).map(q => ({
-                      degree: q.course || q.educationType || 'Degree',
-                      year: (q.startYear && q.endYear) ? `${q.startYear} - ${q.endYear}` : (q.endYear || 'Year'),
-                      institution: q.university || q.board || 'Institution'
-                    })),
-                    currentCTC: (emp.professionalDetails && emp.professionalDetails.currentSalary) || 'N/A',
-                    expectedCTC: (emp.professionalDetails && emp.professionalDetails.expectedSalary) || 'N/A',
-                    salaryType: (emp.professionalDetails && emp.professionalDetails.salaryType) || 'Yearly',
-                    industry: emp.industry || 'N/A',
-                    designation: emp.designation || 'N/A',
-                    totalExperience: emp.totalExperience || 'N/A',
-                    preferredLocation: emp.preferredLocation || 'N/A',
-                    resume: emp.resume || emp.documents?.resume || '',
-                    coverLetter: emp.coverLetter || emp.documents?.coverLetter || '',
-                    introVideo: emp.introVideo || emp.documents?.introVideo || '',
-                    documents: emp.documents || {
-                      resume: emp.resume || '',
-                      coverLetter: emp.coverLetter || '',
-                      introVideo: emp.introVideo || '',
-                    },
-                    qualifications: emp.qualifications || [],
-                    isFresher: emp.isFresher ?? (emp.totalExperience === '0' || emp.totalExperience === 'Fresher'),
-                    professionalDetails: emp.professionalDetails || {},
-                  };
-                }
-                
-                candidatesMap[emp._id].history.push({
-                  appId: app._id,
-                  applicationNumber: app.applicationNumber,
-                  createdAt: app.createdAt,
-                  title: app.jobId?.title || 'Unknown Job',
-                  status: app.status,
-                  color: app.statusColor,
-                  isBlocked: app.isBlocked || false,
-                  blockedBy: app.blockedBy || null,
-                  blockedAt: app.blockedAt || null,
-                  date: new Date(app.createdAt).toLocaleDateString(),
-                  screeningAnswers: app.screeningAnswers || [],
-                  resume: app.resume || emp.resume || emp.documents?.resume || '',
-                  coverLetter: app.coverLetter || emp.coverLetter || emp.documents?.coverLetter || '',
-                  introVideo: app.introVideo || emp.introVideo || emp.documents?.introVideo || '',
-                });
-                
-                // Update last active date to most recent application
-                if (new Date(app.createdAt) > new Date(candidatesMap[emp._id].date)) {
-                  candidatesMap[emp._id].date = new Date(app.createdAt).toLocaleDateString();
-                }
-              } catch (err) {
-                console.error("Error processing application:", app, err);
-              }
-            });
-            
-            setCandidates(Object.values(candidatesMap));
-          }
-        } else {
-          // Employee or Public
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs`);
-          const data = await res.json();
-          if (data.success) {
-            setJobs(data.data.map(job => ({ ...job, id: job._id })));
-          }
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/employee/jobs`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const formatted = data.data.map(job => ({ ...job, id: job._id }));
+          setHomepageJobs(formatted);
         }
-      } catch (e) {
-        console.error("Error fetching data:", e);
+      } catch (err) {
+        console.error("Failed to fetch public homepage jobs:", err);
       }
     };
-    fetchData();
-  }, [userRole, isLoggedIn]);
+    fetchPublicJobs();
+  }, [isLoggedIn]);
+
+  // 2. Fetch employer jobs & applications if employer is logged in
+  useEffect(() => {
+    const fetchEmployerData = async () => {
+      const token = localStorage.getItem('employerToken');
+      if (!token) return;
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/employer/jobs`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setEmployerJobs(data.data.map(job => ({ ...job, id: job._id })));
+        }
+        
+        const appRes = await fetch(`${apiUrl}/api/employer/jobs/applications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const appData = await appRes.json();
+        if (appData.success && Array.isArray(appData.data)) {
+          const candidatesMap = {};
+          
+          appData.data.forEach(app => {
+            try {
+              const emp = app.employeeId;
+              if (!emp || !app.jobId) return;
+              if (!candidatesMap[emp._id]) {
+                candidatesMap[emp._id] = {
+                  id: emp._id,
+                  name: emp.name || 'Unknown Candidate',
+                  email: emp.email,
+                  phone: emp.mobile,
+                  mobile: emp.mobile,
+                  location: emp.location,
+                  initials: emp.name ? emp.name.charAt(0).toUpperCase() : 'C',
+                  bg: 'bg-green-600',
+                  date: new Date(app.createdAt).toLocaleDateString(),
+                  createdAt: emp.createdAt || emp.registrationDate || app.createdAt,
+                  registeredOn: emp.createdAt || emp.registrationDate || app.createdAt,
+                  history: [],
+                  brief: emp.brief || '',
+                  summary: emp.brief || (emp.professionalDetails && emp.professionalDetails.majorAchievements) || '',
+                  skills: (emp.professionalDetails && emp.professionalDetails.skills) ? emp.professionalDetails.skills.split(',').map(s => s.trim()) : [],
+                  experience: emp.experience || [],
+                  education: (emp.qualifications || []).map(q => ({
+                    degree: q.course || q.educationType || 'Degree',
+                    year: (q.startYear && q.endYear) ? `${q.startYear} - ${q.endYear}` : (q.endYear || 'Year'),
+                    institution: q.university || q.board || 'Institution'
+                  })),
+                  currentCTC: (emp.professionalDetails && emp.professionalDetails.currentSalary) || 'N/A',
+                  expectedCTC: (emp.professionalDetails && emp.professionalDetails.expectedSalary) || 'N/A',
+                  salaryType: (emp.professionalDetails && emp.professionalDetails.salaryType) || 'Yearly',
+                  industry: emp.industry || 'N/A',
+                  designation: emp.designation || 'N/A',
+                  totalExperience: emp.totalExperience || 'N/A',
+                  preferredLocation: emp.preferredLocation || 'N/A',
+                  resume: emp.resume || emp.documents?.resume || '',
+                  coverLetter: emp.coverLetter || emp.documents?.coverLetter || '',
+                  introVideo: emp.introVideo || emp.documents?.introVideo || '',
+                  documents: emp.documents || {
+                    resume: emp.resume || '',
+                    coverLetter: emp.coverLetter || '',
+                    introVideo: emp.introVideo || '',
+                  },
+                  qualifications: emp.qualifications || [],
+                  isFresher: emp.isFresher ?? (emp.totalExperience === '0' || emp.totalExperience === 'Fresher'),
+                  professionalDetails: emp.professionalDetails || {},
+                };
+              }
+              
+              candidatesMap[emp._id].history.push({
+                appId: app._id,
+                applicationNumber: app.applicationNumber,
+                createdAt: app.createdAt,
+                title: app.jobId?.title || 'Unknown Job',
+                status: app.status,
+                color: app.statusColor,
+                isBlocked: app.isBlocked || false,
+                blockedBy: app.blockedBy || null,
+                blockedAt: app.blockedAt || null,
+                date: new Date(app.createdAt).toLocaleDateString(),
+                screeningAnswers: app.screeningAnswers || [],
+                resume: app.resume || emp.resume || emp.documents?.resume || '',
+                coverLetter: app.coverLetter || emp.coverLetter || emp.documents?.coverLetter || '',
+                introVideo: app.introVideo || emp.introVideo || emp.documents?.introVideo || '',
+              });
+              
+              if (new Date(app.createdAt) > new Date(candidatesMap[emp._id].date)) {
+                candidatesMap[emp._id].date = new Date(app.createdAt).toLocaleDateString();
+              }
+            } catch (err) {
+              console.error("Error processing application:", app, err);
+            }
+          });
+          
+          setCandidates(Object.values(candidatesMap));
+        }
+      } catch (e) {
+        console.error("Error fetching employer data:", e);
+      }
+    };
+    fetchEmployerData();
+  }, [userRole, isLoggedIn, location.pathname]);
 
   const addJob = (newJob) => {
-    setJobs(prev => [newJob, ...prev]);
+    const formatted = { ...newJob, id: newJob._id || newJob.id };
+    setEmployerJobs(prev => [formatted, ...prev]);
+    setHomepageJobs(prev => [formatted, ...prev]);
+    setJobs(prev => [formatted, ...prev]);
   };
 
   const updateJob = (updatedJob) => {
+    const formatted = { ...updatedJob, id: updatedJob._id || updatedJob.id };
+    setEmployerJobs(prev => prev.map(job =>
+      job.id === formatted.id ? formatted : job
+    ));
+    setHomepageJobs(prev => prev.map(job =>
+      job.id === formatted.id ? formatted : job
+    ));
     setJobs(prev => prev.map(job =>
-      job.id === updatedJob._id || job.id === updatedJob.id
-        ? { ...updatedJob, id: updatedJob._id || updatedJob.id }
-        : job
+      job.id === formatted.id ? formatted : job
     ));
   };
 
   const toggleJobStatus = async (jobId) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/jobs/${jobId}/status`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employer/jobs/${jobId}/status`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
       });
       const data = await res.json();
       if (data.success) {
-        setJobs(prevJobs => prevJobs.map(job => 
+        const updater = prevJobs => prevJobs.map(job => 
           job.id === jobId ? { ...job, status: data.data.status, statusColor: data.data.statusColor } : job
-        ));
+        );
+        setEmployerJobs(updater);
+        setHomepageJobs(updater);
+        setJobs(updater);
       }
     } catch (e) {
       console.error(e);
@@ -463,7 +490,8 @@ function App() {
     navigate('/employer');
   };
 
-  const filteredHomepageJobs = jobs.filter(job => {
+  const jobsToDisplay = homepageJobs.length > 0 ? homepageJobs : jobs;
+  const filteredHomepageJobs = jobsToDisplay.filter(job => {
     const matchTitle = !searchJobTitle || job.title.toLowerCase().includes(searchJobTitle.toLowerCase()) || job.company.toLowerCase().includes(searchJobTitle.toLowerCase());
     const matchLocation = isLocationMatch(job.location, searchLocation, job.details?.workLocation);
     return matchTitle && matchLocation;
@@ -829,7 +857,7 @@ function App() {
           element={
             isLoggedIn && userRole === 'employer' ? (
               <EmployerDashboard 
-                jobs={jobs} 
+                jobs={employerJobs} 
                 addJob={addJob}
                 updateJob={updateJob}
                 candidates={candidates}
