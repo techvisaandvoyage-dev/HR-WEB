@@ -3509,6 +3509,39 @@ export default function DashboardOverview({ onNavigateTab }) {
                               </div>
 
                               <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Job ID</span>
+                                <span className="font-mono text-xs font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded border border-gray-200 inline-block">
+                                  {firstTouchJob._id || 'N/A'}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Posted By Employer</span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-gray-900 text-xs">
+                                    {employer?.companyName || firstTouchJob.company || 'N/A'}
+                                  </span>
+                                  {employer?.fullName && (
+                                    <span className="text-[11px] text-gray-500 font-medium">
+                                      ({employer.fullName})
+                                    </span>
+                                  )}
+                                  {employer?.isConsultant && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      Consultant
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Employer ID</span>
+                                <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                                  {employer?.employerId ? `#${employer.employerId}` : (employer?._id || firstTouchJob.employerId || 'N/A')}
+                                </span>
+                              </div>
+
+                              <div>
                                 <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Location</span>
                                 <span className="font-bold text-gray-900 text-xs flex items-center gap-1">
                                   <MapPin className="w-3 h-3 text-emerald-600" />
@@ -3538,7 +3571,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                               <div>
                                 <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Posted On</span>
                                 <span className="font-bold text-gray-900 text-xs">
-                                  {firstTouchJob.createdAt ? new Date(firstTouchJob.createdAt).toLocaleDateString() : 'N/A'}
+                                  {(firstTouchJob.createdAt || firstTouchJob.postedDate) ? new Date(firstTouchJob.createdAt || firstTouchJob.postedDate).toLocaleDateString() : 'N/A'}
                                 </span>
                               </div>
 
@@ -3601,7 +3634,21 @@ export default function DashboardOverview({ onNavigateTab }) {
                           <div className="grid grid-cols-2 gap-y-3.5 gap-x-4">
                             <div>
                               <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Company Name</span>
-                              <span className="font-bold text-gray-900 text-xs">{employer.companyName || jobSnapshot.companyName || 'N/A'}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-gray-900 text-xs">{employer.companyName || jobSnapshot.companyName || 'N/A'}</span>
+                                {employer.isConsultant && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    Consultant
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Employer ID</span>
+                              <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                                {employer.employerId ? `#${employer.employerId}` : (employer._id || 'N/A')}
+                              </span>
                             </div>
 
                             <div>

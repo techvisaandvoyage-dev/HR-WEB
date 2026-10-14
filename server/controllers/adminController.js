@@ -277,12 +277,15 @@ exports.getEmployeeById = async (req, res) => {
       firstTouchJob = {
         _id: job._id,
         title: job.title || employee.acquisition?.jobSnapshot?.title || 'Job Opening',
+        company: job.company || employee.acquisition?.jobSnapshot?.companyName || '',
+        employerId: job.employerId || null,
         descriptionSummary: job.details?.aboutRole || job.details?.responsibilities || job.details?.skillsRequired || 'No role summary provided.',
         location: job.location || 'Not specified',
         salaryRange: job.salary || (job.details?.salary ? `${job.details.salary} ${job.details.salaryType || ''}` : 'Not specified'),
         jobType: job.details?.employmentType || 'Full-time',
         status: job.status || 'Active',
         postedDate: job.createdAt || null,
+        createdAt: job.createdAt || null,
         publicJobUrl: `/apply-job/${job._id}`,
         applicantsCount: job.applications || 0,
         isDeleted: false
@@ -291,12 +294,15 @@ exports.getEmployeeById = async (req, res) => {
       firstTouchJob = {
         _id: null,
         title: employee.acquisition?.jobSnapshot?.title || 'Job no longer available',
+        company: employee.acquisition?.jobSnapshot?.companyName || '',
+        employerId: null,
         descriptionSummary: 'This job posting was archived or removed.',
         location: 'N/A',
         salaryRange: 'N/A',
         jobType: 'N/A',
         status: 'Closed',
         postedDate: null,
+        createdAt: null,
         publicJobUrl: null,
         applicantsCount: 0,
         isDeleted: true
@@ -305,11 +311,18 @@ exports.getEmployeeById = async (req, res) => {
 
     // Format employer details
     let employer = null;
-    if (employee.acquisition?.firstTouchEmployer) {
-      const empr = employee.acquisition.firstTouchEmployer;
+    let empr = employee.acquisition?.firstTouchEmployer;
+    if (!empr && employee.acquisition?.firstTouchJob?.employerId) {
+      const Employer = require('../employer/models/Employer');
+      empr = await Employer.findById(employee.acquisition.firstTouchJob.employerId).lean();
+    }
+    if (empr) {
       const totalJobs = await Job.countDocuments({ employerId: empr._id });
       employer = {
         _id: empr._id,
+        employerId: empr.employerId || null,
+        isConsultant: empr.isConsultant || false,
+        fullName: empr.fullName || 'Recruiter',
         companyName: empr.companyName || employee.acquisition?.jobSnapshot?.companyName || empr.fullName || 'Company',
         contactPerson: empr.fullName || 'Recruiter',
         email: empr.email || '',
@@ -322,6 +335,9 @@ exports.getEmployeeById = async (req, res) => {
     } else if (employee.acquisition?.sourceType === 'job_link') {
       employer = {
         _id: null,
+        employerId: null,
+        isConsultant: false,
+        fullName: 'N/A',
         companyName: employee.acquisition?.jobSnapshot?.companyName || 'Employer record no longer available',
         contactPerson: 'N/A',
         email: '',
