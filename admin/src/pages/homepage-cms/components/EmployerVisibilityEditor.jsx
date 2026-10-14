@@ -100,6 +100,13 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
       const data = await res.json();
       if (data.success) {
         setGlobalCardVisible(newVisible);
+        // Also update /api/homepage so both stay strictly in sync
+        fetch(`${API_URL}/api/homepage`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hidePostedByCardGlobally: !newVisible })
+        }).catch(e => console.warn('Sync to homepage error:', e));
+
         showToast(newVisible ? 'Website-wide Recruiter Card ENABLED (Visible on job posts)' : 'Website-wide Recruiter Card DISABLED (Hidden on job posts)');
       } else {
         alert(data.message || 'Failed to update visibility setting');
@@ -120,7 +127,7 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
     }));
   };
 
-  // Save Settings Function for Match Banner
+  // Save Settings Function for Match Banner & Recruiter Card Visibility
   const handleSaveBannerConfig = async () => {
     try {
       setSaving(true);
@@ -137,14 +144,23 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
         step6: bannerConfig
       };
 
+      // 1. Save to homepage config
       const res = await fetch(`${API_URL}/api/homepage`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employerPostJob: updatedEmployerPostJob,
-          jobMatchBanner: bannerConfig
+          jobMatchBanner: bannerConfig,
+          hidePostedByCardGlobally: !globalCardVisible
         })
       });
+
+      // 2. Also save to site-settings directly for immediate global effect
+      await fetch(`${API_URL}/api/admin/site-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hidePostedByCardGlobally: !globalCardVisible })
+      }).catch(err => console.warn('Could not update site-settings directly:', err));
 
       const data = await res.json();
       if (data.success) {
@@ -237,21 +253,29 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                 </div>
               </div>
 
-              {/* Match Banner Toggle */}
-              <div className="flex items-center gap-2.5 bg-gray-50 px-3.5 py-1.5 rounded-xl border border-gray-200">
-                <span className="text-xs font-bold text-gray-700">
-                  {bannerConfig?.enabled !== false ? 'Active' : 'Disabled'}
-                </span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={bannerConfig?.enabled !== false}
-                    onChange={(e) => handleBannerPropChange('enabled', e.target.checked)}
-                    className="sr-only peer"
+              {/* Match Banner Master Toggle */}
+              <button
+                type="button"
+                onClick={() => handleBannerPropChange('enabled', bannerConfig?.enabled === false ? true : false)}
+                className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer font-bold text-xs ${
+                  bannerConfig?.enabled !== false
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                    : 'bg-gray-100 border-gray-300 text-gray-500'
+                }`}
+              >
+                <span>{bannerConfig?.enabled !== false ? 'Active' : 'Disabled'}</span>
+                <div
+                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    bannerConfig?.enabled !== false ? 'bg-emerald-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      bannerConfig?.enabled !== false ? 'translate-x-4' : 'translate-x-0'
+                    }`}
                   />
-                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                </label>
-              </div>
+                </div>
+              </button>
             </div>
 
             {/* Banner Title & Subtitle Texts */}
@@ -330,15 +354,18 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                     <label className="text-xs font-bold text-gray-800">Designation Chip Text</label>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={bannerConfig?.showDesignationChip !== false}
-                      onChange={(e) => handleBannerPropChange('showDesignationChip', e.target.checked)}
-                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>Show Chip</span>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleBannerPropChange('showDesignationChip', bannerConfig?.showDesignationChip === false ? true : false)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                      bannerConfig?.showDesignationChip !== false
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                        : 'bg-gray-100 text-gray-400 border-gray-200'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${bannerConfig?.showDesignationChip !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                    <span>{bannerConfig?.showDesignationChip !== false ? '✓ Show Chip' : 'Hidden'}</span>
+                  </button>
                 </div>
                 <input
                   type="text"
@@ -356,15 +383,18 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                     <label className="text-xs font-bold text-gray-800">Skills Chip Text</label>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={bannerConfig?.showSkillsChip !== false}
-                      onChange={(e) => handleBannerPropChange('showSkillsChip', e.target.checked)}
-                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>Show Chip</span>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleBannerPropChange('showSkillsChip', bannerConfig?.showSkillsChip === false ? true : false)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                      bannerConfig?.showSkillsChip !== false
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                        : 'bg-gray-100 text-gray-400 border-gray-200'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${bannerConfig?.showSkillsChip !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                    <span>{bannerConfig?.showSkillsChip !== false ? '✓ Show Chip' : 'Hidden'}</span>
+                  </button>
                 </div>
                 <input
                   type="text"
@@ -382,15 +412,18 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                     <label className="text-xs font-bold text-gray-800">Industry Fit Chip Text</label>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={bannerConfig?.showIndustryChip !== false}
-                      onChange={(e) => handleBannerPropChange('showIndustryChip', e.target.checked)}
-                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>Show Chip</span>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleBannerPropChange('showIndustryChip', bannerConfig?.showIndustryChip === false ? true : false)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                      bannerConfig?.showIndustryChip !== false
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                        : 'bg-gray-100 text-gray-400 border-gray-200'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${bannerConfig?.showIndustryChip !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                    <span>{bannerConfig?.showIndustryChip !== false ? '✓ Show Chip' : 'Hidden'}</span>
+                  </button>
                 </div>
                 <input
                   type="text"
@@ -409,15 +442,18 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                   <Award className="w-4 h-4 text-emerald-600" />
                   Job Card List Badge
                 </h4>
-                <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={bannerConfig?.cardBadgeEnabled !== false}
-                    onChange={(e) => handleBannerPropChange('cardBadgeEnabled', e.target.checked)}
-                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span>Show on Job Cards</span>
-                </label>
+                <button
+                  type="button"
+                  onClick={() => handleBannerPropChange('cardBadgeEnabled', bannerConfig?.cardBadgeEnabled === false ? true : false)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                    bannerConfig?.cardBadgeEnabled !== false
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      : 'bg-gray-100 text-gray-400 border-gray-200'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${bannerConfig?.cardBadgeEnabled !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
+                  <span>{bannerConfig?.cardBadgeEnabled !== false ? '✓ Show on Job Cards' : 'Hidden on Job Cards'}</span>
+                </button>
               </div>
 
               <div>

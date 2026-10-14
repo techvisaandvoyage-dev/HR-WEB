@@ -180,8 +180,8 @@ exports.getAllEmployees = async (req, res) => {
 
     const employees = await Employee.find(query)
       .select('-password')
-      .populate('acquisition.firstTouchJob', 'title company location status salary createdAt')
-      .populate('acquisition.firstTouchEmployer', 'companyName fullName email mobile location')
+      .populate('acquisition.firstTouchJob', 'title company location status salary createdAt employerId')
+      .populate('acquisition.firstTouchEmployer', 'employerId companyName fullName email mobile location isConsultant')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -209,7 +209,8 @@ exports.getAllEmployees = async (req, res) => {
           _id: job._id,
           title: job.title,
           status: job.status,
-          location: job.location
+          location: job.location,
+          employerId: job.employerId || null
         } : (acq.jobSnapshot?.title ? {
           _id: null,
           title: acq.jobSnapshot.title,
@@ -218,9 +219,16 @@ exports.getAllEmployees = async (req, res) => {
         } : null),
         firstTouchEmployer: employer ? {
           _id: employer._id,
-          companyName: employer.companyName || employer.fullName
+          employerId: employer.employerId || null,
+          companyName: employer.companyName || employer.fullName,
+          fullName: employer.fullName,
+          email: employer.email,
+          mobile: employer.mobile,
+          location: employer.location,
+          isConsultant: employer.isConsultant || false
         } : (acq.jobSnapshot?.companyName ? {
           _id: null,
+          employerId: null,
           companyName: acq.jobSnapshot.companyName,
           isDeleted: true
         } : null),
@@ -311,10 +319,11 @@ exports.getEmployeeById = async (req, res) => {
 
     // Format employer details
     let employer = null;
-    let empr = employee.acquisition?.firstTouchEmployer;
-    if (!empr && employee.acquisition?.firstTouchJob?.employerId) {
-      const Employer = require('../employer/models/Employer');
-      empr = await Employer.findById(employee.acquisition.firstTouchJob.employerId).lean();
+    const Employer = require('../employer/models/Employer');
+    const emprTargetId = employee.acquisition?.firstTouchEmployer?._id || employee.acquisition?.firstTouchEmployer || employee.acquisition?.firstTouchJob?.employerId;
+    let empr = null;
+    if (emprTargetId) {
+      empr = await Employer.findById(emprTargetId).lean();
     }
     if (empr) {
       const totalJobs = await Job.countDocuments({ employerId: empr._id });
@@ -322,6 +331,8 @@ exports.getEmployeeById = async (req, res) => {
         _id: empr._id,
         employerId: empr.employerId || null,
         isConsultant: empr.isConsultant || false,
+        accountType: empr.accountType || (empr.isConsultant ? 'consultant' : 'company'),
+        hiringFor: empr.hiringFor || (empr.isConsultant ? 'consultant' : 'employer'),
         fullName: empr.fullName || 'Recruiter',
         companyName: empr.companyName || employee.acquisition?.jobSnapshot?.companyName || empr.fullName || 'Company',
         contactPerson: empr.fullName || 'Recruiter',
@@ -329,6 +340,8 @@ exports.getEmployeeById = async (req, res) => {
         phone: empr.mobile || '',
         website: empr.website || '',
         location: empr.location || '',
+        totalJobs: totalJobs,
+        activeJobs: totalJobs,
         totalJobsPosted: totalJobs,
         isDeleted: false
       };

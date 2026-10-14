@@ -16,7 +16,10 @@ export const isIndiaAnywhereQuery = (query = '') => {
     q === 'anywhere in india/multiple locations' ||
     q === 'india' ||
     q === 'pan india' ||
-    q === 'all india'
+    q === 'all india' ||
+    q === 'in india' ||
+    q === 'anywhere india' ||
+    q.includes('anywhere in india')
   );
 };
 
@@ -31,7 +34,12 @@ export const isJobInIndia = (jobLocation = '', workLocation = '') => {
   }
 
   // If location explicitly includes an international country/city without mentioning India
-  const isInternational = NON_INDIA_LOCATIONS.some((intl) => loc.includes(intl));
+  const fullLocText = `${loc} ${workLoc}`;
+  const isInternational = NON_INDIA_LOCATIONS.some((intl) => {
+    // Word boundary check to avoid false positives (e.g. "uk" matching "lucknow")
+    const regex = new RegExp(`(^|[^a-zA-Z])${intl}([^a-zA-Z]|$)`, 'i');
+    return regex.test(fullLocText);
+  });
   if (isInternational) {
     return false;
   }

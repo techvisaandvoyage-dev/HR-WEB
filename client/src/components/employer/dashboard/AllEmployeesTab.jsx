@@ -122,6 +122,11 @@ const AllEmployeesTab = ({ portalConfig }) => {
   const hasActiveFilters = searchQuery || experienceFilter !== 'All' || industryFilter !== 'All' || locationFilter !== 'All' || preferredLocationFilter || lastUpdateFilter !== 'All';
 
   const filteredEmployees = employees.filter(emp => {
+    // Completely hide candidate row if profile is private and candidate has not applied to this employer
+    if (Boolean(emp.isPrivate || (emp.isProfilePrivate && !emp.appliedToYou))) {
+      return false;
+    }
+
     // Search Filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();

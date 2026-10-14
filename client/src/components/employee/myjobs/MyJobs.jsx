@@ -14,7 +14,13 @@ const MyJobs = ({ jobs = [] }) => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
-  const [savedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
+  const [savedJobs, setSavedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
+
+  const handleToggleSave = (jobId) => {
+    const updated = savedJobs.filter(id => String(id) !== String(jobId));
+    setSavedJobs(updated);
+    setEmployeeStoredValue('savedJobs', updated);
+  };
 
   const [appliedJobs, setAppliedJobs] = useState(() => getEmployeeStoredValue('appliedJobs', []));
 
@@ -159,12 +165,16 @@ const MyJobs = ({ jobs = [] }) => {
                             <span>Job closed</span>
                           </div>
                         ) : (
-                          <button onClick={(e) => { e.stopPropagation(); setSelectedJob(job); setIsApplicationModalOpen(true); }} className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition-colors text-[15px]">
+                          <button onClick={(e) => { e.stopPropagation(); setSelectedJob(job); setIsApplicationModalOpen(true); }} className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-lg transition-colors text-[15px] cursor-pointer shadow-xs">
                             Apply now
                           </button>
                         )
                       )}
-                      <button className="text-gray-900 hover:text-black">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleToggleSave(job.id); }}
+                        title="Remove from saved jobs"
+                        className="text-emerald-700 hover:text-emerald-800 cursor-pointer p-1 rounded-lg hover:bg-emerald-50 transition-colors"
+                      >
                         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
                         </svg>

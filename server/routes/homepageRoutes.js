@@ -9,7 +9,23 @@ router.get('/', async (req, res) => {
     if (!config) {
       config = await HomepageConfig.create({});
     }
-    res.json({ success: true, data: config });
+    const plainConfig = toPlain(config);
+
+    // Also include hidePostedByCardGlobally from SiteSettings
+    try {
+      const SiteSettings = require('../models/SiteSettings');
+      const settings = await SiteSettings.findOne();
+      plainConfig.hidePostedByCardGlobally = Boolean(settings?.hidePostedByCardGlobally);
+    } catch (e) {
+      plainConfig.hidePostedByCardGlobally = false;
+    }
+
+    // Ensure jobMatchBanner is populated from step6 or fallback
+    if (!plainConfig.jobMatchBanner && plainConfig.employerPostJob?.step6) {
+      plainConfig.jobMatchBanner = plainConfig.employerPostJob.step6;
+    }
+
+    res.json({ success: true, data: plainConfig });
   } catch (error) {
     console.error('Error fetching homepage config:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -29,6 +45,30 @@ router.put('/', async (req, res) => {
     const updateData = { ...req.body };
     delete updateData._id;
     delete updateData.__v;
+
+    // Synchronize hidePostedByCardGlobally to SiteSettings and all Employer documents if provided
+    if (typeof updateData.hidePostedByCardGlobally !== 'undefined') {
+      try {
+        const SiteSettings = require('../models/SiteSettings');
+        const Employer = require('../employer/models/Employer');
+        await SiteSettings.findOneAndUpdate(
+          {},
+          { $set: { hidePostedByCardGlobally: Boolean(updateData.hidePostedByCardGlobally) } },
+          { upsert: true }
+        );
+        await Employer.updateMany({}, { $set: { hidePostedByCard: Boolean(updateData.hidePostedByCardGlobally) } });
+      } catch (siteErr) {
+        console.warn('Could not sync hidePostedByCardGlobally to SiteSettings/Employers:', siteErr.message);
+      }
+    }
+
+    // Ensure jobMatchBanner is also synced into employerPostJob.step6
+    if (updateData.jobMatchBanner) {
+      if (!updateData.employerPostJob) updateData.employerPostJob = {};
+      updateData.employerPostJob.step6 = updateData.jobMatchBanner;
+    } else if (updateData.employerPostJob?.step6) {
+      updateData.jobMatchBanner = updateData.employerPostJob.step6;
+    }
 
     // Synchronize daily job post limit to consultantPostJob if provided in employerPostJob
     if (updateData.employerPostJob && updateData.employerPostJob.dailyJobLimit) {

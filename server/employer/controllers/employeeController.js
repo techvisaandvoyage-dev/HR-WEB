@@ -26,34 +26,9 @@ exports.getAllEmployees = async (req, res) => {
       const empIdStr = (e._id || '').toString();
       const hasApplied = appliedEmployeeIds.has(empIdStr);
 
-      // Check if profile is private and candidate has NOT applied to this employer
-      if (e.isProfilePrivate && !hasApplied) {
-        return {
-          _id: e._id,
-          candidateId: e.candidateId,
-          name: e.name,
-          avatar: e.avatar,
-          createdAt: e.createdAt,
-          updatedAt: e.updatedAt,
-          isProfilePrivate: true,
-          isPrivate: true,
-          appliedToYou: false,
-          // Masked/Hidden fields
-          email: '',
-          mobile: '',
-          location: '',
-          preferredLocation: '',
-          designation: '',
-          industry: '',
-          totalExperience: '',
-          brief: '',
-          resume: '',
-          coverLetter: '',
-          introVideo: '',
-          qualifications: [],
-          experience: [],
-          professionalDetails: {}
-        };
+      // Completely hide candidate row if profile is private/hidden and candidate has NOT applied to this employer
+      if ((e.isProfilePrivate || e.isPrivate) && !hasApplied) {
+        return null;
       }
 
       if (e.videoVisibility === 'applied' && !hasApplied) {
@@ -63,7 +38,7 @@ exports.getAllEmployees = async (req, res) => {
       e.isPrivate = false;
       e.appliedToYou = hasApplied;
       return e;
-    });
+    }).filter(Boolean);
 
     res.status(200).json({
       success: true,

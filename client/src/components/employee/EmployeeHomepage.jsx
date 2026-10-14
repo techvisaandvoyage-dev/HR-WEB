@@ -231,9 +231,38 @@ const computeJobMatch = (job, candidateProfile) => {
 };
 
 const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
+  const [internalJobs, setInternalJobs] = useState(jobs);
+
+  useEffect(() => {
+    if (jobs && jobs.length > 0) {
+      setInternalJobs(jobs);
+    }
+  }, [jobs]);
+
+  useEffect(() => {
+    if (!jobs || jobs.length === 0) {
+      const fetchDirectJobs = async () => {
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const res = await fetch(`${apiUrl}/api/employee/jobs`);
+          const data = await res.json();
+          if (data.success && Array.isArray(data.data)) {
+            const formatted = data.data.map(job => ({ ...job, id: job._id }));
+            setInternalJobs(formatted);
+          }
+        } catch (err) {
+          console.error("Failed to fetch jobs in EmployeeHomepage fallback:", err);
+        }
+      };
+      fetchDirectJobs();
+    }
+  }, [jobs]);
+
+  const effectiveJobs = (jobs && jobs.length > 0) ? jobs : internalJobs;
+
   const location = useLocation();
   const navigate = useNavigate();
-  const [selectedJobId, setSelectedJobId] = useState(location.state?.selectedJobId || (jobs.length > 0 ? jobs[0].id : null));
+  const [selectedJobId, setSelectedJobId] = useState(location.state?.selectedJobId || (effectiveJobs.length > 0 ? (effectiveJobs[0].id || effectiveJobs[0]._id) : null));
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
   const [showToast, setShowToast] = useState(location.state?.profileCreated || location.state?.loggedIn || false);
@@ -276,6 +305,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     syncProfileFromBackend();
   }, []);
 
+  const [hidePostedByCardGlobally, setHidePostedByCardGlobally] = useState(false);
   const [matchBannerConfig, setMatchBannerConfig] = useState({
     enabled: true,
     headerPrefix: 'MATCHED FOR',
@@ -300,8 +330,13 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
           if (json.data.profilePromptModal) {
             setProfileModalConfig(json.data.profilePromptModal);
           }
-          if (json.data.employerPostJob?.step6) {
+          if (json.data.jobMatchBanner) {
+            setMatchBannerConfig(prev => ({ ...prev, ...json.data.jobMatchBanner }));
+          } else if (json.data.employerPostJob?.step6) {
             setMatchBannerConfig(prev => ({ ...prev, ...json.data.employerPostJob.step6 }));
+          }
+          if (typeof json.data.hidePostedByCardGlobally !== 'undefined') {
+            setHidePostedByCardGlobally(Boolean(json.data.hidePostedByCardGlobally));
           }
         }
       } catch (err) {
@@ -347,7 +382,13 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const activeJobs = jobs.filter(job => job.status !== 'Closed');
+  const activeJobs = effectiveJobs.filter(job => job.status !== 'Closed');
+
+  useEffect(() => {
+    if (!selectedJobId && activeJobs.length > 0) {
+      setSelectedJobId(activeJobs[0].id || activeJobs[0]._id);
+    }
+  }, [activeJobs, selectedJobId]);
 
   const [filters, setFilters] = useState({
     keyword: '',
@@ -694,7 +735,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                   }`}
                 >
                   {/* Smart Designation Match Badge */}
-                  {job._match?.isMatched && matchBannerConfig.cardBadgeEnabled !== false && (
+                  {matchBannerConfig.enabled !== false && matchBannerConfig.cardBadgeEnabled !== false && job._match?.isMatched && (
                     <div className="mb-3 flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-emerald-100">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -718,13 +759,6 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       <div>
                         <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
                           <span>{job.company}</span>
-                          {job.rating && <span className="text-xs text-gray-500">{job.rating}★</span>}
-                          {job.employerId?.isConsultant === true && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              <svg className="w-2.5 h-2.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
-                              Consultant
-                            </span>
-                          )}
                         </h4>
                         <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">{job.title}</h3>
                         <p className="text-xs text-gray-600 mt-1">
@@ -803,12 +837,6 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <h2 className="text-xl font-semibold text-gray-900">{selectedJob.company}</h2>
-                            {selectedJob.employerId?.isConsultant === true && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
-                                <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
-                                Consultant
-                              </span>
-                            )}
                           </div>
                         </div>
                         <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center transition-colors">
@@ -911,7 +939,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       </div>
 
                       {/* Analytics Card (Desktop) */}
-                      {!selectedJob.employerId?.hidePostedByCard && (
+                      {!hidePostedByCardGlobally && !selectedJob.employerId?.hidePostedByCard && (
                         <div className="mt-8 pt-6 border-t border-gray-100">
                           <div className="p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
                             <div className="mb-4">
@@ -977,7 +1005,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                               selectedJob.companyInitial
                             )}
                           </div>
-                          <div>
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h2 className="text-xl font-medium text-gray-900">{selectedJob.company}</h2>
                           </div>
                         </div>
@@ -1047,7 +1075,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       )}
 
                       {/* Analytics Card (Mobile) */}
-                      {!selectedJob.employerId?.hidePostedByCard && (
+                      {!hidePostedByCardGlobally && !selectedJob.employerId?.hidePostedByCard && (
                         <div className="mt-6 pt-6 border-t border-gray-100">
                           <div className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
                             <div className="mb-4">

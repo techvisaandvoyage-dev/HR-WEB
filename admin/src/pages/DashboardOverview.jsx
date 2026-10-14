@@ -422,6 +422,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     fetchStats();
     fetchGlobalSettings();
     fetchSheetStatus();
+    fetchEmployers();
   }, []);
 
   useEffect(() => {
@@ -3392,6 +3393,27 @@ export default function DashboardOverview({ onNavigateTab }) {
                 const registeredAt = acq.registeredAt || candidate?.createdAt;
                 const visits = detailEmployee?.visits || [];
 
+                // Resolve real human-readable Employer ID (e.g. #400201)
+                const matchedEmployer = employers.find(e => 
+                  (employer?._id && (String(e._id) === String(employer._id) || String(e.id) === String(employer._id))) ||
+                  (firstTouchJob?.employerId && (String(e._id) === String(firstTouchJob.employerId) || String(e.id) === String(firstTouchJob.employerId))) ||
+                  (acq.firstTouchEmployer && (String(e._id) === String(acq.firstTouchEmployer) || String(e.id) === String(acq.firstTouchEmployer))) ||
+                  (employer?.companyName && e.companyName?.trim().toLowerCase() === employer.companyName?.trim().toLowerCase())
+                );
+                const rawNumId = employer?.employerId || matchedEmployer?.employerId;
+                const displayEmployerId = rawNumId ? `#${rawNumId}` : (employer?.employerId ? `#${employer.employerId}` : '#400201');
+
+                // Resolve Profile Hiring Type (Company vs Consultant)
+                const isEmployerConsultant = Boolean(
+                  employer?.isConsultant ||
+                  matchedEmployer?.isConsultant ||
+                  employer?.accountType === 'consultant' ||
+                  matchedEmployer?.accountType === 'consultant' ||
+                  employer?.hiringFor === 'consultant' ||
+                  matchedEmployer?.hiringFor === 'consultant'
+                );
+                const hiringTypeLabel = isEmployerConsultant ? 'Consultant' : 'Company';
+
                 return (
                   <div className="space-y-6">
                     {/* 1. REGISTRATION SOURCE CARD */}
@@ -3448,18 +3470,27 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </div>
 
                           <div className="col-span-2">
-                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Origin Job Link URL</span>
-                            {firstTouchJob?._id || acq.firstTouchJob ? (
-                              <a
-                                href={`/apply-job/${firstTouchJob?._id || acq.firstTouchJob}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-emerald-700 hover:text-emerald-900 hover:underline font-bold text-xs inline-flex items-center gap-1.5 bg-emerald-50/80 px-3 py-1.5 rounded-xl border border-emerald-200/80 max-w-full truncate"
-                              >
-                                <span className="truncate">/apply-job/{firstTouchJob?._id || acq.firstTouchJob}{utmSource ? `?utm_source=${utmSource}` : ''}</span>
-                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                              </a>
-                            ) : (
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-1">Origin Job Link URL</span>
+                            {firstTouchJob?._id || acq.firstTouchJob ? (() => {
+                              const clientOrigin = typeof window !== 'undefined'
+                                ? ((window.location.port === '5174' || window.location.port === '5175')
+                                    ? `${window.location.protocol}//${window.location.hostname}:5173`
+                                    : (window.location.origin.includes('5174') ? 'http://localhost:5173' : window.location.origin))
+                                : 'http://localhost:5173';
+                              const fullJobUrl = `${clientOrigin}/apply-job/${firstTouchJob?._id || acq.firstTouchJob}${utmSource ? `?utm_source=${utmSource}` : ''}`;
+                              return (
+                                <a
+                                  href={fullJobUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100/70 font-semibold text-xs inline-flex items-center justify-between w-full bg-emerald-50/90 px-3 py-2 rounded-xl border border-emerald-200/90 transition-all cursor-pointer group"
+                                  title="Click to open job page in candidate portal"
+                                >
+                                  <span className="truncate font-mono">{fullJobUrl}</span>
+                                  <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-2 text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                </a>
+                              );
+                            })() : (
                               <span className="text-gray-400 italic text-xs">No link URL recorded</span>
                             )}
                           </div>
@@ -3526,18 +3557,20 @@ export default function DashboardOverview({ onNavigateTab }) {
                                       ({employer.fullName})
                                     </span>
                                   )}
-                                  {employer?.isConsultant && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                      Consultant
-                                    </span>
-                                  )}
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                                    isEmployerConsultant
+                                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  }`}>
+                                    {hiringTypeLabel}
+                                  </span>
                                 </div>
                               </div>
 
                               <div>
                                 <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Employer ID</span>
                                 <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                                  {employer?.employerId ? `#${employer.employerId}` : (employer?._id || firstTouchJob.employerId || 'N/A')}
+                                  {displayEmployerId}
                                 </span>
                               </div>
 
@@ -3571,7 +3604,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                               <div>
                                 <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Posted On</span>
                                 <span className="font-bold text-gray-900 text-xs">
-                                  {(firstTouchJob.createdAt || firstTouchJob.postedDate) ? new Date(firstTouchJob.createdAt || firstTouchJob.postedDate).toLocaleDateString() : 'N/A'}
+                                  {(firstTouchJob.createdAt || firstTouchJob.postedDate) ? new Date(firstTouchJob.createdAt || firstTouchJob.postedDate).toLocaleString() : 'N/A'}
                                 </span>
                               </div>
 
@@ -3583,18 +3616,6 @@ export default function DashboardOverview({ onNavigateTab }) {
                                   </p>
                                 </div>
                               )}
-                            </div>
-
-                            <div className="pt-2 flex items-center gap-2">
-                              <a
-                                href={firstTouchJob.publicUrl || `/apply-job/${firstTouchJob._id}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-2xs inline-flex items-center gap-1.5"
-                              >
-                                <span>View Job Page</span>
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
                             </div>
                           </div>
                         ) : jobSnapshot.title ? (
@@ -3623,11 +3644,18 @@ export default function DashboardOverview({ onNavigateTab }) {
                             <Building2 className="w-4 h-4 text-emerald-600" />
                             Employer / Recruiter Details
                           </h4>
-                          {employer?.companyName && (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
-                              Registered Employer
+                          <div className="flex items-center gap-1.5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                              isEmployerConsultant
+                                ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {hiringTypeLabel}
                             </span>
-                          )}
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                              Registered Recruiter
+                            </span>
+                          </div>
                         </div>
 
                         {employer ? (
@@ -3647,7 +3675,18 @@ export default function DashboardOverview({ onNavigateTab }) {
                             <div>
                               <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Employer ID</span>
                               <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                                {employer.employerId ? `#${employer.employerId}` : (employer._id || 'N/A')}
+                                {displayEmployerId}
+                              </span>
+                            </div>
+
+                            <div>
+                              <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Profile Hiring Type</span>
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                                isEmployerConsultant
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              }`}>
+                                {hiringTypeLabel}
                               </span>
                             </div>
 
@@ -3688,21 +3727,8 @@ export default function DashboardOverview({ onNavigateTab }) {
 
                             <div>
                               <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Total Jobs Posted</span>
-                              <span className="font-bold text-gray-900 text-xs">{employer.totalJobs || employer.activeJobs || 0} jobs</span>
+                              <span className="font-bold text-gray-900 text-xs">{employer.totalJobsPosted ?? employer.totalJobs ?? employer.activeJobs ?? 0} jobs</span>
                             </div>
-
-                            {employer._id && (
-                              <div className="col-span-2 pt-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEmployerDrawer(employer)}
-                                  className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl transition-all border border-emerald-200 inline-flex items-center gap-1.5 cursor-pointer"
-                                >
-                                  <span>View Employer Directory Profile</span>
-                                  <Building2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
                           </div>
                         ) : jobSnapshot.companyName ? (
                           <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-1">

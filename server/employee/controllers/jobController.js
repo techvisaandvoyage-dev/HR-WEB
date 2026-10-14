@@ -10,7 +10,7 @@ const googleSheetService = require('../../services/googleSheetService');
 exports.getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find({ status: 'Active' })
-      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics')
+      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo')
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: jobs });
   } catch (error) {
@@ -24,7 +24,7 @@ exports.getAllJobs = async (req, res) => {
 exports.getJobById = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
-      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics');
+      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo');
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
     }
