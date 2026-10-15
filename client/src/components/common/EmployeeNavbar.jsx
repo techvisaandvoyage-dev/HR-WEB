@@ -54,7 +54,7 @@ const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
 
 import { socket } from '../../utils/socket';
 
-const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters }) => {
+const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters, hideBottomNav = false }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   
@@ -342,58 +342,60 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
       </header>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[72px] z-[100] pb-safe">
-        {/* Home */}
-        <button onClick={() => navigate('/employee')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/employee' || currentPath === '/' ? 'text-green-600' : 'text-gray-500'}`}>
-          {(currentPath === '/employee' || currentPath === '/') && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
-          <svg className="w-6 h-6 mb-1" fill={(currentPath === '/employee' || currentPath === '/') ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={(currentPath === '/employee' || currentPath === '/') ? '0' : '1.5'}>
-            {(currentPath === '/employee' || currentPath === '/') ? (
-              <path fillRule="evenodd" d="M11.47 3.84a.75.75 0 011.06 0l8.99 9a.75.75 0 11-1.06 1.06l-1.46-1.46V20.25a.75.75 0 01-.75.75H14.5a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-2a.75.75 0 00-.75.75v4.5a.75.75 0 01-.75.75H5.25a.75.75 0 01-.75-.75V12.44L3.03 13.9a.75.75 0 11-1.06-1.06l8.99-9z" clipRule="evenodd" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-            )}
-          </svg>
-          <span className="text-[11px] font-medium">Home</span>
-        </button>
-
-        {/* My Jobs */}
-        <button onClick={() => navigate('/my-jobs')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/my-jobs' ? 'text-green-600' : 'text-gray-500'}`}>
-          {currentPath === '/my-jobs' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
-          <svg className="w-6 h-6 mb-1" fill={currentPath === '/my-jobs' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/my-jobs' ? '0' : '2'}>
-            {currentPath === '/my-jobs' ? (
-              <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            )}
-          </svg>
-          <span className="text-[11px] font-medium">My Job</span>
-        </button>
-
-        {/* Messages */}
-        <button onClick={() => navigate('/employee/messages')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/employee/messages' ? 'text-green-600' : 'text-gray-500'}`}>
-          {currentPath === '/employee/messages' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
-          <div className="relative">
-            <svg className="w-6 h-6 mb-1" fill={currentPath === '/employee/messages' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/employee/messages' ? '0' : '2'}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+      {!hideBottomNav && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-[72px] z-[100] pb-safe">
+          {/* Home */}
+          <button onClick={() => navigate('/employee')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/employee' || currentPath === '/' ? 'text-green-600' : 'text-gray-500'}`}>
+            {(currentPath === '/employee' || currentPath === '/') && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
+            <svg className="w-6 h-6 mb-1" fill={(currentPath === '/employee' || currentPath === '/') ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={(currentPath === '/employee' || currentPath === '/') ? '0' : '1.5'}>
+              {(currentPath === '/employee' || currentPath === '/') ? (
+                <path fillRule="evenodd" d="M11.47 3.84a.75.75 0 011.06 0l8.99 9a.75.75 0 11-1.06 1.06l-1.46-1.46V20.25a.75.75 0 01-.75.75H14.5a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-2a.75.75 0 00-.75.75v4.5a.75.75 0 01-.75.75H5.25a.75.75 0 01-.75-.75V12.44L3.03 13.9a.75.75 0 11-1.06-1.06l8.99-9z" clipRule="evenodd" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+              )}
             </svg>
-            {totalUnread > 0 && (
-              <span className="absolute -top-1 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {totalUnread > 9 ? '9+' : totalUnread}
-              </span>
-            )}
-          </div>
-          <span className="text-[11px] font-medium">Messages</span>
-        </button>
+            <span className="text-[11px] font-medium">Home</span>
+          </button>
 
-        {/* Profile */}
-        <button onClick={() => navigate('/profile')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/profile' ? 'text-green-600' : 'text-gray-500'}`}>
-          {currentPath === '/profile' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
-          <svg className="w-6 h-6 mb-1" fill={currentPath === '/profile' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/profile' ? '0' : '2'}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          <span className="text-[11px] font-medium">Profile</span>
-        </button>
-      </div>
+          {/* My Jobs */}
+          <button onClick={() => navigate('/my-jobs')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/my-jobs' ? 'text-green-600' : 'text-gray-500'}`}>
+            {currentPath === '/my-jobs' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
+            <svg className="w-6 h-6 mb-1" fill={currentPath === '/my-jobs' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/my-jobs' ? '0' : '2'}>
+              {currentPath === '/my-jobs' ? (
+                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              )}
+            </svg>
+            <span className="text-[11px] font-medium">My Job</span>
+          </button>
+
+          {/* Messages */}
+          <button onClick={() => navigate('/employee/messages')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/employee/messages' ? 'text-green-600' : 'text-gray-500'}`}>
+            {currentPath === '/employee/messages' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
+            <div className="relative">
+              <svg className="w-6 h-6 mb-1" fill={currentPath === '/employee/messages' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/employee/messages' ? '0' : '2'}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              {totalUnread > 0 && (
+                <span className="absolute -top-1 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] font-medium">Messages</span>
+          </button>
+
+          {/* Profile */}
+          <button onClick={() => navigate('/profile')} className={`flex flex-col items-center justify-center w-full h-full relative ${currentPath === '/profile' ? 'text-green-600' : 'text-gray-500'}`}>
+            {currentPath === '/profile' && <div className="absolute top-0 left-0 right-0 h-[3px] bg-green-600"></div>}
+            <svg className="w-6 h-6 mb-1" fill={currentPath === '/profile' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={currentPath === '/profile' ? '0' : '2'}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="text-[11px] font-medium">Profile</span>
+          </button>
+        </div>
+      )}
     </>
   );
 };

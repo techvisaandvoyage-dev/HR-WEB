@@ -582,7 +582,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       
       {/* Navbar */}
-      <EmployeeNavbar jobs={jobs} filters={filters} setFilters={setFilters} />
+      <EmployeeNavbar jobs={jobs} filters={filters} setFilters={setFilters} hideBottomNav={isMobileDetailsOpen} />
 
       {/* Toast Notification */}
       {showToast && (
@@ -1341,8 +1341,8 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                 </div>
 
                 {/* MOBILE ONLY Sticky Bottom Action Bar (Apply + Bookmark) */}
-                {!isApplicationModalOpen && (
-                  <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white border-t border-gray-200 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] md:hidden z-50 flex items-center gap-3">
+                {!isApplicationModalOpen && isMobileDetailsOpen && (
+                  <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white border-t border-gray-200 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] md:hidden z-[120] flex items-center gap-3">
                     {selectedJob.status === 'Closed' ? (
                       <button 
                         disabled
