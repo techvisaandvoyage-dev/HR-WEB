@@ -9,7 +9,7 @@ let shouldExcludeAdmin = true;
  */
 export const isAdminUser = () => {
   try {
-    return Boolean(localStorage.getItem('adminToken') || localStorage.getItem('token'));
+    return Boolean(localStorage.getItem('adminToken'));
   } catch (_) {
     return false;
   }
@@ -36,7 +36,7 @@ export const getConsentStatus = () => {
 export const initAnalytics = (options = {}) => {
   if (typeof window === 'undefined') return;
 
-  const { measurementId, enableAnalytics = true, excludeAdmin = true } = options;
+  const { measurementId, enableAnalytics = true, excludeAdmin = false } = options;
 
   if (!enableAnalytics || !measurementId || !measurementId.startsWith('G-')) {
     return;
@@ -61,9 +61,9 @@ export const initAnalytics = (options = {}) => {
   }
   window.gtag = gtag;
 
-  // 1. Setup Google Consent Mode v2 (default to denied or saved preference)
+  // 1. Setup Google Consent Mode v2 (default to granted since cookie banner was removed)
   const savedConsent = getConsentStatus();
-  const consentState = savedConsent === 'granted' ? 'granted' : 'denied';
+  const consentState = savedConsent === 'denied' ? 'denied' : 'granted';
 
   gtag('consent', 'default', {
     ad_storage: consentState,
