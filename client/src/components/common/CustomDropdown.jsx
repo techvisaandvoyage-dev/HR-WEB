@@ -1,6 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select option", error = false, className = "", rounded = "rounded-lg" }) => {
+const CustomDropdown = ({ 
+  options = [], 
+  value, 
+  onChange, 
+  placeholder = "Select option", 
+  error = false, 
+  className = "", 
+  rounded = "rounded-lg",
+  dropdownClassName = ""
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
@@ -103,6 +112,8 @@ const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select o
     return false;
   });
 
+  const labelTextSize = className.includes('text-xs') ? 'text-xs' : 'text-sm';
+
   return (
     <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
@@ -111,7 +122,7 @@ const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select o
           isOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : (className.includes('border-') ? '' : 'border-gray-200'))
         } ${rounded} text-gray-700 flex justify-between items-center transition-all shadow-2xs cursor-text text-sm ${className}`}
       >
-        <div className="flex-1 overflow-hidden pr-2">
+        <div className="flex-1 overflow-hidden pr-1.5">
           {isOpen ? (
             <input
               ref={inputRef}
@@ -133,11 +144,11 @@ const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select o
                   }
                 }
               }}
-              className="w-full bg-transparent outline-none text-gray-900 placeholder-gray-400 text-sm"
+              className={`w-full bg-transparent outline-none text-gray-900 placeholder-gray-400 ${labelTextSize}`}
               placeholder={selectedOption ? selectedOption.label : (value || placeholder)}
             />
           ) : (
-            <span className={selectedOption || value ? 'text-gray-900 block truncate text-sm' : 'text-[#9CA3AF] block truncate text-sm'}>
+            <span className={selectedOption || value ? `text-gray-900 block truncate ${labelTextSize}` : `text-[#9CA3AF] block truncate ${labelTextSize}`}>
               {selectedOption ? selectedOption.label : (value || placeholder)}
             </span>
           )}
@@ -151,12 +162,12 @@ const CustomDropdown = ({ options = [], value, onChange, placeholder = "Select o
           }}
           className="focus:outline-none flex-shrink-0"
         >
-          <svg className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+          <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
         </button>
       </div>
 
       {isOpen && (
-        <div className={`absolute z-50 w-full ${openUpward ? 'bottom-full mb-2' : 'mt-1.5'} bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-1.5`}>
+        <div className={`absolute z-50 min-w-full ${dropdownClassName || 'w-full'} ${openUpward ? 'bottom-full mb-2' : 'mt-1.5'} bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-1.5`}>
           {filteredOptions.some(opt => !opt.isGroupLabel) ? filteredOptions.map((opt, idx) => {
             if (opt.isGroupLabel) {
               // Hide group label if it has no children matching the search

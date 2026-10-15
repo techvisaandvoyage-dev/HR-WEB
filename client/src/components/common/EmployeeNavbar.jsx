@@ -243,24 +243,32 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
             <LocationAutocomplete 
               value={searchLocation}
               onChange={(val) => handleSetSearchLocation(typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || ''))}
-              placeholder="City, state, region or remote" 
+              placeholder="City, state" 
               className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
             />
           </div>
         </div>
 
         {/* Right Icons */}
-        <div className="flex items-center justify-end gap-4 md:gap-6 w-auto ml-4">
+        <div className="flex items-center justify-end gap-3.5 md:gap-6 w-auto ml-auto">
           {/* My Jobs (Bookmark) */}
-          <button onClick={() => navigate('/my-jobs')} className="hidden md:block text-gray-700 hover:text-black transition-colors" title="My jobs">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+          <button 
+            onClick={() => navigate('/my-jobs')} 
+            className="text-gray-700 hover:text-emerald-800 transition-colors p-1" 
+            title="My jobs"
+          >
+            <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
             </svg>
           </button>
 
           {/* Messages (Chat) */}
-          <button onClick={() => navigate('/employee/messages')} className="hidden md:block text-gray-700 hover:text-black transition-colors relative" title="Messages">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+          <button 
+            onClick={() => navigate('/employee/messages')} 
+            className="text-gray-700 hover:text-emerald-800 transition-colors relative p-1" 
+            title="Messages"
+          >
+            <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
             </svg>
             {totalUnread > 0 && (
@@ -271,54 +279,52 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
           </button>
 
           {/* Profile Dropdown Toggle */}
-          <div className="relative hidden md:block" ref={dropdownRef}>
+          <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="text-gray-700 hover:text-black transition-colors flex items-center justify-center focus:outline-none"
+              className="text-gray-700 hover:text-emerald-800 transition-colors flex items-center justify-center focus:outline-none p-1"
               title="Account"
             >
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
               </svg>
             </button>
             
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-3 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
-                <div className="p-5 border-b border-gray-200">
-                  <p className="text-base font-bold text-gray-900 truncate">{userEmail}</p>
+              <div className="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                <div className="p-4 md:p-5 border-b border-gray-100">
+                  <p className="text-sm md:text-base font-bold text-gray-900 truncate">{userEmail}</p>
                 </div>
                 
-                <div className="py-2 border-b border-gray-200">
+                <div className="py-2 border-b border-gray-100">
                   <button 
                     onClick={() => {
                       setIsDropdownOpen(false);
                       navigate('/profile?tab=basic', { state: { tab: 'basic', ts: Date.now() } });
                     }}
-                    className="w-full text-left px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors"
+                    className="w-full text-left px-5 py-2.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors"
                   >
-                    <svg className="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
                     </svg>
-                    <span className="text-[15px] text-gray-800">Profile</span>
+                    <span className="text-sm font-medium text-gray-800">Profile</span>
                   </button>
                   <button 
                     onClick={() => {
                       setIsDropdownOpen(false);
                       navigate('/profile?tab=security', { state: { tab: 'security', ts: Date.now() } });
                     }}
-                    className="w-full text-left px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors"
+                    className="w-full text-left px-5 py-2.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors"
                   >
-                    <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    <span className="text-[15px] text-gray-800">Security &amp; Password</span>
+                    <span className="text-sm font-medium text-gray-800">Security &amp; Password</span>
                   </button>
                 </div>
 
-                <div className="p-4 border-b border-gray-200 flex justify-center text-xs text-gray-600">
-                  <p>
-                    © 2026 sahijob.com - <span className="hover:underline cursor-pointer">Terms</span> - <span className="hover:underline cursor-pointer">Accessibility</span>
-                  </p>
+                <div className="p-3 border-b border-gray-100 flex justify-center text-xs text-gray-500">
+                  <p>© 2026 sahijob.com</p>
                 </div>
 
                 <div className="py-2">
@@ -329,7 +335,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
                       localStorage.removeItem('userProfile');
                       window.location.href = '/';
                     }}
-                    className="w-full text-center py-2 text-[15px] font-bold text-blue-700 hover:underline transition-colors"
+                    className="w-full text-center py-2 text-sm font-bold text-emerald-800 hover:text-emerald-900 hover:underline transition-colors cursor-pointer"
                   >
                     Sign out
                   </button>

@@ -63,6 +63,18 @@ const parseProfileData = (profile) => {
   const location = (profile.preferredLocation || profile.location || profile.city || profile.address?.city || '').trim();
   const experience = (profile.workExperience || profile.experience || profile.totalExperience || profile.professionalDetails?.experience || '').toString().trim();
   const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.name || profile.fullName || 'Candidate';
+  const expectedSalary = (
+    profile.expectedSalary ||
+    profile.professionalDetails?.expectedSalary ||
+    profile.currentSalary ||
+    profile.professionalDetails?.currentSalary ||
+    ''
+  ).toString().trim();
+  const salaryType = (
+    profile.salaryType ||
+    profile.professionalDetails?.salaryType ||
+    'Monthly'
+  ).toString().trim();
 
   return {
     exists: Boolean(designation || skills.length > 0 || industry || profile.email),
@@ -71,8 +83,39 @@ const parseProfileData = (profile) => {
     industry,
     location,
     experience,
-    fullName
+    fullName,
+    expectedSalary,
+    salaryType
   };
+};
+
+const formatCandidateSalary = (profile) => {
+  if (!profile) return '₹15K / mo';
+  const val = profile.expectedSalary || profile.currentSalary;
+  if (!val) return '₹15K / mo';
+  const num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+  if (!num || isNaN(num)) return '₹15K / mo';
+  const isMonthly = (profile.salaryType || '').toLowerCase() === 'monthly';
+  if (num >= 100000 && !isMonthly) {
+    return `₹${(num / 100000).toFixed(1).replace('.0', '')}L / yr`;
+  }
+  if (num >= 1000) {
+    return `₹${Math.round(num / 1000)}K / mo`;
+  }
+  return `₹${val} / mo`;
+};
+
+const isJobNew = (job) => {
+  let jobTime = 0;
+  if (job?.createdAt) jobTime = new Date(job.createdAt).getTime();
+  else if (job?.date) jobTime = new Date(job.date).getTime();
+  else if (job?._id || job?.id) {
+    const hex = String(job._id || job.id).trim();
+    if (hex.length === 24) jobTime = parseInt(hex.substring(0, 8), 16) * 1000;
+  }
+  if (!jobTime || isNaN(jobTime)) return false;
+  // Disappear after 1 day (24 hours)
+  return (Date.now() - jobTime) <= 24 * 60 * 60 * 1000;
 };
 
 const getCandidateProfile = () => {
@@ -411,7 +454,13 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
   if (filters.location) {
     rawFilteredJobs = rawFilteredJobs.filter(job => 
-      isLocationMatch(job.location || job.employerId?.location, filters.location, job.details?.workLocation)
+      isLocationMatch(
+        job.location || job.employerId?.location, 
+        filters.location, 
+        job.details?.workLocation, 
+        job.workplaceMode || job.details?.workplaceMode,
+        job
+      )
     );
   }
 
@@ -465,7 +514,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   }));
 
   // If candidate profile exists with designation or skills, prioritize matched jobs to the very top!
-  if (candidateProfile && candidateProfile.exists && (candidateProfile.designation || (candidateProfile.skills && candidateProfile.skills.length > 0))) {
+  if (candidateProfile && (candidateProfile.designation || (candidateProfile.skills && candidateProfile.skills.length > 0))) {
     jobsWithMatch.sort((a, b) => {
       // 1. Profile matched jobs first
       if (a._match.isMatched && !b._match.isMatched) return -1;
@@ -483,7 +532,18 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     });
   }
 
-  const displayedJobs = jobsWithMatch;
+  const [dismissedJobIds, setDismissedJobIds] = useState(() => getEmployeeStoredValue('dismissedJobIds', []));
+
+  const toggleDismissJob = (jobId, e) => {
+    if (e) e.stopPropagation();
+    setDismissedJobIds(prev => {
+      const next = prev.includes(jobId) ? prev.filter(id => id !== jobId) : [...prev, jobId];
+      setEmployeeStoredValue('dismissedJobIds', next);
+      return next;
+    });
+  };
+
+  const displayedJobs = jobsWithMatch.filter(j => !dismissedJobIds.includes(j.id));
   const matchedJobsCount = displayedJobs.filter(j => j._match?.isMatched).length;
 
   const filteredMobileJobs = mobileSearchTerm 
@@ -647,107 +707,184 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
             {/* Left Column (Job List) */}
             <div className={`w-full md:w-[400px] flex-shrink-0 flex-col gap-3 pb-24 md:pb-0 ${isMobileDetailsOpen ? 'hidden md:flex' : 'flex'}`}>
               
-              {/* Mobile Search Bar */}
-              <div className="md:hidden flex flex-col gap-2 mb-2">
-                <div className="relative" ref={mobileSearchRef}>
-                  <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
-                    <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    <input 
-                      type="text" 
-                      placeholder="Job title..." 
-                      value={mobileSearchTerm}
-                      onChange={(e) => {
-                        setMobileSearchTerm(e.target.value);
-                        setShowMobileSuggestions(true);
-                      }}
-                      onFocus={() => setShowMobileSuggestions(true)}
-                      className="w-full bg-transparent border-none outline-none text-sm text-gray-900" 
-                    />
-                  </div>
-                  {showMobileSuggestions && mobileSearchTerm && (
-                    <div className="absolute top-[110%] left-0 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[100] max-h-64 overflow-y-auto">
-                      {filteredMobileJobs.length > 0 ? filteredMobileJobs.slice(0, 5).map(job => (
-                        <div key={job.id} onClick={() => { setMobileSearchTerm(job.title); setShowMobileSuggestions(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
-                          <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600 text-xs shrink-0 overflow-hidden border border-gray-100">
-                            {(job.companyLogo || job.employerId?.companyLogo) ? (
-                              <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
-                            ) : (
-                              job.companyInitial
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-900 text-sm">{job.title}</div>
-                            <div className="text-xs text-gray-500">{job.company} • {job.location}</div>
-                          </div>
-                        </div>
-                      )) : (
-                        <div className="px-4 py-3 text-sm text-gray-500 text-center">No jobs found</div>
+              {/* Mobile Unified Search Card (Indeed Style) */}
+              <div className="md:hidden flex flex-col gap-3 mb-2">
+                <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-3.5 flex flex-col gap-2.5 relative z-40">
+                  {/* Row 1: Keyword / Job title */}
+                  <div className="relative" ref={mobileSearchRef}>
+                    <div className="flex items-center px-1 py-1">
+                      <svg className="w-5 h-5 text-gray-500 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <input 
+                        type="text" 
+                        placeholder="Job title, keywords, or comp..." 
+                        value={filters.keyword || mobileSearchTerm}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMobileSearchTerm(val);
+                          setFilters(prev => ({ ...prev, keyword: val }));
+                          setShowMobileSuggestions(true);
+                        }}
+                        onFocus={() => setShowMobileSuggestions(true)}
+                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder:text-gray-400" 
+                      />
+                      {(filters.keyword || mobileSearchTerm) && (
+                        <button 
+                          onClick={() => {
+                            setMobileSearchTerm('');
+                            setFilters(prev => ({ ...prev, keyword: '' }));
+                          }} 
+                          className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                       )}
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
-                  <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  <LocationAutocomplete 
-                    value={filters.location}
-                    onChange={(val) => setFilters(prev => ({ ...prev, location: typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || '') }))}
-                    placeholder="City, state, or country..." 
-                    className="w-full bg-transparent border-none outline-none text-sm text-gray-900" 
-                  />
-                </div>
 
-                {/* Filters */}
-                <div className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-4 shadow-sm">
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                    Filters
-                  </h3>
-                  
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Keyword</label>
-                    <input 
-                      type="text" 
-                      value={filters.keyword}
-                      onChange={(e) => setFilters({...filters, keyword: e.target.value})}
-                      placeholder="Job title, company, skill"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none"
-                    />
+                    {showMobileSuggestions && mobileSearchTerm && (
+                      <div className="absolute top-[115%] left-0 right-0 w-full bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-[200] max-h-64 overflow-y-auto">
+                        {filteredMobileJobs.length > 0 ? filteredMobileJobs.slice(0, 5).map(job => (
+                          <div 
+                            key={job.id} 
+                            onClick={() => { 
+                              setMobileSearchTerm(job.title); 
+                              setFilters(prev => ({ ...prev, keyword: job.title }));
+                              setShowMobileSuggestions(false); 
+                            }} 
+                            className="px-4 py-2.5 hover:bg-emerald-50/60 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0"
+                          >
+                            <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center font-bold text-gray-600 text-xs shrink-0 overflow-hidden border border-gray-100">
+                              {(job.companyLogo || job.employerId?.companyLogo) ? (
+                                <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
+                              ) : (
+                                job.companyInitial
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900 text-sm">{job.title}</div>
+                              <div className="text-xs text-gray-500">{job.company} • {job.location}</div>
+                            </div>
+                          </div>
+                        )) : (
+                          <div className="px-4 py-3 text-sm text-gray-500 text-center">No jobs found</div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Experience</label>
-                    <CustomDropdown
-                      value={filters.experience}
-                      onChange={(val) => setFilters({...filters, experience: val})}
-                      options={[
-                        { label: 'Any Experience', value: 'All' },
-                        { label: '0 - 1 Yrs', value: '0 - 1 Yrs' },
-                        { label: '2 - 3 Yrs', value: '2 - 3 Yrs' },
-                        { label: '4 - 6 Yrs', value: '4 - 6 Yrs' },
-                        { label: '7 - 10 Yrs', value: '7 - 10 Yrs' },
-                        { label: '11 - 15 Yrs', value: '11 - 15 Yrs' },
-                        { label: '16 - 20 Yrs', value: '16 - 20 Yrs' },
-                        { label: '21 - 25 Yrs', value: '21 - 25 Yrs' },
-                        { label: '25+ yrs', value: '25+ yrs' }
-                      ]}
-                      placeholder="Select experience"
+                  <div className="border-t border-gray-150 -mx-3.5 my-0.5"></div>
+
+                  {/* Row 2: Location */}
+                  <div className="flex items-center px-1 py-1">
+                    <svg className="w-5 h-5 text-gray-500 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <LocationAutocomplete 
+                      value={filters.location}
+                      onChange={(val) => setFilters(prev => ({ ...prev, location: typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || '') }))}
+                      placeholder='City, state, zip code, or "remote"' 
+                      className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder:text-gray-400" 
                     />
+                    {filters.location && (
+                      <button onClick={() => setFilters(prev => ({ ...prev, location: '' }))} className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Date Posted</label>
-                    <CustomDropdown
-                      value={filters.postingDate}
-                      onChange={(val) => setFilters({...filters, postingDate: val})}
-                      options={[
-                        { label: 'Any time', value: 'Any time' },
-                        { label: 'Past 24 hours', value: 'Past 24 hours' },
-                        { label: 'Past 3 days', value: 'Past 3 days' },
-                        { label: 'Past week', value: 'Past week' },
-                        { label: 'Past month', value: 'Past month' }
-                      ]}
-                      placeholder="Select posting date"
-                    />
+                  {/* Find jobs Button (Rich Green #1b5e20, NO BLUE!) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMobileSuggestions(false);
+                    }}
+                    className="w-full mt-1.5 py-3 px-4 bg-[#1b5e20] hover:bg-[#15541b] active:scale-[0.99] text-white font-bold rounded-xl text-center text-sm shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    Find jobs
+                  </button>
+                </div>
+
+                {/* Candidate Welcome Banner (Clean, without chips) */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50/70 via-emerald-50/20 to-white border border-emerald-100/80 px-4 py-3.5 shadow-2xs mt-1">
+                  <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-200/25 rounded-full blur-xl pointer-events-none"></div>
+
+                  <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+                    Welcome, {candidateProfile?.fullName || toastName || 'Yash raj'}
+                  </h1>
+                </div>
+
+                {/* Section Header & Sleek Horizontal Filter Pills */}
+                <div className="flex flex-col gap-2.5 pt-2">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                      Jobs for you
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100/70 text-emerald-800">
+                        {displayedJobs.length}
+                      </span>
+                    </h2>
+                    {(filters.keyword || filters.location || filters.experience !== 'All' || filters.postingDate !== 'Any time') && (
+                      <button
+                        onClick={() => setFilters({ keyword: '', location: '', experience: 'All', postingDate: 'Any time' })}
+                        className="text-xs font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer"
+                      >
+                        Reset filters
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter Chips Row (No overflow clipping, comfortable width) */}
+                  <div className="flex items-center gap-2.5 relative z-30">
+                    {/* Experience Dropdown Pill */}
+                    <div className="flex-1 min-w-[130px] relative">
+                      <CustomDropdown
+                        value={filters.experience}
+                        onChange={(val) => setFilters(prev => ({ ...prev, experience: val }))}
+                        options={[
+                          { label: 'Any Experience', value: 'All' },
+                          { label: '0 - 1 Yrs', value: '0 - 1 Yrs' },
+                          { label: '2 - 3 Yrs', value: '2 - 3 Yrs' },
+                          { label: '4 - 6 Yrs', value: '4 - 6 Yrs' },
+                          { label: '7 - 10 Yrs', value: '7 - 10 Yrs' },
+                          { label: '11 - 15 Yrs', value: '11 - 15 Yrs' },
+                          { label: '16 - 20 Yrs', value: '16 - 20 Yrs' },
+                          { label: '21 - 25 Yrs', value: '21 - 25 Yrs' },
+                          { label: '25+ yrs', value: '25+ yrs' }
+                        ]}
+                        placeholder="Experience"
+                        rounded="rounded-full"
+                        dropdownClassName="w-52 shadow-2xl z-[120]"
+                        className={`!py-2 !px-3 text-xs border transition-colors flex items-center font-semibold ${
+                          filters.experience !== 'All' 
+                            ? 'bg-emerald-50 !border-emerald-300 text-emerald-800 font-bold' 
+                            : 'bg-white border-gray-300 text-gray-700'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Date Posted Dropdown Pill */}
+                    <div className="flex-1 min-w-[130px] relative">
+                      <CustomDropdown
+                        value={filters.postingDate}
+                        onChange={(val) => setFilters(prev => ({ ...prev, postingDate: val }))}
+                        options={[
+                          { label: 'Any time', value: 'Any time' },
+                          { label: 'Past 24 hours', value: 'Past 24 hours' },
+                          { label: 'Past 3 days', value: 'Past 3 days' },
+                          { label: 'Past week', value: 'Past week' },
+                          { label: 'Past month', value: 'Past month' }
+                        ]}
+                        placeholder="Date Posted"
+                        rounded="rounded-full"
+                        dropdownClassName="w-52 shadow-2xl z-[120]"
+                        className={`!py-2 !px-3 text-xs border transition-colors flex items-center font-semibold ${
+                          filters.postingDate !== 'Any time' 
+                            ? 'bg-emerald-50 !border-emerald-300 text-emerald-800 font-bold' 
+                            : 'bg-white border-gray-300 text-gray-700'
+                        }`}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -773,53 +910,56 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                 </div>
               )}
 
+              {/* Indeed Style Clean Job Cards */}
               {displayedJobs.map(job => (
                 <div 
                   key={job.id} 
                   onClick={() => { setSelectedJobId(job.id); setIsMobileDetailsOpen(true); }}
-                  className={`p-4 bg-white border rounded-xl cursor-pointer transition-all ${
-                    selectedJobId === job.id ? 'border-green-600 shadow-md ring-1 ring-green-600/30' : 'border-gray-200 hover:shadow-sm hover:border-gray-300'
+                  className={`p-4 bg-white border rounded-2xl cursor-pointer transition-all ${
+                    selectedJobId === job.id 
+                      ? 'border-emerald-600 shadow-sm ring-1 ring-emerald-600/30' 
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow-xs'
                   }`}
                 >
-                  {/* Smart Designation Match Badge */}
-                  {matchBannerConfig.enabled !== false && matchBannerConfig.cardBadgeEnabled !== false && job._match?.isMatched && (
-                    <div className="mb-3 flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-emerald-100">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span>
-                          {(matchBannerConfig.cardBadgeText || '🎯 Matched for {designation}')
-                            .replace(/\{designation\}/gi, candidateProfile?.designation || job.title)}
+                  {/* Top Badges & Right Actions Row */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setSelectedJobId(job.id); 
+                          setIsApplicationModalOpen(true); 
+                        }} 
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 transition-colors cursor-pointer active:scale-95"
+                      >
+                        Easily apply
+                      </button>
+                      {isJobNew(job) && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
+                          New
                         </span>
-                      </span>
+                      )}
+                      {matchBannerConfig?.cardBadgeEnabled !== false && job._match?.isMatched && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#e6f4ea] text-[#0d652d] border border-emerald-300/80 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>🎯</span>
+                          <span>
+                            {candidateProfile?.designation
+                              ? `Matched for ${candidateProfile.designation}`
+                              : (matchBannerConfig?.cardBadgeText
+                                  ? matchBannerConfig.cardBadgeText.replace('{designation}', 'your profile').replace(/^🎯\s*/, '')
+                                  : 'Matched for your profile')}
+                          </span>
+                        </span>
+                      )}
                     </div>
-                  )}
 
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-2">
-                      <div className="w-8 h-8 bg-gray-100 rounded font-bold text-gray-600 flex items-center justify-center text-xs shrink-0 overflow-hidden border border-gray-100">
-                        {(job.companyLogo || job.employerId?.companyLogo) ? (
-                          <img src={job.companyLogo || job.employerId?.companyLogo} alt={job.company} className="w-full h-full object-cover" />
-                        ) : (
-                          job.companyInitial
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
-                          <span>{job.company}</span>
-                        </h4>
-                        <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">{job.title}</h3>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {formatJobLocation(job)}{job.details?.openings ? ` • ${job.details.openings} ${Number(job.details.openings) === 1 ? 'Opening' : 'Openings'}` : ''}
-                        </p>
-                        <p className="text-xs font-semibold text-gray-700 mt-0.5">
-                          {job.salary} {job.employerProvided && <span className="text-gray-500 font-normal">(Employer provided)</span>}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end justify-between h-full min-h-[80px]">
+                    {/* Bookmark & Thumbs Down Buttons */}
+                    <div className="flex items-center gap-1 shrink-0 -mr-1">
                       <button 
                         onClick={(e) => toggleSaveJob(job.id, e)} 
-                        className={`transition-colors ${savedJobs.includes(job.id) ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`p-1.5 transition-colors cursor-pointer ${savedJobs.includes(job.id) ? 'text-emerald-700' : 'text-gray-400 hover:text-gray-600'}`}
+                        title={savedJobs.includes(job.id) ? "Saved job" : "Save job"}
                       >
                         {savedJobs.includes(job.id) ? (
                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" /></svg>
@@ -827,26 +967,76 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                         )}
                       </button>
-                      <span className="text-xs text-gray-400 font-medium">{job.postedAt}</span>
+
+                      <button 
+                        onClick={(e) => toggleDismissJob(job.id, e)} 
+                        className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                        title="Not interested"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h7.264a2 2 0 012 2v7m-8 2l2.25 4.5a2.121 2.121 0 003.882-1.5l-.882-3h3.75a2 2 0 002-2v-2a2 2 0 00-2-2h-3" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    {job.status === 'Closed' ? (
-                      <span className="w-full inline-flex justify-center items-center px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold">
-                        Closed
-                      </span>
-                    ) : isJobApplied(job) ? (
-                      <span className="w-full inline-flex justify-center items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-sm font-bold cursor-not-allowed border border-gray-200">
-                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
+                  {/* Job Title */}
+                  <h3 className="text-[17px] font-black text-gray-900 hover:text-emerald-800 leading-snug mt-2">
+                    {job.title}
+                  </h3>
+
+                  {/* Company & Location */}
+                  <div className="mt-1">
+                    <p className="text-sm font-medium text-gray-700">{job.company}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{formatJobLocation(job)}</p>
+                  </div>
+
+                  {/* Salary & Workplace Mode Badges */}
+                  <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-md text-xs font-semibold">
+                      ✓ {job.salary}
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-50 text-stone-700 border border-stone-200/80 rounded-md text-xs font-medium">
+                      ✓ {job.workplaceMode || (job.details?.openings ? `${job.details.openings} Openings` : 'Full-time')}
+                    </span>
+                  </div>
+
+                  {/* Early Applicant / Status Badge */}
+                  {isJobApplied(job) ? (
+                    <div className="mt-2.5 flex items-center gap-1.5 bg-emerald-50/70 border border-emerald-200/60 rounded-xl px-3 py-1.5 text-xs font-bold text-emerald-800">
+                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Already applied</span>
+                    </div>
+                  ) : (
+                    <div className="mt-2.5 flex items-center gap-2 bg-stone-100/90 text-stone-700 text-xs font-medium px-3 py-1.5 rounded-xl">
+                      <svg className="w-3.5 h-3.5 text-stone-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                      <span>Be an early applicant</span>
+                    </div>
+                  )}
+
+                  {/* Apply Action Bar on the Home Card */}
+                  <div className="mt-3 pt-2.5 border-t border-gray-100">
+                    {isJobApplied(job) ? (
+                      <span className="w-full inline-flex justify-center items-center gap-1.5 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-bold">
+                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                         Already applied
                       </span>
+                    ) : job.status === 'Closed' ? (
+                      <span className="w-full inline-flex justify-center items-center py-2.5 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold">
+                        Job closed
+                      </span>
                     ) : (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setSelectedJobId(job.id); setIsApplicationModalOpen(true); }}
-                        className="w-full inline-flex justify-center items-center gap-1.5 px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-sm font-bold transition-colors cursor-pointer"
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedJobId(job.id);
+                          setIsApplicationModalOpen(true);
+                        }}
+                        className="w-full inline-flex justify-center items-center gap-1.5 py-2.5 bg-[#1b5e20] hover:bg-[#15541b] active:scale-[0.99] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
                       >
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
                         Apply now
@@ -909,7 +1099,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           <div className="flex items-center gap-3 mb-4 text-sm flex-wrap">
                             <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded font-medium">{displayLocation}</span>
                             {workplaceMode && (
-                              <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded font-medium">{workplaceMode}</span>
+                              <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-1 rounded font-medium">{workplaceMode}</span>
                             )}
                             <span className="bg-purple-50 text-purple-700 px-2.5 py-1 rounded font-medium flex items-center gap-1">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -1085,7 +1275,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                                 </span>
                               )}
                               {workplaceMode && (
-                                <span className="bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center">
+                                <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center">
                                   {workplaceMode}
                                 </span>
                               )}

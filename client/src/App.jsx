@@ -545,7 +545,7 @@ function App() {
   const jobsToDisplay = homepageJobs.length > 0 ? homepageJobs : jobs;
   const filteredHomepageJobs = jobsToDisplay.filter(job => {
     const matchTitle = !searchJobTitle || job.title.toLowerCase().includes(searchJobTitle.toLowerCase()) || job.company.toLowerCase().includes(searchJobTitle.toLowerCase());
-    const matchLocation = isLocationMatch(job.location || job.employerId?.location, searchLocation, job.details?.workLocation);
+    const matchLocation = isLocationMatch(job.location || job.employerId?.location, searchLocation, job.details?.workLocation, job.workplaceMode || job.details?.workplaceMode, job);
     return matchTitle && matchLocation;
   });
 
