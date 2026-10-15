@@ -1375,15 +1375,7 @@ const EmployeeProfile = () => {
         </button>
       </div>
 
-      {activeTab === 'security' ? (
-        <div className="mb-6">
-          <AccountSecuritySection userEmail={formData.email} />
-        </div>
-      ) : activeTab === 'privacy' ? (
-        <div className="mb-6">
-          <PrivacySettingsSection userEmail={formData.email} />
-        </div>
-      ) : (
+      {activeTab !== 'security' && activeTab !== 'privacy' && (
         <>
       {/* 4. Basic Details Card */}
       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">

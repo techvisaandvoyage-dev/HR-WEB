@@ -495,9 +495,9 @@ const AccountSecuritySection = ({ userEmail }) => {
   const displayEmail = securityData.email || userEmail || 'your email';
 
   return (
-    <section id="security" className="scroll-mt-24 bg-white border border-gray-200 rounded-2xl shadow-sm p-6 sm:p-8">
+    <section id="security" className="scroll-mt-24 bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-sm p-4 sm:p-6 md:p-8">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-gray-100 gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 sm:pb-6 mb-4 sm:mb-6 border-b border-gray-100 gap-2">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/80">
@@ -545,15 +545,15 @@ const AccountSecuritySection = ({ userEmail }) => {
 
       {/* 1. SIGN-IN METHODS SECTION */}
       <div className="space-y-4 mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Sign-in methods</h4>
           <span className="text-xs text-gray-400">Linked authentication providers</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Google Sign-in Card */}
-          <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex items-start justify-between gap-3 hover:border-gray-300 transition-colors">
-            <div className="flex items-start gap-3.5">
+          <div className="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex items-center justify-between gap-2.5 hover:border-gray-300 transition-colors">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-gray-200/80 flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
@@ -562,16 +562,16 @@ const AccountSecuritySection = ({ userEmail }) => {
                   <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                 </svg>
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-gray-900">Google Account</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px] sm:max-w-xs">{displayEmail}</p>
-                <p className="text-[11px] text-gray-400 mt-1">Single Sign-On enabled</p>
+                <p className="text-xs text-gray-500 mt-0.5 truncate">{displayEmail}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Single Sign-On enabled</p>
               </div>
             </div>
 
-            <div>
+            <div className="flex-shrink-0">
               {securityData.isGoogleConnected ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
@@ -586,25 +586,25 @@ const AccountSecuritySection = ({ userEmail }) => {
           </div>
 
           {/* Password Sign-in Card */}
-          <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex items-start justify-between gap-3 hover:border-gray-300 transition-colors">
-            <div className="flex items-start gap-3.5">
+          <div className="p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex items-center justify-between gap-2.5 hover:border-gray-300 transition-colors">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-gray-200/80 flex items-center justify-center flex-shrink-0 text-gray-700">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="text-sm font-bold text-gray-900">Email &amp; Password</span>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-xs text-gray-500 mt-0.5 truncate">
                   {securityData.hasPassword
                     ? 'Password configured and active'
                     : 'Not set (Google sign-in only)'}
                 </p>
-                <p className="text-[11px] text-gray-400 mt-1">Direct account authentication</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Direct account authentication</p>
               </div>
             </div>
 
-            <div>
+            <div className="flex-shrink-0">
               {securityData.hasPassword ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
@@ -634,7 +634,7 @@ const AccountSecuritySection = ({ userEmail }) => {
       </div>
 
       {/* 2. PASSWORD MANAGEMENT CARD (Dynamic according to auth state) */}
-      <div className="border border-gray-200 rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-white to-gray-50/60 shadow-xs">
+      <div className="border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 bg-gradient-to-br from-white to-gray-50/60 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-base font-bold text-gray-900">Password</h4>
