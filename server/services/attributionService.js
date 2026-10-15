@@ -63,9 +63,36 @@ const applyFirstTouchAttribution = async (employeeId, attributionData = {}) => {
     const employee = await Employee.findById(validEmpId);
     if (!employee) return null;
 
-    // Rule 1: If already attributed to a job link, never overwrite!
+    // Rule 1: First-touch attribution is immutable.
+    // If the employee already has an acquisition record (whether 'direct' or 'job_link'), never overwrite!
     if (employee.acquisition && employee.acquisition.firstTouchJob) {
       return employee.acquisition;
+    }
+    if (employee.acquisition && employee.acquisition.sourceType === 'direct' && employee.acquisition.registeredAt) {
+      return employee.acquisition;
+    }
+
+    // Rule 2: If the candidate registered earlier than the job link visit (existing user who direct-registered),
+    // they are Direct and must NOT be attributed to the shareable job link!
+    if (employee.createdAt && attributionData?.landedAt) {
+      const createdTime = new Date(employee.createdAt).getTime();
+      const landedTime = new Date(attributionData.landedAt).getTime();
+      // If user was created more than 5 minutes before landing on this job link, they are an existing user
+      if (landedTime - createdTime > 5 * 60 * 1000) {
+        if (!employee.acquisition || employee.acquisition.sourceType !== 'direct') {
+          employee.acquisition = {
+            firstTouchJob: null,
+            firstTouchEmployer: null,
+            sourceType: 'direct',
+            utmSource: null,
+            landedAt: null,
+            registeredAt: employee.createdAt,
+            jobSnapshot: { title: '', companyName: '' }
+          };
+          await employee.save();
+        }
+        return employee.acquisition;
+      }
     }
 
     const { jobId, utmSource, landedAt } = attributionData || {};
@@ -92,7 +119,6 @@ const applyFirstTouchAttribution = async (employeeId, attributionData = {}) => {
       };
     } else {
       // No valid job link -> Direct / Organic
-      // If candidate already has acquisition.sourceType set to 'direct', preserve existing registeredAt
       const existingRegisteredAt = employee.acquisition?.registeredAt || employee.createdAt || new Date();
       employee.acquisition = {
         firstTouchJob: null,

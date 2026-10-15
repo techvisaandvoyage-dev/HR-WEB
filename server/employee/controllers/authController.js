@@ -350,18 +350,15 @@ const loginEmployee = async (req, res) => {
     // Handle Job Link attribution / interaction for candidate
     try {
       const attributionService = require('../../services/attributionService');
-      if (req.body.attribution) {
-        if (!employee.acquisition?.firstTouchJob && employee.acquisition?.sourceType !== 'job_link') {
-          await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
-        }
-        if (req.body.attribution.jobId) {
-          await attributionService.recordJobVisit({
-            candidateId: employee._id,
-            jobId: req.body.attribution.jobId,
-            utmSource: req.body.attribution.utmSource,
-            event: 'logged_in'
-          });
-        }
+      if (req.body.attribution?.jobId) {
+        // Existing candidates who login retain their original source (Direct remains Direct).
+        // Only record the visit event for activity history without changing acquisition source.
+        await attributionService.recordJobVisit({
+          candidateId: employee._id,
+          jobId: req.body.attribution.jobId,
+          utmSource: req.body.attribution.utmSource,
+          event: 'logged_in'
+        });
       }
     } catch (attrErr) {
       console.warn('[Auth] Login attribution error:', attrErr.message);
@@ -522,18 +519,15 @@ const verifyLoginOtp = async (req, res) => {
     // Handle Job Link attribution / interaction for candidate
     try {
       const attributionService = require('../../services/attributionService');
-      if (req.body.attribution) {
-        if (!employee.acquisition?.firstTouchJob && employee.acquisition?.sourceType !== 'job_link') {
-          await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
-        }
-        if (req.body.attribution.jobId) {
-          await attributionService.recordJobVisit({
-            candidateId: employee._id,
-            jobId: req.body.attribution.jobId,
-            utmSource: req.body.attribution.utmSource,
-            event: 'logged_in'
-          });
-        }
+      if (req.body.attribution?.jobId) {
+        // Existing candidates who login retain their original source (Direct remains Direct).
+        // Only record the visit event for activity history without changing acquisition source.
+        await attributionService.recordJobVisit({
+          candidateId: employee._id,
+          jobId: req.body.attribution.jobId,
+          utmSource: req.body.attribution.utmSource,
+          event: 'logged_in'
+        });
       }
     } catch (attrErr) {
       console.warn('[Auth] OTP login attribution error:', attrErr.message);
@@ -864,18 +858,14 @@ const googleAuth = async (req, res) => {
               event: 'signed_up'
             });
           }
-        } else {
-          if (!employee.acquisition?.firstTouchJob && employee.acquisition?.sourceType !== 'job_link') {
-            await attributionService.applyFirstTouchAttribution(employee._id, req.body.attribution);
-          }
-          if (req.body.attribution.jobId) {
-            await attributionService.recordJobVisit({
-              candidateId: employee._id,
-              jobId: req.body.attribution.jobId,
-              utmSource: req.body.attribution.utmSource,
-              event: 'logged_in'
-            });
-          }
+        } else if (req.body.attribution.jobId) {
+          // Existing candidate login via Google preserves original acquisition source.
+          await attributionService.recordJobVisit({
+            candidateId: employee._id,
+            jobId: req.body.attribution.jobId,
+            utmSource: req.body.attribution.utmSource,
+            event: 'logged_in'
+          });
         }
       }
     } catch (attrErr) {

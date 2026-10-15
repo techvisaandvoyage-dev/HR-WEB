@@ -101,6 +101,37 @@ test('applyFirstTouchAttribution unit logic (mocked models)', async () => {
     assert.strictEqual(directResult.firstTouchJob, null, 'firstTouchJob is null');
     assert.strictEqual(directResult.firstTouchEmployer, null, 'firstTouchEmployer is null');
 
+    // 4. Test: Existing candidate already registered directly MUST NOT be overwritten when later visiting/applying via job link
+    let existingDirectCandidate = {
+      _id: new mongoose.Types.ObjectId(),
+      createdAt: new Date('2026-09-30T10:00:00Z'),
+      acquisition: {
+        sourceType: 'direct',
+        firstTouchJob: null,
+        firstTouchEmployer: null,
+        registeredAt: new Date('2026-09-30T10:00:00Z')
+      },
+      save: async function () { return this; }
+    };
+    Employee.findById = () => Promise.resolve(existingDirectCandidate);
+    Job.findById = () => ({
+      select: () => Promise.resolve({
+        _id: fakeJobId,
+        employerId: fakeEmployerId,
+        title: 'Senior Frontend Developer',
+        company: 'Meraki Studios'
+      })
+    });
+
+    const existingCandidateResult = await applyFirstTouchAttribution(existingDirectCandidate._id.toString(), {
+      jobId: fakeJobId.toString(),
+      landedAt: '2026-10-15T10:00:00Z'
+    });
+
+    assert.strictEqual(existingCandidateResult.sourceType, 'direct', 'sourceType remains direct');
+    assert.strictEqual(existingCandidateResult.firstTouchJob, null, 'firstTouchJob remains null');
+    assert.strictEqual(existingCandidateResult.firstTouchEmployer, null, 'firstTouchEmployer remains null');
+
   } finally {
     Job.findById = originalFindJob;
     Employee.findById = originalFindEmployee;
