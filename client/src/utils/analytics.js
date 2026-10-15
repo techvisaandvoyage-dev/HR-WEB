@@ -119,10 +119,8 @@ export const updateConsent = (granted) => {
  * @param {string} title 
  */
 export const trackPageView = (path, title) => {
-  if (typeof window === 'undefined' || !isInitialized) return;
-  if (shouldExcludeAdmin && isAdminUser()) return;
-
-  if (typeof window.gtag === 'function' && currentGaId) {
+  if (typeof window === 'undefined') return;
+  if (typeof window.gtag === 'function') {
     window.gtag('event', 'page_view', {
       page_path: path || window.location.pathname,
       page_title: title || document.title,
@@ -137,9 +135,7 @@ export const trackPageView = (path, title) => {
  * @param {Object} params 
  */
 export const trackEvent = (eventName, params = {}) => {
-  if (typeof window === 'undefined' || !isInitialized) return;
-  if (shouldExcludeAdmin && isAdminUser()) return;
-
+  if (typeof window === 'undefined') return;
   if (typeof window.gtag === 'function') {
     window.gtag('event', eventName, {
       ...params,

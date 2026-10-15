@@ -11,7 +11,6 @@ import {
   Sun, 
   Sparkles, 
   Layers, 
-  Key, 
   Upload, 
   Image as ImageIcon, 
   Trash2,
@@ -776,52 +775,6 @@ export default function SEOSettingsManager() {
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* CARD 5: GOOGLE SEARCH CONSOLE & GA4 (CLEAN & OPTIONAL)                    */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl border border-gray-200/90 p-6 sm:p-8 shadow-xs space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Key className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Google Verification & Analytics (Optional)</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Add your Google Search Console verification tag and GA4 Measurement ID.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Google Search Console HTML Tag
-            </label>
-            <input
-              type="text"
-              value={seo.googleSiteVerification}
-              onChange={(e) => setSeo({ ...seo, googleSiteVerification: e.target.value })}
-              placeholder="e.g. google-site-verification=abc123xyz"
-              className="w-full px-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:border-[#29953f] focus:bg-white outline-none font-mono"
-            />
-            <p className="text-[11px] text-gray-400 mt-1">Paste verification token to verify your site in Google Search Console.</p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">
-              Google Analytics 4 (GA4) Measurement ID
-            </label>
-            <input
-              type="text"
-              value={seo.gaMeasurementId}
-              onChange={(e) => setSeo({ ...seo, gaMeasurementId: e.target.value })}
-              placeholder="G-XXXXXXXXXX"
-              className="w-full px-4 py-2.5 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:border-[#29953f] focus:bg-white outline-none font-mono font-bold text-emerald-800"
-            />
-            <p className="text-[11px] text-gray-400 mt-1">Automatically tracks candidate visits, job views, and applications.</p>
-          </div>
-        </div>
-      </div>
 
       {/* Bottom Save Bar */}
       <div className="flex items-center justify-end pt-2">
