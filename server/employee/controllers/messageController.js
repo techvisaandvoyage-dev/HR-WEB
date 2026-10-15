@@ -30,7 +30,7 @@ exports.getConversations = async (req, res) => {
     // 1. Get all applications for this employee
     const applications = await Application.find({ employeeId })
       .populate('employerId', 'companyName')
-      .populate('jobId', 'title location jobType')
+      .populate('jobId', 'title location jobType salary companyLogo details')
       .sort({ appliedDate: -1 });
 
     const conversations = [];
@@ -48,10 +48,14 @@ exports.getConversations = async (req, res) => {
 
       conversations.push({
         applicationId: app._id,
+        jobId: app.jobId?._id || null,
         companyName: app.employerId?.companyName || 'Unknown Company',
         jobTitle: app.jobId?.title || 'Unknown Job',
         location: app.jobId?.location || '',
         jobType: app.jobId?.jobType || [],
+        salary: app.jobId?.salary || '',
+        companyLogo: app.jobId?.companyLogo || '',
+        jobDetails: app.jobId?.details || {},
         isBlocked: app.isBlocked || false,
         blockedBy: app.blockedBy || null,
         blockedAt: app.blockedAt || null,
@@ -82,7 +86,9 @@ exports.getMessages = async (req, res) => {
     const employeeId = req.employee.id;
     const applicationId = req.params.applicationId;
 
-    const application = await Application.findOne({ _id: applicationId, employeeId });
+    const application = await Application.findOne({ _id: applicationId, employeeId })
+      .populate('jobId', 'title location jobType salary companyLogo details description requirements')
+      .populate('employerId', 'companyName companyLogo');
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
@@ -114,7 +120,9 @@ exports.getMessages = async (req, res) => {
       application: {
         isBlocked: application.isBlocked || false,
         blockedBy: application.blockedBy || null,
-        blockedAt: application.blockedAt || null
+        blockedAt: application.blockedAt || null,
+        job: application.jobId || null,
+        employer: application.employerId || null
       }
     });
   } catch (error) {

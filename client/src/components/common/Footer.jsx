@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import BrandLogo from './BrandLogo';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -135,26 +136,15 @@ const Footer = () => {
   const activeSocialLinks = (footerConfig.socialLinks || []).filter(link => link.isActive);
 
   return (
-    <footer className="w-full bg-white text-gray-600 font-sans border-t border-gray-200 pt-16 pb-12 mt-auto">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+    <footer className="w-full bg-white text-gray-600 font-sans border-t border-gray-200 pt-10 sm:pt-16 pb-8 sm:pb-12 mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12">
         {/* Main Footer Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pb-14 border-b border-gray-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 pb-10 sm:pb-14 border-b border-gray-200">
           
           {/* Brand & Social Section */}
-          <div className="lg:col-span-4 space-y-6">
-            <Link to="/" className="inline-block group">
-              <div className="flex items-center gap-2">
-                <h2 className="text-3xl font-black text-emerald-600 tracking-tighter flex items-center">
-                  <span className="text-emerald-600 text-2xl leading-none mt-0.5 mr-0.5 font-serif">'</span>
-                  {footerConfig.logoText || 'Jobs'}
-                  <span className="text-emerald-600 text-2xl leading-none mt-0.5 ml-0.5 font-serif">'</span>
-                </h2>
-                {footerConfig.companyName && (
-                  <span className="text-xs font-bold tracking-widest text-gray-700 uppercase bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
-                    {footerConfig.companyName}
-                  </span>
-                )}
-              </div>
+          <div className="lg:col-span-4 space-y-4 sm:space-y-6">
+            <Link to="/" onClick={() => window.scrollTo(0, 0)} className="inline-block group">
+              <BrandLogo className="text-2xl sm:text-3xl" defaultHeight={34} />
             </Link>
 
             <p className="text-sm text-gray-600 leading-relaxed max-w-sm">
@@ -206,54 +196,63 @@ const Footer = () => {
 
           {/* Dynamic Footer Columns Section */}
           <div className="lg:col-span-8">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8">
-              {(() => {
-                const columnOrder = footerConfig.columnOrder || ['Company', 'Services', 'Support', 'Legal'];
-                const orderedEntries = [];
-                
-                // Add columns in configured order
-                columnOrder.forEach(colName => {
-                  if (columns[colName] && columns[colName].length > 0) {
-                    orderedEntries.push([colName, columns[colName]]);
-                  }
-                });
+            {(() => {
+              const columnOrder = footerConfig.columnOrder || ['Company', 'Services', 'Support', 'Legal'];
+              const orderedEntries = [];
+              
+              // Add columns in configured order
+              columnOrder.forEach(colName => {
+                if (columns[colName] && columns[colName].length > 0) {
+                  orderedEntries.push([colName, columns[colName]]);
+                }
+              });
 
-                // Add any other dynamic columns not explicitly in order
-                Object.entries(columns).forEach(([colName, pages]) => {
-                  if (!columnOrder.includes(colName) && pages.length > 0) {
-                    orderedEntries.push([colName, pages]);
-                  }
-                });
+              // Add any other dynamic columns not explicitly in order
+              Object.entries(columns).forEach(([colName, pages]) => {
+                if (!columnOrder.includes(colName) && pages.length > 0) {
+                  orderedEntries.push([colName, pages]);
+                }
+              });
 
-                return orderedEntries.map(([columnName, pages]) => (
-                  <div key={columnName} className="space-y-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-                      {columnName}
-                    </h3>
-                    <ul className="space-y-2.5">
-                      {pages.map((page, idx) => (
-                        <li key={page._id || page.id || idx}>
-                          <Link
-                            to={page.slug.startsWith('/') ? page.slug : `/${page.slug}`}
-                            onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
-                            className="text-sm text-gray-600 hover:text-emerald-600 hover:translate-x-1 inline-block transition-all duration-150 font-medium"
-                          >
-                            {page.title}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ));
-              })()}
-            </div>
+              const colCount = orderedEntries.length;
+              const gridColsClass = colCount <= 2 
+                ? 'grid-cols-2' 
+                : colCount === 3 
+                  ? 'grid-cols-2 sm:grid-cols-3' 
+                  : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4';
+
+              return (
+                <div className={`grid ${gridColsClass} gap-6 sm:gap-8 lg:gap-12`}>
+                  {orderedEntries.map(([columnName, pages]) => (
+                    <div key={columnName} className="space-y-3 sm:space-y-4">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-600">
+                        {columnName}
+                      </h3>
+                      <ul className="space-y-2 sm:space-y-2.5">
+                        {pages.map((page, idx) => (
+                          <li key={page._id || page.id || idx}>
+                            <Link
+                              to={page.slug.startsWith('/') ? page.slug : `/${page.slug}`}
+                              onClick={() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })}
+                              className="text-sm text-gray-600 hover:text-emerald-600 hover:translate-x-1 inline-block transition-all duration-150 font-medium"
+                            >
+                              {page.title}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
         </div>
 
         {/* Bottom Bar: Copyright */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <p>{footerConfig.copyright || `© ${new Date().getFullYear()} Jobs. All rights reserved.`}</p>
+        <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs text-gray-500 text-center sm:text-left">
+          <p>{footerConfig.copyright || `© ${new Date().getFullYear()} sahijob.com. All rights reserved.`}</p>
         </div>
 
       </div>

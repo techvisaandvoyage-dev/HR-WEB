@@ -161,7 +161,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shrink-0">
       <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
         
         {/* Logo / Brand */}
@@ -249,8 +249,8 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
           </div>
         </div>
 
-        {/* Right Icons */}
-        <div className="flex items-center justify-end gap-3.5 md:gap-6 w-auto ml-auto">
+        {/* Right Icons — Desktop Only (mobile uses bottom nav) */}
+        <div className="hidden md:flex items-center justify-end gap-3.5 md:gap-6 w-auto ml-auto">
           {/* My Jobs (Bookmark) */}
           <button 
             onClick={() => navigate('/my-jobs')} 

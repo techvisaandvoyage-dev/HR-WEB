@@ -308,13 +308,42 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   const navigate = useNavigate();
   const [selectedJobId, setSelectedJobId] = useState(location.state?.selectedJobId || (effectiveJobs.length > 0 ? (effectiveJobs[0].id || effectiveJobs[0]._id) : null));
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
-  const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false);
+  const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(
+    Boolean(location.state?.selectedJobId || location.state?.openDetails)
+  );
   const [showToast, setShowToast] = useState(location.state?.profileCreated || location.state?.loggedIn || false);
   const [toastType, setToastType] = useState(location.state?.profileCreated ? 'created' : (location.state?.loggedIn ? 'login' : ''));
   const [toastName, setToastName] = useState('');
   const [showOnboardingPopup, setShowOnboardingPopup] = useState(location.state?.showOnboardingPrompt || false);
   const [profileModalConfig, setProfileModalConfig] = useState(null);
   const [candidateProfile, setCandidateProfile] = useState(() => getCandidateProfile());
+
+  useEffect(() => {
+    const targetId = location.state?.selectedJobId;
+    const targetTitle = location.state?.jobTitle;
+    const targetCompany = location.state?.companyName;
+
+    if (targetId || (targetTitle && targetCompany)) {
+      if (location.state?.clearFilters && setFilters) {
+        setFilters({ keyword: '', location: '', experience: 'All', postingDate: 'Any time' });
+      }
+
+      const matched = effectiveJobs.find(j => 
+        (targetId && (String(j.id) === String(targetId) || String(j._id) === String(targetId))) ||
+        (targetTitle && targetCompany && 
+          j.company?.trim().toLowerCase() === targetCompany.trim().toLowerCase() && 
+          j.title?.trim().toLowerCase() === targetTitle.trim().toLowerCase())
+      );
+
+      if (matched) {
+        setSelectedJobId(matched.id || matched._id);
+        setIsMobileDetailsOpen(true);
+      } else if (targetId) {
+        setSelectedJobId(targetId);
+        setIsMobileDetailsOpen(true);
+      }
+    }
+  }, [location.state, effectiveJobs]);
 
   useEffect(() => {
     setCandidateProfile(getCandidateProfile());
@@ -628,15 +657,27 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   // Keep selectedJobId in sync with displayedJobs
   useEffect(() => {
     if (displayedJobs.length > 0) {
-      if (!selectedJobId || !displayedJobs.some(j => j.id === selectedJobId)) {
-        setSelectedJobId(displayedJobs[0].id);
+      const existsInDisplayed = displayedJobs.some(j => 
+        String(j.id) === String(selectedJobId) || String(j._id) === String(selectedJobId)
+      );
+      if (!selectedJobId || !existsInDisplayed) {
+        const inAll = effectiveJobs.some(j => 
+          String(j.id) === String(selectedJobId) || String(j._id) === String(selectedJobId)
+        );
+        if (!inAll) {
+          setSelectedJobId(displayedJobs[0].id || displayedJobs[0]._id);
+        }
       }
     } else {
       setSelectedJobId(null);
     }
-  }, [displayedJobs, selectedJobId]);
+  }, [displayedJobs, selectedJobId, effectiveJobs]);
 
-  const selectedJob = displayedJobs.find(j => j.id === selectedJobId) || (displayedJobs.length > 0 ? displayedJobs[0] : null);
+  const selectedJob = displayedJobs.find(j => 
+    String(j.id) === String(selectedJobId) || String(j._id) === String(selectedJobId)
+  ) || effectiveJobs.find(j => 
+    String(j.id) === String(selectedJobId) || String(j._id) === String(selectedJobId)
+  ) || (displayedJobs.length > 0 ? displayedJobs[0] : null);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">

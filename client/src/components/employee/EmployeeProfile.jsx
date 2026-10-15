@@ -601,7 +601,9 @@ const EmployeeProfile = () => {
     }
   }, [location.state, location.search, location.hash]);
   const [expandedEduIndex, setExpandedEduIndex] = useState(-1);
+  const [eduBackup, setEduBackup] = useState(null);
   const [expandedExpIndex, setExpandedExpIndex] = useState(-1);
+  const [expBackup, setExpBackup] = useState(null);
   const [expandedRoleIndex, setExpandedRoleIndex] = useState(0);
   const [skillInput, setSkillInput] = useState('');
   const [isMissingDetailsModalOpen, setIsMissingDetailsModalOpen] = useState(false);
@@ -698,10 +700,14 @@ const EmployeeProfile = () => {
         try {
           const parsed = JSON.parse(saved);
           if (parsed.qualifications && Array.isArray(parsed.qualifications)) {
-            parsed.qualifications = sortQualifications(parsed.qualifications);
+            parsed.qualifications = sortQualifications(
+              parsed.qualifications.filter(q => q && (q.educationType || q.course || q.board || q.university))
+            );
           }
           if (parsed.experience && Array.isArray(parsed.experience)) {
-            parsed.experience = sortExperience(parsed.experience);
+            parsed.experience = sortExperience(
+              parsed.experience.filter(e => e && (e.companyName || e.roles?.some(r => r.jobTitle || r.employmentType)))
+            );
           }
           setFormData(parsed);
         } catch (e) {
@@ -719,8 +725,12 @@ const EmployeeProfile = () => {
             setFormData(prev => ({
               ...prev,
               ...data,
-              qualifications: data.qualifications ? sortQualifications(data.qualifications) : sortQualifications(prev.qualifications),
-              experience: data.experience ? sortExperience(data.experience) : (prev.experience ? sortExperience(prev.experience) : prev.experience),
+              qualifications: sortQualifications(
+                (data.qualifications || prev.qualifications || []).filter(q => q && (q.educationType || q.course || q.board || q.university))
+              ),
+              experience: sortExperience(
+                (data.experience || prev.experience || []).filter(e => e && (e.companyName || e.roles?.some(r => r.jobTitle || r.employmentType)))
+              ),
               documents: {
                 ...(prev.documents || {}),
                 resume: data.resume || prev.documents?.resume || '',
@@ -752,6 +762,26 @@ const EmployeeProfile = () => {
       }
     }
   }, [formData.qualifications]);
+
+  // Auto-cleanup any dangling blank qualifications when not editing
+  useEffect(() => {
+    if (expandedEduIndex === -1 && formData.qualifications && Array.isArray(formData.qualifications)) {
+      const filtered = formData.qualifications.filter(q => q && (q.educationType || q.course || q.board || q.university));
+      if (filtered.length !== formData.qualifications.length) {
+        setFormData(prev => ({ ...prev, qualifications: filtered }));
+      }
+    }
+  }, [expandedEduIndex, formData.qualifications]);
+
+  // Auto-cleanup any dangling blank experiences when not editing
+  useEffect(() => {
+    if (expandedExpIndex === -1 && formData.experience && Array.isArray(formData.experience)) {
+      const filtered = formData.experience.filter(e => e && (e.companyName || e.roles?.some(r => r.jobTitle || r.employmentType)));
+      if (filtered.length !== formData.experience.length) {
+        setFormData(prev => ({ ...prev, experience: filtered }));
+      }
+    }
+  }, [expandedExpIndex, formData.experience]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -1356,7 +1386,7 @@ const EmployeeProfile = () => {
       ) : (
         <>
       {/* 4. Basic Details Card */}
-      <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step1?.title || 'Basic details'}</h3>
           {!isEditingBasicOnMobile && (
@@ -1640,7 +1670,7 @@ const EmployeeProfile = () => {
 
   const handleAddEducation = (e) => {
     if (e) e.preventDefault();
-    const quals = formData.qualifications || [];
+    const quals = (formData.qualifications || []).filter(q => q && (q.educationType || q.course || q.board || q.university));
     if (quals.length > 0 && expandedEduIndex >= 0) {
       const result = validateEducationData(expandedEduIndex);
       if (!result.isValid) {
@@ -1653,21 +1683,46 @@ const EmployeeProfile = () => {
     }
     setEduError('');
     setEduFieldErrors({});
+    setEduBackup(null);
     const newIdx = quals.length;
     setExpandedEduIndex(newIdx);
-    addArrayItem('qualifications', { 
-      educationType: '', 
-      board: '', 
-      endYear: '', 
-      schoolMedium: '', 
-      percentage: '', 
-      university: '', 
-      course: '', 
-      startYear: '', 
-      gradingSystem: '', 
-      isPrimary: newIdx === 0 
-    });
+    setFormData(prev => ({
+      ...prev,
+      qualifications: [
+        ...quals,
+        { 
+          educationType: '', 
+          board: '', 
+          endYear: '', 
+          schoolMedium: '', 
+          percentage: '', 
+          university: '', 
+          course: '', 
+          startYear: '', 
+          gradingSystem: '', 
+          isPrimary: newIdx === 0 
+        }
+      ]
+    }));
     scrollToTarget(`field-edu-type-${newIdx}`);
+  };
+
+  const handleCloseEducation = (idx) => {
+    let quals = [...(formData.qualifications || [])];
+    const target = quals[idx];
+    if (eduBackup) {
+      quals[idx] = eduBackup;
+    } else if (target && !target.educationType && !target.course && !target.board && !target.university) {
+      quals.splice(idx, 1);
+    }
+    quals = quals.filter(q => q && (q.educationType || q.course || q.board || q.university));
+    const nextFormData = { ...formData, qualifications: quals };
+    setFormData(nextFormData);
+    localStorage.setItem('userProfile', JSON.stringify(nextFormData));
+    setEduBackup(null);
+    setExpandedEduIndex(-1);
+    setEduError('');
+    setEduFieldErrors({});
   };
 
   const handleSaveEducation = (e) => {
@@ -1680,11 +1735,12 @@ const EmployeeProfile = () => {
       scrollToTarget(result.targetFieldId);
       return;
     }
-    let updatedQuals = sortQualifications([...(formData.qualifications || [])]);
+    let updatedQuals = sortQualifications([...(formData.qualifications || [])]).filter(q => q && (q.educationType || q.course || q.board || q.university));
     const nextFormData = { ...formData, qualifications: updatedQuals };
     setFormData(nextFormData);
     localStorage.setItem('userProfile', JSON.stringify(nextFormData));
 
+    setEduBackup(null);
     setEduError('');
     setEduFieldErrors({});
     setExpandedEduIndex(-1);
@@ -1798,22 +1854,51 @@ const EmployeeProfile = () => {
 
   const handleAddExperience = (e) => {
     if (e) e.preventDefault();
-    const result = validateExperienceData();
-    if (!result.isValid) {
-      setExpandedExpIndex(result.cIdx);
-      setExpandedRoleIndex(result.rIdx);
-      setExpFieldErrors(result.errors);
-      setExpError('Fill details');
-      scrollToTarget(result.targetFieldId);
-      return;
+    const exps = (formData.experience || []).filter(exp => exp && (exp.companyName?.trim() || exp.roles?.some(r => r.jobTitle?.trim() || r.employmentType)));
+    if (exps.length > 0 && expandedExpIndex >= 0) {
+      const result = validateExperienceData(expandedExpIndex);
+      if (!result.isValid) {
+        setExpandedExpIndex(result.cIdx !== undefined ? result.cIdx : expandedExpIndex);
+        setExpandedRoleIndex(result.rIdx !== undefined ? result.rIdx : 0);
+        setExpFieldErrors(result.errors || {});
+        setExpError('Fill details');
+        scrollToTarget(result.targetFieldId);
+        return;
+      }
     }
     setExpError('');
     setExpFieldErrors({});
-    const newIdx = (formData.experience || []).length;
+    setExpBackup(null);
+    const newIdx = exps.length;
     setExpandedExpIndex(newIdx);
     setExpandedRoleIndex(0);
-    addArrayItem('experience', { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] });
+    setFormData(prev => ({
+      ...prev,
+      experience: [
+        ...exps,
+        { companyName: '', noticePeriod: '', roles: [{ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' }] }
+      ]
+    }));
     scrollToTarget(`field-exp-company-${newIdx}`);
+  };
+
+  const handleCloseExperience = (cIdx) => {
+    let exps = [...(formData.experience || [])];
+    const target = exps[cIdx];
+    const hasAnyRole = target?.roles?.some(r => r.jobTitle?.trim() || r.employmentType || r.joiningDate);
+    if (expBackup) {
+      exps[cIdx] = expBackup;
+    } else if (target && !target.companyName?.trim() && !hasAnyRole) {
+      exps.splice(cIdx, 1);
+    }
+    exps = exps.filter(e => e && (e.companyName?.trim() || e.roles?.some(r => r.jobTitle?.trim() || r.employmentType)));
+    const nextFormData = { ...formData, experience: exps };
+    setFormData(nextFormData);
+    localStorage.setItem('userProfile', JSON.stringify(nextFormData));
+    setExpBackup(null);
+    setExpandedExpIndex(-1);
+    setExpError('');
+    setExpFieldErrors({});
   };
 
   const handleSaveExperience = (e) => {
@@ -1829,10 +1914,11 @@ const EmployeeProfile = () => {
     }
     setExpError('');
     setExpFieldErrors({});
-    const sorted = sortExperience(formData.experience || []);
+    const sorted = sortExperience((formData.experience || []).filter(e => e && (e.companyName?.trim() || e.roles?.some(r => r.jobTitle?.trim() || r.employmentType))));
     const nextFormData = { ...formData, experience: sorted };
     setFormData(nextFormData);
     localStorage.setItem('userProfile', JSON.stringify(nextFormData));
+    setExpBackup(null);
     setExpandedExpIndex(-1);
   };
 
@@ -2069,7 +2155,7 @@ const EmployeeProfile = () => {
         </div>
       )}
 
-      <main className="max-w-[1200px] w-full mx-auto px-4 mt-6 space-y-6">
+      <main className="max-w-[1200px] w-full mx-auto px-2 sm:px-4 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
         {/* Back Button */}
         <div className="hidden md:block">
           <button 
@@ -2165,7 +2251,7 @@ const EmployeeProfile = () => {
             ) : (
               <>
                 {/* Continuous Sections */}
-                <section id="basic" className="hidden md:block scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
+                <section id="basic" className="hidden md:block scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-8">
               <div className="mb-6 pb-2 border-b border-gray-100">
                 <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step1?.title || 'Basic Details'}</h3>
               </div>
@@ -2253,7 +2339,7 @@ const EmployeeProfile = () => {
               </div>
               </section>
 
-              <section id="education" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
+              <section id="education" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-6 md:p-8">
                 <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
                   <div>
                     <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step2?.title || 'Education'}</h3>
@@ -2268,7 +2354,9 @@ const EmployeeProfile = () => {
                 </div>
                 
                 <div className="space-y-6">
-                  {sortQualifications(formData.qualifications || []).map((q, idx) => {
+                  {sortQualifications(formData.qualifications || [])
+                    .filter((q, idx) => expandedEduIndex === idx || (q && (q.educationType || q.course || q.board || q.university)))
+                    .map((q, idx) => {
                     const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
                     const currentEduConfig = eduData[q.educationType];
                     const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (q.educationType === '10th' || q.educationType === '12th');
@@ -2286,7 +2374,7 @@ const EmployeeProfile = () => {
                             {q.isPrimary && (
                               <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase tracking-wider">Primary</span>
                             )}
-                            <button onClick={() => setExpandedEduIndex(idx)} className="text-gray-400 hover:text-blue-600 transition-colors">
+                            <button onClick={() => { setEduBackup(JSON.parse(JSON.stringify(q))); setExpandedEduIndex(idx); }} className="text-gray-400 hover:text-blue-600 transition-colors">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                             </button>
                           </div>
@@ -2308,13 +2396,13 @@ const EmployeeProfile = () => {
                         {/* Mobile Header */}
                         <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-[130] shadow-sm">
                           <h2 className="text-[18px] font-bold text-gray-900">{q.educationType ? 'Edit Education' : 'Add Education'}</h2>
-                          <button onClick={() => setExpandedEduIndex(-1)} className="text-gray-900 p-2 -mr-2">
+                          <button onClick={() => handleCloseEducation(idx)} className="text-gray-900 p-2 -mr-2">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         </div>
 
                         {/* Desktop Delete Button */}
-                        <button onClick={() => { removeArrayItem('qualifications', idx); setExpandedEduIndex(-1); }} className="hidden md:block absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors z-10">
+                        <button onClick={() => handleCloseEducation(idx)} className="hidden md:block absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors z-10">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                         
@@ -2594,7 +2682,7 @@ const EmployeeProfile = () => {
                 </div>
               </section>
 
-              <section id="experience" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
+              <section id="experience" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-6 md:p-8">
               <div className="flex justify-between items-start mb-6 pb-2 border-b border-gray-100">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step3?.title || 'Work Experience'}</h3>
@@ -2650,7 +2738,9 @@ const EmployeeProfile = () => {
                       
                       {formData.isFresher === false && (
                         <div className="space-y-6">
-                          {(formData.experience || []).map((exp, cIdx) => {
+                          {(formData.experience || [])
+                            .filter((exp, cIdx) => expandedExpIndex === cIdx || (exp && (exp.companyName?.trim() || exp.roles?.some(r => r.jobTitle?.trim() || r.employmentType))))
+                            .map((exp, cIdx) => {
                             const hasCurrentRole = (exp.roles || []).some(r => r.currentCompany);
                             
                             if (expandedExpIndex !== cIdx) {
@@ -2660,7 +2750,7 @@ const EmployeeProfile = () => {
                                     <h4 className="font-bold text-gray-900 text-[15px]">
                                       {exp.companyName || 'Company Name'}
                                     </h4>
-                                    <button onClick={() => { setExpandedExpIndex(cIdx); setExpandedRoleIndex(0); }} className="text-gray-400 hover:text-blue-600 transition-colors">
+                                    <button onClick={() => { setExpBackup(JSON.parse(JSON.stringify(exp))); setExpandedExpIndex(cIdx); setExpandedRoleIndex(0); }} className="text-gray-400 hover:text-blue-600 transition-colors">
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                     </button>
                                   </div>
@@ -2694,7 +2784,7 @@ const EmployeeProfile = () => {
                                 {/* Mobile Header */}
                                 <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 bg-white sticky top-0 z-[130] shadow-sm">
                                   <h2 className="text-[18px] font-bold text-gray-900">{exp.companyName ? 'Edit Experience' : 'Add Experience'}</h2>
-                                  <button onClick={() => setExpandedExpIndex(-1)} className="text-gray-900 p-2 -mr-2">
+                                  <button onClick={() => handleCloseExperience(cIdx)} className="text-gray-900 p-2 -mr-2">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                   </button>
                                 </div>
@@ -2964,7 +3054,7 @@ const EmployeeProfile = () => {
                     </div>
               </section>
 
-              <section id="professional" className={`scroll-mt-40 bg-white shadow-sm md:border md:border-gray-200 md:rounded-2xl md:p-8 ${isEditingProfOverviewMobile ? 'fixed inset-0 z-[120] rounded-none border-none p-0 overflow-y-auto' : 'border border-gray-100 rounded-[20px] p-6 mt-4 md:mt-0'}`}>
+              <section id="professional" className={`scroll-mt-40 bg-white shadow-sm md:border md:border-gray-200 md:rounded-2xl md:p-8 ${isEditingProfOverviewMobile ? 'fixed inset-0 z-[120] rounded-none border-none p-0 overflow-y-auto' : 'border border-gray-100 rounded-2xl p-4 sm:p-6 mt-4 md:mt-0'}`}>
                 {/* Mobile Header (Read Mode) */}
                 {!isEditingProfOverviewMobile && (
                   <div className="flex justify-between items-center md:hidden">
@@ -3229,7 +3319,7 @@ const EmployeeProfile = () => {
                 )}
               </section>
 
-              <section id="documents" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
+              <section id="documents" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-6 md:p-8">
               <div className="mb-6 pb-2 border-b border-gray-100">
                 <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step5?.title || 'Documents & Media'}</h3>
                 <p className="text-xs text-gray-500 mt-0.5">{cmsConfig?.step5?.subtitle || 'Manage your introductory video, resume, and cover letter.'}</p>
