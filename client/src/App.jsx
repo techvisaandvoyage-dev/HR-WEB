@@ -16,6 +16,8 @@ import StaticPage from './components/common/StaticPage';
 import BrandLogo from './components/common/BrandLogo';
 import DirectJobApply from './components/candidate/DirectJobApply';
 import { isLocationMatch } from './data/preferredLocations';
+import SEOHead from './components/common/SEOHead';
+import { initAnalytics, trackPageView } from './utils/analytics';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('employeeToken') || !!localStorage.getItem('employerToken'));
@@ -429,6 +431,55 @@ function App() {
   const [employerRegisterInitialData, setEmployerRegisterInitialData] = useState(null);
   const navigate = useNavigate();
 
+  // Google Sitelinks Direct Navigation Handler (?auth=candidate, ?auth=employer, ?auth=consultant, ?search=...)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const authType = params.get('auth');
+    if (authType === 'candidate' || authType === 'employee' || authType === 'login') {
+      setIsEmployeeLoginOpen(true);
+    } else if (authType === 'register') {
+      setIsEmployeeRegisterOpen(true);
+    } else if (authType === 'employer') {
+      setIsConsultantMode(false);
+      setIsEmployerLoginOpen(true);
+    } else if (authType === 'consultant') {
+      setIsConsultantMode(true);
+      setIsEmployerLoginOpen(true);
+    }
+  }, [location.search]);
+
+  // Load public SEO config and init GA4
+  const [seoConfig, setSeoConfig] = useState(null);
+  useEffect(() => {
+    const fetchSeo = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/seo/public`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setSeoConfig(json.data);
+          if (json.data.favicon) {
+            localStorage.setItem('sahijob_favicon_cache', json.data.favicon);
+          }
+          if (json.data.gaMeasurementId && json.data.enableAnalytics !== false) {
+            initAnalytics({
+              measurementId: json.data.gaMeasurementId,
+              enableAnalytics: json.data.enableAnalytics !== false,
+              excludeAdmin: json.data.excludeAdmin !== false
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load SEO config:', err);
+      }
+    };
+    fetchSeo();
+  }, []);
+
+  // Track route changes in GA4
+  useEffect(() => {
+    trackPageView(location.pathname + location.search, document.title);
+  }, [location.pathname, location.search]);
+
   const openRegister = () => {
     setIsEmployeeLoginOpen(false);
     setIsEmployeeRegisterOpen(true);
@@ -494,12 +545,68 @@ function App() {
   const jobsToDisplay = homepageJobs.length > 0 ? homepageJobs : jobs;
   const filteredHomepageJobs = jobsToDisplay.filter(job => {
     const matchTitle = !searchJobTitle || job.title.toLowerCase().includes(searchJobTitle.toLowerCase()) || job.company.toLowerCase().includes(searchJobTitle.toLowerCase());
-    const matchLocation = isLocationMatch(job.location, searchLocation, job.details?.workLocation);
+    const matchLocation = isLocationMatch(job.location || job.employerId?.location, searchLocation, job.details?.workLocation);
     return matchTitle && matchLocation;
   });
 
   return (
     <>
+      {/* Dynamic SEO & Google Sitelinks Structured Data */}
+      <SEOHead
+        title={seoConfig?.metaTitle || 'SahiJob: Jobs - Recruitment - Job Search - Employment in India'}
+        description={seoConfig?.metaDescription || 'Connect with 10,000+ employers. Apply to thousands of job opportunities across top companies, industries and locations in India.'}
+        canonicalUrl={seoConfig?.canonicalUrl ? `${seoConfig.canonicalUrl}${location.pathname}` : ''}
+        favicon={seoConfig?.favicon || '/favicon.svg'}
+        googleSiteVerification={seoConfig?.googleSiteVerification}
+        schema={[
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": seoConfig?.siteName || "SahiJob",
+            "url": seoConfig?.canonicalUrl || "https://sahijob.com",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": `${seoConfig?.canonicalUrl || "https://sahijob.com"}/?search={search_term_string}`,
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "Primary Navigation & Sitelinks",
+            "itemListElement": [
+              {
+                "@type": "SiteNavigationElement",
+                "position": 1,
+                "name": seoConfig?.sitelinks?.candidateLogin?.title || "Login or Register",
+                "description": seoConfig?.sitelinks?.candidateLogin?.description || "Login Now & Get access to Jobs not posted publicly anywhere ...",
+                "url": `${seoConfig?.canonicalUrl || "https://sahijob.com"}/?auth=candidate`
+              },
+              {
+                "@type": "SiteNavigationElement",
+                "position": 2,
+                "name": seoConfig?.sitelinks?.searchJobs?.title || "Search Jobs",
+                "description": seoConfig?.sitelinks?.searchJobs?.description || "Search thousands of Jobs across top companies in India ...",
+                "url": `${seoConfig?.canonicalUrl || "https://sahijob.com"}/?search=all`
+              },
+              {
+                "@type": "SiteNavigationElement",
+                "position": 3,
+                "name": seoConfig?.sitelinks?.employerLogin?.title || "Employer Hiring Portal",
+                "description": seoConfig?.sitelinks?.employerLogin?.description || "Post jobs, search candidate resumes and hire top talent fast ...",
+                "url": `${seoConfig?.canonicalUrl || "https://sahijob.com"}/?auth=employer`
+              },
+              {
+                "@type": "SiteNavigationElement",
+                "position": 4,
+                "name": seoConfig?.sitelinks?.consultantLogin?.title || "Consultant Login",
+                "description": seoConfig?.sitelinks?.consultantLogin?.description || "Recruitment partner and consultant login to manage multiple clients ...",
+                "url": `${seoConfig?.canonicalUrl || "https://sahijob.com"}/?auth=consultant`
+              }
+            ]
+          }
+        ]}
+      />
       <Routes>
         <Route path="/" element={
           <div className="min-h-screen bg-white font-sans text-palette-900 flex flex-col selection:bg-palette-200 selection:text-palette-900">

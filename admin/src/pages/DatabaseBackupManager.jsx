@@ -12,7 +12,7 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-export default function DatabaseBackupManager({ onRestoreComplete }) {
+export default function DatabaseBackupManager({ onRestoreComplete, hideHeader = false }) {
   const [toastMessage, setToastMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -91,7 +91,7 @@ export default function DatabaseBackupManager({ onRestoreComplete }) {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl animate-in fade-in duration-200">
+    <div className="space-y-6 w-full animate-in fade-in duration-200">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-8 z-[300] bg-emerald-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
@@ -145,18 +145,20 @@ export default function DatabaseBackupManager({ onRestoreComplete }) {
       )}
 
       {/* Top Banner Header */}
-      <div className="bg-white rounded-3xl border border-gray-200/80 p-6 shadow-xs">
-        <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/80 inline-block mb-1.5">
-          Database Restoration
-        </span>
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2.5">
-          <Database className="w-6 h-6 text-emerald-600" />
-          Upload & Restore Database
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">
-          Upload your single-file backup JSON received via email to restore all portal data (Employees, Employers, Jobs, CMS, Applications) in 1 click.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div className="bg-white rounded-3xl border border-gray-200/80 p-6 shadow-xs">
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/80 inline-block mb-1.5">
+            Database Restoration
+          </span>
+          <h2 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2.5">
+            <Database className="w-6 h-6 text-emerald-600" />
+            Upload & Restore Database
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Upload your single-file backup JSON received via email to restore all portal data (Employees, Employers, Jobs, CMS, Applications) in 1 click.
+          </p>
+        </div>
+      )}
 
       {/* Upload Backup File Card */}
       <div className="bg-white rounded-3xl border border-gray-200/80 p-8 shadow-xs space-y-6">
@@ -166,7 +168,7 @@ export default function DatabaseBackupManager({ onRestoreComplete }) {
               <Upload className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-gray-900">Select Backup File (.json)</h3>
+              <h3 className="text-base font-extrabold text-gray-900">Upload & Restore Database (.json)</h3>
               <p className="text-xs text-gray-500">Attach the single `.json` backup file that was emailed to your inbox.</p>
             </div>
           </div>

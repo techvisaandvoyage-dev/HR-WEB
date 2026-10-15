@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
+import { formatJobLocation } from '../../../data/preferredLocations';
 
 const MyJobs = ({ jobs = [] }) => {
   const navigate = useNavigate();
@@ -153,7 +154,7 @@ const MyJobs = ({ jobs = [] }) => {
                       )}
                       <h2 className="text-[17px] font-bold text-gray-900 group-hover:underline">{job.title}</h2>
                       <p className="text-[15px] text-gray-800 mt-1">{job.company}</p>
-                      <p className="text-[15px] text-gray-800 mt-0.5">{job.location}, {job.details.workLocation}</p>
+                      <p className="text-[15px] text-gray-800 mt-0.5">{formatJobLocation(job)}</p>
                       <p className="text-[13px] text-gray-500 mt-2">Saved {appliedData ? `• Applied on ${appliedData.date}` : ''}</p>
                     </div>
                     
@@ -229,7 +230,7 @@ const MyJobs = ({ jobs = [] }) => {
                       </span>
                       <h2 className="text-[17px] font-bold text-gray-900 group-hover:underline">{job.title}</h2>
                       <p className="text-[15px] text-gray-800 mt-1">{job.company}</p>
-                      <p className="text-[15px] text-gray-800 mt-0.5">{job.location}{job.details?.workLocation ? `, ${job.details.workLocation}` : ''}</p>
+                      <p className="text-[15px] text-gray-800 mt-0.5">{formatJobLocation(job)}</p>
                       <p className="text-[13px] text-gray-500 mt-1">Applied on sahijob.com on {applied.date || 'recently'}</p>
                     </div>
                     

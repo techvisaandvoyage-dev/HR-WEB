@@ -42,6 +42,14 @@ const pageSchema = new mongoose.Schema({
   keywords: {
     type: String,
     default: '',
+  },
+  noindex: {
+    type: Boolean,
+    default: false,
+  },
+  ogImage: {
+    type: String,
+    default: '',
   }
 }, {
   timestamps: true

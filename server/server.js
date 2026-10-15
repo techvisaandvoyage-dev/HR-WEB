@@ -61,6 +61,32 @@ app.use('/api/institutions', require('./routes/institutionRoutes'));
 app.use('/api/occupations', require('./routes/occupationRoutes'));
 app.use('/api/companies', require('./routes/companyRoutes'));
 
+// SEO, Sitemap & Robots
+const seoRoutes = require('./routes/seoRoutes');
+app.get('/sitemap.xml', async (req, res, next) => {
+  const { generateSitemapXml } = require('./services/seoService');
+  try {
+    const { xml } = await generateSitemapXml();
+    res.header('Content-Type', 'application/xml');
+    res.header('Cache-Control', 'public, max-age=3600');
+    return res.send(xml);
+  } catch (err) {
+    next(err);
+  }
+});
+app.get('/robots.txt', async (req, res, next) => {
+  const { generateRobotsTxt } = require('./services/seoService');
+  try {
+    const txt = await generateRobotsTxt();
+    res.header('Content-Type', 'text/plain');
+    res.header('Cache-Control', 'public, max-age=3600');
+    return res.send(txt);
+  } catch (err) {
+    next(err);
+  }
+});
+app.use('/api/seo', seoRoutes);
+
 // Root health check endpoint
 app.get('/', (req, res) => {
   res.status(200).send('API Server is running');
@@ -70,9 +96,12 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date() });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
+const { initBackupScheduler } = require('./services/backupSchedulerService');
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  // Initialize automated 15-day database backup scheduler
+  initBackupScheduler();
 });
 

@@ -8,6 +8,7 @@ import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS, DEFAULT_COURSE_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_NOTICE_PERIOD_OPTIONS, DEFAULT_GRADING_SYSTEMS, normalizeGradingSystems, sortQualifications, sortExperience } from './EmployeeOnboarding';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
+import { getJobLocationBadges } from '../../data/preferredLocations';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -1949,37 +1950,44 @@ const p = formData.professionalDetails || {};
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-700 text-sm">{job.company}</h3>
-                  <p className="text-xs text-gray-500">{job.location}</p>
+                  <p className="text-xs text-gray-500">{getJobLocationBadges(job).displayLocation}</p>
                 </div>
               </div>
               <h2 className="text-xl font-bold text-gray-900 leading-snug">{job.title}</h2>
             </div>
 
             {/* Badges / Key Metadata */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
-              <span className="bg-gray-100 text-gray-800 text-xs px-2.5 py-1 rounded-lg font-medium">
-                {job.location}
-              </span>
-              <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-lg font-medium">
-                {job.details?.workLocation || 'On-site'}
-              </span>
-              <span className="bg-purple-50 text-purple-700 text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                {(job.details?.openings || job.openings || '1')} {Number(job.details?.openings || job.openings || 1) === 1 ? 'Opening' : 'Openings'}
-              </span>
-              {(job.details?.employmentType || job.employmentType) && (
-                <span className="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-lg font-medium">
-                  {job.details?.employmentType || job.employmentType}
-                </span>
-              )}
-              {(job.details?.experience || job.experience) && (
-                <span className="bg-amber-50 text-amber-700 text-xs px-2.5 py-1 rounded-lg font-medium">
-                  {job.details?.experience || job.experience} Experience
-                </span>
-              )}
-            </div>
+            {(() => {
+              const { displayLocation, workplaceMode } = getJobLocationBadges(job);
+              return (
+                <div className="flex flex-wrap items-center gap-2 pt-1 pb-1">
+                  <span className="bg-gray-100 text-gray-800 text-xs px-2.5 py-1 rounded-lg font-medium">
+                    {displayLocation}
+                  </span>
+                  {workplaceMode && (
+                    <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-lg font-medium">
+                      {workplaceMode}
+                    </span>
+                  )}
+                  <span className="bg-purple-50 text-purple-700 text-xs px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    {(job.details?.openings || job.openings || '1')} {Number(job.details?.openings || job.openings || 1) === 1 ? 'Opening' : 'Openings'}
+                  </span>
+                  {(job.details?.employmentType || job.employmentType) && (
+                    <span className="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-lg font-medium">
+                      {job.details?.employmentType || job.employmentType}
+                    </span>
+                  )}
+                  {(job.details?.experience || job.experience) && (
+                    <span className="bg-amber-50 text-amber-700 text-xs px-2.5 py-1 rounded-lg font-medium">
+                      {job.details?.experience || job.experience} Experience
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
 
             <hr className="border-gray-100" />
 
@@ -1993,18 +2001,66 @@ const p = formData.professionalDetails || {};
               </div>
             )}
 
-            {/* Job Description */}
-            <div>
-              <h4 className="font-bold text-gray-900 text-sm mb-2">Job Description</h4>
-              <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">
-                {job.details?.description || 'No detailed description provided.'}
-              </p>
-            </div>
+            {/* Job Description, About Role & Responsibilities */}
+            {(() => {
+              const aboutRoleContent = job.details?.aboutRole || job.aboutRole || job.details?.about || job.about || job.details?.description || job.description;
+              const responsibilitiesContent = job.details?.responsibilities || job.responsibilities;
+              const skillsContent = job.details?.skillsRequired || job.skills;
 
-            {/* Qualifications */}
+              if (!aboutRoleContent && !responsibilitiesContent) {
+                return (
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm mb-2">Job Description</h4>
+                    <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">
+                      No detailed description provided.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-4">
+                  {aboutRoleContent && (
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-sm mb-1.5">About Role</h4>
+                      <div 
+                        className="text-gray-600 text-xs leading-relaxed prose prose-sm max-w-none whitespace-pre-line [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-1"
+                        dangerouslySetInnerHTML={{ __html: aboutRoleContent }}
+                      />
+                    </div>
+                  )}
+
+                  {responsibilitiesContent && (
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-sm mb-1.5">Role & Responsibilities</h4>
+                      <div 
+                        className="text-gray-600 text-xs leading-relaxed prose prose-sm max-w-none whitespace-pre-line [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-1"
+                        dangerouslySetInnerHTML={{ __html: responsibilitiesContent }}
+                      />
+                    </div>
+                  )}
+
+                  {skillsContent && (
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-sm mb-1.5">Key Skills</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(typeof skillsContent === 'string' ? skillsContent.split(/[,•\n]+/) : skillsContent)
+                          .map(s => (typeof s === 'string' ? s.trim() : (s?.name || ''))).filter(Boolean).map((skill, idx) => (
+                            <span key={idx} className="bg-emerald-50 text-emerald-800 text-[11px] px-2.5 py-1 rounded-md font-medium border border-emerald-100">
+                              {skill}
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Skills */}
             {job.qualifications && job.qualifications.length > 0 && (
               <div>
-                <h4 className="font-bold text-gray-900 text-sm mb-2">Qualifications</h4>
+                <h4 className="font-bold text-gray-900 text-sm mb-2">Skills</h4>
                 <ul className="list-disc pl-5 space-y-1 text-xs text-gray-600">
                   {job.qualifications.map((q, idx) => (
                     <li key={idx}>{q.name || q}</li>

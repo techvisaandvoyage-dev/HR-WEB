@@ -5,6 +5,8 @@ import EmployeeNavbar from '../common/EmployeeNavbar';
 import CustomDropdown from '../common/CustomDropdown';
 import Footer from '../common/Footer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
+import { isLocationMatch, getJobLocationBadges, formatJobLocation } from '../../data/preferredLocations';
+import LocationAutocomplete from '../common/LocationAutocomplete';
 
 const parseProfileData = (profile) => {
   if (!profile || typeof profile !== 'object') return null;
@@ -190,8 +192,7 @@ const computeJobMatch = (job, candidateProfile) => {
 
   // 4. Location matching
   if (candidateProfile.location) {
-    const locLower = candidateProfile.location.toLowerCase().trim();
-    if (jobLocationLower.includes(locLower) || locLower.includes(jobLocationLower)) {
+    if (isLocationMatch(job.location || job.employerId?.location, candidateProfile.location, job.details?.workLocation)) {
       score += 15;
       matchedLocation = true;
     }
@@ -409,10 +410,8 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   }
 
   if (filters.location) {
-    const loc = filters.location.toLowerCase();
     rawFilteredJobs = rawFilteredJobs.filter(job => 
-      job.location.toLowerCase().includes(loc) || 
-      (job.details?.workLocation || '').toLowerCase().includes(loc)
+      isLocationMatch(job.location || job.employerId?.location, filters.location, job.details?.workLocation)
     );
   }
 
@@ -662,11 +661,10 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                 </div>
                 <div className="flex items-center bg-white border border-gray-200 rounded-lg px-3 py-2 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
                   <svg className="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  <input 
-                    type="text" 
-                    placeholder="City, state, or country..." 
+                  <LocationAutocomplete 
                     value={filters.location}
-                    onChange={(e) => setFilters({...filters, location: e.target.value})}
+                    onChange={(val) => setFilters(prev => ({ ...prev, location: typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || '') }))}
+                    placeholder="City, state, or country..." 
                     className="w-full bg-transparent border-none outline-none text-sm text-gray-900" 
                   />
                 </div>
@@ -762,7 +760,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         </h4>
                         <h3 className="text-base font-bold text-gray-900 leading-snug mt-0.5">{job.title}</h3>
                         <p className="text-xs text-gray-600 mt-1">
-                          {job.location} • {job.details?.workLocation || 'On-site'}{job.details?.openings ? ` • ${job.details.openings} ${Number(job.details.openings) === 1 ? 'Opening' : 'Openings'}` : ''}
+                          {formatJobLocation(job)}{job.details?.openings ? ` • ${job.details.openings} ${Number(job.details.openings) === 1 ? 'Opening' : 'Openings'}` : ''}
                         </p>
                         <p className="text-xs font-semibold text-gray-700 mt-0.5">
                           {job.salary} {job.employerProvided && <span className="text-gray-500 font-normal">(Employer provided)</span>}
@@ -846,17 +844,24 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       
                       <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedJob.title}</h1>
                       
-                      <div className="flex items-center gap-3 mb-4 text-sm flex-wrap">
-                        <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded font-medium">{selectedJob.location}</span>
-                        <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded font-medium">{selectedJob.details?.workLocation || 'On-site'}</span>
-                        <span className="bg-purple-50 text-purple-700 px-2.5 py-1 rounded font-medium flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                          {(selectedJob.details?.openings || selectedJob.openings || '1')} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
-                        </span>
-                        <span className="text-gray-900 font-semibold">
-                          {selectedJob.salary} {selectedJob.employerProvided && <span className="text-gray-500 font-normal">(Employer provided)</span>}
-                        </span>
-                      </div>
+                      {(() => {
+                        const { displayLocation, workplaceMode } = getJobLocationBadges(selectedJob);
+                        return (
+                          <div className="flex items-center gap-3 mb-4 text-sm flex-wrap">
+                            <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded font-medium">{displayLocation}</span>
+                            {workplaceMode && (
+                              <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded font-medium">{workplaceMode}</span>
+                            )}
+                            <span className="bg-purple-50 text-purple-700 px-2.5 py-1 rounded font-medium flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                              {(selectedJob.details?.openings || selectedJob.openings || '1')} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
+                            </span>
+                            <span className="text-gray-900 font-semibold">
+                              {selectedJob.salary} {selectedJob.employerProvided && <span className="text-gray-500 font-normal">(Employer provided)</span>}
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       {/* Profile Match Highlight Box for Selected Job */}
                       {selectedJob._match?.isMatched && matchBannerConfig.enabled !== false && (
@@ -1017,17 +1022,24 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       <h1 className="text-2xl font-bold text-gray-900 mb-4">{selectedJob.title}</h1>
                       
                       <div className="flex flex-col gap-3 mb-4 w-full">
-                        <div className="flex gap-2 text-sm w-full flex-wrap">
-                          <div className="bg-gray-50 text-gray-800 px-3 py-2 rounded-md font-medium flex-1 text-center flex items-center justify-center min-w-[100px]">
-                            {selectedJob.location}
-                          </div>
-                          <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded-md font-medium flex-1 text-center flex items-center justify-center min-w-[100px]">
-                            {selectedJob.details?.workLocation || 'On-site'}
-                          </div>
-                          <div className="bg-purple-50 text-purple-700 px-3 py-2 rounded-md font-medium flex-1 text-center flex items-center justify-center min-w-[100px]">
-                            {(selectedJob.details?.openings || selectedJob.openings || '1')} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
-                          </div>
-                        </div>
+                        {(() => {
+                          const { displayLocation, workplaceMode } = getJobLocationBadges(selectedJob);
+                          return (
+                            <div className="flex gap-2 text-sm w-full flex-wrap">
+                              <div className="bg-gray-50 text-gray-800 px-3 py-2 rounded-md font-medium flex-1 text-center flex items-center justify-center min-w-[100px]">
+                                {displayLocation}
+                              </div>
+                              {workplaceMode && (
+                                <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded-md font-medium flex-1 text-center flex items-center justify-center min-w-[100px]">
+                                  {workplaceMode}
+                                </div>
+                              )}
+                              <div className="bg-purple-50 text-purple-700 px-3 py-2 rounded-md font-medium flex-1 text-center flex items-center justify-center min-w-[100px]">
+                                {(selectedJob.details?.openings || selectedJob.openings || '1')} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <div className="flex flex-col text-sm w-full">
                           <span className="text-gray-900 font-semibold text-base">{selectedJob.salary}</span>
                           {selectedJob.employerProvided && <span className="text-gray-500 font-normal text-xs mt-0.5">(Employer provided)</span>}
@@ -1134,7 +1146,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                   <div className="p-6 border-b border-gray-200">
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <span>Your qualifications for this job</span>
+                        <span>Skills</span>
                         {candidateProfile?.designation && (
                           <span className="text-xs font-normal text-gray-500">
                             (Matching for {candidateProfile.designation})
@@ -1151,7 +1163,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           : (selectedJob.details?.skillsRequired ? selectedJob.details.skillsRequired.split(',').map(s => s.trim()).filter(s => s) : []);
 
                         if (requiredSkills.length === 0) {
-                          return <div className="text-sm text-gray-500 col-span-2">No specific skill qualifications listed.</div>;
+                          return <div className="text-sm text-gray-500 col-span-2">No specific skills listed.</div>;
                         }
 
                         return requiredSkills.map((skillName, idx) => {

@@ -16,10 +16,16 @@ export const isIndiaAnywhereQuery = (query = '') => {
     q === 'anywhere in india/multiple locations' ||
     q === 'india' ||
     q === 'pan india' ||
+    q === 'pan-india' ||
     q === 'all india' ||
+    q === 'all-india' ||
     q === 'in india' ||
     q === 'anywhere india' ||
-    q.includes('anywhere in india')
+    q === 'anywhere' ||
+    q.includes('anywhere in india') ||
+    q.includes('all india') ||
+    q.includes('pan india') ||
+    q.includes('across india')
   );
 };
 
@@ -138,21 +144,51 @@ export const isEmployeePreferredLocationMatch = (emp, searchLocation = '') => {
 };
 
 export const isLocationMatch = (jobLocation = '', searchLocation = '', workLocation = '') => {
-  if (!searchLocation || !searchLocation.trim()) return true;
+  if (!searchLocation || !searchLocation.trim() || searchLocation.trim().toLowerCase() === 'all') return true;
 
   if (isIndiaAnywhereQuery(searchLocation)) {
     return isJobInIndia(jobLocation, workLocation);
   }
 
-  const cleanSearch = searchLocation.trim().toLowerCase().split(',')[0].trim();
-  const jobLoc = String(jobLocation || '').toLowerCase();
-  const workLoc = String(workLocation || '').toLowerCase();
+  const s = searchLocation.trim().toLowerCase();
+  const jobLoc = String(jobLocation || '').toLowerCase().trim();
+  const workLoc = String(workLocation || '').toLowerCase().trim();
+  const fullJobLoc = `${jobLoc} ${workLoc}`.trim();
 
-  return (
-    jobLoc.includes(cleanSearch) ||
-    workLoc.includes(cleanSearch) ||
-    cleanSearch.includes(jobLoc)
-  );
+  if (!fullJobLoc) return false;
+
+  const cleanSearch = s.split(',')[0].trim();
+
+  // Direct substring matches
+  if (
+    fullJobLoc.includes(s) || 
+    s.includes(jobLoc) || 
+    (workLoc && s.includes(workLoc)) ||
+    (cleanSearch && fullJobLoc.includes(cleanSearch)) ||
+    (cleanSearch && cleanSearch.includes(jobLoc))
+  ) {
+    return true;
+  }
+
+  // Token & component match (e.g., Allahabad/Prayagraj, Delhi NCR, Bangalore, Karnataka)
+  const searchParts = s.split(/[\/,\(\)\-]+/).map(p => p.trim()).filter(p => p.length > 2);
+  const jobParts = fullJobLoc.split(/[\/,\(\)\-]+/).map(p => p.trim()).filter(p => p.length > 2);
+
+  for (const sp of searchParts) {
+    if (jobParts.some(jp => jp.includes(sp) || sp.includes(jp))) {
+      return true;
+    }
+  }
+
+  const searchWords = s.split(/[\s\/,\(\)\-]+/).map(t => t.trim()).filter(t => t.length > 2);
+  const jobWords = fullJobLoc.split(/[\s\/,\(\)\-]+/).map(t => t.trim()).filter(t => t.length > 2);
+  for (const sw of searchWords) {
+    if (jobWords.includes(sw)) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 // IIMJobs-style locations used by the onboarding preferred-location selector.
@@ -200,3 +236,75 @@ export const preferredLocationOptions = preferredLocations.map((location) => ({
 export const currentLocationOptions = preferredLocationOptions.filter(
   ({ value }) => value !== 'Anywhere in India' && value !== 'Anywhere in India/Multiple Locations'
 );
+
+export const getJobLocationBadges = (job) => {
+  if (!job) return { displayLocation: '', workplaceMode: '' };
+  
+  let loc = String(job.location || '').trim();
+  let workLoc = String(job.details?.workLocation || '').trim();
+
+  // If workLocation is identical to loc, avoid duplicate
+  if (loc.toLowerCase() === workLoc.toLowerCase()) {
+    workLoc = '';
+  }
+
+  // Check if loc contains mode in parentheses, e.g. "Gurgaon, Haryana (Hybrid)" or "(Remote)" or "(On-site)"
+  const modeMatch = loc.match(/\((hybrid|remote|on-site|onsite|in person|wfh|work from home)\)/i);
+  let detectedMode = '';
+  if (modeMatch) {
+    detectedMode = modeMatch[1];
+    if (/hybrid/i.test(detectedMode)) detectedMode = 'Hybrid';
+    else if (/remote|wfh|work from home/i.test(detectedMode)) detectedMode = 'Remote';
+    else detectedMode = 'On-site';
+
+    // Remove the (Hybrid) part from loc for a clean city display
+    loc = loc.replace(/\s*\((hybrid|remote|on-site|onsite|in person|wfh|work from home)\)/i, '').trim();
+  }
+
+  // If workLoc had a mode like "Gurgaon, Haryana (Hybrid)", extract mode if not already detected
+  const wModeMatch = workLoc.match(/\((hybrid|remote|on-site|onsite|in person|wfh|work from home)\)/i);
+  if (wModeMatch) {
+    if (!detectedMode) {
+      detectedMode = /hybrid/i.test(wModeMatch[1]) ? 'Hybrid' : (/remote|wfh/i.test(wModeMatch[1]) ? 'Remote' : 'On-site');
+    }
+    workLoc = workLoc.replace(/\s*\((hybrid|remote|on-site|onsite|in person|wfh|work from home)\)/i, '').trim();
+  }
+
+  // If workLoc is now identical to loc or empty, clear it
+  if (workLoc && workLoc.toLowerCase() === loc.toLowerCase()) {
+    workLoc = '';
+  }
+
+  // If workLoc is a known workplace type (like Hybrid, Remote, On-site, In Person)
+  if (workLoc && /^(hybrid|remote|on-site|onsite|in person|work from office|work from home|wfh)$/i.test(workLoc)) {
+    if (!detectedMode) {
+      if (/hybrid/i.test(workLoc)) detectedMode = 'Hybrid';
+      else if (/remote|wfh|work from home/i.test(workLoc)) detectedMode = 'Remote';
+      else detectedMode = 'On-site';
+    }
+    workLoc = '';
+  }
+
+  const finalMode = detectedMode || (workLoc && workLoc.toLowerCase() !== loc.toLowerCase() ? workLoc : '');
+
+  // If location itself is "Remote" and mode is "Remote", don't duplicate
+  if (loc.toLowerCase() === 'remote' && finalMode.toLowerCase() === 'remote') {
+    return {
+      displayLocation: 'Remote',
+      workplaceMode: ''
+    };
+  }
+
+  return {
+    displayLocation: loc || 'Not specified',
+    workplaceMode: finalMode
+  };
+};
+
+export const formatJobLocation = (job) => {
+  const { displayLocation, workplaceMode } = getJobLocationBadges(job);
+  if (!workplaceMode) return displayLocation;
+  if (!displayLocation || displayLocation === 'Not specified') return workplaceMode;
+  return `${displayLocation} • ${workplaceMode}`;
+};
+

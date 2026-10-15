@@ -12,7 +12,7 @@ import AdminLogin from './pages/AdminLogin';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('adminAuthenticated') === 'true');
   
-  const VALID_TABS = ['overview', 'homepage', 'employees', 'employers', 'consultants', 'footer', 'settings'];
+  const VALID_TABS = ['overview', 'homepage', 'employees', 'employers', 'consultants', 'footer', 'backup', 'settings', 'seo'];
 
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -66,6 +66,29 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [activeTab]);
 
+  // Dynamically apply site favicon to Admin browser tab
+  useEffect(() => {
+    const syncFavicon = async () => {
+      try {
+        // Fast local cache check
+        const cached = localStorage.getItem('sahijob_favicon_cache');
+        if (cached) {
+          const link = document.getElementById('admin-favicon') || document.querySelector("link[rel*='icon']");
+          if (link) link.href = cached;
+        }
+
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/seo/public`);
+        const json = await res.json();
+        if (json.success && json.data?.favicon) {
+          localStorage.setItem('sahijob_favicon_cache', json.data.favicon);
+          const link = document.getElementById('admin-favicon') || document.querySelector("link[rel*='icon']");
+          if (link) link.href = json.data.favicon;
+        }
+      } catch (_) {}
+    };
+    syncFavicon();
+  }, []);
+
   if (!isAuthenticated) {
     return <AdminLogin onLogin={() => setIsAuthenticated(true)} />;
   }
@@ -101,10 +124,8 @@ function App() {
       {activeTab === 'consultants' && (
         <ConsultantsTab />
       )}
-      {activeTab === 'settings' && (
-        <div className="flex-1 w-full h-full overflow-y-auto">
-          <SettingsTab />
-        </div>
+      {(activeTab === 'backup' || activeTab === 'settings' || activeTab === 'seo') && (
+        <SettingsTab initialSubTab={activeTab === 'seo' ? 'seo' : undefined} />
       )}
     </AdminLayout>
   );

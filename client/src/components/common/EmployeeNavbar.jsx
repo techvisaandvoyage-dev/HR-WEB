@@ -230,7 +230,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
             </svg>
             <LocationAutocomplete 
               value={searchLocation}
-              onChange={(val) => handleSetSearchLocation(val?.label || val)}
+              onChange={(val) => handleSetSearchLocation(typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || ''))}
               placeholder="City, state, region or remote" 
               className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
             />

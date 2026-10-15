@@ -290,8 +290,24 @@ const PostJob = ({ addJob, updateJob }) => {
       Monthly: { min: detectedSalaryType === 'Monthly' ? min : '', max: detectedSalaryType === 'Monthly' ? max : '' },
       Hourly: { min: detectedSalaryType === 'Hourly' ? min : '', max: detectedSalaryType === 'Hourly' ? max : '' }
     });
+    if (editingJob.seo) {
+      setJobSeo({
+        metaTitle: editingJob.seo.metaTitle || '',
+        metaDescription: editingJob.seo.metaDescription || '',
+        canonicalUrl: editingJob.seo.canonicalUrl || '',
+        noindex: Boolean(editingJob.seo.noindex)
+      });
+    }
     setActiveStep(1);
   }, [editingJob]);
+
+  const [jobSeo, setJobSeo] = useState({
+    metaTitle: '',
+    metaDescription: '',
+    canonicalUrl: '',
+    noindex: false
+  });
+  const [showSeoAccordion, setShowSeoAccordion] = useState(false);
   
   const [validationError, setValidationError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -1478,6 +1494,97 @@ const PostJob = ({ addJob, updateJob }) => {
                       </ul>
                     </div>
                   )}
+
+                  {/* SEO & Search Engine Optimization (Optional) */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowSeoAccordion(!showSeoAccordion)}
+                      className="w-full flex items-center justify-between text-left p-3.5 bg-gray-50 hover:bg-gray-100/80 rounded-xl border border-gray-200/80 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">🔍</span>
+                        <div>
+                          <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">Search Engine Optimization (SEO)</span>
+                          <span className="ml-2 text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Optional</span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-500 font-semibold">{showSeoAccordion ? 'Hide ▲' : 'Customize ▼'}</span>
+                    </button>
+
+                    {showSeoAccordion && (
+                      <div className="mt-3 p-4 bg-gray-50/50 rounded-xl border border-gray-200/80 space-y-4 animate-in fade-in">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs font-bold text-gray-700">Custom Meta Title</label>
+                            <span className="text-[11px] text-gray-400">{(jobSeo.metaTitle || jobData.title || '').length} / 60 chars</span>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder={`${jobData.title || 'Job Title'} | ${employerDetails.companyName || 'SahiJob'}`}
+                            value={jobSeo.metaTitle}
+                            onChange={(e) => setJobSeo({ ...jobSeo, metaTitle: e.target.value })}
+                            className="w-full px-3.5 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-[#29953f] outline-none"
+                          />
+                          <p className="text-[11px] text-gray-400 mt-1">Leave empty to use automatic title template.</p>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs font-bold text-gray-700">Custom Meta Description</label>
+                            <span className={`text-[11px] font-semibold ${(jobSeo.metaDescription || '').length > 160 ? 'text-amber-600' : 'text-gray-400'}`}>
+                              {(jobSeo.metaDescription || '').length} / 160 chars
+                            </span>
+                          </div>
+                          <textarea
+                            rows={2}
+                            placeholder="Brief search summary for Google results (150-160 characters recommended)..."
+                            value={jobSeo.metaDescription}
+                            onChange={(e) => setJobSeo({ ...jobSeo, metaDescription: e.target.value })}
+                            className="w-full px-3.5 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-[#29953f] outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">Canonical URL (Optional)</label>
+                          <input
+                            type="url"
+                            placeholder="https://example.com/jobs/original-posting"
+                            value={jobSeo.canonicalUrl}
+                            onChange={(e) => setJobSeo({ ...jobSeo, canonicalUrl: e.target.value })}
+                            className="w-full px-3.5 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-[#29953f] outline-none"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            id="seo_noindex"
+                            checked={jobSeo.noindex}
+                            onChange={(e) => setJobSeo({ ...jobSeo, noindex: e.target.checked })}
+                            className="w-4 h-4 rounded text-[#29953f] focus:ring-[#29953f] border-gray-300 cursor-pointer"
+                          />
+                          <label htmlFor="seo_noindex" className="text-xs font-medium text-gray-700 cursor-pointer">
+                            Exclude this job from Google search results (<code className="text-red-600 text-[11px]">noindex</code>)
+                          </label>
+                        </div>
+
+                        {/* Live Google Search Preview */}
+                        <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200/90 shadow-2xs">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Google Search Preview</span>
+                          <div className="text-[13px] text-[#1a0dab] hover:underline font-medium truncate cursor-pointer">
+                            {jobSeo.metaTitle || `${jobData.title || 'Untitled Job'} | ${employerDetails.companyName || 'Company'} - SahiJob`}
+                          </div>
+                          <div className="text-[11px] text-[#006621] truncate my-0.5">
+                            https://sahijob.com/job/sample-id
+                          </div>
+                          <div className="text-xs text-[#545454] line-clamp-2">
+                            {jobSeo.metaDescription || jobData.about || `Apply for ${jobData.title || 'this position'} at ${employerDetails.companyName || 'top company'}. View salary, requirements, and apply online.`}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1527,6 +1634,7 @@ const PostJob = ({ addJob, updateJob }) => {
                     screeningQuestions: jobData.screeningQuestions,
                     aboutRole: jobData.about || "",
                     responsibilities: jobData.responsibilities || "",
+                    seo: jobSeo,
                     details: {
                       workLocation: jobData.workplaceType || "On-site",
                       jobTitle: jobData.title || 'Untitled Job',

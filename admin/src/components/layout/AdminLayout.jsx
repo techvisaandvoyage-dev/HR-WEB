@@ -9,7 +9,8 @@ import {
   Users, 
   LogOut, 
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Database
 } from 'lucide-react';
 
 /**

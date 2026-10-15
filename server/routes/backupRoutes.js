@@ -113,10 +113,9 @@ router.get('/download-instant', async (req, res) => {
   }
 });
 
-// POST send single backup JSON to email
-router.post('/email-single', async (req, res) => {
+const handleEmailBackup = async (req, res) => {
   try {
-    const targetEmail = req.body.email || process.env.BACKUP_EMAIL || 'sonic16t@gmail.com';
+    const targetEmail = req.body.email || req.body.targetEmail || process.env.BACKUP_EMAIL || 'sonic16t@gmail.com';
     const db = mongoose.connection.db;
     if (!db) {
       return res.status(500).json({ success: false, message: 'Database not connected' });
@@ -187,6 +186,12 @@ router.post('/email-single', async (req, res) => {
 
     const resendData = await resendResponse.json();
     if (resendResponse.ok) {
+      try {
+        const SiteSettings = require('../models/SiteSettings');
+        await SiteSettings.findOneAndUpdate({}, { lastBackupSentAt: now }, { upsert: true });
+      } catch (err) {
+        console.warn('Could not update lastBackupSentAt in SiteSettings:', err.message);
+      }
       return res.json({ success: true, message: `Backup single file sent to ${targetEmail}`, emailId: resendData.id });
     } else {
       return res.status(400).json({ success: false, message: resendData.message || 'Failed to send email' });
@@ -195,7 +200,10 @@ router.post('/email-single', async (req, res) => {
     console.error('Error emailing backup:', error);
     res.status(500).json({ success: false, message: error.message });
   }
-});
+};
+
+router.post('/email-single', handleEmailBackup);
+router.post('/send-email', handleEmailBackup);
 
 // Helper: recursively convert 24-hex string IDs to mongoose.Types.ObjectId and ISO dates to Date
 const sanitizeDocForRestore = (data) => {

@@ -610,7 +610,29 @@ exports.updateSiteSettings = async (req, res) => {
       settings.limitErrorMessage = String(limitErrorMessage).trim();
     }
 
+    if (typeof req.body.backupEmail !== 'undefined') {
+      settings.backupEmail = String(req.body.backupEmail).trim().toLowerCase();
+    }
+
+    if (typeof req.body.backupFrequencyDays !== 'undefined') {
+      const parsedFreq = parseInt(req.body.backupFrequencyDays, 10);
+      if (!isNaN(parsedFreq) && parsedFreq > 0) {
+        settings.backupFrequencyDays = parsedFreq;
+      }
+    }
+
+    if (req.body.seo && typeof req.body.seo === 'object') {
+      const existingSeo = settings.seo?.toObject ? settings.seo.toObject() : (settings.seo || {});
+      settings.seo = { ...existingSeo, ...req.body.seo };
+    }
+
     await settings.save();
+
+    // Invalidate public SEO cache
+    try {
+      const { invalidateSeoCache } = require('../services/seoService');
+      invalidateSeoCache();
+    } catch (_) {}
 
     // Trigger live employer sync
     try {

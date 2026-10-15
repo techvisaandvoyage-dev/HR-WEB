@@ -5,6 +5,8 @@ import { auth, googleProvider } from '../../firebase';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 import { captureJobAttribution, getStoredAttribution, clearStoredAttribution, logJobVisitEvent } from '../../utils/attribution';
+import SEOHead from '../common/SEOHead';
+import { trackJobView, trackJobApplyClick } from '../../utils/analytics';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India (+91)' },
@@ -401,6 +403,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         const data = await res.json();
         if (res.ok && data.success && data.data) {
           setJob(data.data);
+          try {
+            trackJobView(data.data);
+          } catch (_) {}
           // Initialize screening answers
           if (data.data.screeningQuestions && data.data.screeningQuestions.length > 0) {
             const initial = {};
@@ -994,6 +999,47 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           </div>
         </div>
       </header>
+
+      {job && (
+        <SEOHead
+          title={job.seo?.metaTitle || `${job.title} at ${job.company} | SahiJob`}
+          description={job.seo?.metaDescription || job.aboutRole || job.details?.aboutRole || `Apply now for ${job.title} at ${job.company}. Check eligibility, salary details, and apply online on SahiJob.`}
+          canonicalUrl={job.seo?.canonicalUrl || (typeof window !== 'undefined' ? `${window.location.origin}/job/${jobId}` : '')}
+          noindex={Boolean(job.seo?.noindex)}
+          ogTitle={job.seo?.metaTitle || `${job.title} - ${job.company} Hiring Now`}
+          ogDescription={job.seo?.metaDescription || `Apply for ${job.title} vacancy at ${job.company}.`}
+          ogImage={job.seo?.ogImage || job.companyLogo || ''}
+          schema={{
+            "@context": "https://schema.org/",
+            "@type": "JobPosting",
+            "title": job.title,
+            "description": job.aboutRole || job.responsibilities || job.details?.aboutRole || job.title,
+            "datePosted": job.createdAt || new Date().toISOString(),
+            "validThrough": new Date(new Date(job.createdAt || Date.now()).getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+            "employmentType": job.details?.employmentType === 'Part-Time' ? 'PART_TIME' : job.details?.employmentType === 'Internship' ? 'INTERN' : 'FULL_TIME',
+            "hiringOrganization": {
+              "@type": "Organization",
+              "name": job.company || "Company",
+              ...(job.companyLogo ? { "logo": job.companyLogo } : {})
+            },
+            "jobLocation": job.details?.workLocation === 'Remote' ? {
+              "@type": "Place",
+              "applicantLocationRequirements": {
+                "@type": "Country",
+                "name": "India"
+              }
+            } : {
+              "@type": "Place",
+              "address": {
+                "@type": "PostalAddress",
+                "addressLocality": job.location || "India",
+                "addressCountry": "IN"
+              }
+            },
+            ...(job.details?.workLocation === 'Remote' ? { "jobLocationType": "TELECOMMUTE" } : {})
+          }}
+        />
+      )}
 
       {/* Main Container */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">

@@ -52,7 +52,16 @@ const JobSchema = new mongoose.Schema({
     question: String,
     type: { type: String, enum: ['Yes/No', 'Short Text'] },
     required: { type: Boolean, default: true }
-  }]
+  }],
+  // Per-Job SEO Overrides
+  seo: {
+    metaTitle: { type: String, default: '' },
+    metaDescription: { type: String, default: '' },
+    canonicalUrl: { type: String, default: '' },
+    noindex: { type: Boolean, default: false },
+    ogImage: { type: String, default: '' },
+    slug: { type: String, default: '' }
+  }
 }, { timestamps: true });
 
 // Automatically trigger live Google Sheet sync on Job create/update

@@ -62,7 +62,7 @@ exports.createJob = async (req, res) => {
 
     let {
       company, companyInitial, companyLogo, title, location, salary, employerProvided,
-      easyApply, qualifications, details, screeningQuestions
+      easyApply, qualifications, details, screeningQuestions, seo
     } = req.body;
 
     if (!company) {
@@ -91,10 +91,16 @@ exports.createJob = async (req, res) => {
       easyApply,
       qualifications,
       details,
-      screeningQuestions
+      screeningQuestions,
+      ...(seo && typeof seo === 'object' ? { seo } : {})
     });
 
     res.status(201).json({ success: true, data: job });
+
+    try {
+      const { invalidateSeoCache } = require('../../services/seoService');
+      invalidateSeoCache();
+    } catch (_) {}
 
     try {
       const { triggerLiveEmployerSync } = require('../../services/googleSheetService');
@@ -132,7 +138,7 @@ exports.updateJob = async (req, res) => {
 
     let {
       company, companyInitial, companyLogo, title, location, salary, employerProvided,
-      easyApply, qualifications, details, screeningQuestions
+      easyApply, qualifications, details, screeningQuestions, seo
     } = req.body;
 
     if (Array.isArray(screeningQuestions)) {
@@ -160,10 +166,17 @@ exports.updateJob = async (req, res) => {
       easyApply,
       qualifications,
       details,
-      screeningQuestions
+      screeningQuestions,
+      ...(seo && typeof seo === 'object' ? { seo } : {})
     });
 
     const updatedJob = await job.save();
+
+    try {
+      const { invalidateSeoCache } = require('../../services/seoService');
+      invalidateSeoCache();
+    } catch (_) {}
+
     res.status(200).json({ success: true, data: updatedJob });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
