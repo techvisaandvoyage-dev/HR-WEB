@@ -680,7 +680,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 flex md:gap-6 items-start min-h-[calc(100vh-100px)]">
-        {displayedJobs.length === 0 ? (
+        {displayedJobs.length === 0 && !(filters.keyword || filters.location || filters.experience !== 'All' || filters.postingDate !== 'Any time') ? (
           <div className="w-full bg-white rounded-2xl border border-gray-200 p-12 text-center my-8 shadow-xs flex flex-col items-center justify-center min-h-[420px]">
             <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mb-5 shadow-inner">
               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -689,18 +689,8 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
             </div>
             <h3 className="text-2xl font-black text-gray-900 mb-2">No job posted yet</h3>
             <p className="text-gray-500 text-sm max-w-md mb-6 leading-relaxed">
-              {filters.keyword || filters.location || filters.experience !== 'All' || filters.postingDate !== 'Any time'
-                ? "No active job listings match your current filters. Try adjusting or clearing your search filters."
-                : "Employers have not posted any jobs yet. Please check back later for new opportunities!"}
+              Employers have not posted any jobs yet. Please check back later for new opportunities!
             </p>
-            {(filters.keyword || filters.location || filters.experience !== 'All' || filters.postingDate !== 'Any time') && (
-              <button
-                onClick={() => setFilters({ keyword: '', location: '', experience: 'All', postingDate: 'Any time' })}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-xs transition-colors"
-              >
-                Clear Filters
-              </button>
-            )}
           </div>
         ) : (
           <>
@@ -890,22 +880,24 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
               </div>
 
               {displayedJobs.length === 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl">
-                    🔍
-                  </div>
-                  <h3 className="text-base font-bold text-gray-900">No jobs found</h3>
-                  <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                    {filters.postingDate !== 'Any time' 
-                      ? `No jobs match "${filters.postingDate}". Try selecting "Past week" or "Any time".`
+                <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-3 mt-2">
+                  <div className="text-4xl mb-1">🔍</div>
+                  <h3 className="text-base font-bold text-gray-900">No results found</h3>
+                  <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+                    {filters.postingDate !== 'Any time'
+                      ? 'No jobs found for "' + filters.postingDate + '". Try selecting "Past week" or "Any time".'
+                      : filters.location
+                      ? 'No jobs found in "' + filters.location + '". Try a different city or "Remote".'
+                      : filters.keyword
+                      ? 'No jobs found for "' + filters.keyword + '". Try a different keyword.'
                       : 'No jobs match your current filter settings.'}
                   </p>
                   <button
                     type="button"
                     onClick={() => setFilters({ keyword: '', location: '', experience: 'All', postingDate: 'Any time' })}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#1b5e20] hover:bg-[#15541b] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer mt-1"
                   >
-                    Reset All Filters
+                    Clear All Filters
                   </button>
                 </div>
               )}
