@@ -18,23 +18,34 @@ const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
   return (
     <div className="relative font-sans h-full flex items-center border-r border-gray-300" ref={ref}>
       <button 
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-1.5 h-full flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 bg-transparent"
+        className="px-3.5 py-1.5 h-full flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900 bg-transparent cursor-pointer font-medium"
       >
-        <span className="truncate max-w-[90px] text-left">{value === 'All' || value === 'Any time' ? placeholder : value}</span>
-        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+        <span className="truncate max-w-[125px] text-left">{value === 'All' || value === 'Any time' ? placeholder : value}</span>
+        <svg className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
       </button>
       {isOpen && (
-        <div className="absolute top-[120%] left-0 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-[110]">
-          {options.map(opt => (
-            <div 
-              key={opt.value} 
-              onClick={() => { onChange(opt.value); setIsOpen(false); }}
-              className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
-            >
-              {opt.label}
-            </div>
-          ))}
+        <div className="absolute top-[120%] left-0 w-52 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 z-[110] animate-in fade-in duration-150">
+          {options.map(opt => {
+            const isSelected = opt.value === value;
+            return (
+              <div 
+                key={opt.value} 
+                onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                className={`px-4 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
+                  isSelected ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span>{opt.label}</span>
+                {isSelected && (
+                  <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -185,6 +196,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters 
             options={[
               { label: 'Any time', value: 'Any time' },
               { label: 'Past 24 hours', value: 'Past 24 hours' },
+              { label: 'Past 3 days', value: 'Past 3 days' },
               { label: 'Past week', value: 'Past week' },
               { label: 'Past month', value: 'Past month' }
             ]}
