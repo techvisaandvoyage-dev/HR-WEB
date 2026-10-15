@@ -954,7 +954,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       )}
                     </div>
 
-                    {/* Bookmark & Thumbs Down Buttons */}
+                    {/* Bookmark Button */}
                     <div className="flex items-center gap-1 shrink-0 -mr-1">
                       <button 
                         onClick={(e) => toggleSaveJob(job.id, e)} 
@@ -966,16 +966,6 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         ) : (
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                         )}
-                      </button>
-
-                      <button 
-                        onClick={(e) => toggleDismissJob(job.id, e)} 
-                        className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                        title="Not interested"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h7.264a2 2 0 012 2v7m-8 2l2.25 4.5a2.121 2.121 0 003.882-1.5l-.882-3h3.75a2 2 0 002-2v-2a2 2 0 00-2-2h-3" />
-                        </svg>
                       </button>
                     </div>
                   </div>
@@ -1086,9 +1076,6 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                             <h2 className="text-xl font-semibold text-gray-900">{selectedJob.company}</h2>
                           </div>
                         </div>
-                        <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center transition-colors">
-                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
-                        </button>
                       </div>
                       
                       <h1 className="text-2xl font-bold text-gray-900 mb-2">{selectedJob.title}</h1>
