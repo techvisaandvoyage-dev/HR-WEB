@@ -12,6 +12,7 @@ import VideoPlayer from '../common/VideoPlayer';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
+import CountryCodeDropdown from '../common/CountryCodeDropdown';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -702,6 +703,9 @@ const EmployeeOnboarding = () => {
         if (parsed.qualifications && Array.isArray(parsed.qualifications)) {
           parsed.qualifications = sortQualifications(parsed.qualifications);
         }
+        if (!parsed.videoVisibility) {
+          parsed.videoVisibility = parsed.documents?.videoVisibility || 'everyone';
+        }
         return parsed;
       } catch (e) {
         console.error("Failed to parse profile data");
@@ -710,6 +714,7 @@ const EmployeeOnboarding = () => {
     return {
       firstName: '',
       lastName: '',
+      countryCode: '+91',
       phone: '',
       email: '',
       brief: '',
@@ -742,8 +747,11 @@ const EmployeeOnboarding = () => {
       documents: {
         resume: null,
         coverLetter: null,
-        introVideo: null
-      }
+        introVideo: null,
+        videoVisibility: 'everyone'
+      },
+      videoVisibility: 'everyone',
+      isProfilePrivate: false
     };
   });
 
@@ -788,7 +796,13 @@ const EmployeeOnboarding = () => {
               qualifications: (data.qualifications && data.qualifications.length > 0) ? sortQualifications(data.qualifications) : prev.qualifications,
               experience: (data.experience && data.experience.length > 0) ? sortExperience(data.experience) : prev.experience,
               professionalDetails: data.professionalDetails ? { ...(prev.professionalDetails || {}), ...data.professionalDetails } : prev.professionalDetails,
-              documents: data.documents ? { ...(prev.documents || {}), ...data.documents } : prev.documents
+              videoVisibility: data.videoVisibility || data.documents?.videoVisibility || prev.videoVisibility || 'everyone',
+              documents: data.documents ? { 
+                ...(prev.documents || {}), 
+                ...data.documents,
+                videoVisibility: data.videoVisibility || data.documents.videoVisibility || prev.videoVisibility || 'everyone'
+              } : prev.documents,
+              isProfilePrivate: data.isProfilePrivate !== undefined ? Boolean(data.isProfilePrivate) : (prev.isProfilePrivate || false)
             };
             localStorage.setItem('userProfile', JSON.stringify(next));
             return next;
@@ -1241,11 +1255,14 @@ const EmployeeOnboarding = () => {
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fPhone.label} {fPhone.isRequired && <span className="text-red-500">*</span>}
             </label>
-            <div className="flex">
-              <span className={`px-4 py-3 border border-r-0 ${((showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10)) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-l-xl bg-gray-50 text-gray-500 font-semibold`}>+91</span>
+            <div className={`flex items-center bg-white border ${((showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10)) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all`}>
+              <CountryCodeDropdown
+                value={formData.countryCode || '+91'}
+                onChange={(code) => setFormData({ ...formData, countryCode: code })}
+              />
               <input 
                 type="text" 
-                className={`w-full px-4 py-3 bg-white border ${((showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10)) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-r-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+                className="w-full px-4 py-3 bg-transparent text-gray-700 outline-none rounded-r-xl transition-all" 
                 placeholder={fPhone.placeholder} 
                 value={formData.phone || ''} 
                 onChange={e => { 
@@ -2885,7 +2902,20 @@ const EmployeeOnboarding = () => {
 
   const Step5Documents = () => {
     const docs = formData.documents || {};
-    const setDoc = (field, val) => setFormData({...formData, documents: {...docs, [field]: val}});
+    const setDoc = (field, val) => setFormData(prev => ({ ...prev, documents: { ...(prev.documents || {}), [field]: val } }));
+
+    const handleVisibilityChange = (visibility) => {
+      setFormData(prev => {
+        const updated = {
+          ...prev,
+          videoVisibility: visibility,
+          documents: { ...(prev.documents || {}), videoVisibility: visibility }
+        };
+        localStorage.setItem('userProfile', JSON.stringify(updated));
+        saveToBackend(updated);
+        return updated;
+      });
+    };
 
     const handleFileUpload = async (e, type) => {
       let file = e.target.files[0];
@@ -3278,21 +3308,117 @@ const EmployeeOnboarding = () => {
             )}
 
             {docs.introVideo && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs space-y-4 mt-4">
                 <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                      Video Attached
+                    </span>
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                      (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {(formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone' ? (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          Visible to All Employers
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          Applied Job Only
+                        </>
+                      )}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
                       setDoc('introVideo', null);
                       setVideoLink('');
                     }}
-                    className="text-[11px] font-bold text-red-600 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
+                    className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors cursor-pointer"
                   >
                     Remove Video
                   </button>
                 </div>
 
-                <VideoPlayer url={docs.introVideo} maxPlayerHeight="150px" />
+                <VideoPlayer url={docs.introVideo} />
+
+                {/* Visibility / Sharing Options */}
+                <div className="pt-3 border-t border-gray-100 space-y-2">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Who can see this video?
+                  </label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Option 1: Share to everyone */}
+                    <button
+                      type="button"
+                      onClick={() => handleVisibilityChange('everyone')}
+                      className={`w-full text-left p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 ${
+                        (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
+                          ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                        (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
+                          ? 'border-emerald-600 bg-emerald-600'
+                          : 'border-gray-300 bg-white'
+                      }`}>
+                        {(formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-gray-900">Share to everyone</p>
+                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">All Employees List</span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                          All employers can view your introductory video in the all employee list.
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Option 2: Share to applied jobs */}
+                    <button
+                      type="button"
+                      onClick={() => handleVisibilityChange('applied')}
+                      className={`w-full text-left p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 ${
+                        (formData.videoVisibility || formData.documents?.videoVisibility) === 'applied'
+                          ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                        (formData.videoVisibility || formData.documents?.videoVisibility) === 'applied'
+                          ? 'border-emerald-600 bg-emerald-600'
+                          : 'border-gray-300 bg-white'
+                      }`}>
+                        {(formData.videoVisibility || formData.documents?.videoVisibility) === 'applied' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-gray-900">Share to applied jobs</p>
+                          <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">Applied Only</span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                          Only employers of jobs you specifically apply to can watch your video.
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -3375,14 +3501,107 @@ const EmployeeOnboarding = () => {
                 </a>
               ) : <span className="text-gray-400 italic">None</span>}
             </p>
-            <p className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="font-semibold text-gray-600 w-32">Intro Video:</span> 
               {formData.documents?.introVideo ? (
-                <a href={formData.documents.introVideo} target="_blank" rel="noreferrer" className="text-emerald-600 font-medium hover:underline flex items-center gap-1">
-                  📹 Introductory Video Attached (Click to watch)
-                </a>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a href={formData.documents.introVideo} target="_blank" rel="noreferrer" className="text-emerald-600 font-medium hover:underline flex items-center gap-1">
+                    📹 Introductory Video Attached (Click to watch)
+                  </a>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {(formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone' ? 'Visible to All Employers' : 'Applied Job Only'}
+                  </span>
+                </div>
               ) : <span className="text-gray-400 italic">None</span>}
-            </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Privacy & Directory Visibility Settings */}
+        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900 text-base">Privacy & Directory Visibility</h4>
+                <p className="text-xs text-gray-500">Control your visibility in the recruiter candidate directory</p>
+              </div>
+            </div>
+            {formData.isProfilePrivate ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                🔒 Private (Hidden)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                Public (Visible)
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-start justify-between gap-4 p-3.5 bg-gray-50/80 rounded-xl border border-gray-200">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-gray-900">Hide Profile from Candidate Directory (Private Mode)</p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Your profile details will be private. Only employers of jobs you have applied to will be able to view your profile.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !formData.isProfilePrivate;
+                setFormData(prev => ({ ...prev, isProfilePrivate: nextVal }));
+                try {
+                  const saved = localStorage.getItem('userProfile');
+                  if (saved) {
+                    const parsed = JSON.parse(saved);
+                    parsed.isProfilePrivate = nextVal;
+                    localStorage.setItem('userProfile', JSON.stringify(parsed));
+                  }
+                } catch (_) {}
+              }}
+              aria-label="Toggle profile privacy"
+              className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                formData.isProfilePrivate ? 'bg-emerald-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  formData.isProfilePrivate ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <div className={`p-3.5 rounded-xl border transition-all ${!formData.isProfilePrivate ? 'bg-emerald-50/60 border-emerald-200 ring-1 ring-emerald-300/50' : 'bg-white border-gray-200'}`}>
+              <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs mb-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                When Public (Default)
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Verified recruiters and company employers can discover your profile when searching for candidates matching your skills, experience, and designation.
+              </p>
+            </div>
+
+            <div className={`p-3.5 rounded-xl border transition-all ${formData.isProfilePrivate ? 'bg-amber-50/60 border-amber-200 ring-1 ring-amber-300/50' : 'bg-white border-gray-200'}`}>
+              <div className="flex items-center gap-1.5 text-amber-800 font-bold text-xs mb-1">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                When Private Mode is Enabled
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Your profile is completely hidden from recruiter search lists. Only employers of jobs you personally submit an application to will be able to see your details.
+              </p>
+            </div>
           </div>
         </div>
       </div>

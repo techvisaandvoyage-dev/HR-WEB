@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { currentLocationOptions, preferredLocationOptions, isEmployeeCurrentLocationMatch, isEmployeePreferredLocationMatch } from '../../../data/preferredLocations';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 import VideoPlayer from '../../common/VideoPlayer';
+import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
 // Mapping algorithm to categorize employee designations into broader industries
 const designationToIndustryMap = {
@@ -379,7 +380,7 @@ const AllEmployeesTab = ({ portalConfig }) => {
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Hidden</span>
                         ) : (
-                          emp.mobile || 'N/A'
+                          formatPhoneWithCountryCode(emp.mobile, emp.countryCode) || 'N/A'
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 font-medium">
@@ -475,7 +476,7 @@ const AllEmployeesTab = ({ portalConfig }) => {
                   <h3 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h3>
                   <p className="text-sm text-gray-500 mt-1">{selectedEmployee.email}</p>
                   <p className="text-xs text-gray-400 mt-1 font-semibold">
-                    {selectedEmployee.mobile && `${selectedEmployee.mobile} • `}
+                    {selectedEmployee.mobile && `${formatPhoneWithCountryCode(selectedEmployee.mobile, selectedEmployee.countryCode)} • `}
                     {selectedEmployee.location || 'Location not provided'}
                   </p>
                 </div>

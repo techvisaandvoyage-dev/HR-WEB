@@ -3,18 +3,11 @@ const dns = require('dns').promises;
 const Employer = require('../models/Employer');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
 const { sendOtp, resendOtp, verifyOtp } = require('../../utils/email');
+const { verifyEmailDeliverability } = require('../../utils/emailValidator');
 
-// Helper: validate email format + require Google @gmail.com
+// Helper: validate email deliverability (format, non-disposable, DNS MX check)
 const validateEmailDomain = async (email) => {
-  const cleanEmail = String(email || '').trim().toLowerCase();
-  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/;
-  if (!emailRegex.test(cleanEmail)) {
-    return { valid: false, message: 'Please enter a valid email address (e.g. name@gmail.com)' };
-  }
-  if (!cleanEmail.endsWith('@gmail.com')) {
-    return { valid: false, message: 'Only Google (@gmail.com) email addresses are accepted. Other email domains are not allowed.' };
-  }
-  return { valid: true };
+  return await verifyEmailDeliverability(email);
 };
 
 // Helper: get next sequential employerId starting from 400201
@@ -41,26 +34,35 @@ exports.sendRegistrationOtp = async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const domainCheck = await verifyEmailDeliverability(email);
+    if (!domainCheck.valid) {
+      return res.status(400).json({ message: domainCheck.message || 'Please enter a valid email address.', field: 'email' });
+    }
+    const cleanEmail = domainCheck.cleanEmail;
     const userExists = await Employer.findOne({ 
       email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
-    });
+    }).select('+password');
     if (userExists) {
       const isTargetConsultant = Boolean(isConsultant === true);
       const isExistingConsultant = Boolean(userExists.isConsultant === true);
+      const isGoogle = Boolean(userExists.googleId || userExists.authProvider === 'google' || !userExists.password);
 
       if (isTargetConsultant) {
         if (!isExistingConsultant) {
           return res.status(400).json({ 
             message: 'This account is already registered as an employer. Please use Employer Login or use a different email.', 
             field: 'email',
-            registeredRole: 'employer'
+            registeredRole: 'employer',
+            isGoogleAccount: isGoogle,
+            accountExists: true
           });
         } else {
           return res.status(400).json({ 
             message: 'A consultant account is already registered with this email. Please log in directly.', 
             field: 'email',
-            registeredRole: 'consultant'
+            registeredRole: 'consultant',
+            isGoogleAccount: isGoogle,
+            accountExists: true
           });
         }
       } else {
@@ -68,13 +70,17 @@ exports.sendRegistrationOtp = async (req, res) => {
           return res.status(400).json({ 
             message: 'This account is already registered as a consultant. Please use Consultant Login or use a different email.', 
             field: 'email',
-            registeredRole: 'consultant'
+            registeredRole: 'consultant',
+            isGoogleAccount: isGoogle,
+            accountExists: true
           });
         } else {
           return res.status(400).json({ 
             message: 'An employer account is already registered with this email. Please log in directly.', 
             field: 'email',
-            registeredRole: 'employer'
+            registeredRole: 'employer',
+            isGoogleAccount: isGoogle,
+            accountExists: true
           });
         }
       }
@@ -119,11 +125,6 @@ exports.sendRegistrationOtp = async (req, res) => {
       }
     }
 
-    // Validate email format and domain via DNS MX lookup
-    const domainCheck = await validateEmailDomain(cleanEmail);
-    if (!domainCheck.valid) {
-      return res.status(400).json({ message: domainCheck.message, field: 'email' });
-    }
 
     const result = await sendOtp({
       email,
@@ -209,7 +210,11 @@ exports.register = async (req, res) => {
       otp
     } = req.body;
 
-    const cleanEmail = String(email || '').trim().toLowerCase();
+    const deliverability = await verifyEmailDeliverability(email);
+    if (!deliverability.valid) {
+      return res.status(400).json({ success: false, field: 'email', message: deliverability.message || 'Please enter a valid email address.' });
+    }
+    const cleanEmail = deliverability.cleanEmail;
 
     // Check if user exists
     let employer = await Employer.findOne({ email: cleanEmail });
@@ -230,21 +235,35 @@ exports.register = async (req, res) => {
         const isTargetConsultant = Boolean(req.body.isConsultant === true);
         const isExistingConsultant = Boolean(employer.isConsultant === true);
 
+        const isGoogle = Boolean(employer.googleId || employer.authProvider === 'google' || !hasPassword);
+
         if (isTargetConsultant && !isExistingConsultant) {
           return res.status(400).json({ 
             success: false, 
-            message: 'An employer account is already registered with this email. Please use Employer Login or use a different email.' 
+            field: 'email',
+            registeredRole: 'employer',
+            isGoogleAccount: isGoogle,
+            accountExists: true,
+            message: 'This account is already registered as an employer. Please use Employer Login or use a different email.' 
           });
         } else if (!isTargetConsultant && isExistingConsultant) {
           return res.status(400).json({ 
             success: false, 
-            message: 'A consultant account is already registered with this email. Please use Consultant Login or use a different email.' 
+            field: 'email',
+            registeredRole: 'consultant',
+            isGoogleAccount: isGoogle,
+            accountExists: true,
+            message: 'This account is already registered as a consultant. Please use Consultant Login or use a different email.' 
           });
         }
 
         return res.status(400).json({ 
           success: false, 
-          message: isTargetConsultant
+          field: 'email',
+          registeredRole: isExistingConsultant ? 'consultant' : 'employer',
+          isGoogleAccount: isGoogle,
+          accountExists: true,
+          message: isExistingConsultant
             ? 'A consultant account is already registered with this email. Please log in directly.'
             : 'An employer account is already registered with this email. Please log in directly.'
         });
@@ -346,7 +365,15 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, field: 'password', message: 'Please enter your password' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const deliverability = await verifyEmailDeliverability(email);
+    if (!deliverability.valid) {
+      return res.status(400).json({ 
+        success: false, 
+        field: 'email', 
+        message: deliverability.message || 'Please enter a valid email address.' 
+      });
+    }
+    const cleanEmail = deliverability.cleanEmail;
 
     // Check for user email (case-insensitive)
     const employer = await Employer.findOne({ 
@@ -387,7 +414,8 @@ exports.login = async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         field: 'email', 
-        message: 'This email is linked to a Google account. Please log in with Google.' 
+        isGoogleAccount: true,
+        message: "This email is linked with Google. Please log in using 'Continue with Google' or 'Use OTP to Login'. After logging in, you can create a password under Settings." 
       });
     }
 
@@ -498,6 +526,13 @@ exports.forgotPasswordOtp = async (req, res) => {
     
     if (!identifier) {
       return res.status(400).json({ message: 'Please provide your email address' });
+    }
+
+    if (identifier.includes('@')) {
+      const deliverability = await verifyEmailDeliverability(identifier);
+      if (!deliverability.valid) {
+        return res.status(400).json({ message: deliverability.message || 'Please enter a valid email address.' });
+      }
     }
 
     const employer = await Employer.findOne({
@@ -729,20 +764,27 @@ exports.checkEmail = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const domainCheck = await verifyEmailDeliverability(email);
+    if (!domainCheck.valid) {
+      return res.status(400).json({ success: false, field: 'email', message: domainCheck.message || 'Please enter a valid email address.' });
+    }
+    const cleanEmail = domainCheck.cleanEmail;
     const employer = await Employer.findOne({ 
       email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
-    });
+    }).select('+password');
 
     if (employer) {
       const isTargetConsultant = Boolean(isConsultant === true);
       const isExistingConsultant = Boolean(employer.isConsultant === true);
+      const isGoogle = Boolean(employer.googleId || employer.authProvider === 'google' || !employer.password);
 
       if (isTargetConsultant && !isExistingConsultant) {
         return res.status(400).json({ 
           success: false,
           field: 'email',
           registeredRole: 'employer',
+          isGoogleAccount: isGoogle,
+          accountExists: true,
           message: 'This account is already registered as an employer. Please use Employer Login or use a different email.' 
         });
       } else if (!isTargetConsultant && isExistingConsultant) {
@@ -750,6 +792,8 @@ exports.checkEmail = async (req, res) => {
           success: false,
           field: 'email',
           registeredRole: 'consultant',
+          isGoogleAccount: isGoogle,
+          accountExists: true,
           message: 'This account is already registered as a consultant. Please use Consultant Login or use a different email.' 
         });
       } else if (isTargetConsultant && isExistingConsultant) {
@@ -757,6 +801,8 @@ exports.checkEmail = async (req, res) => {
           success: false,
           field: 'email',
           registeredRole: 'consultant',
+          isGoogleAccount: isGoogle,
+          accountExists: true,
           message: 'A consultant account is already registered with this email. Please log in directly.' 
         });
       } else {
@@ -764,6 +810,8 @@ exports.checkEmail = async (req, res) => {
           success: false,
           field: 'email',
           registeredRole: 'employer',
+          isGoogleAccount: isGoogle,
+          accountExists: true,
           message: 'An employer account is already registered with this email. Please log in directly.' 
         });
       }
@@ -889,8 +937,16 @@ exports.googleAuth = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Please enter your email address.' });
       }
 
-      const cleanEmail = email.toLowerCase().trim();
-    const employer = await Employer.findOne({ email: cleanEmail });
+      const deliverability = await verifyEmailDeliverability(email);
+      if (!deliverability.valid) {
+        return res.status(400).json({ 
+          success: false, 
+          field: 'email', 
+          message: deliverability.message || 'Please enter a valid email address.' 
+        });
+      }
+      const cleanEmail = deliverability.cleanEmail;
+      const employer = await Employer.findOne({ email: cleanEmail });
 
     if (!employer) {
       return res.status(404).json({ 

@@ -323,11 +323,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
                   </button>
                 </div>
 
-                <div className="p-3 border-b border-gray-100 flex justify-center text-xs text-gray-500">
-                  <p>© 2026 sahijob.com</p>
-                </div>
-
-                <div className="py-2">
+                <div className="py-2 border-t border-gray-100">
                   <button 
                     onClick={() => {
                       localStorage.removeItem('employeeToken');

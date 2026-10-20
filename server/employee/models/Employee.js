@@ -37,6 +37,10 @@ const EmployeeSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  countryCode: {
+    type: String,
+    default: '+91'
+  },
   location: {
     type: String,
     default: ''

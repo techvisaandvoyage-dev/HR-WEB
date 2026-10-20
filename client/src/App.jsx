@@ -5,6 +5,7 @@ import EmployeeProfile from './components/employee/EmployeeProfile';
 import EmployeeLoginModal from './components/employee/EmployeeLoginModal';
 import EmployeeRegisterModal from './components/employee/EmployeeRegisterModal';
 import EmployeeOnboarding from './components/employee/EmployeeOnboarding';
+import GooglePrivacyModal from './components/employee/GooglePrivacyModal';
 import EmployerLoginModal from './components/employer/EmployerLoginModal';
 import EmployerRegisterModal from './components/employer/EmployerRegisterModal';
 import MyJobs from './components/employee/myjobs/MyJobs';
@@ -18,6 +19,7 @@ import DirectJobApply from './components/candidate/DirectJobApply';
 import { isLocationMatch } from './data/preferredLocations';
 import SEOHead from './components/common/SEOHead';
 import { initAnalytics, trackPageView } from './utils/analytics';
+import { formatPhoneWithCountryCode } from './data/countryCodes';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('employeeToken') || !!localStorage.getItem('employerToken'));
@@ -239,8 +241,10 @@ function App() {
                   id: emp._id,
                   name: emp.name || 'Unknown Candidate',
                   email: emp.email,
-                  phone: emp.mobile,
-                  mobile: emp.mobile,
+                  phone: formatPhoneWithCountryCode(emp.mobile, emp.countryCode),
+                  mobile: formatPhoneWithCountryCode(emp.mobile, emp.countryCode),
+                  rawMobile: emp.mobile,
+                  countryCode: emp.countryCode || '+91',
                   location: emp.location,
                   initials: emp.name ? emp.name.charAt(0).toUpperCase() : 'C',
                   bg: 'bg-green-600',
@@ -314,9 +318,13 @@ function App() {
 
   const addJob = (newJob) => {
     const formatted = { ...newJob, id: newJob._id || newJob.id };
-    setEmployerJobs(prev => [formatted, ...prev]);
-    setHomepageJobs(prev => [formatted, ...prev]);
-    setJobs(prev => [formatted, ...prev]);
+    const dedupe = prev => {
+      if (prev.some(job => (job.id || job._id) === formatted.id)) return prev;
+      return [formatted, ...prev];
+    };
+    setEmployerJobs(dedupe);
+    setHomepageJobs(dedupe);
+    setJobs(dedupe);
   };
 
   const updateJob = (updatedJob) => {
@@ -410,6 +418,7 @@ function App() {
 
   const [isEmployeeLoginOpen, setIsEmployeeLoginOpen] = useState(false);
   const [isEmployeeRegisterOpen, setIsEmployeeRegisterOpen] = useState(false);
+  const [googlePrivacyUser, setGooglePrivacyUser] = useState(null);
   const [isEmployerLoginOpen, setIsEmployerLoginOpen] = useState(false);
   // Auto-restore employer register modal if a step-2 draft exists in sessionStorage
   const [isConsultantMode, setIsConsultantMode] = useState(() => {
@@ -517,7 +526,8 @@ function App() {
       const stepToNavigate = data?.onboardingStep || localStorage.getItem('onboardingCurrentStep') || 1;
       navigate(`/employee/onboarding?step=${stepToNavigate}`);
     } else {
-      navigate('/employee', { state: { loggedIn: true } });
+      const userFirstName = data?.profile?.firstName || (data?.name ? data.name.split(' ')[0] : '');
+      navigate('/employee', { state: { loggedIn: true, userName: userFirstName } });
     }
   };
 
@@ -827,7 +837,13 @@ function App() {
                       {job.details?.industry || job.industry || 'Company'}
                     </div>
                   </div>
-                  <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <button 
+                    type="button"
+                    onClick={() => setIsEmployeeLoginOpen(true)}
+                    className="text-gray-400 hover:text-green-700 transition-colors cursor-pointer p-1 rounded-full hover:bg-green-50"
+                    title="Save Job"
+                    aria-label="Save Job"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                     </svg>
@@ -1007,6 +1023,17 @@ function App() {
         onLoginClick={openEmployerLogin}
         onLoginSuccess={handleEmployerLoginSuccess}
       />
+      {googlePrivacyUser && (
+        <GooglePrivacyModal 
+          isOpen={Boolean(googlePrivacyUser)} 
+          user={googlePrivacyUser}
+          onComplete={(chosenPrivacy) => {
+            const userFirstName = googlePrivacyUser?.profile?.firstName || (googlePrivacyUser?.name ? googlePrivacyUser.name.split(' ')[0] : '');
+            setGooglePrivacyUser(null);
+            navigate('/employee', { state: { loggedIn: true, userName: userFirstName } });
+          }}
+        />
+      )}
     </>
   )
 }

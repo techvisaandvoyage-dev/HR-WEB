@@ -4,20 +4,37 @@
 
 @layer base {
   :root {
-    --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-secondary: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --text: #101828;
+    --muted: #667085;
+    --faint: #98a2b3;
+    --line: #eaecf0;
+    --input-line: #d0d5dd;
+    --soft: #f9fafb;
+    --brand: #16a34a;
+    --brand-d: #15803d;
+    --brand-soft: #ecfdf3;
+    --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-primary: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-heading: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-secondary: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   body {
-    @apply bg-white m-0 p-0 text-gray-800 antialiased;
+    @apply bg-white m-0 p-0 text-[#101828] antialiased;
     font-family: var(--font-primary);
+    font-size: 14.5px;
+    line-height: 1.55;
   }
   h1, h2, h3, h4, h5, h6, .font-heading {
-    @apply tracking-tight text-gray-900;
+    @apply tracking-tight text-[#101828];
     font-family: var(--font-heading);
   }
   .font-secondary, .font-accent, .hero-highlight, [data-typography="secondary"] {
     font-family: var(--font-secondary);
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: 8px;
   }
 }
 
@@ -28,5 +45,69 @@
   .animation-delay-4000 {
     animation-delay: 4s;
   }
+}
+
+.rich-text-content {
+  font-size: 14.5px;
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--text);
+  max-width: 100%;
+  width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: break-word;
+  overflow-x: hidden;
+}
+.rich-text-content * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+.rich-text-content p {
+  margin: 0 0 6px 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.rich-text-content ul, .rich-text-content ol {
+  margin: 4px 0 6px 0;
+  padding-left: 22px;
+  max-width: 100%;
+}
+.rich-text-content ul {
+  list-style-type: disc;
+}
+.rich-text-content ol {
+  list-style-type: decimal;
+}
+.rich-text-content blockquote {
+  border-left: 3px solid var(--line);
+  padding-left: 12px;
+  margin: 6px 0;
+  color: var(--muted);
+  font-style: italic;
+  max-width: 100%;
+}
+.rich-text-content a {
+  color: var(--brand);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.rich-text-content pre, .rich-text-content code {
+  background: var(--soft);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-width: 100%;
+}
+.rich-text-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 

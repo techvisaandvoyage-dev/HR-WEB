@@ -14,6 +14,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleAuthenticating, setIsGoogleAuthenticating] = useState(false);
   const [cmsConfig, setCmsConfig] = useState(null);
 
   // Fetch Homepage & Login CMS configuration
@@ -46,10 +47,14 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
   const passwordConfig = getFieldConfig('password', 'Password', 'Enter your password');
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
+    setIsGoogleAuthenticating(true);
     setErrors({});
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      
+      // Close modal immediately so the login page and "Logging in..." button do not reappear
+      onClose();
+
       const idToken = await result.user.getIdToken();
       const storedAttribution = getStoredAttribution();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/google`, {
@@ -61,6 +66,33 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       if (res.ok) {
         clearStoredAttribution();
         localStorage.setItem('employeeToken', data.token);
+        const googleName = data.name || result.user?.displayName || (data.email ? data.email.split('@')[0] : 'User');
+        const firstName = data.profile?.firstName || googleName.split(' ')[0];
+        const lastName = data.profile?.lastName || (googleName.split(' ').length > 1 ? googleName.split(' ').slice(1).join(' ') : '');
+
+        let newProfile = data.profile || {
+          firstName: firstName,
+          lastName: lastName,
+          name: googleName,
+          phone: data.mobile || result.user?.phoneNumber || '',
+          email: data.email || result.user?.email || '',
+          brief: '',
+          avatar: data.avatar || result.user?.photoURL || '',
+          qualifications: [],
+          isFresher: true,
+          experience: [],
+          professionalDetails: {
+            currentDesignation: '',
+            currentSalary: '',
+            expectedSalary: '',
+            currentLocation: data.location || '',
+            preferredLocations: '',
+            linkedinUrl: '',
+            majorAchievements: '',
+            skills: ''
+          }
+        };
+
         if (data.isOnboardingCompleted) {
           localStorage.setItem('hasProfile', 'true');
           localStorage.removeItem('onboardingCurrentStep');
@@ -70,15 +102,19 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
             localStorage.setItem('onboardingCurrentStep', data.onboardingStep.toString());
           }
         }
+
+        localStorage.setItem('userProfile', JSON.stringify(newProfile));
+
         onLoginSuccess?.(data);
       } else {
-        setErrors({ google: data.message || 'Google login failed' });
+        alert(data.message || 'Google login failed');
       }
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
-        setErrors({ google: err.message || 'Google login failed' });
+        alert(err.message || 'Google login failed');
       }
     } finally {
+      setIsGoogleAuthenticating(false);
       setIsLoading(false);
     }
   };
@@ -138,6 +174,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       setSuccessMessage('');
       setShowResetPassword(false);
       setResendTimer(0);
+      setIsGoogleAuthenticating(false);
     }
   }, [isOpen]);
 
@@ -178,7 +215,10 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
 
       if (!response.ok) {
         const errorState = {};
-        if (data.field === 'email' || (data.message && (data.message.toLowerCase().includes('account') || data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('find') || data.message.toLowerCase().includes('register') || data.message.toLowerCase().includes('google') || data.message.toLowerCase().includes('credential')))) {
+        if (data.message && data.message.toLowerCase().includes('google')) {
+          errorState.isGoogleAccount = true;
+          errorState.email = 'Google Account';
+        } else if (data.field === 'email' || (data.message && (data.message.toLowerCase().includes('account') || data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('find') || data.message.toLowerCase().includes('register') || data.message.toLowerCase().includes('credential')))) {
           errorState.email = (data.message && !data.message.toLowerCase().includes('credential'))
             ? data.message
             : "We couldn't find an account with this email. Please register first to continue.";
@@ -240,6 +280,11 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     setSuccessMessage('');
     if (!email || !email.trim()) {
       setErrors({ email: 'Please enter your registered email address.' });
+      return;
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}$/.test(cleanEmail)) {
+      setErrors({ email: 'Please enter a valid email address.' });
       return;
     }
     setIsLoading(true);
@@ -378,7 +423,11 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
       const data = await response.json();
 
       if (!response.ok) {
-        setErrors({ forgot: data.message || 'User not found' });
+        if (data.message && data.message.toLowerCase().includes('google')) {
+          setErrors({ forgot: "This account was created with Google. Please log in using 'Continue with Google' or 'Use OTP to Login'. After logging in, you can create a password under Profile > Security & Password." });
+        } else {
+          setErrors({ forgot: data.message || 'User not found' });
+        }
       } else {
         setForgotStep(2);
         setOtp(['', '', '', '']);
@@ -517,11 +566,19 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
 
         <div className="p-8">
           {/* Header */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-palette-900">{cmsConfig?.modalTitle || 'Employee Login'}</h2>
-          </div>
+          {!isGoogleAuthenticating && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-palette-900">{cmsConfig?.modalTitle || 'Candidate Login'}</h2>
+            </div>
+          )}
 
-          {loginMethod === 'forgot' ? (
+          {isGoogleAuthenticating ? (
+            <div className="py-14 px-4 flex flex-col items-center justify-center text-center animate-in fade-in duration-150">
+              <div className="w-12 h-12 rounded-full border-3 border-gray-100 border-t-[#16a34a] animate-spin mb-4" />
+              <h3 className="text-lg font-bold text-gray-900">Logging you in...</h3>
+              <p className="text-sm text-gray-500 mt-1">Authenticating with Google, please wait.</p>
+            </div>
+          ) : loginMethod === 'forgot' ? (
             <>
               {forgotStep === 1 && (
                 <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); handleForgotGetOtp(); }}>
@@ -816,18 +873,48 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                   <input 
                     type="text" 
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: '', general: ''}); }}
+                    onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: '', general: '', isGoogleAccount: false}); }}
                     placeholder={emailConfig.placeholder}
                     className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                   />
-                  {errors.email && (
-                    <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  {errors.isGoogleAccount ? (
+                    <div className="mt-2.5 p-3.5 sm:p-4 bg-red-50/70 border border-red-200 rounded-2xl space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center gap-2 text-red-800 font-bold text-xs sm:text-sm">
+                        <svg className="w-4 h-4 text-red-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>This account is registered with Google</span>
+                      </div>
+
+                      <div className="space-y-2 text-xs sm:text-[13px] text-gray-700 pl-0.5">
+                        <div className="flex items-start gap-2">
+                          <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                          <span>
+                            Click <strong className="text-gray-900 font-bold">Continue with Google</strong> above to log in directly.
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                          <span>
+                            Or click <button type="button" onClick={() => setLoginMethod('otp')} className="font-bold text-palette-900 underline hover:text-emerald-700">Use OTP to Login</button> below to log in via verification code.
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2 pt-2 border-t border-red-200/60 text-gray-600">
+                          <span className="text-gray-400 font-bold mt-0.5">•</span>
+                          <span>
+                            Want to log in with a password in future? Go to <strong className="font-bold text-gray-900">Profile &gt; Security &amp; Password</strong> after logging in to create one.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : errors.email ? (
+                    <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-xs sm:text-sm font-semibold leading-relaxed pl-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
-                      {errors.email}
+                      <span>{errors.email}</span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Password Input */}
@@ -837,7 +924,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                     <input 
                       type={showPassword ? "text" : "password"} 
                       value={password}
-                      onChange={(e) => { setPassword(e.target.value); setErrors({...errors, password: '', general: ''}); }}
+                      onChange={(e) => { setPassword(e.target.value); setErrors({...errors, password: '', general: '', isGoogleAccount: false}); }}
                       placeholder={passwordConfig.placeholder}
                       className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all tracking-widest placeholder-gray-400 pr-16 ${errors.password ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 bg-gray-50 focus:bg-white focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                     />

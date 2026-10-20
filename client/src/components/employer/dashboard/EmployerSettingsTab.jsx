@@ -413,171 +413,132 @@ const EmployerSettingsTab = ({ portalConfig }) => {
   const displayEmail = securityData.email || 'your email';
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div className="max-w-[760px] animate-in fade-in duration-150 pb-16">
       
-      {/* Top Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">Settings &amp; Security</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your account authentication credentials and security options.</p>
-        </div>
+      {/* Top Title */}
+      <div className="mb-7">
+        <h1 className="text-[26px] sm:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2]">
+          Settings &amp; security
+        </h1>
+        <p className="text-[#667085] text-[14px] mt-1">
+          Manage how you sign in and keep your account safe.
+        </p>
       </div>
 
-      {/* Main Content Area */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6 sm:p-8">
-        
-        {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-gray-100 gap-2">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/80">
-                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div
+          className={`mb-6 p-4 rounded-[10px] flex items-start gap-3 transition-all duration-300 border ${
+            toastMessage.type === 'success'
+              ? 'bg-[#ecfdf3] text-[#15803d] border-[#eaecf0]'
+              : 'bg-red-50 text-red-900 border-red-200'
+          }`}
+        >
+          {toastMessage.type === 'success' ? (
+            <svg className="w-5 h-5 text-[#16a34a] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+          <div className="flex-1 text-[14px] font-medium leading-relaxed">{toastMessage.text}</div>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-gray-400 hover:text-gray-600 p-0.5 rounded transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Sign-in Methods Section */}
+      <div className="space-y-1">
+        <div className="mb-2">
+          <h2 className="text-[18px] font-bold text-[#101828] tracking-[-0.01em]">Sign-in methods</h2>
+          <p className="text-[#667085] text-[13.5px] mt-0.5">Linked authentication providers</p>
+        </div>
+
+        <div className="border-t border-[#eaecf0]">
+          {/* Google Account Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:gap-4 py-4 border-b border-[#eaecf0] items-center min-h-[68px]">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-10 h-10 border border-[#eaecf0] rounded-[10px] flex items-center justify-center shrink-0 bg-white">
+                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.7h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/>
+                  <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/>
+                  <path fill="#FBBC05" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2l3.3-2.6z"/>
+                  <path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8A10 10 0 0 0 3.1 7.4L6.4 10c.8-2.3 3-4.1 5.6-4.1z"/>
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 tracking-tight">
-                {portalConfig?.title || 'Security & Password'}
-              </h3>
-            </div>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              {portalConfig?.subtitle || 'Manage your sign-in methods, password credentials, and authentication security.'}
-            </p>
-          </div>
-        </div>
-
-        {/* Toast / Notification Banner */}
-        {toastMessage && (
-          <div
-            className={`mb-6 p-4 rounded-xl flex items-start gap-3 transition-all duration-300 animate-in fade-in slide-in-from-top-2 border ${
-              toastMessage.type === 'success'
-                ? 'bg-emerald-50/80 text-emerald-900 border-emerald-200'
-                : 'bg-red-50 text-red-900 border-red-200'
-            }`}
-          >
-            {toastMessage.type === 'success' ? (
-              <svg className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            <div className="flex-1 text-sm font-medium leading-relaxed">{toastMessage.text}</div>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="text-gray-400 hover:text-gray-600 p-0.5 rounded transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* 1. SIGN-IN METHODS SECTION */}
-        <div className="space-y-4 mb-8">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Sign-in methods</h4>
-            <span className="text-xs text-gray-400">Linked authentication providers</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Google Sign-in Card */}
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex items-start justify-between gap-3 hover:border-gray-300 transition-colors">
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-gray-200/80 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"/>
-                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-                  </svg>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-900">Google Account</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px] sm:max-w-xs">{displayEmail}</p>
-                  <p className="text-[11px] text-gray-400 mt-1">Single Sign-On enabled</p>
-                </div>
-              </div>
-
-              <div>
-                {securityData.isGoogleConnected ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                    Connected
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
-                    Available
-                  </span>
-                )}
+              <div className="min-w-0">
+                <strong className="font-semibold text-[14.5px] text-[#101828] block leading-tight">Google account</strong>
+                <small className="block text-[#667085] text-[13px] leading-snug mt-0.5 truncate">{displayEmail} · Single sign-on enabled</small>
               </div>
             </div>
 
-            {/* Password Sign-in Card */}
-            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex items-start justify-between gap-3 hover:border-gray-300 transition-colors">
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-gray-200/80 flex items-center justify-center flex-shrink-0 text-gray-700">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
-                </div>
-                <div>
-                  <span className="text-sm font-bold text-gray-900">Email &amp; Password</span>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {securityData.hasPassword
-                      ? 'Password configured and active'
-                      : 'Not set (Google sign-in only)'}
-                  </p>
-                  <p className="text-[11px] text-gray-400 mt-1">Direct account authentication</p>
-                </div>
-              </div>
-
-              <div>
-                {securityData.hasPassword ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                    Set
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                    Not set
-                  </span>
-                )}
-              </div>
+            <div className="justify-self-end sm:justify-self-auto">
+              {securityData.isGoogleConnected ? (
+                <span className="font-semibold text-[12px] bg-[#ecfdf3] text-[#15803d] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                  Connected
+                </span>
+              ) : (
+                <span className="font-semibold text-[12px] bg-gray-100 text-[#667085] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                  Available
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Informative Guidance Banner for Google Users */}
-          {securityData.isGoogleConnected && !securityData.hasPassword && (
-            <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl flex items-start gap-3 text-xs text-blue-900 leading-relaxed">
-              <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <span className="font-bold text-blue-950">Flexibility Notice:</span> Setting a password will securely attach to this account without creating a duplicate. You will still be able to continue signing in with Google at any time.
+          {/* Email & Password Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:gap-4 py-4 border-b border-[#eaecf0] items-center min-h-[68px]">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-10 h-10 border border-[#eaecf0] rounded-[10px] flex items-center justify-center shrink-0 bg-white text-[#667085]">
+                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="8" cy="15" r="4" />
+                  <path d="m11 12 9-9M17 6l3 3" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <strong className="font-semibold text-[14.5px] text-[#101828] block leading-tight">Email &amp; password</strong>
+                <small className="block text-[#667085] text-[13px] leading-snug mt-0.5">
+                  {securityData.hasPassword ? 'Password configured and active' : 'Password not set'}
+                </small>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* 2. PASSWORD MANAGEMENT CARD */}
-        <div className="border border-gray-200 rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-white to-gray-50/60 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h4 className="text-base font-bold text-gray-900">Password</h4>
-              <p className="text-xs sm:text-sm text-gray-600 max-w-xl leading-relaxed">
-                {!securityData.hasPassword
-                  ? 'You signed in with Google. Set a password to also sign in with your email and password.'
-                  : 'Your password is set. You can now sign in with your email and password.'}
+            <div className="justify-self-end sm:justify-self-auto">
+              {securityData.hasPassword ? (
+                <span className="font-semibold text-[12px] bg-[#ecfdf3] text-[#15803d] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                  Set
+                </span>
+              ) : (
+                <span className="font-semibold text-[12px] bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full inline-flex items-center gap-1.5 border border-amber-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  Not set
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Password Action Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:gap-4 py-4 border-b border-[#eaecf0] items-center min-h-[68px]">
+            <div>
+              <strong className="font-semibold text-[14.5px] text-[#101828] block leading-tight">Password</strong>
+              <p className="text-[#667085] text-[13.5px] mt-0.5 mb-0">
+                {securityData.hasPassword
+                  ? 'Your password is set. You can sign in with your email and password.'
+                  : 'You signed in with Google. Set a password to also sign in with your email and password.'}
               </p>
             </div>
 
-            <div className="flex-shrink-0">
+            <div className="justify-self-end sm:justify-self-auto">
               {!securityData.hasPassword ? (
                 <button
                   type="button"
@@ -592,12 +553,9 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     });
                     setIsSetModalOpen(true);
                   }}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm hover:shadow transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:scale-[0.98]"
+                  className="border border-[#d0d5dd] rounded-[8px] px-4 py-2 text-[14px] font-semibold text-[#101828] hover:bg-[#f9fafb] transition-colors cursor-pointer"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                  </svg>
-                  Set Password
+                  Set password
                 </button>
               ) : (
                 <button
@@ -618,42 +576,40 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     });
                     setIsChangeModalOpen(true);
                   }}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl shadow-xs transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#29953f] active:scale-[0.98]"
+                  className="border border-[#d0d5dd] rounded-[8px] px-4 py-2 text-[14px] font-semibold text-[#101828] hover:bg-[#f9fafb] transition-colors cursor-pointer"
                 >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Change Password
+                  Change password
                 </button>
               )}
             </div>
           </div>
         </div>
+      </div>
 
         {/* MODAL 1: SET PASSWORD */}
         {isSetModalOpen && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-[#101828]/40 backdrop-blur-xs flex items-center justify-center p-4">
             <div
-              className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200"
+              className="bg-white rounded-[12px] max-w-md w-full p-6 sm:p-7 shadow-[0_12px_32px_rgba(16,24,40,0.12)] border border-[#eaecf0] relative animate-in fade-in zoom-in-95 duration-150"
               onClick={e => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-start justify-between pb-4 border-b border-[#eaecf0]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#ecfdf3] text-[#15803d] flex items-center justify-center border border-[#eaecf0]">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">Set Account Password</h3>
-                    <p className="text-xs text-gray-500">Sign in with email and password</p>
+                    <h3 className="text-[17px] font-bold text-[#101828]">Set account password</h3>
+                    <p className="text-[12.5px] text-[#667085]">Sign in with email and password</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsSetModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-[#f9fafb] transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -664,27 +620,27 @@ const EmployerSettingsTab = ({ portalConfig }) => {
               {/* Modal Body */}
               <form onSubmit={handleSetPasswordSubmit} className="mt-5 space-y-4">
                 {setForm.error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-medium text-red-700 flex items-start gap-2">
-                    <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-[8px] text-[13px] font-medium text-red-700 flex items-start gap-2">
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span>{setForm.error}</span>
                   </div>
                 )}
 
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/70 text-xs text-gray-600 leading-relaxed">
-                  Setting a password allows you to log in with <strong className="text-gray-900">{displayEmail}</strong>. Your Google account connection will remain active.
+                <div className="p-3 bg-[#f9fafb] rounded-[8px] border border-[#eaecf0] text-[13px] text-[#667085] leading-relaxed">
+                  Setting a password allows you to log in with <strong className="text-[#101828] font-semibold">{displayEmail}</strong>. Your Google account connection will remain active.
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">New Password</label>
+                  <label className="block text-[13px] font-semibold text-[#101828] mb-1.5">New password</label>
                   <div className="relative">
                     <input
                       type={setForm.showNew ? 'text' : 'password'}
                       value={setForm.newPassword}
                       onChange={e => setSetForm(prev => ({ ...prev, newPassword: e.target.value }))}
                       placeholder="Create a strong password"
-                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                       required
                     />
                     <button
@@ -698,9 +654,9 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   </div>
 
                   {setForm.newPassword.length > 0 && (
-                    <div className="mt-2.5 space-y-1.5">
+                    <div className="mt-2 space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-gray-500">Password strength:</span>
+                        <span className="text-[#667085]">Password strength:</span>
                         <span className={`font-bold ${setStrength.text}`}>{setStrength.label}</span>
                       </div>
                       <div className="grid grid-cols-4 gap-1.5 h-1.5">
@@ -717,24 +673,24 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   )}
                 </div>
 
-                <div className="p-3 bg-gray-50/80 rounded-xl border border-gray-200/60 space-y-1.5 text-xs text-gray-600">
-                  <p className="font-semibold text-gray-700 text-[11px] uppercase tracking-wider mb-1">
-                    Password Requirements
+                <div className="p-3 bg-[#f9fafb] rounded-[8px] border border-[#eaecf0] space-y-1 text-[12px] text-[#667085]">
+                  <p className="font-semibold text-[#101828] text-[11px] uppercase tracking-wider mb-1">
+                    Password requirements
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.minLength ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.minLength ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.minLength ? '✓' : '•'}</span>
                       <span>At least 8 characters</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasUpper ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasUpper ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.hasUpper ? '✓' : '•'}</span>
                       <span>1 uppercase letter (A-Z)</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasLower ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasLower ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.hasLower ? '✓' : '•'}</span>
                       <span>1 lowercase letter (a-z)</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasNumberOrSymbol ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasNumberOrSymbol ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.hasNumberOrSymbol ? '✓' : '•'}</span>
                       <span>1 number or special symbol</span>
                     </div>
@@ -742,14 +698,14 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Confirm Password</label>
+                  <label className="block text-[13px] font-semibold text-[#101828] mb-1.5">Confirm password</label>
                   <div className="relative">
                     <input
                       type={setForm.showConfirm ? 'text' : 'password'}
                       value={setForm.confirmPassword}
                       onChange={e => setSetForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                       placeholder="Re-enter your password"
-                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                       required
                     />
                     <button
@@ -763,9 +719,9 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   </div>
 
                   {setForm.confirmPassword.length > 0 && (
-                    <div className="mt-1.5 text-xs">
+                    <div className="mt-1.5 text-[12px]">
                       {setForm.newPassword === setForm.confirmPassword ? (
-                        <span className="text-emerald-600 font-medium flex items-center gap-1">
+                        <span className="text-[#15803d] font-medium flex items-center gap-1">
                           ✓ Passwords match
                         </span>
                       ) : (
@@ -777,30 +733,20 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   )}
                 </div>
 
-                <div className="pt-3 flex items-center justify-end gap-3 border-t border-gray-100 mt-6">
+                <div className="pt-3 flex items-center justify-end gap-3 border-t border-[#eaecf0] mt-5">
                   <button
                     type="button"
                     onClick={() => setIsSetModalOpen(false)}
-                    className="px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+                    className="px-4 py-2 text-[14px] font-semibold text-[#667085] hover:bg-[#f9fafb] hover:text-[#101828] rounded-[8px] transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={setForm.submitting || !setPasswordCriteria.isValid || setForm.newPassword !== setForm.confirmPassword}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
                   >
-                    {setForm.submitting ? (
-                      <>
-                        <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                        </svg>
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      'Set Password'
-                    )}
+                    {setForm.submitting ? 'Saving...' : 'Set password'}
                   </button>
                 </div>
               </form>
@@ -810,24 +756,24 @@ const EmployerSettingsTab = ({ portalConfig }) => {
 
         {/* MODAL 2: CHANGE PASSWORD */}
         {isChangeModalOpen && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-[#101828]/40 backdrop-blur-xs flex items-center justify-center p-4">
             <div
-              className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 duration-200"
+              className="bg-white rounded-[12px] max-w-md w-full p-6 sm:p-7 shadow-[0_12px_32px_rgba(16,24,40,0.12)] border border-[#eaecf0] relative animate-in fade-in zoom-in-95 duration-150"
               onClick={e => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-start justify-between pb-4 border-b border-[#eaecf0]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#ecfdf3] text-[#15803d] flex items-center justify-center border border-[#eaecf0]">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">
-                      {changeStep === 'form' ? 'Change Password' : 'Enter Verification Code'}
+                    <h3 className="text-[17px] font-bold text-[#101828]">
+                      {changeStep === 'form' ? 'Change password' : 'Enter verification code'}
                     </h3>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-[12.5px] text-[#667085]">
                       {changeStep === 'form'
                         ? 'Update your security credentials'
                         : `Enter the code sent to ${maskEmail(securityData.email)}`}
@@ -837,7 +783,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                 <button
                   type="button"
                   onClick={handleCloseChangeModal}
-                  className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-[#f9fafb] transition-colors"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -849,8 +795,8 @@ const EmployerSettingsTab = ({ portalConfig }) => {
               {changeStep === 'form' && (
                 <form onSubmit={handleRequestChangePasswordOtp} className="mt-5 space-y-4">
                   {changeForm.error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-medium text-red-700 flex items-start gap-2">
-                      <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-[8px] text-[13px] font-medium text-red-700 flex items-start gap-2">
+                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>{changeForm.error}</span>
@@ -858,14 +804,14 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   )}
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Current Password</label>
+                    <label className="block text-[13px] font-semibold text-[#101828] mb-1.5">Current password</label>
                     <div className="relative">
                       <input
                         type={changeForm.showCurrent ? 'text' : 'password'}
                         value={changeForm.currentPassword}
                         onChange={e => setChangeForm(prev => ({ ...prev, currentPassword: e.target.value }))}
                         placeholder="Enter your current password"
-                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#29953f] focus:border-[#29953f] transition-all"
+                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                         required
                       />
                       <button
@@ -880,14 +826,14 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">New Password</label>
+                    <label className="block text-[13px] font-semibold text-[#101828] mb-1.5">New password</label>
                     <div className="relative">
                       <input
                         type={changeForm.showNew ? 'text' : 'password'}
                         value={changeForm.newPassword}
                         onChange={e => setChangeForm(prev => ({ ...prev, newPassword: e.target.value }))}
                         placeholder="Enter new password"
-                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#29953f] focus:border-[#29953f] transition-all"
+                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                         required
                       />
                       <button
@@ -901,9 +847,9 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     </div>
 
                     {changeForm.newPassword.length > 0 && (
-                      <div className="mt-2.5 space-y-1.5">
+                      <div className="mt-2 space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-gray-500">Strength:</span>
+                          <span className="text-[#667085]">Strength:</span>
                           <span className={`font-bold ${changeStrength.text}`}>{changeStrength.label}</span>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5 h-1.5">
@@ -920,24 +866,24 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     )}
                   </div>
 
-                  <div className="p-3 bg-gray-50/80 rounded-xl border border-gray-200/60 space-y-1.5 text-xs text-gray-600">
-                    <p className="font-semibold text-gray-700 text-[11px] uppercase tracking-wider mb-1">
-                      New Password Requirements
+                  <div className="p-3 bg-[#f9fafb] rounded-[8px] border border-[#eaecf0] space-y-1 text-[12px] text-[#667085]">
+                    <p className="font-semibold text-[#101828] text-[11px] uppercase tracking-wider mb-1">
+                      New password requirements
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.minLength ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.minLength ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.minLength ? '✓' : '•'}</span>
                         <span>At least 8 characters</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasUpper ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasUpper ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.hasUpper ? '✓' : '•'}</span>
                         <span>1 uppercase letter (A-Z)</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasLower ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasLower ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.hasLower ? '✓' : '•'}</span>
                         <span>1 lowercase letter (a-z)</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasNumberOrSymbol ? 'text-emerald-700 font-medium' : 'text-gray-500'}`}>
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasNumberOrSymbol ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.hasNumberOrSymbol ? '✓' : '•'}</span>
                         <span>1 number or special symbol</span>
                       </div>
@@ -945,14 +891,14 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Confirm New Password</label>
+                    <label className="block text-[13px] font-semibold text-[#101828] mb-1.5">Confirm new password</label>
                     <div className="relative">
                       <input
                         type={changeForm.showConfirm ? 'text' : 'password'}
                         value={changeForm.confirmPassword}
                         onChange={e => setChangeForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                         placeholder="Re-enter new password"
-                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#29953f] focus:border-[#29953f] transition-all"
+                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                         required
                       />
                       <button
@@ -966,9 +912,9 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     </div>
 
                     {changeForm.confirmPassword.length > 0 && (
-                      <div className="mt-1.5 text-xs">
+                      <div className="mt-1.5 text-[12px]">
                         {changeForm.newPassword === changeForm.confirmPassword ? (
-                          <span className="text-emerald-600 font-medium flex items-center gap-1">
+                          <span className="text-[#15803d] font-medium flex items-center gap-1">
                             ✓ Passwords match
                           </span>
                         ) : (
@@ -980,30 +926,20 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     )}
                   </div>
 
-                  <div className="pt-3 flex items-center justify-end gap-3 border-t border-gray-100 mt-6">
+                  <div className="pt-3 flex items-center justify-end gap-3 border-t border-[#eaecf0] mt-5">
                     <button
                       type="button"
                       onClick={handleCloseChangeModal}
-                      className="px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
+                      className="px-4 py-2 text-[14px] font-semibold text-[#667085] hover:bg-[#f9fafb] hover:text-[#101828] rounded-[8px] transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={changeForm.submitting || !changePasswordCriteria.isValid || changeForm.newPassword !== changeForm.confirmPassword || !changeForm.currentPassword}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#29953f] hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#29953f]"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
                     >
-                      {changeForm.submitting ? (
-                        <>
-                          <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                          </svg>
-                          <span>Sending OTP...</span>
-                        </>
-                      ) : (
-                        'Send Verification OTP'
-                      )}
+                      {changeForm.submitting ? 'Sending OTP...' : 'Send verification OTP'}
                     </button>
                   </div>
                 </form>
@@ -1013,8 +949,8 @@ const EmployerSettingsTab = ({ portalConfig }) => {
               {changeStep === 'otp' && (
                 <form onSubmit={handleVerifyAndChangePassword} className="mt-5 space-y-4">
                   {changeForm.successInfo && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-medium text-blue-800 flex items-start gap-2">
-                      <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <div className="p-3 bg-[#ecfdf3] border border-[#eaecf0] rounded-[8px] text-[13px] font-medium text-[#15803d] flex items-start gap-2">
+                      <svg className="w-4 h-4 text-[#16a34a] shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                       <span>{changeForm.successInfo}</span>
@@ -1022,17 +958,17 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   )}
 
                   {changeForm.error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-medium text-red-700 flex items-start gap-2">
-                      <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-[8px] text-[13px] font-medium text-red-700 flex items-start gap-2">
+                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>{changeForm.error}</span>
                     </div>
                   )}
 
-                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center space-y-3">
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Enter Verification Code
+                  <div className="p-4 bg-[#f9fafb] border border-[#eaecf0] rounded-[8px] text-center space-y-3">
+                    <label className="block text-[12px] font-semibold text-[#101828] uppercase tracking-wider">
+                      Enter verification code
                     </label>
                     <input
                       type="text"
@@ -1041,37 +977,37 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                       value={changeForm.otp}
                       onChange={e => setChangeForm(prev => ({ ...prev, otp: e.target.value.replace(/[^0-9]/g, '') }))}
                       placeholder="• • • •"
-                      className="w-44 mx-auto px-4 py-3 bg-white border-2 border-emerald-400 rounded-xl text-center font-mono font-bold text-xl tracking-[0.3em] text-gray-900 focus:outline-none focus:ring-4 focus:ring-emerald-100 transition-all shadow-inner"
+                      className="w-44 mx-auto px-4 py-2.5 bg-white border border-[#16a34a] rounded-[8px] text-center font-mono font-bold text-xl tracking-[0.3em] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] transition-all"
                       required
                     />
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[12px] text-[#667085]">
                       A security code was sent to verify your identity before saving the new password.
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs px-1">
-                    <span className="text-gray-500">Didn't receive the email?</span>
+                  <div className="flex items-center justify-between text-[12.5px] px-1">
+                    <span className="text-[#667085]">Didn't receive the email?</span>
                     {changeCooldown > 0 ? (
-                      <span className="text-gray-400 font-medium">
-                        Resend in <span className="font-bold text-gray-700">{changeCooldown}s</span>
+                      <span className="text-[#98a2b3] font-medium">
+                        Resend in <span className="font-semibold text-[#101828]">{changeCooldown}s</span>
                       </span>
                     ) : (
                       <button
                         type="button"
                         disabled={changeForm.resending}
                         onClick={handleResendChangePasswordOtp}
-                        className="text-[#29953f] hover:text-green-700 font-bold hover:underline disabled:opacity-50"
+                        className="text-[#15803d] hover:underline font-semibold disabled:opacity-50 cursor-pointer"
                       >
-                        {changeForm.resending ? 'Sending...' : 'Resend Code'}
+                        {changeForm.resending ? 'Sending...' : 'Resend code'}
                       </button>
                     )}
                   </div>
 
-                  <div className="pt-3 flex items-center justify-between gap-3 border-t border-gray-100 mt-6">
+                  <div className="pt-3 flex items-center justify-between gap-3 border-t border-[#eaecf0] mt-5">
                     <button
                       type="button"
                       onClick={() => setChangeStep('form')}
-                      className="px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-1.5"
+                      className="px-4 py-2 text-[14px] font-semibold text-[#667085] hover:bg-[#f9fafb] hover:text-[#101828] rounded-[8px] transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -1081,19 +1017,9 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     <button
                       type="submit"
                       disabled={changeForm.submitting || !changeForm.otp || changeForm.otp.trim().length < 4}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#29953f] hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#29953f]"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
                     >
-                      {changeForm.submitting ? (
-                        <>
-                          <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                          </svg>
-                          <span>Verifying...</span>
-                        </>
-                      ) : (
-                        'Confirm & Update Password'
-                      )}
+                      {changeForm.submitting ? 'Verifying...' : 'Confirm & update password'}
                     </button>
                   </div>
                 </form>
@@ -1102,7 +1028,6 @@ const EmployerSettingsTab = ({ portalConfig }) => {
           </div>
         )}
       </div>
-    </div>
   );
 };
 

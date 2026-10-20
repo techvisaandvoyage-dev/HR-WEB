@@ -120,6 +120,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
     setError('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      onClose(); // Close modal immediately so the login form does not reappear
       const idToken = await result.user.getIdToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${apiUrl}/api/employer/auth/google`, {
@@ -193,7 +194,10 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
         onLoginSuccess?.(data);
       } else {
         const errorState = {};
-        if (data.field === 'password' || (data.message && data.message.toLowerCase().includes('password') && !data.message.toLowerCase().includes('email'))) {
+        if (data.isGoogleAccount || (data.message && data.message.toLowerCase().includes('google'))) {
+          errorState.isGoogleAccount = true;
+          errorState.email = 'Google Account';
+        } else if (data.field === 'password' || (data.message && data.message.toLowerCase().includes('password') && !data.message.toLowerCase().includes('email'))) {
           errorState.password = data.message || "Invalid password. Please check and try again.";
         } else {
           errorState.email = data.message || (isConsultant 
@@ -781,20 +785,50 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      setErrors((prev) => ({ ...prev, email: '', general: '' }));
+                      setErrors((prev) => ({ ...prev, email: '', general: '', isGoogleAccount: false }));
                       setError('');
                     }}
                     placeholder={cmsConfig?.fields?.email?.placeholder || 'Enter your registered Email ID'}
                     className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                   />
-                  {errors.email && (
-                    <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  {errors.isGoogleAccount ? (
+                    <div className="mt-2.5 p-3.5 sm:p-4 bg-red-50/70 border border-red-200 rounded-2xl space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center gap-2 text-red-800 font-bold text-xs sm:text-sm">
+                        <svg className="w-4 h-4 text-red-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>This account is registered with Google</span>
+                      </div>
+
+                      <div className="space-y-2 text-xs sm:text-[13px] text-gray-700 pl-0.5">
+                        <div className="flex items-start gap-2">
+                          <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                          <span>
+                            Click <button type="button" onClick={handleGoogleLogin} className="font-bold text-palette-900 underline hover:text-emerald-700">Continue with Google</button> above to log in directly.
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                          <span>
+                            Or click <button type="button" onClick={() => setLoginMethod('otp')} className="font-bold text-palette-900 underline hover:text-emerald-700">Use OTP to Login</button> below to log in via verification code.
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2 pt-2 border-t border-red-200/60 text-gray-600">
+                          <span className="text-gray-400 font-bold mt-0.5">•</span>
+                          <span>
+                            Want to log in with a password in future? Go to <strong className="font-bold text-gray-900">Settings</strong> after logging in to create one.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : errors.email ? (
+                    <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-xs sm:text-sm font-semibold leading-relaxed pl-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
-                      {errors.email}
+                      <span>{errors.email}</span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Password Input */}

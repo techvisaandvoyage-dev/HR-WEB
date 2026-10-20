@@ -14,6 +14,8 @@ import { uploadVideoToMux } from '../../utils/muxUpload';
 import { compressFileIfNeeded } from '../../utils/fileCompressor';
 import AccountSecuritySection from './AccountSecuritySection';
 import PrivacySettingsSection from './PrivacySettingsSection';
+import CountryCodeDropdown from '../common/CountryCodeDropdown';
+import VideoPlayer from '../common/VideoPlayer';
 import { currentLocationOptions, preferredLocationOptions } from '../../data/preferredLocations';
 import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, sortQualifications, sortExperience } from './EmployeeOnboarding';
 
@@ -621,6 +623,7 @@ const EmployeeProfile = () => {
   const [formData, setFormData] = useState({
     firstName: 'Yash Raj',
     lastName: 'Singh',
+    countryCode: '+91',
     phone: '9876543210',
     email: 'yash@example.com',
     brief: '',
@@ -725,6 +728,7 @@ const EmployeeProfile = () => {
             setFormData(prev => ({
               ...prev,
               ...data,
+              countryCode: data.countryCode || prev.countryCode || '+91',
               qualifications: sortQualifications(
                 (data.qualifications || prev.qualifications || []).filter(q => q && (q.educationType || q.course || q.board || q.university))
               ),
@@ -1195,9 +1199,6 @@ const EmployeeProfile = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             {formData.firstName} {formData.lastName}
-            <button className="text-gray-400 hover:text-palette-400 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-            </button>
           </h1>
           <p className="text-sm text-gray-400 mt-1">Profile last updated - Today</p>
         </div>
@@ -1411,21 +1412,27 @@ const EmployeeProfile = () => {
                 {getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').label}
                 {getStepField('step1', 'phone').isRequired && <span className="text-red-500">*</span>}
               </label>
-              <input 
-                type="text" 
-                placeholder={getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').placeholder}
-                className={`w-full px-4 py-3 bg-white border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
-                value={formData.phone || ''} 
-                onChange={e => {
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setFormData({...formData, phone: val});
-                  setPhoneError('');
-                  if (val.length === 10) checkPhoneAvailability(val);
-                }}
-                onBlur={() => {
-                  if (formData.phone && formData.phone.length === 10) checkPhoneAvailability(formData.phone);
-                }}
-              />
+              <div className={`flex items-center bg-white border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all`}>
+                <CountryCodeDropdown
+                  value={formData.countryCode || '+91'}
+                  onChange={(code) => setFormData({ ...formData, countryCode: code })}
+                />
+                <input 
+                  type="text" 
+                  placeholder={getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').placeholder}
+                  className="w-full px-4 py-3 bg-transparent text-gray-700 outline-none rounded-r-xl" 
+                  value={formData.phone || ''} 
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setFormData({...formData, phone: val});
+                    setPhoneError('');
+                    if (val.length === 10) checkPhoneAvailability(val);
+                  }}
+                  onBlur={() => {
+                    if (formData.phone && formData.phone.length === 10) checkPhoneAvailability(formData.phone);
+                  }}
+                />
+              </div>
               {phoneError && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -2069,7 +2076,13 @@ const EmployeeProfile = () => {
                       )}
 
                       {item.label === 'Add Phone Number' && (
-                        <input type="text" placeholder="Phone Number" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-green-500" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                        <div className="flex items-center bg-white border border-gray-300 rounded-lg focus-within:border-green-500 transition-all">
+                          <CountryCodeDropdown
+                            value={formData.countryCode || '+91'}
+                            onChange={(code) => setFormData({ ...formData, countryCode: code })}
+                          />
+                          <input type="text" placeholder="Phone Number" className="w-full px-3 py-2 bg-transparent outline-none" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                        </div>
                       )}
 
                       {item.label === 'Professional Overview' && (
@@ -2267,21 +2280,27 @@ const EmployeeProfile = () => {
                     {getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').label}
                     {getStepField('step1', 'phone').isRequired && <span className="text-red-500">*</span>}
                   </label>
-                  <input 
-                    type="text" 
-                    placeholder={getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').placeholder}
-                    className={`w-full px-4 py-3 bg-white border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
-                    value={formData.phone || ''} 
-                    onChange={e => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setFormData({...formData, phone: val});
-                      setPhoneError('');
-                      if (val.length === 10) checkPhoneAvailability(val);
-                    }}
-                    onBlur={() => {
-                      if (formData.phone && formData.phone.length === 10) checkPhoneAvailability(formData.phone);
-                    }}
-                  />
+                  <div className={`flex items-center bg-white border ${phoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all`}>
+                    <CountryCodeDropdown
+                      value={formData.countryCode || '+91'}
+                      onChange={(code) => setFormData({ ...formData, countryCode: code })}
+                    />
+                    <input 
+                      type="text" 
+                      placeholder={getStepField('step1', 'phone', 'Phone Number', 'Enter 10-digit mobile number').placeholder}
+                      className="w-full px-4 py-3 bg-transparent text-gray-700 outline-none rounded-r-xl" 
+                      value={formData.phone || ''} 
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormData({...formData, phone: val});
+                        setPhoneError('');
+                        if (val.length === 10) checkPhoneAvailability(val);
+                      }}
+                      onBlur={() => {
+                        if (formData.phone && formData.phone.length === 10) checkPhoneAvailability(formData.phone);
+                      }}
+                    />
+                  </div>
                   {phoneError && (
                     <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                       <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

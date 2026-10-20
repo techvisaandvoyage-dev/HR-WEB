@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { currentLocationOptions } from '../../data/preferredLocations';
 import CustomDropdown from '../common/CustomDropdown';
 import { EMPLOYER_INDUSTRIES, getDesignationsForIndustry } from '../../data/employerIndustryDesignations';
+import { COUNTRY_CODES } from '../../data/countryCodes';
 
 const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onClose, onLoginClick, onLoginSuccess }) => {
   const isConsultantMode = Boolean(initialData?.isConsultant !== undefined ? initialData.isConsultant : isConsultant);
@@ -16,6 +17,28 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const countryDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCountryObj = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
+
+  const filteredCountryCodes = COUNTRY_CODES.filter(c => 
+    c.name.toLowerCase().includes(countrySearch.toLowerCase()) || 
+    c.code.includes(countrySearch)
+  );
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -318,7 +341,6 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     const clean = (emailToCheck || '').trim().toLowerCase();
     if (!clean) return;
     if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(clean)) return;
-    if (!clean.endsWith('@gmail.com')) return;
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employer/auth/check-email`, {
@@ -332,13 +354,22 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrors(prev => ({ ...prev, email: data.message || 'This email is already registered.' }));
+        setErrors(prev => ({ 
+          ...prev, 
+          email: data.message || 'This email is already registered.',
+          isGoogleAccount: Boolean(data.isGoogleAccount || (data.message && data.message.toLowerCase().includes('google'))),
+          accountExists: Boolean(data.accountExists || (data.message && (data.message.includes('already registered') || data.message.includes('log in directly')))),
+          registeredRole: data.registeredRole || (isConsultantMode ? 'consultant' : 'employer')
+        }));
       } else {
         setErrors(prev => {
           const next = { ...prev };
           if (next.email && typeof next.email === 'string' && (next.email.includes('registered') || next.email.includes('consultant') || next.email.includes('employer'))) {
             delete next.email;
           }
+          delete next.isGoogleAccount;
+          delete next.accountExists;
+          delete next.registeredRole;
           return next;
         });
       }
@@ -382,7 +413,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
   useEffect(() => {
     if (!isOpen) return;
     const clean = email.trim().toLowerCase();
-    if (clean && clean.endsWith('@gmail.com') && /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(clean)) {
+    if (clean && /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(clean)) {
       const timer = setTimeout(() => {
         checkEmailAvailability(clean);
       }, 500);
@@ -473,7 +504,13 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
       } else {
         const errorMsg = data.message || 'Google signup failed';
         if (data.message && (data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('account') || data.message.toLowerCase().includes('employer') || data.message.toLowerCase().includes('consultant'))) {
-          setErrors({ email: errorMsg });
+          setErrors(prev => ({ 
+            ...prev,
+            email: errorMsg,
+            isGoogleAccount: Boolean(data.isGoogleAccount || (data.message && data.message.toLowerCase().includes('google'))),
+            accountExists: Boolean(data.accountExists || (data.message && (data.message.includes('already registered') || data.message.includes('log in directly')))),
+            registeredRole: data.registeredRole || (isConsultantMode ? 'consultant' : 'employer')
+          }));
           setError('');
         } else {
           setError(errorMsg);
@@ -501,9 +538,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     } else if (email.trim()) {
       const cleanEmail = email.trim().toLowerCase();
       if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/.test(cleanEmail)) {
-        newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com)';
-      } else if (!cleanEmail.endsWith('@gmail.com')) {
-        newErrors.email = 'Only Google (@gmail.com) email addresses are accepted.';
+        newErrors.email = 'Please enter a valid email address.';
       }
     }
 
@@ -570,9 +605,15 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
 
       if (!response.ok) {
         if (data.field === 'email') {
-          setErrors({ email: data.message });
+          setErrors(prev => ({ 
+            ...prev,
+            email: data.message,
+            isGoogleAccount: Boolean(data.isGoogleAccount || (data.message && data.message.toLowerCase().includes('google'))),
+            accountExists: Boolean(data.accountExists || (data.message && (data.message.includes('already registered') || data.message.includes('log in directly')))),
+            registeredRole: data.registeredRole || (isConsultantMode ? 'consultant' : 'employer')
+          }));
         } else if (data.field === 'mobile') {
-          setErrors({ mobile: data.message });
+          setErrors(prev => ({ ...prev, mobile: data.message }));
         } else {
           setError(data.message || 'Failed to send OTP');
         }
@@ -911,7 +952,15 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                         value={email}
                         onChange={(e) => {
                           setEmail(e.target.value);
-                          if (errors.email) setErrors({ ...errors, email: '' });
+                          if (errors.email || errors.isGoogleAccount || errors.accountExists) {
+                            setErrors((prev) => ({ 
+                              ...prev, 
+                              email: '', 
+                              isGoogleAccount: false, 
+                              accountExists: false,
+                              registeredRole: null 
+                            }));
+                          }
                         }}
                         onBlur={() => checkEmailAvailability(email)}
                         placeholder={emailCfg.placeholder}
@@ -921,7 +970,95 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                             : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
                         }`}
                       />
-                      {errors.email && (
+                      {errors.isGoogleAccount ? (
+                        <div className="mt-2.5 p-3.5 sm:p-4 bg-red-50/70 border border-red-200 rounded-2xl space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <div className="flex items-center gap-2 text-red-800 font-bold text-xs sm:text-sm">
+                            <svg className="w-4 h-4 text-red-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <span>This account is registered with Google</span>
+                          </div>
+
+                          <div className="space-y-2 text-xs sm:text-[13px] text-gray-700 pl-0.5">
+                            <div className="flex items-start gap-2">
+                              <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                              <span>
+                                Click <button type="button" onClick={handleGoogleSignUp} className="font-bold text-palette-900 underline hover:text-emerald-700">Continue with Google</button> above to log in directly.
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                              <span>
+                                Or click{' '}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onClose?.();
+                                    onLoginClick?.({ isConsultant: errors.registeredRole === 'consultant' ? true : (errors.registeredRole === 'employer' ? false : isConsultantMode) });
+                                  }}
+                                  className="font-bold text-palette-900 underline hover:text-emerald-700"
+                                >
+                                  Use OTP to Login
+                                </button>{' '}
+                                on the login page to sign in via verification code.
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2 pt-2 border-t border-red-200/60 text-gray-600">
+                              <span className="text-gray-400 font-bold mt-0.5">•</span>
+                              <span>
+                                Want to log in with a password in future? Go to <strong className="font-bold text-gray-900">Settings</strong> after logging in to create one.
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : errors.accountExists ? (
+                        <div className="mt-2.5 p-3.5 sm:p-4 bg-red-50/70 border border-red-200 rounded-2xl space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <div className="flex items-center gap-2 text-red-800 font-bold text-xs sm:text-sm">
+                            <svg className="w-4 h-4 text-red-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            <span>
+                              {errors.registeredRole === 'consultant' && !isConsultantMode
+                                ? 'This account is already registered as a consultant'
+                                : errors.registeredRole === 'employer' && isConsultantMode
+                                ? 'This account is already registered as an employer'
+                                : isConsultantMode
+                                ? 'A consultant account is already registered with this email'
+                                : 'An employer account is already registered with this email'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-xs sm:text-[13px] text-gray-700 pl-0.5">
+                            <div className="flex items-start gap-2">
+                              <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                              <span>
+                                Click{' '}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onClose?.();
+                                    onLoginClick?.({ isConsultant: errors.registeredRole === 'consultant' ? true : (errors.registeredRole === 'employer' ? false : isConsultantMode) });
+                                  }}
+                                  className="font-bold text-palette-900 underline hover:text-emerald-700"
+                                >
+                                  {errors.registeredRole === 'consultant' && !isConsultantMode
+                                    ? 'Go to Consultant Login'
+                                    : errors.registeredRole === 'employer' && isConsultantMode
+                                    ? 'Go to Employer Login'
+                                    : 'Go to Login'}
+                                </button>{' '}
+                                to sign in with your password or use OTP.
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2 pt-2 border-t border-red-200/60 text-gray-600">
+                              <span className="text-gray-400 font-bold mt-0.5">•</span>
+                              <span>
+                                Forgot your password? You can easily reset it on the login page using OTP.
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : errors.email ? (
                         <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-xs sm:text-sm font-semibold pl-2">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -954,31 +1091,97 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                             )}
                           </div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
-                    {/* Mobile Number Input */}
+                    {/* Mobile Number Input with Country Code */}
                     <div className="space-y-1.5">
                       <label className="block text-sm font-bold text-gray-900">
                         {mobileCfg.label} {mobileCfg.isRequired && <span className="text-red-500">*</span>}
                       </label>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        value={mobile}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          if (val.length <= 10) setMobile(val);
-                          if (errors.mobile) setErrors({ ...errors, mobile: '' });
-                        }}
-                        onBlur={() => checkMobileAvailability(mobile)}
-                        placeholder={mobileCfg.placeholder}
-                        className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
-                          errors.mobile
-                            ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-red-50'
-                            : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
-                        }`}
-                      />
+                      <div className={`flex items-center px-4 py-3 rounded-full border transition-all bg-white relative ${
+                        errors.mobile
+                          ? 'border-red-500 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 bg-red-50/30'
+                          : 'border-gray-300 focus-within:border-palette-400 focus-within:ring-1 focus-within:ring-palette-400'
+                      }`}>
+                        {/* Custom Scrollable Country Code Dropdown */}
+                        <div className="relative shrink-0" ref={countryDropdownRef}>
+                          <button
+                            type="button"
+                            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                            className="flex items-center gap-1.5 text-gray-900 font-bold border-none outline-none cursor-pointer pr-2 text-sm hover:text-palette-900 transition-colors"
+                          >
+                            <span className="text-base leading-none">{selectedCountryObj.flag}</span>
+                            <span>{selectedCountryObj.code}</span>
+                            <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {/* Dropdown Menu Popup */}
+                          {isCountryDropdownOpen && (
+                            <div className="absolute top-full left-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                              {/* Search Box */}
+                              <div className="p-2.5 border-b border-gray-100 bg-gray-50/80">
+                                <input
+                                  type="text"
+                                  value={countrySearch}
+                                  onChange={(e) => setCountrySearch(e.target.value)}
+                                  placeholder="Search country or code..."
+                                  className="w-full px-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-palette-400 text-gray-900"
+                                  autoFocus
+                                />
+                              </div>
+
+                              {/* Scrollable Country List */}
+                              <div className="max-h-52 overflow-y-auto py-1">
+                                {filteredCountryCodes.length === 0 ? (
+                                  <div className="p-3 text-xs text-center text-gray-400 font-medium">No country found</div>
+                                ) : (
+                                  filteredCountryCodes.map((c, idx) => (
+                                    <button
+                                      key={`${c.country}-${c.code}-${idx}`}
+                                      type="button"
+                                      onClick={() => {
+                                        setCountryCode(c.code);
+                                        setIsCountryDropdownOpen(false);
+                                        setCountrySearch('');
+                                      }}
+                                      className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs text-left hover:bg-palette-50 transition-colors ${c.code === countryCode ? 'bg-palette-50/80 font-bold text-palette-900' : 'text-gray-700 font-medium'}`}
+                                    >
+                                      <div className="flex items-center gap-2 truncate">
+                                        <span className="text-base leading-none">{c.flag}</span>
+                                        <span className="truncate">{c.name}</span>
+                                      </div>
+                                      <span className="font-semibold text-gray-400 shrink-0 ml-2">{c.code}</span>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <span className="text-gray-300 mr-2.5 shrink-0">|</span>
+
+                        {/* 10-Digit Max Mobile Input */}
+                        <input
+                          type="tel"
+                          name="user_mobile_register"
+                          autoComplete="off"
+                          maxLength={10}
+                          value={mobile}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            if (val.length <= 10) setMobile(val);
+                            if (errors.mobile) setErrors({ ...errors, mobile: '' });
+                          }}
+                          onBlur={() => checkMobileAvailability(mobile)}
+                          placeholder={mobileCfg.placeholder}
+                          style={{ WebkitBoxShadow: '0 0 0 30px white inset' }}
+                          className="w-full bg-transparent border-none outline-none placeholder-gray-400 text-gray-900 min-w-0 text-sm"
+                        />
+                      </div>
                       {errors.mobile && (
                         <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-xs sm:text-sm font-semibold pl-2">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">

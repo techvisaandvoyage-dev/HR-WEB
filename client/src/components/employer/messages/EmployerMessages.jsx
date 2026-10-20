@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import VideoPlayer from '../../common/VideoPlayer';
 import { socket } from '../../../utils/socket';
+import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
 const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, updateCandidateStatus }) => {
   const location = useLocation();
@@ -881,7 +882,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
                     </div>
                     <h2 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h2>
                     <p className="text-sm text-gray-500 mt-1">{selectedEmployee.email}</p>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">{selectedEmployee.phone || '+91 98765 43210'} • {selectedEmployee.location || 'Bangalore, India'}</p>
+                    <p className="text-xs font-semibold text-gray-400 mt-1">{formatPhoneWithCountryCode(selectedEmployee.phone || selectedEmployee.mobile, selectedEmployee.countryCode) || '+91 98765 43210'} • {selectedEmployee.location || 'Bangalore, India'}</p>
                   </div>
 
                   <div className="flex flex-col gap-4 border-b border-[#ECECEC] pb-6">

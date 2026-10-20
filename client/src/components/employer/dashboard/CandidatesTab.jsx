@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import DateRangePicker from '../../common/DateRangePicker';
 import VideoPlayer from '../../common/VideoPlayer';
+import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
 const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
   const location = useLocation();
@@ -530,7 +531,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         escapeCsv(cand.name || ''),
         escapeCsv(item.jobTitle || ''),
         escapeCsv(cand.email || ''),
-        escapeCsv(cand.phone || cand.mobile || ''),
+        escapeCsv(formatPhoneWithCountryCode(cand.phone || cand.mobile, cand.countryCode) || ''),
         escapeCsv(qual),
         escapeCsv(institute),
         escapeCsv(func),
@@ -593,7 +594,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           'Candidate Name': cand.name || '',
           'Job Applied': item.jobTitle || '',
           'Email Address': cand.email || '',
-          'Mobile Number': cand.phone || cand.mobile || '',
+          'Mobile Number': formatPhoneWithCountryCode(cand.phone || cand.mobile, cand.countryCode) || '',
           'Primary Qualification': qual,
           'Institute Name': institute,
           'Functional Area': func,
@@ -725,7 +726,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           'Candidate Name': cand.name || '',
           'Job Applied': item.jobTitle || '',
           'Email Address': cand.email || '',
-          'Mobile Number': cand.phone || cand.mobile || '',
+          'Mobile Number': formatPhoneWithCountryCode(cand.phone || cand.mobile, cand.countryCode) || '',
           'Primary Qualification': getHighestQualification(cand),
           'Institute Name': getInstitute(cand),
           'Functional Area': getFunction(cand),
@@ -1164,8 +1165,8 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                               {cand.name}
                             </p>
                             <p className="text-[11px] text-gray-500 mt-0.5">{cand.email}</p>
-                            {cand.phone && (
-                              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{cand.phone}</p>
+                            {(cand.phone || cand.mobile) && (
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5">{formatPhoneWithCountryCode(cand.phone || cand.mobile, cand.countryCode)}</p>
                             )}
                           </div>
                         </div>
@@ -1366,7 +1367,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   <h2 className="text-xl font-extrabold text-gray-900">{selectedCandidate.name}</h2>
                   <p className="text-xs text-gray-500 font-medium mt-0.5">{selectedCandidate.email}</p>
                   <p className="text-xs font-semibold text-gray-400 mt-1">
-                    {(selectedCandidate.mobile || selectedCandidate.phone || 'Phone not provided')} • {(selectedCandidate.location || selectedCandidate.preferredLocation || 'Location not specified')}
+                    {(formatPhoneWithCountryCode(selectedCandidate.mobile || selectedCandidate.phone, selectedCandidate.countryCode) || 'Phone not provided')} • {(selectedCandidate.location || selectedCandidate.preferredLocation || 'Location not specified')}
                   </p>
 
                   {/* Status selector inside drawer */}
@@ -1784,7 +1785,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               <div className="bg-white max-w-3xl mx-auto shadow-sm min-h-full p-8 rounded-xl text-gray-800 space-y-6">
                 <div className="border-b-2 border-gray-800 pb-4">
                   <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">{previewResume.name}</h1>
-                  <p className="text-gray-600 mt-1 text-xs font-semibold">{previewResume.email} • {previewResume.phone || '+91 98765 43210'} • {previewResume.location || 'Location'}</p>
+                  <p className="text-gray-600 mt-1 text-xs font-semibold">{previewResume.email} • {formatPhoneWithCountryCode(previewResume.phone || previewResume.mobile, previewResume.countryCode) || '+91 98765 43210'} • {previewResume.location || 'Location'}</p>
                 </div>
                 
                 {previewResume.summary && (

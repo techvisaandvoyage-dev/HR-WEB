@@ -7,10 +7,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-primary, Inter)', 'sans-serif'],
-        heading: ['var(--font-heading, Plus Jakarta Sans)', 'sans-serif'],
-        roboto: ['var(--font-heading, Plus Jakarta Sans)', 'sans-serif'],
-        accent: ['var(--font-secondary, Roboto)', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        roboto: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        accent: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
       },
       colors: {
         palette: {

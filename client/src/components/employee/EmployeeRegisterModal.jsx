@@ -183,6 +183,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     setSuccessMessage('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      onClose(); // Close modal immediately so the registration form does not reappear
       const idToken = await result.user.getIdToken();
       const storedAttribution = getStoredAttribution();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/google`, {
@@ -194,6 +195,33 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       if (res.ok) {
         clearStoredAttribution();
         localStorage.setItem('employeeToken', data.token);
+        const googleName = data.name || result.user?.displayName || (data.email ? data.email.split('@')[0] : 'User');
+        const firstName = data.profile?.firstName || googleName.split(' ')[0];
+        const lastName = data.profile?.lastName || (googleName.split(' ').length > 1 ? googleName.split(' ').slice(1).join(' ') : '');
+
+        let newProfile = data.profile || {
+          firstName: firstName,
+          lastName: lastName,
+          name: googleName,
+          phone: data.mobile || result.user?.phoneNumber || '',
+          email: data.email || result.user?.email || '',
+          brief: '',
+          avatar: data.avatar || result.user?.photoURL || '',
+          qualifications: [],
+          isFresher: true,
+          experience: [],
+          professionalDetails: {
+            currentDesignation: '',
+            currentSalary: '',
+            expectedSalary: '',
+            currentLocation: data.location || '',
+            preferredLocations: '',
+            linkedinUrl: '',
+            majorAchievements: '',
+            skills: ''
+          }
+        };
+
         if (data.isOnboardingCompleted) {
           localStorage.setItem('hasProfile', 'true');
           localStorage.removeItem('onboardingCurrentStep');
@@ -203,7 +231,10 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
             localStorage.setItem('onboardingCurrentStep', data.onboardingStep.toString());
           }
         }
-        onLoginSuccess?.(data);
+
+        localStorage.setItem('userProfile', JSON.stringify(newProfile));
+
+        onLoginSuccess?.({ ...data, fromGoogleRegister: true });
       } else {
         setErrors({ google: data.message || 'Google signup failed' });
       }
@@ -262,9 +293,7 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
     } else if (email.trim()) {
       const cleanEmail = email.trim().toLowerCase();
       if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}$/.test(cleanEmail)) {
-        newErrors.email = 'Please enter a valid email address (e.g. name@gmail.com).';
-      } else if (!cleanEmail.endsWith('@gmail.com')) {
-        newErrors.email = 'Only Google (@gmail.com) email addresses are accepted.';
+        newErrors.email = 'Please enter a valid email address.';
       }
     }
     
@@ -316,7 +345,13 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       const data = await response.json();
       
       if (!response.ok) {
-        if (data.field === 'email') setErrors({ email: data.message });
+        if (data.field === 'email' || (data.message && data.message.toLowerCase().includes('email') && data.message.toLowerCase().includes('exist'))) {
+          setErrors({ 
+            email: data.message,
+            isGoogleAccount: Boolean(data.isGoogleAccount || (data.message && data.message.toLowerCase().includes('google'))),
+            accountExists: Boolean(data.accountExists || (data.message && data.message.toLowerCase().includes('exist')))
+          });
+        }
         else if (data.field === 'mobile') setErrors({ mobile: data.message });
         else setErrors({ general: data.message || 'Failed to send OTP' });
         setIsLoading(false);
@@ -381,8 +416,12 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.message && data.message.toLowerCase().includes('email') && data.message.toLowerCase().includes('exists')) {
-          setErrors({ email: data.message });
+        if (data.message && data.message.toLowerCase().includes('email') && data.message.toLowerCase().includes('exist')) {
+          setErrors({ 
+            email: data.message,
+            isGoogleAccount: Boolean(data.isGoogleAccount || data.message.toLowerCase().includes('google')),
+            accountExists: true
+          });
           setStep(1);
         } else if (data.message && data.message.toLowerCase().includes('phone')) {
           setErrors({ mobile: data.message });
@@ -544,14 +583,29 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 name="user_email_register"
                 autoComplete="off" 
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: ''}); }}
-                onBlur={() => {
+                onChange={(e) => { setEmail(e.target.value); setErrors({...errors, email: '', isGoogleAccount: false, accountExists: false}); }}
+                onBlur={async () => {
                   if (email.trim()) {
                     const clean = email.trim().toLowerCase();
                     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}$/.test(clean)) {
-                      setErrors(prev => ({ ...prev, email: 'Please enter a valid email address (e.g. name@gmail.com).' }));
-                    } else if (!clean.endsWith('@gmail.com')) {
-                      setErrors(prev => ({ ...prev, email: 'Only Google (@gmail.com) email addresses are accepted.' }));
+                      setErrors(prev => ({ ...prev, email: 'Please enter a valid email address.' }));
+                    } else {
+                      try {
+                        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/check-existence`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: clean }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok && data.field === 'email') {
+                          setErrors(prev => ({
+                            ...prev,
+                            email: data.message,
+                            isGoogleAccount: Boolean(data.isGoogleAccount),
+                            accountExists: Boolean(data.accountExists)
+                          }));
+                        }
+                      } catch (_) {}
                     }
                   }
                 }}
@@ -559,14 +613,68 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
                 style={{ WebkitBoxShadow: '0 0 0 30px white inset' }}
                 className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
               />
-              {errors.email && (
-                <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              {errors.isGoogleAccount ? (
+                <div className="mt-2.5 p-3.5 sm:p-4 bg-red-50/70 border border-red-200 rounded-2xl space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center gap-2 text-red-800 font-bold text-xs sm:text-sm">
+                    <svg className="w-4 h-4 text-red-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span>This account is registered with Google</span>
+                  </div>
+
+                  <div className="space-y-2 text-xs sm:text-[13px] text-gray-700 pl-0.5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                      <span>
+                        Click <button type="button" onClick={() => handleGoogleSignUp()} className="font-bold text-palette-900 underline hover:text-emerald-700">Continue with Google</button> above to log in directly.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                      <span>
+                        Or click <button type="button" onClick={onLoginClick} className="font-bold text-palette-900 underline hover:text-emerald-700">Use OTP to Login</button> on the login page to sign in via verification code.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 pt-2 border-t border-red-200/60 text-gray-600">
+                      <span className="text-gray-400 font-bold mt-0.5">•</span>
+                      <span>
+                        Want to log in with a password in future? Go to <strong className="font-bold text-gray-900">Profile &gt; Security &amp; Password</strong> after logging in to create one.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : errors.accountExists ? (
+                <div className="mt-2.5 p-3.5 sm:p-4 bg-red-50/70 border border-red-200 rounded-2xl space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center gap-2 text-red-800 font-bold text-xs sm:text-sm">
+                    <svg className="w-4 h-4 text-red-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span>An account already exists with this email</span>
+                  </div>
+
+                  <div className="space-y-2 text-xs sm:text-[13px] text-gray-700 pl-0.5">
+                    <div className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-bold mt-0.5">✓</span>
+                      <span>
+                        Click <button type="button" onClick={onLoginClick} className="font-bold text-palette-900 underline hover:text-emerald-700">Go to Login</button> to sign in with your password or use OTP.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 pt-2 border-t border-red-200/60 text-gray-600">
+                      <span className="text-gray-400 font-bold mt-0.5">•</span>
+                      <span>
+                        Forgot your password? You can easily reset it on the login page using OTP.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : errors.email ? (
+                <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-xs sm:text-sm font-semibold leading-relaxed pl-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  {errors.email}
+                  <span>{errors.email}</span>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Mobile Number Input */}

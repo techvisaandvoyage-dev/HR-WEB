@@ -1,13 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import JobShareModal from '../../common/JobShareModal';
 
-const ManageJobs = ({ portalConfig, jobs = [], candidates = [], toggleJobStatus, hideHeader = false }) => {
+const sanitizeHtml = (html) => {
+  if (!html) return '';
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'h2', 'h3', 'a'],
+    ALLOWED_ATTR: ['href', 'target', 'rel']
+  });
+};
+
+const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [], toggleJobStatus, hideHeader = false }) => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobToShare, setJobToShare] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
+  const closeButtonRef = useRef(null);
+  const lastActiveElementRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedJob) {
+      lastActiveElementRef.current = document.activeElement;
+      const timer = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          setSelectedJob(null);
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('keydown', handleKeyDown);
+        if (lastActiveElementRef.current && typeof lastActiveElementRef.current.focus === 'function') {
+          lastActiveElementRef.current.focus();
+        }
+      };
+    }
+  }, [selectedJob]);
 
   // Filter jobs by search term and status
   const filteredJobs = jobs.filter(job => {
@@ -24,391 +59,450 @@ const ManageJobs = ({ portalConfig, jobs = [], candidates = [], toggleJobStatus,
   });
 
   return (
-    <div className={`animate-in fade-in duration-300 ${hideHeader ? '' : 'space-y-6 pb-10'}`}>
+    <div className={`animate-in fade-in duration-150 ${hideHeader ? '' : 'space-y-6 pb-10'}`}>
       
       {!hideHeader && (
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight">MY JOB</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage and track all your job postings and applicant analytics.</p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Link 
-              to="/employer/post-job"
-              className="px-5 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-full transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-            >
-              <span className="text-lg leading-none">+</span> Post New Job
-            </Link>
-            <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm">
-              C
-            </div>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-[26px] font-bold text-[#101828] tracking-[-0.025em]">Jobs</h1>
+          <p className="text-[#667085] text-[14px] mt-1">Manage and track all your job postings and applicant analytics.</p>
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
-        
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
-          <div className="relative w-full sm:w-[350px]">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input 
-              type="text" 
-              placeholder={portalConfig?.jobSearchPlaceholder || "Search job by title, location..."} 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f] transition-all placeholder-gray-400"
-            />
-          </div>
-          
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 outline-none focus:border-[#29953f] transition-all bg-white cursor-pointer"
-          >
-            <option value="All Status">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Closed">Closed</option>
-          </select>
+      {/* Toolbar */}
+      <div className="flex gap-3 justify-between flex-wrap mb-4">
+        {/* Search input (max 360px, search icon, green focus ring) */}
+        <label className="flex items-center gap-2.5 border border-[#d0d5dd] rounded-[8px] px-3 flex-1 max-w-[360px] text-[#98a2b3] focus-within:border-[#16a34a] focus-within:ring-2 focus-within:ring-[#ecfdf3] transition-all bg-white">
+          <svg className="w-[18px] h-[18px] shrink-0 text-[#98a2b3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input 
+            type="text" 
+            placeholder="Search by title or location" 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            className="border-0 bg-transparent outline-none py-2 w-full text-[#101828] text-[14px] placeholder:text-[#98a2b3]"
+            aria-label="Search jobs"
+          />
+        </label>
+
+        {/* Status filter select */}
+        <select 
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-[#d0d5dd] rounded-[8px] py-2 px-3 bg-white font-medium text-[14px] text-[#101828] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all cursor-pointer"
+          aria-label="Filter by status"
+        >
+          <option value="All Status">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Closed">Closed</option>
+        </select>
+      </div>
+
+      {/* Table-style Jobs List */}
+      <div className="border-t border-[#eaecf0]">
+        {/* Header Row (Desktop >= 1000px) */}
+        <div className="hidden min-[1000px]:grid grid-cols-[minmax(0,2.4fr)_80px_110px_150px_140px] gap-4 items-center py-2.5 px-2 text-[#98a2b3] text-[13px] font-semibold border-b border-[#eaecf0]">
+          <span>Job</span>
+          <span>Views</span>
+          <span>Applications</span>
+          <span>Status</span>
+          <span></span>
         </div>
 
-        {/* Jobs List */}
-        <div className="space-y-4">
-          {filteredJobs.length === 0 ? (
-            <div className="text-center py-14 text-gray-400 text-sm">
-              No jobs found matching your search or filters.
+        {/* Rows */}
+        {filteredJobs.length === 0 ? (
+          <div className="py-16 px-5 text-center text-[#667085] border border-dashed border-[#d0d5dd] rounded-[12px] my-6">
+            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] text-[#15803d] flex items-center justify-center mx-auto mb-3.5">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
             </div>
-          ) : (
-            filteredJobs.map(job => {
-              const isClosed = job.status === 'Closed';
-              const statusColor = job.statusColor || (isClosed ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700');
-              const displayStatus = job.status || 'Active';
-              const iconColor = job.iconColor || 'text-green-600 bg-green-50 border-green-200';
-              const appsCount = Math.max(job.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === job.title))?.length || 0);
-              const viewsCount = job.views || 0;
-              const postedDate = job.date || job.postedAt || (job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recently');
-              const openingsCount = job.details?.openings || job.openings || '1';
+            <h3 className="m-0 mb-1 text-[#101828] font-semibold text-[17px]">No jobs match your search</h3>
+            <p className="m-0 text-[#667085] text-[14px]">Try a different title or clear the status filter.</p>
+          </div>
+        ) : (
+          filteredJobs.map(job => {
+            const isClosed = job.status === 'Closed';
+            const appsCount = Math.max(job.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === job.title))?.length || 0);
+            const viewsCount = job.views || 0;
+            const postedDate = job.date || job.postedAt || (job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recently');
+            const openingsCount = Number(job.details?.openings || job.openings || '1');
+            const mode = job.details?.workLocation || job.location || 'Hybrid';
+            const empType = job.details?.employmentType || 'Full-time';
+            const payText = job.salary || '';
 
-              return (
-                <div 
-                  key={job.id || job._id} 
-                  className={`flex flex-col lg:flex-row items-stretch lg:items-center justify-between p-5 rounded-2xl border transition-all gap-4 ${
-                    isClosed ? 'border-gray-100 bg-gray-50/50 opacity-80' : 'border-gray-100 hover:border-green-300 hover:shadow-md bg-white'
-                  }`}
-                >
-                  
-                  {/* Job Info */}
-                  <div className="flex items-start sm:items-center gap-3.5 w-full lg:w-[35%]">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${iconColor}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    </div>
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-bold text-gray-900 text-base leading-tight truncate">{job.title}</h4>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
-                          {openingsCount} {Number(openingsCount) === 1 ? 'Opening' : 'Openings'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500 font-medium">
-                        <span>{job.details?.employmentType || 'Part-time'}</span>
-                        <span>•</span>
-                        <span>{job.details?.workLocation || job.location || 'Hybrid'}</span>
-                        {job.salary && (
-                          <>
-                            <span>•</span>
-                            <span className="text-gray-700 font-semibold">{job.salary}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Analytics & Meta Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 items-center gap-3 w-full lg:w-[65%] pt-3 lg:pt-0 border-t lg:border-t-0 border-gray-100">
-                    
-                    {/* Total Views */}
-                    <div className="bg-blue-50/50 hover:bg-blue-50 rounded-xl p-2.5 border border-blue-100/80 text-center transition-colors">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        <span className="font-extrabold text-gray-900 text-sm">{viewsCount}</span>
-                      </div>
-                      <p className="text-[10px] text-blue-700 uppercase tracking-wider font-bold mt-0.5">Total Views</p>
-                    </div>
-
-                    {/* Total Applications */}
-                    <div className="bg-emerald-50/50 hover:bg-emerald-50 rounded-xl p-2.5 border border-emerald-100/80 text-center transition-colors">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <span className="font-extrabold text-gray-900 text-sm">{appsCount}</span>
-                      </div>
-                      <p className="text-[10px] text-emerald-700 uppercase tracking-wider font-bold mt-0.5">Applications</p>
-                    </div>
-
-                    {/* Status Toggle / Dropdown */}
-                    <div className="text-center">
-                      <select 
-                        value={isClosed ? 'Closed' : 'Active'}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          if (toggleJobStatus) toggleJobStatus(job.id || job._id);
-                        }}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider cursor-pointer hover:opacity-90 transition-all outline-none border ${
-                          isClosed ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}
-                      >
-                        <option value="Active" className="text-gray-900 bg-white font-bold">ACTIVE</option>
-                        <option value="Closed" className="text-gray-900 bg-white font-bold">CLOSED</option>
-                      </select>
-                      <p className="text-[10px] text-gray-400 font-medium mt-1">
-                        {isClosed ? 'Closed' : 'Posted'} {postedDate}
-                      </p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-1.5 shrink-0">
-                      <button
-                        onClick={() => { setJobToShare(job); setShowShareModal(true); }}
-                        className="p-2 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-xl transition-colors border border-gray-200/80 hover:border-green-200 cursor-pointer"
-                        title="Share Direct Apply Link"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                        </svg>
-                      </button>
-                      <Link
-                        to="/employer/post-job"
-                        state={{ jobToEdit: job }}
-                        className="p-2 text-gray-500 hover:text-[#29953f] hover:bg-green-50 rounded-xl transition-colors border border-gray-200/80 hover:border-green-200"
-                        title="Edit Job"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4H5a2 2 0 00-2 2v13a1 1 0 001 1h13a2 2 0 001-1v-6M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                      </Link>
-                      <Link 
-                        to="/employer/applications" 
-                        state={{ jobTitle: job.title }} 
-                        className="p-2 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-colors border border-gray-200/80 hover:border-emerald-200" 
-                        title="View Applications"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                      </Link>
-                      <button 
-                        onClick={() => setSelectedJob(job)} 
-                        className="p-2 text-gray-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors border border-gray-200/80 hover:border-blue-200 cursor-pointer" 
-                        title="View Full Job Details"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      </button>
-                    </div>
-
-                  </div>
+            return (
+              <div 
+                key={job.id || job._id}
+                className="grid min-[1000px]:grid-cols-[minmax(0,2.4fr)_80px_110px_150px_140px] grid-cols-[1fr_auto] gap-x-4 gap-y-2.5 items-center py-4 px-2 border-b border-[#eaecf0] hover:bg-[#f9fafb] transition-colors"
+              >
+                {/* 1. Job Title & Meta */}
+                <div className="min-w-0 min-[1000px]:col-auto col-span-1">
+                  <h3 className="m-0 font-semibold text-[15.5px] text-[#101828] leading-[1.35] flex items-center gap-2 flex-wrap">
+                    <span className="truncate">{job.title}</span>
+                    <span className="font-semibold text-[12px] text-[#667085] bg-[#f9fafb] border border-[#eaecf0] px-2 py-0.5 rounded-full shrink-0">
+                      {openingsCount} {openingsCount > 1 ? 'openings' : 'opening'}
+                    </span>
+                  </h3>
+                  <p className="text-[#667085] text-[13.5px] mt-0.5 mb-0 truncate">
+                    {empType} · {mode}{payText ? ` · ${payText}` : ''}
+                  </p>
                 </div>
-              );
-            })
-          )}
-        </div>
 
-        {/* Pagination */}
-        <div className="flex justify-center items-center gap-2 mt-8">
-          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-          </button>
-          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-green-700 bg-green-50 font-bold text-sm">1</button>
-          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-50 font-bold text-sm">2</button>
-          <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-          </button>
-        </div>
+                {/* 2. Status (Mobile moves to top right, Desktop 4th col) */}
+                <div className="min-[1000px]:order-4 min-[1000px]:col-auto col-span-1 justify-self-end min-[1000px]:justify-self-start">
+                  <div className="relative inline-block">
+                    <select
+                      value={isClosed ? 'Closed' : 'Active'}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        if (toggleJobStatus) toggleJobStatus(job.id || job._id);
+                      }}
+                      className={`appearance-none text-[13px] font-semibold rounded-full pl-6 pr-3.5 py-1 cursor-pointer outline-none border-0 transition-colors ${
+                        isClosed ? 'bg-[#f2f4f7] text-[#667085]' : 'bg-[#ecfdf3] text-[#15803d]'
+                      }`}
+                      aria-label="Job status"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                    <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none ${isClosed ? 'bg-[#98a2b3]' : 'bg-[#16a34a]'}`} />
+                  </div>
+                  <small className="block text-[#98a2b3] text-[12px] mt-0.5 pl-0.5 whitespace-nowrap">
+                    {isClosed ? 'Closed' : 'Posted'} {postedDate}
+                  </small>
+                </div>
 
+                {/* 3. Views */}
+                <div className="min-[1000px]:order-2 font-semibold text-[14.5px] text-[#101828]">
+                  {viewsCount} <span className="min-[1000px]:hidden text-[#667085] font-normal text-[13px]">views</span>
+                </div>
+
+                {/* 4. Applications */}
+                <div className="min-[1000px]:order-3 font-semibold text-[14.5px] text-[#101828]">
+                  {appsCount} <span className="min-[1000px]:hidden text-[#667085] font-normal text-[13px]">applications</span>
+                </div>
+
+                {/* 5. Actions (34px borderless icon buttons) */}
+                <div className="min-[1000px]:order-5 flex items-center justify-end gap-1 shrink-0 col-span-2 min-[1000px]:col-span-1 pt-1 min-[1000px]:pt-0">
+                  <button
+                    type="button"
+                    onClick={() => { setJobToShare(job); setShowShareModal(true); }}
+                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer"
+                    title="Share"
+                    aria-label="Share"
+                  >
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
+                    </svg>
+                  </button>
+
+                  <Link
+                    to="/employer/post-job"
+                    state={{ jobToEdit: job }}
+                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer"
+                    title="Edit"
+                    aria-label="Edit"
+                  >
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                    </svg>
+                  </Link>
+
+                  <Link 
+                    to="/employer/applications" 
+                    state={{ jobTitle: job.title }} 
+                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
+                    title="Applicants"
+                    aria-label="Applicants"
+                  >
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="9" cy="8" r="3.5" />
+                      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8" />
+                    </svg>
+                  </Link>
+
+                  <button 
+                    type="button"
+                    onClick={() => setSelectedJob(job)} 
+                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
+                    title="Details"
+                    aria-label="Details"
+                  >
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 11v5M12 8h.01" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Overlapping Right Sidebar Drawer for Job Details */}
-      {selectedJob && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 animate-in fade-in duration-300"
-            onClick={() => setSelectedJob(null)}
-          ></div>
+      {selectedJob && (() => {
+        const openingsCount = Number(selectedJob.details?.openings || selectedJob.openings || 1);
+        const skillsList = selectedJob.qualifications && selectedJob.qualifications.length > 0
+          ? selectedJob.qualifications.map(q => (typeof q === 'object' ? (q.name || q.title || '') : String(q))).filter(Boolean)
+          : (typeof selectedJob.details?.skills === 'string'
+              ? selectedJob.details.skills.split(',').map(s => s.trim()).filter(Boolean)
+              : (Array.isArray(selectedJob.details?.skills) ? selectedJob.details.skills : []));
 
-          {/* Drawer */}
-          <div className="fixed inset-y-0 right-0 w-full sm:w-[500px] bg-white shadow-2xl z-50 p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-gray-100">
-            
-            {/* Sidebar Header (Fixed) */}
-            <div className="flex justify-between items-start mb-6 shrink-0">
-              <h3 className="font-bold text-gray-900 text-lg">Job Details</h3>
-              <button 
-                onClick={() => setSelectedJob(null)}
-                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
+        return (
+          <>
+            {/* Backdrop: no blur, transparent dim rgba(16,24,40,0.14), does not cover sidebar on desktop (248px), covers full screen on <860px */}
+            <div 
+              className="fixed inset-0 left-0 min-[860px]:left-[248px] bg-[#101828]/[0.14] z-40 transition-opacity duration-250 animate-in fade-in cursor-pointer"
+              onClick={() => setSelectedJob(null)}
+              aria-hidden="true"
+            />
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
+            {/* Drawer */}
+            <div 
+              role="dialog"
+              aria-modal="true"
+              aria-label="Job details"
+              className="fixed inset-y-0 right-0 w-full min-[620px]:w-[620px] max-w-full bg-white z-50 flex flex-col h-full border-l border-[#eaecf0] shadow-[-16px_0_48px_rgba(16,24,40,0.08)] animate-in slide-in-from-right duration-[280ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] overflow-hidden"
+            >
               
-              {/* Basic Info & Analytics */}
-              <div className="border-b border-gray-100 pb-6">
-                <h2 className="text-2xl font-bold text-gray-900">{selectedJob.title}</h2>
-                <div className="flex flex-wrap items-center gap-2.5 mt-3">
-                  <span className="inline-flex items-center justify-center px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-200">
-                    {selectedJob.type || `${selectedJob.details?.employmentType || 'Full-time'} • ${selectedJob.details?.workLocation || selectedJob.location || 'Hybrid'}`}
-                  </span>
-                  <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${selectedJob.status === 'Closed' ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
-                    {selectedJob.status || 'Active'}
-                  </span>
-                  <span className="inline-flex items-center justify-center px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-bold border border-purple-200">
-                    {selectedJob.details?.openings || selectedJob.openings || '1'} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
-                  </span>
-                </div>
-                
-                {/* 4-Stat Analytics Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-                  <div className="bg-blue-50/60 rounded-2xl p-3.5 border border-blue-100 text-center">
-                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Total Views</p>
-                    <p className="text-xl font-extrabold text-gray-900 mt-1">{selectedJob.views || 0}</p>
-                  </div>
-                  <div className="bg-emerald-50/60 rounded-2xl p-3.5 border border-emerald-100 text-center">
-                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Applications</p>
-                    <p className="text-xl font-extrabold text-gray-900 mt-1">{Math.max(selectedJob.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === selectedJob.title))?.length || 0)}</p>
-                  </div>
-                  <div className="bg-purple-50/60 rounded-2xl p-3.5 border border-purple-100 text-center">
-                    <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Openings</p>
-                    <p className="text-xl font-extrabold text-gray-900 mt-1">{selectedJob.details?.openings || selectedJob.openings || '1'}</p>
-                  </div>
-                  <div className="bg-amber-50/60 rounded-2xl p-3.5 border border-amber-100 text-center">
-                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Salary</p>
-                    <p className="text-xs font-bold text-gray-900 mt-2 truncate">{selectedJob.salary || 'Negotiable'}</p>
-                  </div>
-                </div>
+              {/* Header (Fixed) */}
+              <div className="px-5 min-[860px]:px-7 py-[18px] border-b border-[#eaecf0] flex items-center justify-between shrink-0">
+                <h2 className="text-[17px] font-bold text-[#101828] m-0">Job details</h2>
+                <button 
+                  ref={closeButtonRef}
+                  type="button"
+                  onClick={() => setSelectedJob(null)}
+                  aria-label="Close"
+                  className="w-[34px] h-[34px] rounded-[8px] flex items-center justify-center text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] transition-colors cursor-pointer border-0 bg-transparent"
+                >
+                  <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 6l12 12M18 6 6 18" />
+                  </svg>
+                </button>
               </div>
-              
-              {/* Job Details Container */}
-              <div className="space-y-4 pt-2">
-                {selectedJob.details?.jobTitle && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Job Title:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.jobTitle}</span>
-                  </div>
-                )}
+
+              {/* Scrollable Content Body (Fixed: overflow-x-hidden to eliminate horizontal scroll completely) */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 min-[860px]:px-7 py-[26px] custom-scrollbar w-full max-w-full min-w-0">
                 
-                {selectedJob.details?.employmentType && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Employment Type:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.employmentType}</span>
-                  </div>
-                )}
+                {/* 1. Job Title */}
+                <h3 className="text-[26px] font-[800] text-[#101828] tracking-[-0.025em] leading-[1.2] break-words mb-3 w-full max-w-full">
+                  {selectedJob.title}
+                </h3>
 
-                {selectedJob.details?.experience && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Experience:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.experience}</span>
-                  </div>
-                )}
+                {/* 2. Tag Row */}
+                <div className="flex flex-wrap items-center gap-2 mb-6 w-full max-w-full">
+                  {/* Neutral Pill: Employment type · Work mode */}
+                  <span className="border border-[#eaecf0] bg-white text-[#667085] text-[13px] font-semibold px-3 py-[3px] rounded-full max-w-full truncate">
+                    {selectedJob.type || `${selectedJob.details?.employmentType || 'Full-time'} · ${selectedJob.details?.workLocation || selectedJob.location || 'Hybrid'}`}
+                  </span>
+                  
+                  {/* Status Pill with Leading Dot */}
+                  <span className={`text-[13px] font-semibold px-3 py-[3px] rounded-full inline-flex items-center gap-1.5 ${
+                    selectedJob.status === 'Closed' 
+                      ? 'bg-[#f2f4f7] text-[#667085]' 
+                      : 'bg-[#ecfdf3] text-[#15803d]'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      selectedJob.status === 'Closed' ? 'bg-[#98a2b3]' : 'bg-[#16a34a]'
+                    }`} />
+                    {selectedJob.status === 'Closed' ? 'Closed' : 'Active'}
+                  </span>
 
+                  {/* Openings Neutral Pill */}
+                  <span className="border border-[#eaecf0] bg-white text-[#667085] text-[13px] font-semibold px-3 py-[3px] rounded-full">
+                    {openingsCount} {openingsCount === 1 ? 'opening' : 'openings'}
+                  </span>
+                </div>
+
+                {/* 3. Stats Strip (minmax(0, 1fr) for columns to prevent overflow, min-w-0 on all cells) */}
+                <div className="grid grid-cols-2 min-[860px]:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.5fr)] border border-[#eaecf0] rounded-[12px] mb-6 overflow-hidden w-full max-w-full">
+                  <div className="p-3.5 min-[860px]:p-4 flex flex-col justify-start min-w-0">
+                    <span className="text-[12.5px] font-medium text-[#667085] whitespace-nowrap">Total views</span>
+                    <span className="text-[22px] font-bold text-[#101828] leading-[1.25] tracking-[-0.02em] mt-1 truncate">
+                      {selectedJob.views || 0}
+                    </span>
+                  </div>
+                  <div className="p-3.5 min-[860px]:p-4 border-l border-[#eaecf0] flex flex-col justify-start min-w-0">
+                    <span className="text-[12.5px] font-medium text-[#667085] whitespace-nowrap">Applications</span>
+                    <span className="text-[22px] font-bold text-[#101828] leading-[1.25] tracking-[-0.02em] mt-1 truncate">
+                      {Math.max(selectedJob.applications || 0, candidates?.filter(c => c.history?.some(h => h.title === selectedJob.title))?.length || 0)}
+                    </span>
+                  </div>
+                  <div className="p-3.5 min-[860px]:p-4 border-t min-[860px]:border-t-0 min-[860px]:border-l border-[#eaecf0] flex flex-col justify-start min-w-0">
+                    <span className="text-[12.5px] font-medium text-[#667085] whitespace-nowrap">Openings</span>
+                    <span className="text-[22px] font-bold text-[#101828] leading-[1.25] tracking-[-0.02em] mt-1 truncate">
+                      {openingsCount}
+                    </span>
+                  </div>
+                  <div className="p-3.5 min-[860px]:p-4 border-t min-[860px]:border-t-0 border-l border-[#eaecf0] flex flex-col justify-start min-w-0">
+                    <span className="text-[12.5px] font-medium text-[#667085] whitespace-nowrap">Salary</span>
+                    <span className="text-[15px] font-bold text-[#101828] leading-[1.4] mt-1 break-words">
+                      {selectedJob.salary || 'Negotiable'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Detail Rows (minmax(0, 1fr) for value column, min-w-0 on all items) */}
+                {/* Job title */}
+                <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                  <span className="text-[14px] font-medium text-[#667085] shrink-0">Job title</span>
+                  <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                    {selectedJob.details?.jobTitle || selectedJob.title || (
+                      <span className="text-[#98a2b3]">Not specified</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Employment type */}
+                <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                  <span className="text-[14px] font-medium text-[#667085] shrink-0">Employment type</span>
+                  <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                    {selectedJob.details?.employmentType || selectedJob.type || (
+                      <span className="text-[#98a2b3]">Not specified</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Experience */}
+                <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                  <span className="text-[14px] font-medium text-[#667085] shrink-0">Experience</span>
+                  <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                    {selectedJob.details?.experience || (
+                      <span className="text-[#98a2b3]">Not specified</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Openings (if defined in details) */}
                 {(selectedJob.details?.openings || selectedJob.openings) && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Openings:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details?.openings || selectedJob.openings}</span>
+                  <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                    <span className="text-[14px] font-medium text-[#667085] shrink-0">Openings</span>
+                    <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                      {selectedJob.details?.openings || selectedJob.openings}
+                    </div>
                   </div>
                 )}
 
-                {selectedJob.details?.aboutRole && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">About Role:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.aboutRole}</span>
+                {/* Qualification (if defined) */}
+                {selectedJob.details?.qualification && (
+                  <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                    <span className="text-[14px] font-medium text-[#667085] shrink-0">Qualification</span>
+                    <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                      {selectedJob.details.qualification}
+                    </div>
                   </div>
                 )}
 
-                {selectedJob.details?.responsibilities && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2 block mb-1">Responsibilities:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.responsibilities}</span>
+                {/* Stream (if defined) */}
+                {selectedJob.details?.stream && (
+                  <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                    <span className="text-[14px] font-medium text-[#667085] shrink-0">Stream</span>
+                    <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                      {selectedJob.details.stream}
+                    </div>
                   </div>
                 )}
-                
-                {selectedJob.qualifications && selectedJob.qualifications.length > 0 ? (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2 block mb-2">Skills Required:</span>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedJob.qualifications.map((q, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+
+                {/* Job category (if defined) */}
+                {selectedJob.details?.category && (
+                  <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                    <span className="text-[14px] font-medium text-[#667085] shrink-0">Job category</span>
+                    <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                      {selectedJob.details.category}
+                    </div>
+                  </div>
+                )}
+
+                {/* About role (Stacked block) */}
+                <div className="py-[15px] border-t border-[#eaecf0] w-full max-w-full min-w-0 overflow-hidden">
+                  <span className="text-[14px] font-medium text-[#667085] block mb-2">About role</span>
+                  {selectedJob.details?.aboutRole ? (
+                    <div 
+                      className="rich-text-content w-full max-w-full min-w-0 break-words"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedJob.details.aboutRole) }}
+                    />
+                  ) : (
+                    <span className="text-[#98a2b3] font-normal text-[14.5px]">Not provided</span>
+                  )}
+                </div>
+
+                {/* Responsibilities (Stacked block) */}
+                <div className="py-[15px] border-t border-[#eaecf0] w-full max-w-full min-w-0 overflow-hidden">
+                  <span className="text-[14px] font-medium text-[#667085] block mb-2">Responsibilities</span>
+                  {selectedJob.details?.responsibilities ? (
+                    <div 
+                      className="rich-text-content w-full max-w-full min-w-0 break-words"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedJob.details.responsibilities) }}
+                    />
+                  ) : (
+                    <span className="text-[#98a2b3] font-normal text-[14.5px]">Not provided</span>
+                  )}
+                </div>
+
+                {/* Skills required (Stacked block) */}
+                <div className="py-[15px] border-t border-[#eaecf0] w-full max-w-full min-w-0 overflow-hidden">
+                  <span className="text-[14px] font-medium text-[#667085] block mb-2">Skills required</span>
+                  {skillsList.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1 w-full max-w-full">
+                      {skillsList.map((skill, idx) => (
+                        <span 
+                          key={idx} 
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#ecfdf3] text-[#15803d] text-[13px] font-semibold rounded-full max-w-full break-words"
+                        >
+                          <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
                           </svg>
-                          {q.name}
+                          <span className="break-words">{skill}</span>
                         </span>
                       ))}
                     </div>
-                  </div>
-                ) : selectedJob.details?.skills ? (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2 block mb-1">Skills Required:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.skills}</span>
-                  </div>
-                ) : null}
+                  ) : (
+                    <span className="text-[#98a2b3] font-normal text-[14.5px]">Not provided</span>
+                  )}
+                </div>
 
-                {selectedJob.salary && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Salary:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.salary}</span>
+                {/* Salary (Two-column row) */}
+                <div className="grid grid-cols-1 min-[860px]:grid-cols-[150px_minmax(0,1fr)] gap-1 min-[860px]:gap-4 py-[15px] border-t border-[#eaecf0] items-baseline w-full max-w-full min-w-0">
+                  <span className="text-[14px] font-medium text-[#667085] shrink-0">Salary</span>
+                  <div className="text-[14.5px] font-medium text-[#101828] min-w-0 max-w-full break-words">
+                    {selectedJob.salary || <span className="text-[#98a2b3]">Not specified</span>}
                   </div>
-                )}
+                </div>
 
-                {selectedJob.details?.qualification && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Qualification:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.qualification}</span>
-                  </div>
-                )}
-                
-                {selectedJob.details?.stream && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Stream:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.stream}</span>
-                  </div>
-                )}
-
-                {selectedJob.details?.category && (
-                  <div>
-                    <span className="text-sm font-bold text-gray-900 mr-2">Job Category:</span>
-                    <span className="text-sm text-gray-600">{selectedJob.details.category}</span>
-                  </div>
-                )}
               </div>
-            </div>
 
-            {/* Sidebar Footer Actions (Fixed) */}
-            <div className="mt-6 pt-6 border-t border-gray-100 flex items-center gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setJobToShare(selectedJob);
-                  setShowShareModal(true);
-                }}
-                className="py-3 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-sm transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>🔗</span> Share Apply Link
-              </button>
-              <Link 
-                to="/employer/applications" 
-                state={{ jobTitle: selectedJob.title }}
-                className="flex-1 py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-colors shadow-sm text-center"
-              >
-                View Applications
-              </Link>
-            </div>
+              {/* Fixed Footer */}
+              <div className="px-5 min-[860px]:px-7 py-4 border-t border-[#eaecf0] flex items-center gap-3 shrink-0 bg-white">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJobToShare(selectedJob);
+                    setShowShareModal(true);
+                  }}
+                  className="flex-1 py-2.5 px-4 bg-white hover:bg-[#f9fafb] text-[#101828] border border-[#d0d5dd] font-semibold text-[14px] rounded-[8px] transition-colors text-center cursor-pointer shadow-none"
+                >
+                  Share apply link
+                </button>
+                <Link 
+                  to="/employer/applications" 
+                  state={{ jobTitle: selectedJob.title }}
+                  className="flex-1 py-2.5 px-4 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold text-[14px] rounded-[8px] transition-colors text-center cursor-pointer shadow-none"
+                >
+                  View applications
+                </Link>
+              </div>
 
-          </div>
-        </>
-      )}
+            </div>
+          </>
+        );
+      })()}
 
       {/* Share Apply Link Modal */}
       {jobToShare && (

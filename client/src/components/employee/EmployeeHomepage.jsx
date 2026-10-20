@@ -582,7 +582,17 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   useEffect(() => {
     if (showToast) {
       const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-      setToastName(profile.firstName || 'User');
+      const candidateUser = JSON.parse(localStorage.getItem('employeeUser') || '{}');
+      const resolvedName = location.state?.userName
+        || profile.firstName
+        || (profile.name ? profile.name.split(' ')[0] : '')
+        || (profile.fullName ? profile.fullName.split(' ')[0] : '')
+        || (candidateProfile?.firstName)
+        || (candidateProfile?.fullName && candidateProfile.fullName !== 'Candidate' ? candidateProfile.fullName.split(' ')[0] : '')
+        || (candidateUser?.name ? candidateUser.name.split(' ')[0] : '')
+        || '';
+
+      setToastName(resolvedName || 'User');
       
       const timer = setTimeout(() => {
         setShowToast(false);
@@ -590,7 +600,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [showToast, navigate, location.pathname]);
+  }, [showToast, navigate, location.pathname, location.state, candidateProfile]);
   
   const [savedJobs, setSavedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
 

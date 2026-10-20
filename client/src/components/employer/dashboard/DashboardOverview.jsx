@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import ManageJobs from './ManageJobs';
+
 const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs = [], candidates = [], toggleJobStatus }) => {
   const [selectedJob, setSelectedJob] = useState(null);
 
@@ -40,65 +40,39 @@ const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs =
 
   const recentJobs = jobs.slice(0, 5);
 
-  const welcomePrefix = portalConfig?.welcomePrefix || 'Welcome back,';
-  const subtitle = portalConfig?.subtitle || "Here's what's happening with your job posting today.";
-  const rawPostJobBtnText = portalConfig?.postJobBtnText || 'Post New Job';
-  const postJobBtnText = rawPostJobBtnText.replace(/^\+\s*/, '').trim() || 'Post New Job';
-
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      
-      {/* Top Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-[26px] font-bold text-gray-900 tracking-tight flex items-center gap-2.5 flex-wrap">
-            <span>{welcomePrefix} {displayName}!</span>
-            {employerProfile?.isConsultant === true && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
-                <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
-                Consultant
-              </span>
-            )}
-            <span className="text-2xl">👋</span>
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
+    <div className="animate-in fade-in duration-150">
+      {/* Stats Horizontal Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 border border-[#eaecf0] rounded-[12px] bg-white overflow-hidden mb-8">
+        <div className="p-5 sm:px-6 sm:py-5 border-b md:border-b-0 border-r border-[#eaecf0]">
+          <p className="m-0 text-[#667085] font-medium text-[14px]">Active jobs</p>
+          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+            {activeJobsCount}
+          </strong>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <Link 
-            to="/employer/post-job"
-            className="px-5 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-full transition-colors flex items-center gap-1.5 shadow-sm"
-          >
-            <span className="text-lg leading-none">+</span> {postJobBtnText}
-          </Link>
-          <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-green-700 shadow-sm cursor-pointer overflow-hidden" title={displayName}>
-            {employerProfile?.companyLogo ? (
-              <img src={employerProfile.companyLogo} alt={displayName} className="w-full h-full object-cover" />
-            ) : (
-              displayInitial
-            )}
-          </div>
+        <div className="p-5 sm:px-6 sm:py-5 border-b md:border-b-0 md:border-r border-[#eaecf0]">
+          <p className="m-0 text-[#667085] font-medium text-[14px]">Total applications</p>
+          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+            {totalAppsCount}
+          </strong>
+        </div>
+        <div className="p-5 sm:px-6 sm:py-5 border-r border-[#eaecf0] max-md:border-r-0">
+          <p className="m-0 text-[#667085] font-medium text-[14px]">Total candidates</p>
+          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+            {totalCandidatesCount}
+          </strong>
+        </div>
+        <div className="p-5 sm:px-6 sm:py-5">
+          <p className="m-0 text-[#667085] font-medium text-[14px]">Shortlisted</p>
+          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+            {shortlistedCount}
+          </strong>
         </div>
       </div>
 
-      {/* Stats Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 shrink-0">
-              {stat.icon}
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs font-semibold">{stat.label}</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-0.5">{stat.value}</h3>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Layout */}
-      <div className="pt-2">
-        <ManageJobs portalConfig={portalConfig} jobs={jobs} toggleJobStatus={toggleJobStatus} hideHeader={true} />
+      {/* Main Layout / Job List */}
+      <div>
+        <ManageJobs portalConfig={portalConfig} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} hideHeader={true} />
       </div>
     </div>
   );

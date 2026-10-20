@@ -1,7 +1,12 @@
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
-const otpStore = new Map(); // key (purpose:email) -> { otp, expiresAt, lastSentAt, resendCount }
+let BouncedEmail;
+try {
+  BouncedEmail = require('../models/BouncedEmail');
+} catch (_) {}
+
+const otpStore = new Map(); // key (purpose:email) -> { otpHash, expiresAt, lastSentAt, resendCount }
 
 const OTP_COOLDOWN_SECONDS = Number(process.env.OTP_RESEND_COOLDOWN || 30);
 
@@ -9,6 +14,11 @@ const generateOtp = (length = 4) => {
   const max = 10 ** length;
   const num = crypto.randomInt(0, max);
   return String(num).padStart(length, '0');
+};
+
+// Check 5: SHA-256 hash for secure storage (plain OTP is never saved in DB/memory)
+const hashOtp = (otp) => {
+  return crypto.createHash('sha256').update(String(otp).trim()).digest('hex');
 };
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
@@ -28,11 +38,12 @@ const getRemainingCooldown = (key) => {
   return 0;
 };
 
+// Check 5: DB/memory me sirf hash save
 const saveOtp = (email, otp, expiryMinutes, purpose = 'registration') => {
   const key = getStoreKey(email, purpose);
   const existing = otpStore.get(key);
   otpStore.set(key, {
-    otp: String(otp),
+    otpHash: hashOtp(otp),
     expiresAt: Date.now() + expiryMinutes * 60 * 1000,
     lastSentAt: Date.now(),
     resendCount: existing ? (existing.resendCount || 0) + 1 : 0,
@@ -54,7 +65,7 @@ const consumeOtp = (email, otp, purpose = 'registration', consume = true) => {
     err.status = 400;
     throw err;
   }
-  if (String(otp).trim() !== record.otp) {
+  if (hashOtp(otp) !== record.otpHash) {
     const err = new Error('Invalid OTP. Please try again.');
     err.status = 400;
     throw err;
@@ -168,7 +179,10 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
 
       const resendData = await resendRes.json();
       if (!resendRes.ok) {
-        throw new Error(resendData.message || resendData.error || 'Failed to send email via Resend');
+        if (BouncedEmail && (resendRes.status === 422 || resendRes.status === 400)) {
+          BouncedEmail.create({ email: toEmail, reason: resendData.message || 'resend_rejected', provider: 'resend' }).catch(() => {});
+        }
+        throw new Error('Unable to deliver verification code to this email address. Please check your email or try again.');
       }
 
       return {
@@ -178,8 +192,11 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
       };
     } catch (resendErr) {
       otpStore.delete(key);
-      const err = new Error('Failed to send OTP via Resend: ' + resendErr.message);
-      err.status = 500;
+      const friendlyMsg = resendErr.message.includes('Unable to deliver') 
+        ? resendErr.message 
+        : 'Unable to deliver verification code to this email address. Please check your email or try again.';
+      const err = new Error(friendlyMsg);
+      err.status = 400;
       throw err;
     }
   }
@@ -203,8 +220,11 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
       };
     } catch (error) {
       otpStore.delete(key);
-      const err = new Error('Failed to send OTP email: ' + error.message);
-      err.status = 500;
+      if (BouncedEmail && (error.responseCode === 550 || error.responseCode === 553 || String(error.message).includes('Recipient address rejected'))) {
+        BouncedEmail.create({ email: toEmail, reason: error.message, provider: 'smtp' }).catch(() => {});
+      }
+      const err = new Error('Unable to deliver verification code to this email address. Please verify your email.');
+      err.status = 400;
       throw err;
     }
   }

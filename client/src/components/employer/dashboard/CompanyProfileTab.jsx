@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 import { currentLocationOptions } from '../../../data/preferredLocations';
 import { uploadFileToStorage, deleteFileFromStorage } from '../../../utils/firebaseStorage';
+import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
 const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -339,45 +340,28 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
   const renderRow = (section, field, label, value, type = 'text', isEditable = true) => {
     const isEditing = editingField === `${section}.${field}`;
     return (
-      <div className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors min-h-[80px]">
-        <div className="w-1/3 text-sm text-gray-500">{label}</div>
-        <div className="flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-[190px_1fr_auto] gap-2 sm:gap-4 items-center py-4 border-b border-[#eaecf0] min-h-[64px]">
+        <label className="text-[#667085] font-medium text-[14px] sm:w-[190px]">{label}</label>
+        <div className="min-w-0">
           {isEditing ? (
             type === 'textarea' ? (
               <textarea 
                 value={value}
                 onChange={(e) => handleChange(section, field, e.target.value)}
-                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] resize-none"
+                className="w-full max-w-[420px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] resize-none"
                 rows="3"
                 autoFocus
               />
-            ) : type === 'select-hiringFor' ? (
-              <select 
-                value={companyData.hiringFor || (cmsHiringForOptions[0]?.value || 'your_company')} 
-                onChange={(e) => handleChange(section, field, e.target.value)} 
-                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white font-medium"
-              >
-                {cmsHiringForOptions.length > 0 ? (
-                  cmsHiringForOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="your_company">Company Business</option>
-                    <option value="consultant">Individual  Proprietor</option>
-                  </>
-                )}
-              </select>
             ) : type === 'select-industry' ? (
-              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white">
+              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] bg-white cursor-pointer font-medium">
                 <option>Information Technology</option><option>Finance</option><option>Healthcare</option><option>Manufacturing</option><option>Education</option><option>Other</option>
               </select>
             ) : type === 'select-employees' ? (
-              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white">
-                <option>1-10</option><option>11-50</option><option>51-200</option><option>201-500</option><option>500+</option>
+              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] bg-white cursor-pointer font-medium">
+                <option>1-10</option><option>11-50</option><option>51-200</option><option>201-500</option><option>500+</option><option>1000+</option>
               </select>
             ) : type === 'select-designation' ? (
-              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f] bg-white">
+              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] bg-white cursor-pointer font-medium">
                 <option>HR Manager</option><option>Recruiter</option><option>Talent Acquisition</option><option>Founder / CEO</option><option>Director</option><option>Other</option>
               </select>
             ) : type === 'location' ? (
@@ -386,251 +370,211 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 value={value} 
                 onChange={(val) => handleChange(section, field, val)} 
                 multiple={false} 
-                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f]" 
-                placeholder="Select Location" 
+                className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3]" 
+                placeholder="Select location" 
               />
             ) : (
               <input 
                 type={type} 
                 value={value} 
                 onChange={(e) => handleChange(section, field, e.target.value)}
-                className="w-full px-3 py-2 border border-[#29953f] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#29953f]"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveField(); }}
+                className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3]"
                 autoFocus
               />
             )
           ) : (
-            <span className={`text-sm ${field === 'website' ? 'text-blue-600' : 'text-gray-600'} ${type === 'textarea' ? 'truncate block max-w-sm' : ''}`}>
-              {value}
+            <span className={`text-[14.5px] font-medium ${field === 'website' ? 'text-[#16a34a] hover:underline' : 'text-[#101828]'} ${type === 'textarea' ? 'block max-w-md break-words' : 'truncate block'}`}>
+              {field === 'phone' ? (formatPhoneWithCountryCode(value) || '—') : (value || '—')}
             </span>
           )}
         </div>
-        {isEditable && (
-          <div className="ml-4 shrink-0">
-            {isEditing ? (
-              <button onClick={handleSaveField} className="text-sm font-bold text-white bg-[#29953f] px-4 py-1.5 rounded-lg hover:bg-green-700 transition-colors">
-                Save
+        <div className="justify-self-end">
+          {isEditable && (
+            isEditing ? (
+              <button 
+                type="button"
+                onClick={handleSaveField} 
+                className="text-[13.5px] font-semibold text-[#15803d] hover:bg-[#ecfdf3] px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer"
+              >
+                Done
               </button>
             ) : (
-              <button onClick={() => handleEdit(`${section}.${field}`)} className="text-gray-400 hover:text-gray-700 p-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                </svg>
+              <button 
+                type="button"
+                onClick={() => handleEdit(`${section}.${field}`)} 
+                className="text-[13.5px] font-semibold text-[#15803d] hover:bg-[#ecfdf3] px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer"
+              >
+                Edit
               </button>
-            )}
-          </div>
-        )}
+            )
+          )}
+        </div>
       </div>
     );
   };
 
   const pageTitle = isConsultant 
-    ? (portalConfig?.consultantTitle || 'Consultant Profile')
-    : (portalConfig?.title || 'Company Profile');
+    ? (portalConfig?.consultantTitle || 'Consultant profile')
+    : (portalConfig?.title || 'Company profile');
 
   const pageSubtitle = isConsultant
     ? (portalConfig?.consultantSubtitle || 'Manage your consultant profile, staffing details and branding.')
-    : (portalConfig?.subtitle || 'Manage your company information and branding.');
+    : (portalConfig?.subtitle || 'Manage your company information, branding and details.');
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div className="max-w-[760px] animate-in fade-in duration-150 pb-16">
       
-      {/* Top Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">
-              {pageTitle}
-            </h1>
-            {isConsultant && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
-                <svg className="w-3.5 h-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
-                Consultant
-              </span>
-            )}
-          </div>
-          <p className="text-gray-500 text-sm mt-1">
-            {pageSubtitle}
-          </p>
-        </div>
+      {/* Top Title */}
+      <div className="mb-7">
+        <h1 className="text-[26px] sm:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2]">
+          {pageTitle}
+        </h1>
+        <p className="text-[#667085] text-[14px] mt-1">
+          {pageSubtitle}
+        </p>
       </div>
 
-      {/* Main Content Area */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
-        
-        {/* Tabs Navigation */}
-        <div className="px-8 pt-4 border-b border-gray-100 flex items-center gap-8">
-          <button 
-            type="button"
-            onClick={() => handleTabChange('account')}
-            className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'account' ? 'border-[#29953f] text-[#29953f]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
-          >
-            {portalConfig?.accountTabLabel || 'Account Details'}
-          </button>
-          <button 
-            type="button"
-            onClick={() => handleTabChange('company')}
-            className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'company' ? 'border-[#29953f] text-[#29953f]' : 'border-transparent text-gray-500 hover:text-gray-900'}`}
-          >
-            {isConsultant ? (portalConfig?.consultantTabLabel || 'Consultant Details') : (portalConfig?.companyTabLabel || 'Company Details')}
-          </button>
-        </div>
+      {/* Underline Tabs */}
+      <div className="flex gap-6 border-b border-[#eaecf0] mb-7">
+        <button 
+          type="button"
+          onClick={() => handleTabChange('account')}
+          className={`pb-3 text-[14.5px] font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'account' ? 'border-[#16a34a] text-[#15803d]' : 'border-transparent text-[#667085] hover:text-[#101828]'}`}
+        >
+          {portalConfig?.accountTabLabel || 'Account details'}
+        </button>
+        <button 
+          type="button"
+          onClick={() => handleTabChange('company')}
+          className={`pb-3 text-[14.5px] font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'company' ? 'border-[#16a34a] text-[#15803d]' : 'border-transparent text-[#667085] hover:text-[#101828]'}`}
+        >
+          {isConsultant ? (portalConfig?.consultantTabLabel || 'Consultant details') : (portalConfig?.companyTabLabel || 'Company details')}
+        </button>
+      </div>
 
-        {/* Tab Content */}
-        <div className="p-8 flex-1 flex flex-col md:flex-row gap-12">
-          
-          {/* Left Form Column */}
-          <div className="flex-1 space-y-8">
-            
-            {/* Account Details Section */}
-            {activeTab === 'account' && (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900">{portalConfig?.personalInfoTitle || 'Personal info'}</h2>
-                  </div>
-                  <p className="text-sm text-gray-500 ml-14">{portalConfig?.personalInfoSubtitle || 'Your name and/or role may be visible to jobseekers and other members of your organisation.'}</p>
-                </div>
-
-                <div className="divide-y divide-gray-100">
-                  {renderRow('account', 'name', 'Name', accountData.name)}
-                  {renderRow('account', 'email', 'Email', accountData.email, 'email', false)}
-                  {renderRow('account', 'phone', 'Phone', accountData.phone, 'tel')}
-                </div>
-              </div>
-            )}
-
-            {/* Company Details Section */}
-            {activeTab === 'company' && (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {isConsultant ? (portalConfig?.consultantDetailsTitle || 'Consultant Details') : (portalConfig?.companyDetailsTitle || 'Company Details')}
-                    </h2>
-                  </div>
-                  <p className="text-sm text-gray-500 ml-14">
-                    {isConsultant 
-                      ? (portalConfig?.consultantDetailsSubtitle || 'Manage your consultant information, staffing details and branding.') 
-                      : (portalConfig?.companyDetailsSubtitle || 'Manage your company information and branding.')}
-                  </p>
-                </div>
-
-                <div className="divide-y divide-gray-100">
-                  {/* Company Logo Row */}
-                  <div className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors min-h-[90px]">
-                    <div className="w-1/3 text-sm text-gray-500">
-                      {isConsultant ? (portalConfig?.consultantLogoLabel || 'Consultant Logo') : (portalConfig?.companyLogoLabel || 'Company Logo')}
-                    </div>
-                    <div className="flex-1 flex items-center gap-4">
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleLogoFileChange} 
-                        accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml" 
-                        className="hidden" 
-                      />
-                      
-                      {/* Logo preview or initial box */}
-                      <div className="relative group shrink-0">
-                        {companyData.companyLogo ? (
-                          <div className="w-14 h-14 rounded-xl border border-gray-200 bg-white shadow-sm flex items-center justify-center overflow-hidden">
-                            <img 
-                              src={companyData.companyLogo} 
-                              alt={companyData.companyName || 'Company Logo'} 
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-14 h-14 rounded-xl bg-palette-400 text-white flex items-center justify-center text-xl font-bold shadow-sm uppercase">
-                            {(companyData.companyName || accountData.name || 'C').charAt(0)}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Upload button or progress indicator */}
-                      <div className="flex items-center gap-3">
-                        {uploadingLogo ? (
-                          <div className="flex items-center gap-2 text-sm font-semibold text-palette-400">
-                            <svg className="animate-spin h-5 w-5 text-palette-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Uploading {uploadProgress > 0 ? `${uploadProgress}%` : '...'}</span>
-                          </div>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => fileInputRef.current?.click()}
-                              className="text-sm font-bold text-palette-400 px-4 py-2 border border-palette-400/30 rounded-lg hover:bg-palette-50 hover:border-palette-400 transition-colors shadow-sm"
-                            >
-                              {companyData.companyLogo ? 'Change Logo' : 'Upload New Logo'}
-                            </button>
-                            {companyData.companyLogo && (
-                              <button
-                                type="button"
-                                onClick={handleRemoveLogo}
-                                className="text-sm font-semibold text-red-500 hover:text-red-700 px-2 py-1 transition-colors"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {renderRow(
-                    'company', 
-                    'hiringFor', 
-                    'Hiring for', 
-                    isConsultant ? 'Consultant' : 'Employer', 
-                    'text', 
-                    false
-                  )}
-                  {renderRow('company', 'companyName', 'Company Name', companyData.companyName)}
-                  {renderRow('company', 'industry', 'Industry', companyData.industry, 'select-industry')}
-                  {renderRow('company', 'employees', 'Number of Employees', companyData.employees, 'select-employees')}
-                  {renderRow('company', 'designation', 'Designation', companyData.designation, 'select-designation')}
-                  {renderRow('company', 'location', 'Company Location', companyData.location, 'location')}
-                  {renderRow('company', 'about', 'About Company', companyData.about, 'textarea')}
-                  {renderRow('company', 'website', 'Website link', companyData.website, 'url')}
-                </div>
-              </div>
-            )}
-
+      {/* Account Details Tab */}
+      {activeTab === 'account' && (
+        <div className="space-y-1">
+          <div className="mb-2">
+            <h2 className="text-[18px] font-bold text-[#101828] tracking-[-0.01em]">Personal info</h2>
+            <p className="text-[#667085] text-[13.5px] mt-0.5">Your name or role may be visible to jobseekers and your team.</p>
           </div>
 
-
-
+          <div className="border-t border-[#eaecf0]">
+            {renderRow('account', 'name', 'Name', accountData.name)}
+            {renderRow('account', 'email', 'Email', accountData.email, 'email', false)}
+            {renderRow('account', 'phone', 'Phone', accountData.phone, 'tel')}
+          </div>
         </div>
+      )}
 
-        {/* Footer Actions */}
-        <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex justify-end">
-          <button onClick={handleSaveAll} className="px-8 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
-            Save Changes
-          </button>
+      {/* Company Details Tab */}
+      {activeTab === 'company' && (
+        <div className="space-y-1">
+          <div className="mb-2">
+            <h2 className="text-[18px] font-bold text-[#101828] tracking-[-0.01em]">
+              {isConsultant ? (portalConfig?.consultantDetailsTitle || 'Consultant details') : (portalConfig?.companyDetailsTitle || 'Company details')}
+            </h2>
+            <p className="text-[#667085] text-[13.5px] mt-0.5">
+              {isConsultant 
+                ? (portalConfig?.consultantDetailsSubtitle || 'Manage your consultant information, staffing details and branding.') 
+                : (portalConfig?.companyDetailsSubtitle || 'Manage your company information and branding.')}
+            </p>
+          </div>
+
+          <div className="border-t border-[#eaecf0]">
+            {/* Company Logo Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-[190px_1fr_auto] gap-2 sm:gap-4 items-center py-4 border-b border-[#eaecf0] min-h-[68px]">
+              <label className="text-[#667085] font-medium text-[14px]">Company logo</label>
+              <div className="flex items-center gap-3.5">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleLogoFileChange} 
+                  accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml" 
+                  className="hidden" 
+                />
+                
+                {companyData.companyLogo ? (
+                  <div className="w-12 h-12 rounded-[10px] border border-[#eaecf0] bg-white flex items-center justify-center overflow-hidden shrink-0">
+                    <img 
+                      src={companyData.companyLogo} 
+                      alt={companyData.companyName || 'Company logo'} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-[10px] bg-[#16a34a] text-white flex items-center justify-center text-[20px] font-bold uppercase shrink-0">
+                    {(companyData.companyName || accountData.name || 'C').charAt(0)}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  {uploadingLogo ? (
+                    <span className="text-[13.5px] font-semibold text-[#15803d]">
+                      Uploading {uploadProgress > 0 ? `${uploadProgress}%` : '...'}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border border-[#d0d5dd] rounded-[8px] px-3.5 py-1.5 text-[13.5px] font-semibold text-[#101828] hover:bg-[#f9fafb] transition-colors cursor-pointer"
+                      >
+                        {companyData.companyLogo ? 'Change logo' : 'Upload new logo'}
+                      </button>
+                      {companyData.companyLogo && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="text-[13px] font-semibold text-[#d92d20] hover:bg-red-50 px-2 py-1 rounded-[6px] transition-colors cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+              <span className="hidden sm:inline"></span>
+            </div>
+
+            {/* Hiring for (read-only) */}
+            <div className="grid grid-cols-1 sm:grid-cols-[190px_1fr_auto] gap-2 sm:gap-4 items-center py-4 border-b border-[#eaecf0] min-h-[64px]">
+              <label className="text-[#667085] font-medium text-[14px]">Hiring for</label>
+              <span className="text-[14.5px] font-medium text-[#101828]">
+                {isConsultant ? 'Consultant' : 'Employer'}
+              </span>
+              <span className="hidden sm:inline"></span>
+            </div>
+
+            {renderRow('company', 'companyName', 'Company name', companyData.companyName)}
+            {renderRow('company', 'industry', 'Industry', companyData.industry, 'select-industry')}
+            {renderRow('company', 'employees', 'Number of employees', companyData.employees, 'select-employees')}
+            {renderRow('company', 'designation', 'Designation', companyData.designation, 'select-designation')}
+            {renderRow('company', 'location', 'Location', companyData.location, 'location')}
+            {renderRow('company', 'about', 'About company', companyData.about, 'textarea')}
+            {renderRow('company', 'website', 'Website link', companyData.website, 'url')}
+          </div>
         </div>
+      )}
 
+      {/* Save changes button below the content */}
+      <div className="mt-8 flex items-center gap-3">
+        <button 
+          type="button"
+          onClick={() => handleSaveAll(true)} 
+          className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold text-[14px] px-5 py-2.5 rounded-[8px] transition-colors shadow-none cursor-pointer"
+        >
+          Save changes
+        </button>
       </div>
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#29953f] text-white px-5 py-3 rounded-xl shadow-lg font-semibold text-sm flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-300">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-          <span>{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-[#101828] text-white px-4 py-2.5 rounded-[10px] font-semibold text-[13.5px] shadow-lg animate-in slide-in-from-bottom-2 duration-200">
+          {toastMessage}
         </div>
       )}
 

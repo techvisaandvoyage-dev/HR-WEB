@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
 const ApplicationsTab = () => {
   const applications = [
@@ -75,6 +76,9 @@ const ApplicationsTab = () => {
                       <div>
                         <h4 className="font-bold text-gray-900 text-sm">{app.name}</h4>
                         <p className="text-xs text-gray-500 mt-0.5">{app.email}</p>
+                        {app.phone && (
+                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{formatPhoneWithCountryCode(app.phone, app.countryCode)}</p>
+                        )}
                       </div>
                     </div>
                   </td>

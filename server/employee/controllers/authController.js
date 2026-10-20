@@ -1,6 +1,6 @@
 const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
-const dns = require('dns').promises;
+const { verifyEmailDeliverability } = require('../../utils/emailValidator');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
 const { sendOtp, verifyOtp, resendOtp } = require('../../utils/email');
 
@@ -17,17 +17,9 @@ const getNextCandidateId = async () => {
   return (lastCand && lastCand.candidateId) ? lastCand.candidateId + 1 : 300301;
 };
 
-// Helper: validate email format + require Google @gmail.com
+// Helper: validate email deliverability (format, non-disposable, DNS MX check)
 const validateEmailDomain = async (email) => {
-  const cleanEmail = String(email || '').trim().toLowerCase();
-  const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,10}$/;
-  if (!emailRegex.test(cleanEmail)) {
-    return { valid: false, message: 'Please enter a valid email address (e.g. name@gmail.com)' };
-  }
-  if (!cleanEmail.endsWith('@gmail.com')) {
-    return { valid: false, message: 'Only Google (@gmail.com) email addresses are accepted. Other email domains are not allowed.' };
-  }
-  return { valid: true };
+  return await verifyEmailDeliverability(email);
 };
 
 // @desc    Send registration OTP to email
@@ -41,15 +33,22 @@ const sendRegistrationOtp = async (req, res) => {
       return res.status(400).json({ message: 'Email is required', field: 'email' });
     }
 
-    // Validate email format and domain
-    const domainCheck = await validateEmailDomain(email.trim().toLowerCase());
+    // Validate email format and DNS MX deliverability
+    const domainCheck = await verifyEmailDeliverability(email);
     if (!domainCheck.valid) {
-      return res.status(400).json({ message: domainCheck.message, field: 'email' });
+      return res.status(400).json({ message: domainCheck.message || 'Please enter a valid email address.', field: 'email' });
     }
+    const cleanEmail = domainCheck.cleanEmail;
 
-    const emailExists = await Employee.findOne({ email });
+    const emailExists = await Employee.findOne({ email: cleanEmail });
     if (emailExists) {
-      return res.status(400).json({ message: 'Employee already exists with this email', field: 'email' });
+      const isGoogle = Boolean(emailExists.googleId || emailExists.authProvider === 'google' || !emailExists.password);
+      return res.status(400).json({ 
+        message: 'Employee already exists with this email', 
+        field: 'email',
+        isGoogleAccount: isGoogle,
+        accountExists: true
+      });
     }
 
     if (mobile && mobile.trim()) {
@@ -110,10 +109,11 @@ const registerEmployee = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    const cleanEmail = String(email || '').trim().toLowerCase();
-    if (!cleanEmail.endsWith('@gmail.com')) {
-      return res.status(400).json({ message: 'Only Google (@gmail.com) email addresses are accepted.', field: 'email' });
+    const deliverability = await verifyEmailDeliverability(email);
+    if (!deliverability.valid) {
+      return res.status(400).json({ message: deliverability.message || 'Please enter a valid email address.', field: 'email' });
     }
+    const cleanEmail = deliverability.cleanEmail;
 
     if (!otp || String(otp).length < 4) {
       return res.status(400).json({ message: 'Please enter the 4-digit OTP sent to your email' });
@@ -132,7 +132,13 @@ const registerEmployee = async (req, res) => {
     const employeeExists = await Employee.findOne({ email });
 
     if (employeeExists) {
-      return res.status(400).json({ message: 'Employee already exists with this email' });
+      const isGoogle = Boolean(employeeExists.googleId || employeeExists.authProvider === 'google' || !employeeExists.password);
+      return res.status(400).json({ 
+        message: 'Employee already exists with this email',
+        field: 'email',
+        isGoogleAccount: isGoogle,
+        accountExists: true
+      });
     }
 
     if (mobile && mobile.trim()) {
@@ -150,6 +156,7 @@ const registerEmployee = async (req, res) => {
       email,
       password,
       mobile: mobile ? mobile.trim() : undefined,
+      countryCode: req.body.countryCode || '+91',
       location
     });
 
@@ -174,6 +181,7 @@ const registerEmployee = async (req, res) => {
         name: employee.name,
         email: employee.email,
         mobile: employee.mobile,
+        countryCode: employee.countryCode || '+91',
         location: employee.location,
         isNewUser: true,
         isOnboardingCompleted: false,
@@ -205,14 +213,15 @@ const quickRegisterCandidate = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
-    if (!cleanEmail.endsWith('@gmail.com')) {
+    const deliverability = await verifyEmailDeliverability(email);
+    if (!deliverability.valid) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Only Google (@gmail.com) email addresses are accepted.',
+        message: deliverability.message || 'Please enter a valid email address.',
         field: 'email'
       });
     }
+    const cleanEmail = deliverability.cleanEmail;
     const existing = await Employee.findOne({ 
       email: { $regex: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
     });
@@ -242,6 +251,7 @@ const quickRegisterCandidate = async (req, res) => {
       email: cleanEmail,
       password,
       mobile: mobile ? String(mobile).trim() : '',
+      countryCode: req.body.countryCode || '+91',
       location: location ? String(location).trim() : ''
     });
 
@@ -267,6 +277,7 @@ const quickRegisterCandidate = async (req, res) => {
       name: employee.name,
       email: employee.email,
       mobile: employee.mobile,
+      countryCode: employee.countryCode || '+91',
       location: employee.location,
       isNewUser: true,
       isOnboardingCompleted: false,
@@ -278,6 +289,7 @@ const quickRegisterCandidate = async (req, res) => {
         lastName: employee.name && employee.name.split(' ').length > 1 ? employee.name.split(' ').slice(1).join(' ') : '',
         email: employee.email,
         phone: employee.mobile || '',
+        countryCode: employee.countryCode || '+91',
         brief: '',
         avatar: '',
         designation: '',
@@ -311,7 +323,15 @@ const loginEmployee = async (req, res) => {
       return res.status(400).json({ success: false, field: 'password', message: 'Please enter your password' });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const deliverability = await verifyEmailDeliverability(email);
+    if (!deliverability.valid) {
+      return res.status(400).json({ 
+        success: false, 
+        field: 'email', 
+        message: deliverability.message || 'Please enter a valid email address.' 
+      });
+    }
+    const cleanEmail = deliverability.cleanEmail;
 
     // Check for user email (case-insensitive)
     const employee = await Employee.findOne({ 
@@ -330,7 +350,7 @@ const loginEmployee = async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         field: 'email', 
-        message: 'This email is linked to a Google account. Please log in with Google.' 
+        message: "This email is linked with Google. Please log in using 'Continue with Google' or 'Use OTP to Login'. After logging in, you can create a password under Profile > Security & Password." 
       });
     }
 
@@ -375,6 +395,7 @@ const loginEmployee = async (req, res) => {
       name: employee.name,
       email: employee.email,
       mobile: employee.mobile,
+      countryCode: employee.countryCode || '+91',
       location: employee.location,
       isOnboardingCompleted: isCompleted,
       onboardingStep: currentOnboardingStep,
@@ -385,6 +406,7 @@ const loginEmployee = async (req, res) => {
         lastName: employee.name && employee.name.split(' ').length > 1 ? employee.name.split(' ').slice(1).join(' ') : '',
         email: employee.email,
         phone: employee.mobile,
+        countryCode: employee.countryCode || '+91',
         brief: employee.brief || '',
         avatar: employee.avatar || '',
         designation: employee.designation || '',
@@ -413,14 +435,19 @@ const sendLoginOtp = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: 'Please enter your email address.' });
+      return res.status(400).json({ message: 'Please enter your email address.', field: 'email' });
     }
 
-    const cleanEmail = email.toLowerCase().trim();
+    const deliverability = await verifyEmailDeliverability(email);
+    if (!deliverability.valid) {
+      return res.status(400).json({ message: deliverability.message || 'Please enter a valid email address.', field: 'email' });
+    }
+    const cleanEmail = deliverability.cleanEmail;
+
     const employee = await Employee.findOne({ email: cleanEmail });
 
     if (!employee) {
-      return res.status(404).json({ message: "We couldn't find an account with this email. Please register first to continue." });
+      return res.status(404).json({ message: "We couldn't find an account with this email. Please register first to continue.", field: 'email' });
     }
 
     const result = await sendOtp({
@@ -602,8 +629,24 @@ const checkExistence = async (req, res) => {
     const { email, mobile } = req.body;
     
     if (email) {
-      const emailExists = await Employee.findOne({ email });
-      if (emailExists) return res.status(400).json({ message: 'Employee already exists with this email', field: 'email' });
+      const deliverability = await verifyEmailDeliverability(email);
+      if (!deliverability.valid) {
+        return res.status(400).json({ 
+          message: deliverability.message || 'Please enter a valid email address.', 
+          field: 'email' 
+        });
+      }
+      const cleanEmail = deliverability.cleanEmail;
+      const emailExists = await Employee.findOne({ email: cleanEmail });
+      if (emailExists) {
+        const isGoogle = Boolean(emailExists.googleId || emailExists.authProvider === 'google' || !emailExists.password);
+        return res.status(400).json({ 
+          message: 'Employee already exists with this email', 
+          field: 'email',
+          isGoogleAccount: isGoogle,
+          accountExists: true
+        });
+      }
     }
     
     if (mobile) {
@@ -661,7 +704,11 @@ const forgotPasswordOtp = async (req, res) => {
       return res.status(400).json({ message: 'Please provide your registered email address' });
     }
 
-    const cleanEmail = identifier.toLowerCase().trim();
+    const deliverability = await verifyEmailDeliverability(identifier);
+    if (!deliverability.valid) {
+      return res.status(400).json({ message: deliverability.message || 'Please enter a valid email address.' });
+    }
+    const cleanEmail = deliverability.cleanEmail;
     const employee = await Employee.findOne({ email: cleanEmail }).select('+password');
 
     if (!employee) {
@@ -877,16 +924,41 @@ const googleAuth = async (req, res) => {
       : Boolean(employee.designation || employee.resume || (employee.qualifications && employee.qualifications.length > 0));
     const currentOnboardingStep = employee.onboardingStep || 1;
 
+    const resolvedFirstName = employee.name ? employee.name.split(' ')[0] : (name ? name.split(' ')[0] : (email ? email.split('@')[0] : ''));
+    const resolvedLastName = employee.name && employee.name.split(' ').length > 1 ? employee.name.split(' ').slice(1).join(' ') : (name && name.split(' ').length > 1 ? name.split(' ').slice(1).join(' ') : '');
+
     res.json({
       success: true,
       isNewUser: isNewUser || !isCompleted,
+      isGoogleAuth: true,
       isOnboardingCompleted: isCompleted,
       onboardingStep: currentOnboardingStep,
       hasProfile: isCompleted,
       _id: employee._id,
-      name: employee.name,
+      name: employee.name || name || email.split('@')[0],
       email: employee.email,
-      token: generateToken(employee._id)
+      mobile: employee.mobile || '',
+      location: employee.location || '',
+      token: generateToken(employee._id),
+      profile: {
+        firstName: resolvedFirstName,
+        lastName: resolvedLastName,
+        email: employee.email,
+        phone: employee.mobile || '',
+        brief: employee.brief || '',
+        avatar: employee.avatar || picture || '',
+        designation: employee.designation || '',
+        totalExperience: employee.totalExperience || '',
+        isFresher: employee.isFresher,
+        qualifications: employee.qualifications || [],
+        experience: employee.experience || [],
+        professionalDetails: employee.professionalDetails || {
+          currentLocation: employee.location
+        },
+        resume: employee.resume || '',
+        coverLetter: employee.coverLetter || '',
+        isProfilePrivate: employee.isProfilePrivate ?? false
+      }
     });
   } catch (error) {
     console.error('Google Auth error:', error);

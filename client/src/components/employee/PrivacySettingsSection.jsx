@@ -1,4 +1,4 @@
-`import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -159,7 +159,7 @@ const PrivacySettingsSection = ({ userEmail }) => {
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                  ● Public
+                  Public
                 </span>
               )}
             </div>

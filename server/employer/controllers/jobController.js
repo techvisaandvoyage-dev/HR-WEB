@@ -79,6 +79,18 @@ exports.createJob = async (req, res) => {
       screeningQuestions = screeningQuestions.slice(0, 5);
     }
 
+    // Deduplication safeguard: Prevent duplicate job if submitted within 10 seconds with identical title
+    const recentDuplicate = await Job.findOne({
+      employerId,
+      title: title || 'Untitled Job',
+      createdAt: { $gte: new Date(Date.now() - 10000) }
+    });
+
+    if (recentDuplicate) {
+      console.warn(`[JobController] Duplicate job creation prevented for employer ${employerId}, title "${title}". Returning existing job.`);
+      return res.status(200).json({ success: true, data: recentDuplicate });
+    }
+
     const job = await Job.create({
       employerId,
       company,

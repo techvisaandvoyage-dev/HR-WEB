@@ -17,6 +17,7 @@ const getProfile = async (req, res) => {
         lastName: nameParts.slice(1).join(' ') || '',
         email: employee.email || '',
         phone: employee.mobile || '',
+        countryCode: employee.countryCode || '+91',
         brief: employee.brief || '',
         avatar: employee.avatar || '',
         designation: employee.designation || '',
@@ -81,6 +82,7 @@ const updateProfile = async (req, res) => {
       }
       updateData.mobile = cleanPhone;
     }
+    if (req.body.countryCode !== undefined) updateData.countryCode = req.body.countryCode;
     
     if (req.body.location !== undefined) updateData.location = req.body.location;
     if (req.body.preferredLocation !== undefined) updateData.preferredLocation = req.body.preferredLocation;
