@@ -168,6 +168,25 @@ const generateAcronymsAndAliases = (name = '', city = '', state = '', customAlia
   } else if (lowerName.includes('banaras hindu university')) {
     acronymsSet.add('BHU');
     aliasesSet.add('BHU Varanasi');
+  } else if (lowerName.includes('chartered accountants of india') || lowerName.includes('chartered accountant')) {
+    acronymsSet.add('ICAI');
+    aliasesSet.add('ICAI');
+    aliasesSet.add('ICAI New Delhi');
+    aliasesSet.add('Chartered Accountants of India');
+    aliasesSet.add('CA Institute');
+  } else if (lowerName.includes('company secretaries of india') || lowerName.includes('company secretary')) {
+    acronymsSet.add('ICSI');
+    aliasesSet.add('ICSI');
+    aliasesSet.add('ICSI New Delhi');
+    aliasesSet.add('Company Secretaries of India');
+    aliasesSet.add('CS Institute');
+  } else if (lowerName.includes('cost accountants of india') || lowerName.includes('cost and works accountants')) {
+    acronymsSet.add('ICMAI');
+    acronymsSet.add('ICWAI');
+    acronymsSet.add('CMA');
+    aliasesSet.add('ICMAI');
+    aliasesSet.add('ICWAI');
+    aliasesSet.add('CMA Institute');
   }
 
   // Add Acronym + City to aliases
@@ -203,9 +222,35 @@ const scoreCandidate = (inst, rawQuery, normalizedQuery, queryTokens) => {
   const instDistrict = normalizeText(inst.district);
   const instCountry = normalizeText(inst.country);
 
+  // Special ICAI Priority: Querying "icai" must always rank The Institute of Chartered Accountants of India as #1
+  if (normalizedQuery === 'icai') {
+    if (instNormName.includes('chartered accountants') || (inst.aliases || []).some(a => a.toLowerCase().includes('chartered accountants'))) {
+      return 12000;
+    }
+  }
+
+  // Special ICSI Priority: Querying "icsi"
+  if (normalizedQuery === 'icsi') {
+    if (instNormName.includes('company secretaries') || (inst.aliases || []).some(a => a.toLowerCase().includes('company secretaries'))) {
+      return 12000;
+    }
+  }
+
+  // Special ICMAI / CMA Priority: Querying "icmai" or "cma"
+  if (normalizedQuery === 'icmai' || normalizedQuery === 'cma') {
+    if (instNormName.includes('cost accountants') || (inst.aliases || []).some(a => a.toLowerCase().includes('cost accountants'))) {
+      return 12000;
+    }
+  }
+
   // 1. Highest: Exact full name match
   if (instNormName === normalizedQuery) {
-    return 10000;
+    // If it's a bare acronym masquerading as a full name (e.g. 'icai') with no location, do not grant 10000
+    if (instNormName.length <= 4 && !inst.name.includes(' ') && !inst.city) {
+      score = 4000;
+    } else {
+      return 10000;
+    }
   }
 
   // 2. Exact alias match (e.g. "guru ghasidas university" -> Guru Ghasidas Vishwavidyalaya)
@@ -285,6 +330,7 @@ const scoreCandidate = (inst, rawQuery, normalizedQuery, queryTokens) => {
   }
 
   // Type & Status Boost
+  if (inst.source === 'MANUAL' || inst.source === 'STATUTORY_BODY' || (inst.id && String(inst.id).startsWith('PREMIER-'))) score += 500;
   if (inst.status === 'verified') score += 50;
   if (inst.sector === 'higher_education') score += 30;
   if (inst.type === 'university') score += 20;
@@ -603,8 +649,13 @@ const fetchWikidataInstitutions = async (queryText) => {
     const searchResults = Array.isArray(json.search) ? json.search : [];
 
     const validInstitutions = searchResults.filter(item => {
+      const rawLabel = (item.label || '').trim();
+      // Ignore bare acronyms (<= 4 chars without spaces, like "ICAI") as institution names
+      if (rawLabel.length <= 4 && !rawLabel.includes(' ')) {
+        return false;
+      }
       const desc = (item.description || '').toLowerCase();
-      const label = (item.label || '').toLowerCase();
+      const label = rawLabel.toLowerCase();
       return (
         desc.includes('college') || desc.includes('university') || desc.includes('school') ||
         desc.includes('institute') || desc.includes('institution') || desc.includes('educational') ||
@@ -746,6 +797,259 @@ const fetchHipoInstitutions = async (queryText) => {
 };
 
 /**
+ * Curated Premier & Statutory Indian Institutions
+ * Guaranteed to be available and ranked with highest priority
+ */
+const PREMIER_INSTITUTIONS = [
+  {
+    id: 'PREMIER-ICAI',
+    name: 'The Institute of Chartered Accountants of India',
+    normalizedName: 'the institute of chartered accountants of india',
+    aliases: [
+      'Institute of Chartered Accountants of India',
+      'ICAI',
+      'ICAI New Delhi',
+      'Chartered Accountants of India',
+      'CA Institute',
+      'The Institute of Chartered Accountants of India (ICAI)'
+    ],
+    normalizedAliases: [
+      'institute of chartered accountants of india',
+      'icai',
+      'icai new delhi',
+      'chartered accountants of india',
+      'ca institute',
+      'the institute of chartered accountants of india icai'
+    ],
+    acronyms: ['ICAI', 'CA'],
+    normalizedAcronyms: ['icai', 'ca'],
+    type: 'institute',
+    sector: 'higher_education',
+    city: 'New Delhi',
+    state: 'Delhi',
+    district: 'Central Delhi',
+    country: 'India',
+    countryCode: 'IN',
+    address: 'ICAI Bhawan, Indraprastha Marg, New Delhi 110002',
+    website: 'https://www.icai.org',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-ICSI',
+    name: 'The Institute of Company Secretaries of India',
+    normalizedName: 'the institute of company secretaries of india',
+    aliases: [
+      'Institute of Company Secretaries of India',
+      'ICSI',
+      'ICSI New Delhi',
+      'Company Secretaries of India',
+      'CS Institute',
+      'The Institute of Company Secretaries of India (ICSI)'
+    ],
+    normalizedAliases: [
+      'institute of company secretaries of india',
+      'icsi',
+      'icsi new delhi',
+      'company secretaries of india',
+      'cs institute',
+      'the institute of company secretaries of india icsi'
+    ],
+    acronyms: ['ICSI', 'CS'],
+    normalizedAcronyms: ['icsi', 'cs'],
+    type: 'institute',
+    sector: 'higher_education',
+    city: 'New Delhi',
+    state: 'Delhi',
+    district: 'South Delhi',
+    country: 'India',
+    countryCode: 'IN',
+    address: 'ICSI House, 22 Institutional Area, Lodi Road, New Delhi 110003',
+    website: 'https://www.icsi.edu',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-ICMAI',
+    name: 'The Institute of Cost Accountants of India',
+    normalizedName: 'the institute of cost accountants of india',
+    aliases: [
+      'Institute of Cost Accountants of India',
+      'ICMAI',
+      'ICWAI',
+      'CMA Institute',
+      'Institute of Cost and Works Accountants of India',
+      'The Institute of Cost Accountants of India (ICMAI)'
+    ],
+    normalizedAliases: [
+      'institute of cost accountants of india',
+      'icmai',
+      'icwai',
+      'cma institute',
+      'institute of cost and works accountants of india',
+      'the institute of cost accountants of india icmai'
+    ],
+    acronyms: ['ICMAI', 'ICWAI', 'CMA'],
+    normalizedAcronyms: ['icmai', 'icwai', 'cma'],
+    type: 'institute',
+    sector: 'higher_education',
+    city: 'Kolkata',
+    state: 'West Bengal',
+    district: 'Kolkata',
+    country: 'India',
+    countryCode: 'IN',
+    address: 'CMA Bhawan, 12 Sudder Street, Kolkata 700016',
+    website: 'https://icmai.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-NLSIU',
+    name: 'National Law School of India University (NLSIU)',
+    normalizedName: 'national law school of india university nlsiu',
+    aliases: ['National Law School of India University', 'NLSIU Bangalore', 'NLSIU'],
+    normalizedAliases: ['national law school of india university', 'nlsiu bangalore', 'nlsiu'],
+    acronyms: ['NLSIU', 'NLU'],
+    normalizedAcronyms: ['nlsiu', 'nlu'],
+    type: 'university',
+    sector: 'higher_education',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://www.nls.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-NALSAR',
+    name: 'NALSAR University of Law',
+    normalizedName: 'nalsar university of law',
+    aliases: ['NALSAR Hyderabad', 'NALSAR'],
+    normalizedAliases: ['nalsar hyderabad', 'nalsar'],
+    acronyms: ['NALSAR', 'NLU'],
+    normalizedAcronyms: ['nalsar', 'nlu'],
+    type: 'university',
+    sector: 'higher_education',
+    city: 'Hyderabad',
+    state: 'Telangana',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://www.nalsar.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-NLUD',
+    name: 'National Law University Delhi (NLU Delhi)',
+    normalizedName: 'national law university delhi nlu delhi',
+    aliases: ['National Law University Delhi', 'NLU Delhi', 'NLUD'],
+    normalizedAliases: ['national law university delhi', 'nlu delhi', 'nlud'],
+    acronyms: ['NLUD', 'NLU'],
+    normalizedAcronyms: ['nlud', 'nlu'],
+    type: 'university',
+    sector: 'higher_education',
+    city: 'New Delhi',
+    state: 'Delhi',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://nludelhi.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-ISI',
+    name: 'Indian Statistical Institute (ISI Kolkata)',
+    normalizedName: 'indian statistical institute isi kolkata',
+    aliases: ['Indian Statistical Institute', 'ISI Kolkata', 'ISI'],
+    normalizedAliases: ['indian statistical institute', 'isi kolkata', 'isi'],
+    acronyms: ['ISI'],
+    normalizedAcronyms: ['isi'],
+    type: 'institute',
+    sector: 'higher_education',
+    city: 'Kolkata',
+    state: 'West Bengal',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://www.isical.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-IISC',
+    name: 'Indian Institute of Science (IISc Bangalore)',
+    normalizedName: 'indian institute of science iisc bangalore',
+    aliases: ['Indian Institute of Science', 'IISc Bangalore', 'IISc'],
+    normalizedAliases: ['indian institute of science', 'iisc bangalore', 'iisc'],
+    acronyms: ['IISC'],
+    normalizedAcronyms: ['iisc'],
+    type: 'university',
+    sector: 'higher_education',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://iisc.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-BITS',
+    name: 'Birla Institute of Technology and Science (BITS Pilani)',
+    normalizedName: 'birla institute of technology and science bits pilani',
+    aliases: ['Birla Institute of Technology and Science', 'BITS Pilani', 'BITS'],
+    normalizedAliases: ['birla institute of technology and science', 'bits pilani', 'bits'],
+    acronyms: ['BITS'],
+    normalizedAcronyms: ['bits'],
+    type: 'university',
+    sector: 'higher_education',
+    city: 'Pilani',
+    state: 'Rajasthan',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://www.bits-pilani.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-IIFT',
+    name: 'Indian Institute of Foreign Trade (IIFT Delhi)',
+    normalizedName: 'indian institute of foreign trade iift delhi',
+    aliases: ['Indian Institute of Foreign Trade', 'IIFT Delhi', 'IIFT'],
+    normalizedAliases: ['indian institute of foreign trade', 'iift delhi', 'iift'],
+    acronyms: ['IIFT'],
+    normalizedAcronyms: ['iift'],
+    type: 'institute',
+    sector: 'higher_education',
+    city: 'New Delhi',
+    state: 'Delhi',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://www.iift.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  },
+  {
+    id: 'PREMIER-XLRI',
+    name: 'Xavier School of Management (XLRI Jamshedpur)',
+    normalizedName: 'xavier school of management xlri jamshedpur',
+    aliases: ['Xavier School of Management', 'XLRI Jamshedpur', 'XLRI'],
+    normalizedAliases: ['xavier school of management', 'xlri jamshedpur', 'xlri'],
+    acronyms: ['XLRI'],
+    normalizedAcronyms: ['xlri'],
+    type: 'institute',
+    sector: 'higher_education',
+    city: 'Jamshedpur',
+    state: 'Jharkhand',
+    country: 'India',
+    countryCode: 'IN',
+    website: 'https://xlri.ac.in',
+    source: 'MANUAL',
+    status: 'verified'
+  }
+];
+
+/**
  * Main Database-First Search Service with Tokenization, Acronym Matching & Location Awareness
  */
 const searchMasterInstitutions = async (params = {}) => {
@@ -831,6 +1135,25 @@ const searchMasterInstitutions = async (params = {}) => {
     console.error('MongoDB institution search error:', err.message);
   }
 
+  // Merge matching curated premier institutions into candidate pool
+  for (const premier of PREMIER_INSTITUTIONS) {
+    const pNormName = premier.normalizedName;
+    const pAliases = premier.normalizedAliases || [];
+    const pAcronyms = premier.normalizedAcronyms || [];
+
+    const matchesQuery = 
+      pNormName.includes(normalizedQ) ||
+      pAliases.some(a => a.includes(normalizedQ)) ||
+      pAcronyms.includes(normalizedQ) ||
+      (queryTokens.length > 0 && queryTokens.every(t => pNormName.includes(t) || pAliases.some(a => a.includes(t)) || pAcronyms.includes(t)));
+
+    if (matchesQuery) {
+      if (!dbResults.some(r => normalizeText(r.name) === pNormName)) {
+        dbResults.push({ ...premier });
+      }
+    }
+  }
+
   // STEP 2: Multi-source Live Fallback if local results are insufficient (< 5)
   if (dbResults.length < 5 && normalizedQ.length >= 2) {
     try {
@@ -872,7 +1195,15 @@ const searchMasterInstitutions = async (params = {}) => {
   }
 
   // STEP 3: Score, Rank and Sort all candidates
-  const scoredList = dbResults.map(inst => ({
+  const cleanCandidates = dbResults.filter(inst => {
+    const rawName = (inst.name || '').trim();
+    if (rawName.toUpperCase() === 'ICAI' || (rawName.length <= 4 && !rawName.includes(' ') && !inst.city)) {
+      return false;
+    }
+    return true;
+  });
+
+  const scoredList = cleanCandidates.map(inst => ({
     item: inst,
     score: scoreCandidate(inst, rawQ, normalizedQ, queryTokens)
   }));
@@ -898,6 +1229,7 @@ const searchMasterInstitutions = async (params = {}) => {
       formattedResults.push({
         id: item.id || item._id?.toString() || item.sourceId || '',
         name: item.name,
+        acronym: item.acronyms?.[0] || item.acronym || '',
         type: item.type || 'college',
         sector: item.sector || 'higher_education',
         city: loc.city || item.city || item.district || '',

@@ -21,6 +21,48 @@ const rawIndianInstitutions = [
     acronyms: ["GGU", "GGV"]
   },
   {
+    name: "The Institute of Chartered Accountants of India",
+    state: "Delhi",
+    district: "Central Delhi",
+    city: "New Delhi",
+    address: "ICAI Bhawan, Indraprastha Marg, New Delhi 110002",
+    type: "institute",
+    sector: "higher_education",
+    source: "MANUAL",
+    sourceId: "STAT-ICAI",
+    website: "https://www.icai.org",
+    aliases: ["Institute of Chartered Accountants of India", "ICAI", "ICAI New Delhi", "Chartered Accountants of India", "CA Institute"],
+    acronyms: ["ICAI", "CA"]
+  },
+  {
+    name: "The Institute of Company Secretaries of India",
+    state: "Delhi",
+    district: "South Delhi",
+    city: "New Delhi",
+    address: "ICSI House, 22 Institutional Area, Lodi Road, New Delhi 110003",
+    type: "institute",
+    sector: "higher_education",
+    source: "MANUAL",
+    sourceId: "STAT-ICSI",
+    website: "https://www.icsi.edu",
+    aliases: ["Institute of Company Secretaries of India", "ICSI", "ICSI New Delhi", "Company Secretaries of India", "CS Institute"],
+    acronyms: ["ICSI", "CS"]
+  },
+  {
+    name: "The Institute of Cost Accountants of India",
+    state: "West Bengal",
+    district: "Kolkata",
+    city: "Kolkata",
+    address: "CMA Bhawan, 12 Sudder Street, Kolkata 700016",
+    type: "institute",
+    sector: "higher_education",
+    source: "MANUAL",
+    sourceId: "STAT-ICMAI",
+    website: "https://icmai.in",
+    aliases: ["Institute of Cost Accountants of India", "ICMAI", "ICWAI", "CMA Institute", "Institute of Cost and Works Accountants of India"],
+    acronyms: ["ICMAI", "ICWAI", "CMA"]
+  },
+  {
     name: "Indian Institute of Technology Delhi (IIT Delhi)",
     state: "Delhi",
     district: "South Delhi",

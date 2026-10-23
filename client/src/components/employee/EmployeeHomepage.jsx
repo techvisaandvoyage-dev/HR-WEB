@@ -7,6 +7,7 @@ import Footer from '../common/Footer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 import { isLocationMatch, getJobLocationBadges, formatJobLocation } from '../../data/preferredLocations';
 import LocationAutocomplete from '../common/LocationAutocomplete';
+import { isExperienceMatch } from '../../utils/experienceMatcher';
 
 const parseProfileData = (profile) => {
   if (!profile || typeof profile !== 'object') return null;
@@ -493,10 +494,11 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
     );
   }
 
-  if (filters.experience !== 'All') {
-    rawFilteredJobs = rawFilteredJobs.filter(job => 
-      job.details?.experience && job.details.experience.includes(filters.experience)
-    );
+  if (filters.experience && filters.experience !== 'All') {
+    rawFilteredJobs = rawFilteredJobs.filter(job => {
+      const jobExp = job.details?.experience || job.experience || '';
+      return isExperienceMatch(jobExp, filters.experience);
+    });
   }
 
   if (filters.postingDate && filters.postingDate !== 'Any time') {
@@ -885,8 +887,11 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         options={[
                           { label: 'Any Experience', value: 'All' },
                           { label: '0 - 1 Yrs', value: '0 - 1 Yrs' },
+                          { label: '1 - 2 Yrs', value: '1 - 2 Yrs' },
                           { label: '2 - 3 Yrs', value: '2 - 3 Yrs' },
+                          { label: '3 - 5 Yrs', value: '3 - 5 Yrs' },
                           { label: '4 - 6 Yrs', value: '4 - 6 Yrs' },
+                          { label: '5 - 8 Yrs', value: '5 - 8 Yrs' },
                           { label: '7 - 10 Yrs', value: '7 - 10 Yrs' },
                           { label: '11 - 15 Yrs', value: '11 - 15 Yrs' },
                           { label: '16 - 20 Yrs', value: '16 - 20 Yrs' },

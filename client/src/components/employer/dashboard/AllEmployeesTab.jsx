@@ -4,6 +4,7 @@ import { currentLocationOptions, preferredLocationOptions, isEmployeeCurrentLoca
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 import VideoPlayer from '../../common/VideoPlayer';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
+import { isExperienceMatch } from '../../../utils/experienceMatcher';
 
 // Mapping algorithm to categorize employee designations into broader industries
 const designationToIndustryMap = {
@@ -138,7 +139,8 @@ const AllEmployeesTab = ({ portalConfig }) => {
 
     // Experience Filter
     if (experienceFilter !== 'All') {
-      if (emp.totalExperience !== experienceFilter) return false;
+      const empExp = emp.totalExperience || (emp.experience?.length ? `${emp.experience.length} Years` : '');
+      if (!isExperienceMatch(empExp, experienceFilter)) return false;
     }
 
     // Industry Filter

@@ -61,14 +61,44 @@ const InstituteAutocomplete = ({
       const data = await res.json();
 
       if (data.success && Array.isArray(data.data)) {
+        // Filter out bare acronym artifacts (like standalone "ICAI")
+        let sanitized = data.data.filter(item => {
+          const rawName = (item.name || '').trim();
+          return rawName.toUpperCase() !== 'ICAI' && !(rawName.length <= 4 && !rawName.includes(' ') && !item.city);
+        });
+
+        // Ensure "The Institute of Chartered Accountants of India" is always present at top for icai search
+        if (q.toLowerCase() === 'icai' && !sanitized.some(it => it.name.toLowerCase().includes('chartered accountants'))) {
+          sanitized.unshift({
+            id: 'PREMIER-ICAI',
+            name: 'The Institute of Chartered Accountants of India',
+            acronym: 'ICAI',
+            type: 'institute',
+            city: 'New Delhi',
+            state: 'Delhi',
+            country: 'India'
+          });
+        }
+
+        // Always sort Chartered Accountants to index 0 for "icai" query
+        if (q.toLowerCase() === 'icai') {
+          sanitized.sort((a, b) => {
+            const aIsCa = (a.name || '').toLowerCase().includes('chartered accountants');
+            const bIsCa = (b.name || '').toLowerCase().includes('chartered accountants');
+            if (aIsCa && !bIsCa) return -1;
+            if (!aIsCa && bIsCa) return 1;
+            return 0;
+          });
+        }
+
         if (isAppend) {
           setSuggestions(prev => {
             const seenIds = new Set(prev.map(item => item.id || item.name));
-            const newItems = data.data.filter(item => !seenIds.has(item.id || item.name));
+            const newItems = sanitized.filter(item => !seenIds.has(item.id || item.name));
             return [...prev, ...newItems];
           });
         } else {
-          setSuggestions(data.data);
+          setSuggestions(sanitized);
         }
         setNextCursor(data.nextCursor || null);
       } else {

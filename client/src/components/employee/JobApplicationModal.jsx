@@ -1104,7 +1104,7 @@ const p = formData.professionalDetails || {};
                         <label className="block text-sm font-bold text-gray-900 mb-1.5">Passing out year <span className="text-red-500">*</span></label>
                         <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
                           <option value="">Select passing out year</option>
-                          {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
+                          {Array.from({length: 100}, (_, i) => new Date().getFullYear() - i).map(year => (
                             <option key={year} value={year}>{year}</option>
                           ))}
                         </select>
@@ -1170,14 +1170,14 @@ const p = formData.professionalDetails || {};
                         <div className="flex items-center gap-4">
                           <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.startYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.startYear || ''} onChange={e => { updateArray('qualifications', idx, 'startYear', e.target.value); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}>
                             <option value="">Starting year</option>
-                            {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => (
+                            {Array.from({length: 100}, (_, i) => new Date().getFullYear() - i).map(year => (
                               <option key={year} value={year}>{year}</option>
                             ))}
                           </select>
                           <span className="font-bold text-gray-900">To</span>
                           <select className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.endYear ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-500 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} value={q.endYear || ''} onChange={e => { updateArray('qualifications', idx, 'endYear', e.target.value); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}>
                             <option value="">Ending year</option>
-                            {Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => (
+                            {Array.from({length: 100}, (_, i) => new Date().getFullYear() - i).map(year => (
                               <option key={year} value={year}>{year}</option>
                             ))}
                           </select>

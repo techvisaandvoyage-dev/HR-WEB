@@ -10,7 +10,7 @@ const getConfig = () => {
   const fromName = process.env.MSG91_FROM_NAME || 'sahijob.com';
   const companyName = process.env.MSG91_COMPANY_NAME || 'sahijob.com';
   const otpLength = Number(process.env.MSG91_OTP_LENGTH || 4);
-  const otpExpiryMinutes = Number(process.env.MSG91_OTP_EXPIRY || 5);
+  const otpExpiryMinutes = 1; // 1 OTP is valid for 1 minute
 
   if (!authkey || !templateId) {
     throw new Error('MSG91_AUTH_KEY and MSG91_TEMPLATE_ID must be set in .env');
@@ -39,11 +39,14 @@ const generateOtp = (length = 4) => {
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
-const saveOtp = (email, otp, expiryMinutes) => {
+const saveOtp = (email, otp, expiryMinutes = 1) => {
   const key = normalizeEmail(email);
+  const existing = otpStore.get(key);
   otpStore.set(key, {
     otp: String(otp),
     expiresAt: Date.now() + expiryMinutes * 60 * 1000,
+    wrongAttempts: existing ? (existing.wrongAttempts || 0) : 0,
+    lockedUntil: existing ? (existing.lockedUntil || 0) : 0,
   });
 };
 
@@ -52,16 +55,44 @@ const consumeOtp = (email, otp) => {
   const record = otpStore.get(key);
 
   if (!record) {
-    throw new Error('OTP not found. Please request a new OTP.');
+    const err = new Error('OTP not found. Please request a new OTP.');
+    err.status = 400;
+    throw err;
+  }
+  if (record.lockedUntil && Date.now() < record.lockedUntil) {
+    const rem = Math.ceil((record.lockedUntil - Date.now()) / 1000);
+    const err = new Error(`3 incorrect OTP attempts. Please wait ${rem}s before trying again.`);
+    err.status = 429;
+    err.cooldownRemaining = rem;
+    err.isLocked = true;
+    throw err;
   }
   if (Date.now() > record.expiresAt) {
     otpStore.delete(key);
-    throw new Error('OTP expired. Please request a new OTP.');
+    const err = new Error('OTP has expired (valid for 1 minute). Please request a new OTP.');
+    err.status = 400;
+    throw err;
   }
   if (String(otp) !== record.otp) {
-    throw new Error('Invalid OTP. Please try again.');
+    record.wrongAttempts = (record.wrongAttempts || 0) + 1;
+    if (record.wrongAttempts >= 3) {
+      record.lockedUntil = Date.now() + 30 * 1000;
+      record.wrongAttempts = 0;
+      const err = new Error('3 incorrect OTP attempts. Please wait 30 seconds before trying again.');
+      err.status = 429;
+      err.cooldownRemaining = 30;
+      err.isLocked = true;
+      throw err;
+    }
+    const rem = 3 - record.wrongAttempts;
+    const err = new Error(`Invalid OTP. ${rem} attempt${rem === 1 ? '' : 's'} remaining before 30s lockout.`);
+    err.status = 400;
+    err.remainingAttempts = rem;
+    throw err;
   }
 
+  record.wrongAttempts = 0;
+  record.lockedUntil = 0;
   otpStore.delete(key);
   return true;
 };

@@ -6,9 +6,21 @@ try {
   BouncedEmail = require('../models/BouncedEmail');
 } catch (_) {}
 
-const otpStore = new Map(); // key (purpose:email) -> { otpHash, expiresAt, lastSentAt, resendCount }
+let OtpTracker;
+try {
+  OtpTracker = require('../models/OtpTracker');
+} catch (_) {}
+
+// key (purpose:email) -> { otpHash, expiresAt, lastSentAt, resendCount, wrongAttempts, lockedUntil }
+const otpStore = new Map();
+
+// Daily in-memory count fallback: email:YYYY-MM-DD -> count
+const dailyCountStore = new Map();
 
 const OTP_COOLDOWN_SECONDS = Number(process.env.OTP_RESEND_COOLDOWN || 30);
+const MAX_DAILY_OTP_ATTEMPTS = 5;
+const OTP_LOCKOUT_SECONDS = 30; // 30 sec cooldown after 3 wrong attempts
+const OTP_EXPIRY_MINUTES = 1; // 1 OTP is valid for 1 minute
 
 const generateOtp = (length = 4) => {
   const max = 10 ** length;
@@ -16,7 +28,7 @@ const generateOtp = (length = 4) => {
   return String(num).padStart(length, '0');
 };
 
-// Check 5: SHA-256 hash for secure storage (plain OTP is never saved in DB/memory)
+// SHA-256 hash for secure storage (plain OTP is never saved in DB/memory)
 const hashOtp = (otp) => {
   return crypto.createHash('sha256').update(String(otp).trim()).digest('hex');
 };
@@ -25,6 +37,14 @@ const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
 const getStoreKey = (email, purpose = 'registration') => {
   return `${purpose}:${normalizeEmail(email)}`;
+};
+
+const getTodayDateStr = () => {
+  // Format YYYY-MM-DD in Indian Standard Time (IST, UTC+5:30)
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(now.getTime() + istOffset);
+  return istDate.toISOString().slice(0, 10);
 };
 
 const getRemainingCooldown = (key) => {
@@ -38,8 +58,73 @@ const getRemainingCooldown = (key) => {
   return 0;
 };
 
-// Check 5: DB/memory me sirf hash save
-const saveOtp = (email, otp, expiryMinutes, purpose = 'registration') => {
+// Check and increment daily OTP usage (Max 5 times per day)
+const checkAndIncrementDailyLimit = async (email) => {
+  const cleanEmail = normalizeEmail(email);
+  const dateStr = getTodayDateStr();
+  const memKey = `${cleanEmail}:${dateStr}`;
+
+  let currentCount = dailyCountStore.get(memKey) || 0;
+
+  if (OtpTracker) {
+    try {
+      const tracker = await OtpTracker.findOne({ email: cleanEmail, date: dateStr });
+      if (tracker) {
+        currentCount = Math.max(currentCount, tracker.sendCount || 0);
+      }
+    } catch (dbErr) {
+      console.warn('[OtpTracker] DB check error, fallback to memory:', dbErr.message);
+    }
+  }
+
+  if (currentCount >= MAX_DAILY_OTP_ATTEMPTS) {
+    const err = new Error('Daily OTP limit reached (maximum 5 times per day). Please contact our support team at support@sahijob.com for assistance.');
+    err.status = 429;
+    err.dailyLimitReached = true;
+    err.maxDaily = MAX_DAILY_OTP_ATTEMPTS;
+    throw err;
+  }
+
+  const newCount = currentCount + 1;
+  dailyCountStore.set(memKey, newCount);
+
+  if (OtpTracker) {
+    try {
+      await OtpTracker.findOneAndUpdate(
+        { email: cleanEmail, date: dateStr },
+        { $set: { sendCount: newCount, lastSentAt: new Date() } },
+        { upsert: true, new: true }
+      );
+    } catch (dbErr) {
+      console.warn('[OtpTracker] DB update error:', dbErr.message);
+    }
+  }
+
+  return newCount;
+};
+
+// Rollback daily OTP count if email delivery fails
+const rollbackDailyLimit = async (email) => {
+  const cleanEmail = normalizeEmail(email);
+  const dateStr = getTodayDateStr();
+  const memKey = `${cleanEmail}:${dateStr}`;
+
+  const current = dailyCountStore.get(memKey) || 0;
+  if (current > 0) {
+    dailyCountStore.set(memKey, current - 1);
+  }
+
+  if (OtpTracker) {
+    try {
+      await OtpTracker.findOneAndUpdate(
+        { email: cleanEmail, date: dateStr },
+        { $inc: { sendCount: -1 } }
+      );
+    } catch (_) {}
+  }
+};
+
+const saveOtp = (email, otp, expiryMinutes = OTP_EXPIRY_MINUTES, purpose = 'registration') => {
   const key = getStoreKey(email, purpose);
   const existing = otpStore.get(key);
   otpStore.set(key, {
@@ -47,6 +132,8 @@ const saveOtp = (email, otp, expiryMinutes, purpose = 'registration') => {
     expiresAt: Date.now() + expiryMinutes * 60 * 1000,
     lastSentAt: Date.now(),
     resendCount: existing ? (existing.resendCount || 0) + 1 : 0,
+    wrongAttempts: existing ? (existing.wrongAttempts || 0) : 0,
+    lockedUntil: existing ? (existing.lockedUntil || 0) : 0,
   });
 };
 
@@ -59,17 +146,48 @@ const consumeOtp = (email, otp, purpose = 'registration', consume = true) => {
     err.status = 400;
     throw err;
   }
+
+  // 1. Check if user is locked out after 3 wrong attempts
+  if (record.lockedUntil && Date.now() < record.lockedUntil) {
+    const remainingLockSec = Math.ceil((record.lockedUntil - Date.now()) / 1000);
+    const err = new Error(`3 incorrect OTP attempts. Please wait ${remainingLockSec}s before trying again.`);
+    err.status = 429;
+    err.cooldownRemaining = remainingLockSec;
+    err.isLocked = true;
+    throw err;
+  }
+
+  // 2. Check if OTP is expired (1 minute validity)
   if (Date.now() > record.expiresAt) {
     otpStore.delete(key);
-    const err = new Error('OTP has expired. Please request a new OTP.');
+    const err = new Error('OTP has expired (valid for 1 minute). Please request a new OTP.');
     err.status = 400;
     throw err;
   }
+
+  // 3. Check OTP match
   if (hashOtp(otp) !== record.otpHash) {
-    const err = new Error('Invalid OTP. Please try again.');
-    err.status = 400;
-    throw err;
+    record.wrongAttempts = (record.wrongAttempts || 0) + 1;
+    if (record.wrongAttempts >= 3) {
+      record.lockedUntil = Date.now() + OTP_LOCKOUT_SECONDS * 1000;
+      record.wrongAttempts = 0; // reset for subsequent round
+      const err = new Error(`3 incorrect OTP attempts. Please wait ${OTP_LOCKOUT_SECONDS} seconds before trying again.`);
+      err.status = 429;
+      err.cooldownRemaining = OTP_LOCKOUT_SECONDS;
+      err.isLocked = true;
+      throw err;
+    } else {
+      const remaining = 3 - record.wrongAttempts;
+      const err = new Error(`Invalid OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before 30s lockout.`);
+      err.status = 400;
+      err.remainingAttempts = remaining;
+      throw err;
+    }
   }
+
+  // If correct, reset wrong attempts and lockout
+  record.wrongAttempts = 0;
+  record.lockedUntil = 0;
 
   if (consume) {
     otpStore.delete(key);
@@ -83,7 +201,6 @@ const getTransporter = () => {
   const pass = process.env.SMTP_PASS;
 
   if (!user || !pass) {
-    // Return null if not configured
     return null;
   }
 
@@ -115,8 +232,12 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
     throw err;
   }
 
+  // 1. Enforce Daily Limit (Maximum 5 times per day)
+  await checkAndIncrementDailyLimit(toEmail);
+
+  // 2. Set OTP parameters: 1 minute expiry
   const otpLength = Number(process.env.MSG91_OTP_LENGTH || 4);
-  const otpExpiryMinutes = Number(process.env.MSG91_OTP_EXPIRY || 5);
+  const otpExpiryMinutes = OTP_EXPIRY_MINUTES; // 1 minute
   const companyName = process.env.MSG91_COMPANY_NAME || 'sahijob.com';
 
   const otp = generateOtp(otpLength);
@@ -125,7 +246,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
   console.log(`\n========================================`);
   console.log(`⚡ [OTP DISPATCHED] Purpose: ${purpose}`);
   console.log(`Recipient: ${toEmail} | Code: ${otp}`);
-  console.log(`Expires in: ${otpExpiryMinutes}m | Cooldown: ${OTP_COOLDOWN_SECONDS}s`);
+  console.log(`Expires in: ${otpExpiryMinutes}m (60s) | Cooldown: ${OTP_COOLDOWN_SECONDS}s`);
   console.log(`========================================\n`);
 
   const isPasswordReset = purpose.includes('forgot') || purpose.includes('password');
@@ -142,7 +263,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
         <div style="text-align: center; margin: 28px 0;">
           <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #0d9488; padding: 14px 28px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 8px; display: inline-block;">${otp}</span>
         </div>
-        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>${otpExpiryMinutes} minutes</strong>. If you did not request a password reset, please disregard this message or contact support immediately.</p>
+        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>1 minute</strong>. If you did not request a password reset, please disregard this message or contact support immediately.</p>
       </div>
     `
     : `
@@ -153,7 +274,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
         <div style="text-align: center; margin: 28px 0;">
           <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #0d9488; padding: 14px 28px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 8px; display: inline-block;">${otp}</span>
         </div>
-        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>${otpExpiryMinutes} minutes</strong>. Please do not share this code with anyone.</p>
+        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>1 minute</strong>. Please do not share this code with anyone.</p>
       </div>
     `;
 
@@ -188,10 +309,12 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
       return {
         message: 'OTP sent successfully to your email',
         cooldownSeconds: OTP_COOLDOWN_SECONDS,
+        expiresInSeconds: 60,
         provider: resendData,
       };
     } catch (resendErr) {
       otpStore.delete(key);
+      await rollbackDailyLimit(toEmail);
       const friendlyMsg = resendErr.message.includes('Unable to deliver') 
         ? resendErr.message 
         : 'Unable to deliver verification code to this email address. Please check your email or try again.';
@@ -216,10 +339,12 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
       return {
         message: 'OTP sent successfully to your email',
         cooldownSeconds: OTP_COOLDOWN_SECONDS,
+        expiresInSeconds: 60,
         provider: info,
       };
     } catch (error) {
       otpStore.delete(key);
+      await rollbackDailyLimit(toEmail);
       if (BouncedEmail && (error.responseCode === 550 || error.responseCode === 553 || String(error.message).includes('Recipient address rejected'))) {
         BouncedEmail.create({ email: toEmail, reason: error.message, provider: 'smtp' }).catch(() => {});
       }
@@ -233,12 +358,12 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
   console.log(`\n========================================`);
   console.log(`[DEV OTP SERVICE] Purpose: ${purpose}`);
   console.log(`Recipient: ${toEmail} | OTP: ${otp}`);
-  console.log(`Expires in: ${otpExpiryMinutes} minutes`);
+  console.log(`Expires in: 1 minute (60s) | Max Daily: 5 times`);
   console.log(`========================================\n`);
   return {
     message: 'OTP sent successfully to your email',
     cooldownSeconds: OTP_COOLDOWN_SECONDS,
-    expiresInMinutes: otpExpiryMinutes,
+    expiresInSeconds: 60,
   };
 };
 
@@ -268,4 +393,7 @@ module.exports = {
   resendOtp,
   getRemainingCooldown: (email, purpose) => getRemainingCooldown(getStoreKey(email, purpose)),
   OTP_COOLDOWN_SECONDS,
+  OTP_LOCKOUT_SECONDS,
+  MAX_DAILY_OTP_ATTEMPTS,
+  OTP_EXPIRY_MINUTES,
 };

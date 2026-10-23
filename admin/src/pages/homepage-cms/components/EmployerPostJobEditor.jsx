@@ -135,7 +135,7 @@ export const DEFAULT_POST_JOB_EMPLOYMENT_TYPES = [
 ];
 
 export const DEFAULT_POST_JOB_EXPERIENCE_OPTIONS = [
-  '0 - 1 Yrs', '2 - 3 Yrs', '4 - 6 Yrs', '7 - 10 Yrs', '11 - 15 Yrs', '16 - 20 Yrs', '21 - 25 Yrs', '25+ yrs'
+  '0 - 1 Yrs', '1 - 2 Yrs', '2 - 3 Yrs', '3 - 5 Yrs', '4 - 6 Yrs', '5 - 8 Yrs', '7 - 10 Yrs', '11 - 15 Yrs', '16 - 20 Yrs', '21 - 25 Yrs', '25+ yrs'
 ];
 
 export const DEFAULT_POST_JOB_WORKPLACE_TYPES = [
@@ -260,6 +260,8 @@ export const DEFAULT_EMPLOYER_POST_JOB_CONFIG = {
     maxSalaryPlaceholder: 'write the amount in LPA',
     minLabel: 'Minimum',
     maxLabel: 'Maximum',
+    salaryNoteLabel: 'Additional Salary Details / Note',
+    salaryNotePlaceholder: 'e.g. Negotiable, + Performance Bonus, Depending on experience',
     salaryDisclaimer: 'This salary will be shown to candidates on the job listing.',
     salaryTypeOptions: [...DEFAULT_POST_JOB_SALARY_TYPES],
     currencyOptions: [...DEFAULT_POST_JOB_CURRENCIES],
@@ -1988,6 +1990,24 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
                     />
                   </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Additional Details Label</label>
+                    <input
+                      type="text"
+                      value={postJobConfig.step3?.salaryNoteLabel || 'Additional Salary Details / Note'}
+                      onChange={(e) => handleStep3PropChange('salaryNoteLabel', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-600 mb-1">Additional Details Placeholder</label>
+                    <input
+                      type="text"
+                      value={postJobConfig.step3?.salaryNotePlaceholder || 'e.g. Negotiable, + Performance Bonus, Depending on experience'}
+                      onChange={(e) => handleStep3PropChange('salaryNotePlaceholder', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -2113,6 +2133,15 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
                       <div className="grid grid-cols-2 gap-2">
                         <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">write the amount in LPA</div>
                         <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px]">write the amount in LPA</div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-700 text-[11px] mb-1">
+                        {postJobConfig.step3?.salaryNoteLabel || 'Additional Salary Details / Note'}
+                      </label>
+                      <div className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-400 text-[11px] truncate shadow-2xs">
+                        {postJobConfig.step3?.salaryNotePlaceholder || 'e.g. Negotiable, Performance Bonus, Depending on experience'}
                       </div>
                     </div>
 

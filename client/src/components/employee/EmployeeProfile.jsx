@@ -219,15 +219,22 @@ export const getGradingValidation = (gradingSystem = '', value = '') => {
   return { isValid: true };
 };
 
-const startYearOptions = Array.from({length: 30}, (_, i) => {
-  const year = new Date().getFullYear() - i;
-  return { value: String(year), label: String(year) };
-});
+// Education start and end year dropdowns (automatically increments by 1 year every new calendar year, with 100 past years)
+const getStartYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 100 }, (_, i) => currentYear - i).map(year => ({
+    value: String(year),
+    label: String(year)
+  }));
+};
 
-const endYearOptions = Array.from({length: 30}, (_, i) => {
-  const year = new Date().getFullYear() - i + 5;
-  return { value: String(year), label: String(year) };
-});
+const getEndYearOptions = () => {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 100 }, (_, i) => currentYear - i).map(year => ({
+    value: String(year),
+    label: String(year)
+  }));
+};
 
 const undergradCourses = [
   { value: 'B.A', label: 'B.A (Bachelor of Arts)' },
@@ -2459,7 +2466,7 @@ const EmployeeProfile = () => {
                                   {getStepField('step2', 'endYear').isRequired && <span className="text-red-500">*</span>}
                                 </label>
                                 <CustomDropdown
-                                  options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => ({ value: String(year), label: String(year) }))}
+                                  options={getEndYearOptions(cmsConfig)}
                                   value={q.endYear ? String(q.endYear) : ''}
                                   onChange={val => { updateArray('qualifications', idx, 'endYear', val); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}
                                   placeholder={getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder}
@@ -2565,7 +2572,7 @@ const EmployeeProfile = () => {
                                 <div className="flex items-center gap-4">
                                   <div className="flex-1">
                                     <CustomDropdown
-                                      options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i).map(year => ({ value: String(year), label: String(year) }))}
+                                      options={getStartYearOptions(cmsConfig)}
                                       value={q.startYear ? String(q.startYear) : ''}
                                       onChange={val => { updateArray('qualifications', idx, 'startYear', val); setEduFieldErrors({...eduFieldErrors, startYear: false}); }}
                                       placeholder={getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder}
@@ -2575,7 +2582,7 @@ const EmployeeProfile = () => {
                                   <span className="font-bold text-gray-900">To</span>
                                   <div className="flex-1">
                                     <CustomDropdown
-                                      options={Array.from({length: 30}, (_, i) => new Date().getFullYear() - i + 5).map(year => ({ value: String(year), label: String(year) }))}
+                                      options={getEndYearOptions(cmsConfig)}
                                       value={q.endYear ? String(q.endYear) : ''}
                                       onChange={val => { updateArray('qualifications', idx, 'endYear', val); setEduFieldErrors({...eduFieldErrors, endYear: false}); }}
                                       placeholder={getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder}

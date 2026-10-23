@@ -61,7 +61,7 @@ exports.createJob = async (req, res) => {
     }
 
     let {
-      company, companyInitial, companyLogo, title, location, salary, employerProvided,
+      company, companyInitial, companyLogo, title, location, salary, salaryNote, employerProvided,
       easyApply, qualifications, details, screeningQuestions, seo
     } = req.body;
 
@@ -99,6 +99,7 @@ exports.createJob = async (req, res) => {
       title,
       location,
       salary,
+      salaryNote: salaryNote || (details && details.salaryNote) || '',
       employerProvided,
       easyApply,
       qualifications,
@@ -149,7 +150,7 @@ exports.updateJob = async (req, res) => {
     }
 
     let {
-      company, companyInitial, companyLogo, title, location, salary, employerProvided,
+      company, companyInitial, companyLogo, title, location, salary, salaryNote, employerProvided,
       easyApply, qualifications, details, screeningQuestions, seo
     } = req.body;
 
@@ -174,6 +175,7 @@ exports.updateJob = async (req, res) => {
       title,
       location,
       salary,
+      salaryNote: salaryNote !== undefined ? salaryNote : (details && details.salaryNote !== undefined ? details.salaryNote : job.salaryNote),
       employerProvided,
       easyApply,
       qualifications,

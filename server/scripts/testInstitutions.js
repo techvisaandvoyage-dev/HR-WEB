@@ -29,6 +29,13 @@ const testCases = [
   { query: 'BHU', expectedName: 'Banaras Hindu University', category: 'Acronym' },
   { query: 'AIIMS Delhi', expectedName: 'All India Institute of Medical Sciences', category: 'Acronym + City' },
 
+  // Statutory Professional Accounting & Governance Bodies
+  { query: 'icai', expectedName: 'The Institute of Chartered Accountants of India', category: 'Statutory Body Acronym' },
+  { query: 'ICAI', expectedName: 'The Institute of Chartered Accountants of India', category: 'Uppercase Acronym' },
+  { query: 'Institute of Chartered Accountants of India', expectedName: 'The Institute of Chartered Accountants of India', category: 'Exact Name' },
+  { query: 'icsi', expectedName: 'The Institute of Company Secretaries of India', category: 'Statutory Body Acronym' },
+  { query: 'icmai', expectedName: 'The Institute of Cost Accountants of India', category: 'Statutory Body Acronym' },
+
   // Obscure Indian Colleges
   { query: 'Yingli College', expectedName: 'Yingli College', category: 'Obscure Indian College' },
   { query: 'Zunheboto Government College', expectedName: 'Zunheboto Government College', category: 'Obscure Indian College' },

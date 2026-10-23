@@ -66,8 +66,10 @@ const sendRegistrationOtp = async (req, res) => {
   } catch (error) {
     console.error('Send OTP Error:', error.message);
     res.status(error.status || 400).json({
+      success: false,
       message: error.message || 'Failed to send OTP',
-      cooldownRemaining: error.cooldownRemaining
+      cooldownRemaining: error.cooldownRemaining,
+      dailyLimitReached: Boolean(error.dailyLimitReached)
     });
   }
 };
@@ -91,8 +93,10 @@ const resendRegistrationOtp = async (req, res) => {
   } catch (error) {
     console.error('Resend OTP Error:', error.message);
     res.status(error.status || 400).json({
+      success: false,
       message: error.message || 'Failed to resend OTP',
-      cooldownRemaining: error.cooldownRemaining
+      cooldownRemaining: error.cooldownRemaining,
+      dailyLimitReached: Boolean(error.dailyLimitReached)
     });
   }
 };
@@ -124,7 +128,12 @@ const registerEmployee = async (req, res) => {
       await verifyOtp({ email, otp, purpose: 'registration:employee' });
     } catch (otpError) {
       return res.status(otpError.status || 400).json({
+        success: false,
         message: otpError.message || 'Invalid or expired OTP',
+        cooldownRemaining: otpError.cooldownRemaining,
+        isLocked: Boolean(otpError.isLocked),
+        remainingAttempts: otpError.remainingAttempts,
+        dailyLimitReached: Boolean(otpError.dailyLimitReached),
       });
     }
 
@@ -537,7 +546,12 @@ const verifyLoginOtp = async (req, res) => {
       });
     } catch (otpErr) {
       return res.status(otpErr.status || 400).json({
+        success: false,
         message: otpErr.message || 'Invalid or expired OTP. Please try again.',
+        cooldownRemaining: otpErr.cooldownRemaining,
+        isLocked: Boolean(otpErr.isLocked),
+        remainingAttempts: otpErr.remainingAttempts,
+        dailyLimitReached: Boolean(otpErr.dailyLimitReached),
       });
     }
 
@@ -804,7 +818,14 @@ const verifyForgotPasswordOtp = async (req, res) => {
 
     res.json({ success: true, message: 'OTP verified successfully' });
   } catch (error) {
-    res.status(error.status || 400).json({ message: error.message || 'Invalid or expired OTP' });
+    res.status(error.status || 400).json({
+      success: false,
+      message: error.message || 'Invalid or expired OTP',
+      cooldownRemaining: error.cooldownRemaining,
+      isLocked: Boolean(error.isLocked),
+      remainingAttempts: error.remainingAttempts,
+      dailyLimitReached: Boolean(error.dailyLimitReached),
+    });
   }
 };
 

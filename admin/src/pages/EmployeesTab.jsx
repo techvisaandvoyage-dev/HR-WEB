@@ -954,6 +954,7 @@ export default function EmployeesTab() {
     });
   };
 
+
   // Functions & Roles management handlers (Pure functional updates)
   const handleAddFunction = () => {
     const trimmed = newFunctionName.trim();

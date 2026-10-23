@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 import { currentLocationOptions, preferredLocationOptions } from '../../../data/preferredLocations';
 import CustomDropdown from '../../common/CustomDropdown';
+import ExperienceCombobox from '../../common/ExperienceCombobox';
 import RichTextEditor from '../../common/RichTextEditor';
 import JobShareModal from '../../common/JobShareModal';
 import { allSkillsOptions, getSuggestedSkills } from '../../../utils/skillsData';
@@ -112,6 +113,11 @@ const PostJob = ({ addJob, updateJob }) => {
       Monthly: { min: '', max: '' },
       Hourly: { min: '', max: '' }
     };
+  });
+
+  const [salaryNote, setSalaryNote] = useState(() => {
+    if (isEditing) return '';
+    return localStorage.getItem('employer_post_job_salary_note') || '';
   });
 
   const [jobData, setJobData] = useState(() => {
@@ -256,14 +262,49 @@ const PostJob = ({ addJob, updateJob }) => {
     if (!editingJob) return;
 
     const details = editingJob.details || {};
-    const storedSalary = editingJob.salary || '';
+    const storedSalary = (editingJob.salary || '').trim();
     const detectedSalaryType = details.salaryType
       || (storedSalary.includes('per month') ? 'Monthly' : storedSalary.includes('per hour') ? 'Hourly' : 'Yearly');
     const detectedCurrency = details.currency
       || (storedSalary.includes('$') ? 'USD' : storedSalary.includes('€') ? 'EUR' : storedSalary.includes('£') ? 'GBP' : 'INR');
-    const salaryNumbers = storedSalary.match(/[\d,]+/g) || [];
-    const min = details.salaryMin || salaryNumbers[0] || '';
-    const max = details.salaryMax || salaryNumbers[1] || '';
+    
+    // 1. Accurately detect salaryNote
+    let detectedSalaryNote = '';
+    if (details.salaryNote !== undefined && details.salaryNote !== null && String(details.salaryNote).trim() !== '') {
+      detectedSalaryNote = String(details.salaryNote).trim();
+    } else if (details.salaryAdditionalInfo !== undefined && details.salaryAdditionalInfo !== null && String(details.salaryAdditionalInfo).trim() !== '') {
+      detectedSalaryNote = String(details.salaryAdditionalInfo).trim();
+    } else if (editingJob.salaryNote !== undefined && editingJob.salaryNote !== null && String(editingJob.salaryNote).trim() !== '') {
+      detectedSalaryNote = String(editingJob.salaryNote).trim();
+    } else if (storedSalary.includes('(')) {
+      const match = storedSalary.match(/\((.*?)\)/);
+      if (match) detectedSalaryNote = match[1].trim();
+    } else {
+      // If storedSalary has NO parentheses, check if storedSalary is NOT a standard range (it was saved as the note only)
+      const isRangePattern = /[-–—]|(\bto\b)|\bPA\b|\bPM\b|\bPH\b|[₹$€£]/i.test(storedSalary);
+      const hasExplicitSalaryMin = details.salaryMin !== undefined && details.salaryMin !== null && String(details.salaryMin).trim() !== '';
+      if (!isRangePattern && !hasExplicitSalaryMin && storedSalary && storedSalary !== 'Not specified') {
+        detectedSalaryNote = storedSalary;
+      }
+    }
+
+    // 2. Accurately detect salary min and max (never put salaryNote into min)
+    let min = '';
+    let max = '';
+    if (details.salaryMin !== undefined && details.salaryMin !== null) {
+      min = String(details.salaryMin).trim();
+      max = details.salaryMax !== undefined && details.salaryMax !== null ? String(details.salaryMax).trim() : '';
+    } else {
+      // Legacy fallback: ONLY extract numbers from base part BEFORE parentheses, and only if it's a range
+      const baseSalaryPart = storedSalary.includes('(') ? storedSalary.split('(')[0] : storedSalary;
+      const isRangePattern = /[-–—]|(\bto\b)|\bPA\b|\bPM\b|\bPH\b|[₹$€£]/i.test(baseSalaryPart);
+      if (isRangePattern) {
+        const salaryNumbers = baseSalaryPart.match(/[\d,.]+/g) || [];
+        min = salaryNumbers[0] || '';
+        max = salaryNumbers[1] || '';
+      }
+    }
+
     const qualifications = editingJob.qualifications || [];
 
     setJobData({
@@ -291,6 +332,7 @@ const PostJob = ({ addJob, updateJob }) => {
       Monthly: { min: detectedSalaryType === 'Monthly' ? min : '', max: detectedSalaryType === 'Monthly' ? max : '' },
       Hourly: { min: detectedSalaryType === 'Hourly' ? min : '', max: detectedSalaryType === 'Hourly' ? max : '' }
     });
+    setSalaryNote(detectedSalaryNote);
     if (editingJob.seo) {
       setJobSeo({
         metaTitle: editingJob.seo.metaTitle || '',
@@ -365,10 +407,16 @@ const PostJob = ({ addJob, updateJob }) => {
     }
     return [
       { value: '0 - 1 Yrs', label: '0 - 1 Yrs (Fresher)' },
+      { value: '1 - 2 Yrs', label: '1 - 2 Yrs' },
+      { value: '1 - 3 Yrs', label: '1 - 3 Yrs' },
       { value: '2 - 3 Yrs', label: '2 - 3 Yrs' },
+      { value: '2 - 4 Yrs', label: '2 - 4 Yrs' },
+      { value: '3 - 5 Yrs', label: '3 - 5 Yrs' },
       { value: '4 - 6 Yrs', label: '4 - 6 Yrs' },
+      { value: '5 - 7 Yrs', label: '5 - 7 Yrs' },
+      { value: '5 - 8 Yrs', label: '5 - 8 Yrs' },
       { value: '7 - 10 Yrs', label: '7 - 10 Yrs' },
-      { value: '11 - 15 Yrs', label: '11 - 15 Yrs' },
+      { value: '10 - 15 Yrs', label: '10 - 15 Yrs' },
       { value: '16 - 20 Yrs', label: '16 - 20 Yrs' },
       { value: '21 - 25 Yrs', label: '21 - 25 Yrs' },
       { value: '25+ yrs', label: '25+ yrs' }
@@ -484,8 +532,8 @@ const PostJob = ({ addJob, updateJob }) => {
         errors.employmentType = `Please select ${empCfg.label}.`;
       }
       const expCfg = getFieldConfig('step1', 'experience', 'Experience', '', true);
-      if (expCfg.isRequired && !jobData.experience) {
-        errors.experience = `Please select ${expCfg.label}.`;
+      if (expCfg.isRequired && !jobData.experience?.toString().trim()) {
+        errors.experience = `Please enter or select ${expCfg.label}.`;
       }
       const workCfg = getFieldConfig('step1', 'workplaceType', 'Workplace Type', '', true);
       if (workCfg.isRequired && !jobData.workplaceType) {
@@ -520,6 +568,19 @@ const PostJob = ({ addJob, updateJob }) => {
     }
 
     if (stepNumber === 3) {
+      const currentSal = salaryValues[salaryType] || {};
+      const hasMin = Boolean(currentSal.min && String(currentSal.min).trim());
+      const hasMax = Boolean(currentSal.max && String(currentSal.max).trim());
+      const hasSalaryRange = hasMin && hasMax;
+      const hasPartialRange = (hasMin && !hasMax) || (!hasMin && hasMax);
+      const hasSalaryNote = Boolean(salaryNote && salaryNote.trim());
+
+      if (hasPartialRange) {
+        errors.compensation = 'Please enter both Minimum and Maximum salary, or provide Salary Details below.';
+      } else if (!hasSalaryRange && !hasSalaryNote) {
+        errors.compensation = 'Please provide either salary range, salary details/note, or both.';
+      }
+
       const catCfg = getFieldConfig('step3', 'category', 'Job Category', '', true);
       if (catCfg.isRequired && !jobData.category) {
         errors.category = `Please select ${catCfg.label}.`;
@@ -628,7 +689,7 @@ const PostJob = ({ addJob, updateJob }) => {
 
   const titleConfig = getFieldConfig('step1', 'title', 'Job Title', 'e.g. Frontend Developer', true);
   const empTypeConfig = getFieldConfig('step1', 'employmentType', 'Employment Type', 'Select employment type', true);
-  const expConfig = getFieldConfig('step1', 'experience', 'Experience', 'Select experience', true);
+  const expConfig = getFieldConfig('step1', 'experience', 'Experience', 'Enter custom range (e.g. 2 - 4 Yrs) or pick from list', true);
   const workplaceConfig = getFieldConfig('step1', 'workplaceType', 'Workplace Type', 'Select type', true);
   const openingsConfig = getFieldConfig('step1', 'openings', 'Openings', 'Number of openings', false);
   const locationConfig = getFieldConfig('step1', 'location', 'Job Location', 'Select Job Locations', true);
@@ -660,13 +721,29 @@ const PostJob = ({ addJob, updateJob }) => {
 
     setIsSubmitting(true);
 
+    const baseSalary = salaryValues[salaryType].min && salaryValues[salaryType].max 
+      ? (salaryType === 'Yearly' 
+          ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} PA` 
+          : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`) 
+      : '';
+    const trimmedSalaryNote = (salaryNote || '').trim();
+    let finalSalary = 'Not specified';
+    if (baseSalary && trimmedSalaryNote) {
+      finalSalary = `${baseSalary} (${trimmedSalaryNote})`;
+    } else if (baseSalary) {
+      finalSalary = baseSalary;
+    } else if (trimmedSalaryNote) {
+      finalSalary = trimmedSalaryNote;
+    }
+
     const jobPayload = {
       company: employerDetails.companyName || 'Company',
       companyInitial: (employerDetails.companyName || 'C').charAt(0).toUpperCase(),
       companyLogo: employerDetails.companyLogo || '',
       title: jobData.title || 'Untitled Job',
       location: jobData.location || 'Not specified',
-      salary: salaryValues[salaryType].min && salaryValues[salaryType].max ? (salaryType === 'Yearly' ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} PA` : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`) : 'Not specified',
+      salary: finalSalary,
+      salaryNote: trimmedSalaryNote,
       employerProvided: true,
       easyApply: true,
       qualifications: skillsList.map(s => ({ name: s, met: true })),
@@ -689,8 +766,10 @@ const PostJob = ({ addJob, updateJob }) => {
         skillsRequired: skillsList.join(', '),
         salaryType,
         currency,
-        salaryMin: salaryValues[salaryType].min,
-        salaryMax: salaryValues[salaryType].max,
+        salaryMin: salaryValues[salaryType].min || '',
+        salaryMax: salaryValues[salaryType].max || '',
+        salaryNote: trimmedSalaryNote,
+        salaryAdditionalInfo: trimmedSalaryNote,
         openings: jobData.openings || ''
       }
     };
@@ -719,6 +798,7 @@ const PostJob = ({ addJob, updateJob }) => {
           localStorage.removeItem('employer_post_job_salary_type');
           localStorage.removeItem('employer_post_job_currency');
           localStorage.removeItem('employer_post_job_salary_values');
+          localStorage.removeItem('employer_post_job_salary_note');
           setPublishedJob(data.data);
           setShowShareModal(true);
         }
@@ -883,7 +963,7 @@ const PostJob = ({ addJob, updateJob }) => {
                     {expConfig.label}
                     {expConfig.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
                   </label>
-                  <CustomDropdown
+                  <ExperienceCombobox
                     options={experienceOptions}
                     value={jobData.experience}
                     error={!!fieldErrors.experience}
@@ -1123,9 +1203,15 @@ const PostJob = ({ addJob, updateJob }) => {
             <div className="flex-1 min-w-0 space-y-6 animate-in fade-in">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 border-b border-gray-100 pb-2">
-                    {cmsConfig?.step3?.sectionTitle || 'Compensation'}
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4 border-b border-gray-100 pb-2">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-1.5">
+                      {cmsConfig?.step3?.sectionTitle || 'Compensation'}
+                      <span className="text-red-500 font-bold">*</span>
+                    </h3>
+                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 w-fit">
+                      Provide Salary Range, Short Text Note, or Both
+                    </span>
+                  </div>
                   
                   <div className="mb-6 flex gap-4">
                     <div className="flex-1">
@@ -1178,7 +1264,10 @@ const PostJob = ({ addJob, updateJob }) => {
                           type="text" 
                           placeholder={salaryType === 'Yearly' ? (cmsConfig?.step3?.minSalaryPlaceholder || 'write the amount in LPA') : salaryType === 'Monthly' ? `${cSym}40,000` : `${cSym}300`}
                           value={salaryValues[salaryType].min}
-                          onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], min: formatIndianNumber(e.target.value)}})}
+                          onChange={(e) => {
+                            setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], min: formatIndianNumber(e.target.value)}});
+                            clearFieldError('compensation');
+                          }}
                           className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">
@@ -1190,7 +1279,10 @@ const PostJob = ({ addJob, updateJob }) => {
                           type="text" 
                           placeholder={salaryType === 'Yearly' ? (cmsConfig?.step3?.maxSalaryPlaceholder || 'write the amount in LPA') : salaryType === 'Monthly' ? `${cSym}60,000` : `${cSym}600`}
                           value={salaryValues[salaryType].max}
-                          onChange={(e) => setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], max: formatIndianNumber(e.target.value)}})}
+                          onChange={(e) => {
+                            setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], max: formatIndianNumber(e.target.value)}});
+                            clearFieldError('compensation');
+                          }}
                           className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">
@@ -1198,6 +1290,81 @@ const PostJob = ({ addJob, updateJob }) => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Short Text Option along with Salary */}
+                    <div className="mt-4 pt-3.5 border-t border-gray-100">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-gray-700">
+                          {cmsConfig?.step3?.salaryNoteLabel || 'Additional Salary Details / Note'}
+                        </label>
+                        <span className={`text-[10px] font-semibold ${salaryNote.length >= 80 ? 'text-amber-600' : 'text-gray-400'}`}>
+                          {salaryNote.length}/100
+                        </span>
+                      </div>
+                      <input 
+                        type="text" 
+                        maxLength={100}
+                        placeholder={cmsConfig?.step3?.salaryNotePlaceholder || 'e.g. Negotiable, Performance Bonus, Depending on experience'}
+                        value={salaryNote}
+                        onChange={(e) => {
+                          setSalaryNote(e.target.value);
+                          localStorage.setItem('employer_post_job_salary_note', e.target.value);
+                          clearFieldError('compensation');
+                        }}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
+                      />
+
+                      {/* Quick Suggestion Chips */}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                        <span className="text-[11px] text-gray-400 font-semibold mr-0.5">Quick add:</span>
+                        {['Negotiable', 'Incentives', 'Performance Bonus', 'Fixed + Variable', 'Based on Experience'].map((chip) => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => {
+                              const newNote = salaryNote ? (salaryNote.includes(chip) ? salaryNote : `${salaryNote}, ${chip}`) : chip;
+                              if (newNote.length <= 100) {
+                                setSalaryNote(newNote);
+                                localStorage.setItem('employer_post_job_salary_note', newNote);
+                                clearFieldError('compensation');
+                              }
+                            }}
+                            className="text-[11px] px-2.5 py-0.5 bg-gray-50 hover:bg-emerald-50 text-gray-600 hover:text-emerald-700 border border-gray-200 hover:border-emerald-300 rounded-md font-medium transition-colors cursor-pointer"
+                          >
+                            + {chip}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Live Salary Preview for Employer */}
+                      {(salaryValues[salaryType].min || salaryValues[salaryType].max || salaryNote) && (
+                        <div className="mt-3 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-lg flex items-center justify-between text-xs">
+                          <span className="text-gray-600 font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Listing Salary Preview:
+                          </span>
+                          <span className="font-bold text-emerald-800">
+                            {salaryValues[salaryType].min && salaryValues[salaryType].max 
+                              ? (salaryType === 'Yearly' 
+                                  ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} PA` 
+                                  : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`)
+                              : ''}
+                            {salaryNote ? ` (${salaryNote.trim()})` : (!salaryValues[salaryType].min ? 'Not specified' : '')}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Compensation validation error */}
+                      {fieldErrors.compensation && (
+                        <p className="text-xs text-red-500 font-semibold mt-2.5 flex items-center gap-1.5 animate-in fade-in bg-red-50 p-2.5 rounded-lg border border-red-200">
+                          <svg className="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          <span>{fieldErrors.compensation}</span>
+                        </p>
+                      )}
+                    </div>
+
                     <p className="text-[11px] text-gray-500 mt-3 font-medium flex items-center gap-1.5 bg-gray-50/80 p-2 rounded-lg border border-gray-100">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                       {cmsConfig?.step3?.salaryDisclaimer || 'This salary will be shown to candidates on the job listing.'}

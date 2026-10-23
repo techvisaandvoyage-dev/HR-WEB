@@ -139,8 +139,10 @@ exports.sendRegistrationOtp = async (req, res) => {
   } catch (error) {
     console.error('Employer Send OTP Error:', error.message);
     res.status(error.status || 400).json({
+      success: false,
       message: error.message || 'Failed to send OTP',
       cooldownRemaining: error.cooldownRemaining,
+      dailyLimitReached: Boolean(error.dailyLimitReached),
     });
   }
 };
@@ -169,8 +171,10 @@ exports.resendRegistrationOtp = async (req, res) => {
   } catch (error) {
     console.error('Employer Resend OTP Error:', error.message);
     res.status(error.status || 400).json({
+      success: false,
       message: error.message || 'Failed to resend OTP',
       cooldownRemaining: error.cooldownRemaining,
+      dailyLimitReached: Boolean(error.dailyLimitReached),
     });
   }
 };
@@ -195,7 +199,14 @@ exports.verifyRegistrationOtp = async (req, res) => {
 
     res.json({ success: true, message: 'OTP verified successfully' });
   } catch (error) {
-    res.status(error.status || 400).json({ message: error.message || 'Invalid or expired OTP' });
+    res.status(error.status || 400).json({
+      success: false,
+      message: error.message || 'Invalid or expired OTP',
+      cooldownRemaining: error.cooldownRemaining,
+      isLocked: Boolean(error.isLocked),
+      remainingAttempts: error.remainingAttempts,
+      dailyLimitReached: Boolean(error.dailyLimitReached),
+    });
   }
 };
 
@@ -595,8 +606,10 @@ exports.resendForgotPasswordOtp = async (req, res) => {
   } catch (error) {
     console.error('Employer Resend Forgot Password OTP error:', error.message);
     res.status(error.status || 400).json({
+      success: false,
       message: error.message || 'Failed to resend OTP',
       cooldownRemaining: error.cooldownRemaining,
+      dailyLimitReached: Boolean(error.dailyLimitReached),
     });
   }
 };
@@ -629,7 +642,14 @@ exports.verifyForgotPasswordOtp = async (req, res) => {
 
     res.json({ success: true, message: 'OTP verified successfully' });
   } catch (error) {
-    res.status(error.status || 400).json({ message: error.message || 'Invalid or expired OTP' });
+    res.status(error.status || 400).json({
+      success: false,
+      message: error.message || 'Invalid or expired OTP',
+      cooldownRemaining: error.cooldownRemaining,
+      isLocked: Boolean(error.isLocked),
+      remainingAttempts: error.remainingAttempts,
+      dailyLimitReached: Boolean(error.dailyLimitReached),
+    });
   }
 };
 
@@ -1031,6 +1051,7 @@ exports.resendLoginOtp = async (req, res) => {
       success: false,
       message: error.message || 'Failed to resend OTP.',
       cooldownRemaining: error.cooldownRemaining,
+      dailyLimitReached: Boolean(error.dailyLimitReached),
     });
   }
 };
@@ -1065,6 +1086,10 @@ exports.verifyLoginOtp = async (req, res) => {
       return res.status(otpErr.status || 400).json({
         success: false,
         message: otpErr.message || 'Invalid or expired OTP. Please try again.',
+        cooldownRemaining: otpErr.cooldownRemaining,
+        isLocked: Boolean(otpErr.isLocked),
+        remainingAttempts: otpErr.remainingAttempts,
+        dailyLimitReached: Boolean(otpErr.dailyLimitReached),
       });
     }
 
