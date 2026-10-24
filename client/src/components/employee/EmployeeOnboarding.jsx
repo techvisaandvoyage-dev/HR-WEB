@@ -631,35 +631,9 @@ const EmployeeOnboarding = () => {
   };
 
   const checkPhoneAvailability = async (phoneVal) => {
-    const cleanPhone = String(phoneVal !== undefined ? phoneVal : (formData.phone || '')).trim();
-    if (!cleanPhone || cleanPhone.length < 10) {
-      setPhoneError('');
-      return true;
-    }
-    try {
-      setIsCheckingPhone(true);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employee/auth/check-mobile-available`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          mobile: cleanPhone, 
-          currentEmail: formData.email 
-        })
-      });
-      const data = await res.json();
-      if (data && data.available === false) {
-        setPhoneError(data.message || 'This phone number is already registered with another account.');
-        return false;
-      } else {
-        setPhoneError('');
-        return true;
-      }
-    } catch (err) {
-      console.error('Error checking phone availability:', err);
-      return true;
-    } finally {
-      setIsCheckingPhone(false);
-    }
+    // Multiple user accounts are allowed to use the same mobile number
+    setPhoneError('');
+    return true;
   };
 
   // Fetch Homepage & Onboarding CMS configuration on mount
@@ -766,7 +740,7 @@ const EmployeeOnboarding = () => {
         videoVisibility: 'everyone'
       },
       videoVisibility: 'everyone',
-      isProfilePrivate: false
+      isProfilePrivate: true
     };
   });
 
@@ -817,7 +791,7 @@ const EmployeeOnboarding = () => {
                 ...data.documents,
                 videoVisibility: data.videoVisibility || data.documents.videoVisibility || prev.videoVisibility || 'everyone'
               } : prev.documents,
-              isProfilePrivate: data.isProfilePrivate !== undefined ? Boolean(data.isProfilePrivate) : (prev.isProfilePrivate || false)
+              isProfilePrivate: data.isProfilePrivate !== undefined ? Boolean(data.isProfilePrivate) : (prev.isProfilePrivate !== undefined ? Boolean(prev.isProfilePrivate) : true)
             };
             localStorage.setItem('userProfile', JSON.stringify(next));
             return next;
@@ -3598,20 +3572,46 @@ const EmployeeOnboarding = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            <div className={`p-3.5 rounded-xl border transition-all ${!formData.isProfilePrivate ? 'bg-emerald-50/60 border-emerald-200 ring-1 ring-emerald-300/50' : 'bg-white border-gray-200'}`}>
+            <div 
+              onClick={() => {
+                setFormData(prev => ({ ...prev, isProfilePrivate: false }));
+                try {
+                  const saved = localStorage.getItem('userProfile');
+                  if (saved) {
+                    const parsed = JSON.parse(saved);
+                    parsed.isProfilePrivate = false;
+                    localStorage.setItem('userProfile', JSON.stringify(parsed));
+                  }
+                } catch (_) {}
+              }}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${!formData.isProfilePrivate ? 'bg-emerald-50/60 border-emerald-300 ring-2 ring-emerald-400/40' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+            >
               <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs mb-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                When Public (Default)
+                When Public
               </div>
               <p className="text-xs text-gray-600 leading-relaxed">
                 Verified recruiters and company employers can discover your profile when searching for candidates matching your skills, experience, and designation.
               </p>
             </div>
 
-            <div className={`p-3.5 rounded-xl border transition-all ${formData.isProfilePrivate ? 'bg-amber-50/60 border-amber-200 ring-1 ring-amber-300/50' : 'bg-white border-gray-200'}`}>
+            <div 
+              onClick={() => {
+                setFormData(prev => ({ ...prev, isProfilePrivate: true }));
+                try {
+                  const saved = localStorage.getItem('userProfile');
+                  if (saved) {
+                    const parsed = JSON.parse(saved);
+                    parsed.isProfilePrivate = true;
+                    localStorage.setItem('userProfile', JSON.stringify(parsed));
+                  }
+                } catch (_) {}
+              }}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${formData.isProfilePrivate ? 'bg-amber-50/60 border-amber-300 ring-2 ring-amber-400/40' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+            >
               <div className="flex items-center gap-1.5 text-amber-800 font-bold text-xs mb-1">
                 <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                When Private Mode is Enabled
+                When Private Mode is Enabled (Default)
               </div>
               <p className="text-xs text-gray-600 leading-relaxed">
                 Your profile is completely hidden from recruiter search lists. Only employers of jobs you personally submit an application to will be able to see your details.

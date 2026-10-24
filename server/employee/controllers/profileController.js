@@ -33,7 +33,7 @@ const getProfile = async (req, res) => {
         coverLetter: employee.coverLetter || '',
         introVideo: employee.introVideo || '',
         videoVisibility: employee.videoVisibility || 'everyone',
-        isProfilePrivate: employee.isProfilePrivate ?? false,
+        isProfilePrivate: employee.isProfilePrivate !== undefined ? Boolean(employee.isProfilePrivate) : true,
         isOnboardingCompleted: employee.isOnboardingCompleted ?? false,
         onboardingStep: employee.onboardingStep || 1
       });
@@ -70,16 +70,6 @@ const updateProfile = async (req, res) => {
 
     if (req.body.phone !== undefined && req.body.phone !== '') {
       const cleanPhone = String(req.body.phone).trim();
-      const existingMobile = await Employee.findOne({
-        mobile: cleanPhone,
-        _id: { $ne: req.employee._id }
-      });
-      if (existingMobile) {
-        return res.status(400).json({ 
-          message: 'This phone number is already registered with another account.', 
-          field: 'phone' 
-        });
-      }
       updateData.mobile = cleanPhone;
     }
     if (req.body.countryCode !== undefined) updateData.countryCode = req.body.countryCode;
@@ -144,7 +134,7 @@ const updateProfile = async (req, res) => {
         coverLetter: updatedEmployee.coverLetter,
         introVideo: updatedEmployee.introVideo,
         videoVisibility: updatedEmployee.videoVisibility || 'everyone',
-        isProfilePrivate: updatedEmployee.isProfilePrivate ?? false,
+        isProfilePrivate: updatedEmployee.isProfilePrivate !== undefined ? Boolean(updatedEmployee.isProfilePrivate) : true,
         isOnboardingCompleted: updatedEmployee.isOnboardingCompleted ?? false,
         onboardingStep: updatedEmployee.onboardingStep || 1
       }

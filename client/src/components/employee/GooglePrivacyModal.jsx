@@ -4,7 +4,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const GooglePrivacyModal = ({ isOpen, user, onComplete }) => {
   const [isProfilePrivate, setIsProfilePrivate] = useState(() => {
-    return Boolean(user?.profile?.isProfilePrivate || false);
+    return user?.profile?.isProfilePrivate !== undefined ? Boolean(user.profile.isProfilePrivate) : true;
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -126,7 +126,7 @@ const GooglePrivacyModal = ({ isOpen, user, onComplete }) => {
           >
             <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs mb-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              When Public (Default)
+              When Public
             </div>
             <p className="text-xs text-gray-600 leading-relaxed">
               Verified recruiters & employers can find you when searching for matching skills and experience.
@@ -143,7 +143,7 @@ const GooglePrivacyModal = ({ isOpen, user, onComplete }) => {
           >
             <div className="flex items-center gap-1.5 text-amber-800 font-bold text-xs mb-1">
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              When Private Mode is Enabled
+              When Private Mode is Enabled (Default)
             </div>
             <p className="text-xs text-gray-600 leading-relaxed">
               Completely hidden from recruiter search lists. Only visible to employers of jobs you personally apply to.

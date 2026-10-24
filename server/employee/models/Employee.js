@@ -89,7 +89,7 @@ const EmployeeSchema = new mongoose.Schema({
   },
   isProfilePrivate: {
     type: Boolean,
-    default: false
+    default: true
   },
   isFresher: {
     type: Boolean,

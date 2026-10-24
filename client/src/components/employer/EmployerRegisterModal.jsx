@@ -412,35 +412,16 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     }
   };
 
-  // Check mobile availability (role conflict check for employer / consultant)
-  const checkMobileAvailability = async (mobileToCheck) => {
-    const clean = (mobileToCheck || '').trim();
-    if (!clean || clean.length !== 10) return;
-
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employer/auth/check-mobile-available`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          mobile: clean, 
-          isConsultant: isConsultantMode 
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrors(prev => ({ ...prev, mobile: data.message || 'This mobile number is already registered.' }));
-      } else {
-        setErrors(prev => {
-          const next = { ...prev };
-          if (next.mobile && typeof next.mobile === 'string' && (next.mobile.includes('registered') || next.mobile.includes('consultant') || next.mobile.includes('employer'))) {
-            delete next.mobile;
-          }
-          return next;
-        });
+  // Mobile numbers can be used across multiple user accounts
+  const checkMobileAvailability = (mobileToCheck) => {
+    setErrors(prev => {
+      if (prev.mobile && typeof prev.mobile === 'string' && (prev.mobile.includes('registered') || prev.mobile.includes('consultant') || prev.mobile.includes('employer'))) {
+        const next = { ...prev };
+        delete next.mobile;
+        return next;
       }
-    } catch (err) {
-      // Ignore network errors during background check
-    }
+      return prev;
+    });
   };
 
   // Debounced auto-check for email
@@ -454,18 +435,6 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
       return () => clearTimeout(timer);
     }
   }, [isOpen, email, isConsultantMode]);
-
-  // Debounced auto-check for mobile
-  useEffect(() => {
-    if (!isOpen) return;
-    const clean = mobile.trim();
-    if (clean && clean.length === 10) {
-      const timer = setTimeout(() => {
-        checkMobileAvailability(clean);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, mobile, isConsultantMode]);
 
   if (!isOpen) return null;
 

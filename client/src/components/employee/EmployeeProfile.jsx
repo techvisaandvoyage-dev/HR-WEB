@@ -643,7 +643,7 @@ const EmployeeProfile = () => {
     industry: '',
     designation: '',
     totalExperience: '',
-    isProfilePrivate: false,
+    isProfilePrivate: true,
     professionalDetails: {
       currentSalary: '',
       expectedSalary: '',
@@ -658,32 +658,9 @@ const EmployeeProfile = () => {
   const [phoneError, setPhoneError] = useState('');
 
   const checkPhoneAvailability = async (phoneVal) => {
-    const cleanPhone = String(phoneVal !== undefined ? phoneVal : (formData.phone || '')).trim();
-    if (!cleanPhone || cleanPhone.length < 10) {
-      setPhoneError('');
-      return true;
-    }
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/employee/auth/check-mobile-available`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          mobile: cleanPhone, 
-          currentEmail: formData.email 
-        })
-      });
-      const data = await res.json();
-      if (data && data.available === false) {
-        setPhoneError(data.message || 'This phone number is already registered with another account.');
-        return false;
-      } else {
-        setPhoneError('');
-        return true;
-      }
-    } catch (err) {
-      console.error('Error checking phone availability in EmployeeProfile:', err);
-      return true;
-    }
+    // Multiple user accounts are allowed to use the same mobile number
+    setPhoneError('');
+    return true;
   };
 
   useEffect(() => {

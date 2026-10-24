@@ -51,13 +51,6 @@ const sendRegistrationOtp = async (req, res) => {
       });
     }
 
-    if (mobile && mobile.trim()) {
-      const mobileExists = await Employee.findOne({ mobile: mobile.trim() });
-      if (mobileExists) {
-        return res.status(400).json({ message: 'Phone number already exists', field: 'mobile' });
-      }
-    }
-
     const result = await sendOtp({ email, name: email.split('@')[0], purpose: 'registration:employee' });
     res.json({
       message: result.message || 'OTP sent successfully to your email',
@@ -150,13 +143,6 @@ const registerEmployee = async (req, res) => {
       });
     }
 
-    if (mobile && mobile.trim()) {
-      const mobileExists = await Employee.findOne({ mobile: mobile.trim() });
-      if (mobileExists) {
-        return res.status(400).json({ message: 'Phone number already exists' });
-      }
-    }
-
     // Create employee
     const candidateId = await getNextCandidateId();
     const employee = await Employee.create({
@@ -242,17 +228,6 @@ const quickRegisterCandidate = async (req, res) => {
       });
     }
 
-    if (mobile && String(mobile).trim()) {
-      const cleanMobile = String(mobile).trim();
-      const mobileExists = await Employee.findOne({ mobile: cleanMobile });
-      if (mobileExists) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'This phone number is already registered with another account.' 
-        });
-      }
-    }
-
     const candidateId = await getNextCandidateId();
     const employee = await Employee.create({
       candidateId,
@@ -308,7 +283,8 @@ const quickRegisterCandidate = async (req, res) => {
         experience: [],
         professionalDetails: { currentLocation: employee.location || '' },
         resume: '',
-        coverLetter: ''
+        coverLetter: '',
+        isProfilePrivate: true
       }
     });
   } catch (error) {
@@ -427,7 +403,8 @@ const loginEmployee = async (req, res) => {
           currentLocation: employee.location
         },
         resume: employee.resume || '',
-        coverLetter: employee.coverLetter || ''
+        coverLetter: employee.coverLetter || '',
+        isProfilePrivate: employee.isProfilePrivate !== undefined ? Boolean(employee.isProfilePrivate) : true
       }
     });
   } catch (error) {
@@ -605,7 +582,8 @@ const verifyLoginOtp = async (req, res) => {
           currentLocation: employee.location
         },
         resume: employee.resume || '',
-        coverLetter: employee.coverLetter || ''
+        coverLetter: employee.coverLetter || '',
+        isProfilePrivate: employee.isProfilePrivate !== undefined ? Boolean(employee.isProfilePrivate) : true
       }
     });
   } catch (error) {
@@ -663,11 +641,6 @@ const checkExistence = async (req, res) => {
       }
     }
     
-    if (mobile) {
-      const mobileExists = await Employee.findOne({ mobile });
-      if (mobileExists) return res.status(400).json({ message: 'Phone number already exists', field: 'mobile' });
-    }
-
     res.json({ message: 'No conflicts' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -679,28 +652,7 @@ const checkExistence = async (req, res) => {
 // @access  Public
 const checkMobileAvailable = async (req, res) => {
   try {
-    const { mobile, currentEmail, currentUserId } = req.body;
-    if (!mobile || String(mobile).trim().length < 10) {
-      return res.json({ available: true });
-    }
-
-    const cleanMobile = String(mobile).trim();
-    let query = { mobile: cleanMobile };
-
-    if (currentUserId) {
-      query._id = { $ne: currentUserId };
-    } else if (currentEmail) {
-      query.email = { $ne: String(currentEmail).trim().toLowerCase() };
-    }
-
-    const existing = await Employee.findOne(query);
-    if (existing) {
-      return res.json({ 
-        available: false, 
-        message: 'This phone number is already registered with another account.' 
-      });
-    }
-
+    // Multiple user accounts are allowed to use the same mobile number
     return res.json({ available: true });
   } catch (error) {
     res.status(500).json({ available: true, error: error.message });
@@ -978,7 +930,7 @@ const googleAuth = async (req, res) => {
         },
         resume: employee.resume || '',
         coverLetter: employee.coverLetter || '',
-        isProfilePrivate: employee.isProfilePrivate ?? false
+        isProfilePrivate: employee.isProfilePrivate !== undefined ? Boolean(employee.isProfilePrivate) : true
       }
     });
   } catch (error) {

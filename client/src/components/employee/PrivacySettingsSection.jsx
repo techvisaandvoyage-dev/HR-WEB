@@ -6,9 +6,9 @@ const PrivacySettingsSection = ({ userEmail }) => {
   const [isProfilePrivate, setIsProfilePrivate] = useState(() => {
     try {
       const p = localStorage.getItem('userProfile');
-      if (p) return Boolean(JSON.parse(p).isProfilePrivate);
+      if (p && JSON.parse(p).isProfilePrivate !== undefined) return Boolean(JSON.parse(p).isProfilePrivate);
     } catch (_) {}
-    return false;
+    return true;
   });
 
   const [isUpdatingPrivacy, setIsUpdatingPrivacy] = useState(false);
@@ -193,7 +193,7 @@ const PrivacySettingsSection = ({ userEmail }) => {
         <div className="p-4 sm:p-5 bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-2xs space-y-1.5 sm:space-y-2">
           <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs sm:text-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            When Public (Default)
+            When Public
           </div>
           <p className="text-xs text-gray-600 leading-relaxed">
             Verified recruiters and company employers can discover your profile when searching for candidates matching your skills, experience, and designation.
@@ -203,7 +203,7 @@ const PrivacySettingsSection = ({ userEmail }) => {
         <div className="p-4 sm:p-5 bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-2xs space-y-1.5 sm:space-y-2">
           <div className="flex items-center gap-2 text-amber-700 font-bold text-xs sm:text-sm">
             <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            When Private Mode is Enabled
+            When Private Mode is Enabled (Default)
           </div>
           <p className="text-xs text-gray-600 leading-relaxed">
             Your profile is completely hidden from recruiter search lists. Only employers of jobs you personally submit an application to will be able to see your details.

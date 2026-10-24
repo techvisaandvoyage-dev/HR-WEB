@@ -86,46 +86,6 @@ exports.sendRegistrationOtp = async (req, res) => {
       }
     }
 
-    if (mobile) {
-      const cleanMobile = String(mobile).trim();
-      const mobileExists = await Employer.findOne({ mobile: cleanMobile });
-      if (mobileExists) {
-        const isTargetConsultant = Boolean(isConsultant === true);
-        const isExistingConsultant = Boolean(mobileExists.isConsultant === true);
-
-        if (isTargetConsultant) {
-          if (!isExistingConsultant) {
-            return res.status(400).json({ 
-              message: 'This mobile number is already registered with an employer account. Please use Employer Login or use a different mobile number.', 
-              field: 'mobile',
-              registeredRole: 'employer'
-            });
-          } else {
-            return res.status(400).json({ 
-              message: 'A consultant account is already registered with this mobile number. Please log in directly.', 
-              field: 'mobile',
-              registeredRole: 'consultant'
-            });
-          }
-        } else {
-          if (isExistingConsultant) {
-            return res.status(400).json({ 
-              message: 'This mobile number is already registered with a consultant account. Please use Consultant Login or use a different mobile number.', 
-              field: 'mobile',
-              registeredRole: 'consultant'
-            });
-          } else {
-            return res.status(400).json({ 
-              message: 'An employer account is already registered with this mobile number. Please log in directly.', 
-              field: 'mobile',
-              registeredRole: 'employer'
-            });
-          }
-        }
-      }
-    }
-
-
     const result = await sendOtp({
       email,
       name: fullName || email.split('@')[0],
@@ -723,50 +683,7 @@ exports.checkMobile = async (req, res) => {
 // @access  Public
 exports.checkMobileAvailable = async (req, res) => {
   try {
-    const { mobile, isConsultant } = req.body;
-    
-    if (!mobile || !String(mobile).trim()) {
-      return res.status(400).json({ message: 'Please provide mobile number' });
-    }
-
-    const cleanMobile = String(mobile).trim();
-    const employer = await Employer.findOne({ mobile: cleanMobile });
-
-    if (employer) {
-      const isTargetConsultant = Boolean(isConsultant === true);
-      const isExistingConsultant = Boolean(employer.isConsultant === true);
-
-      if (isTargetConsultant && !isExistingConsultant) {
-        return res.status(400).json({ 
-          success: false, 
-          field: 'mobile',
-          registeredRole: 'employer',
-          message: 'This mobile number is already registered with an employer account. Please use Employer Login or use a different mobile number.' 
-        });
-      } else if (!isTargetConsultant && isExistingConsultant) {
-        return res.status(400).json({ 
-          success: false, 
-          field: 'mobile',
-          registeredRole: 'consultant',
-          message: 'This mobile number is already registered with a consultant account. Please use Consultant Login or use a different mobile number.' 
-        });
-      } else if (isTargetConsultant && isExistingConsultant) {
-        return res.status(400).json({ 
-          success: false, 
-          field: 'mobile',
-          registeredRole: 'consultant',
-          message: 'A consultant account is already registered with this mobile number. Please log in directly.' 
-        });
-      } else {
-        return res.status(400).json({ 
-          success: false, 
-          field: 'mobile',
-          registeredRole: 'employer',
-          message: 'An employer account is already registered with this mobile number. Please log in directly.' 
-        });
-      }
-    }
-
+    // Multiple user accounts are allowed with the same mobile number
     res.json({ success: true, available: true });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
