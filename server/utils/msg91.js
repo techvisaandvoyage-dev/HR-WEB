@@ -10,7 +10,7 @@ const getConfig = () => {
   const fromName = process.env.MSG91_FROM_NAME || 'sahijob.com';
   const companyName = process.env.MSG91_COMPANY_NAME || 'sahijob.com';
   const otpLength = Number(process.env.MSG91_OTP_LENGTH || 4);
-  const otpExpiryMinutes = 1; // 1 OTP is valid for 1 minute
+  const otpExpiryMinutes = 2; // OTP is valid for 2 minutes
 
   if (!authkey || !templateId) {
     throw new Error('MSG91_AUTH_KEY and MSG91_TEMPLATE_ID must be set in .env');
@@ -39,7 +39,20 @@ const generateOtp = (length = 4) => {
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 
-const saveOtp = (email, otp, expiryMinutes = 1) => {
+const formatLockUntil = (date) => {
+  const d = new Date(date);
+  return d.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }) + ' IST';
+};
+
+const saveOtp = (email, otp, expiryMinutes = 2) => {
   const key = normalizeEmail(email);
   const existing = otpStore.get(key);
   otpStore.set(key, {
@@ -60,32 +73,34 @@ const consumeOtp = (email, otp) => {
     throw err;
   }
   if (record.lockedUntil && Date.now() < record.lockedUntil) {
-    const rem = Math.ceil((record.lockedUntil - Date.now()) / 1000);
-    const err = new Error(`3 incorrect OTP attempts. Please wait ${rem}s before trying again.`);
+    const lockTimeStr = formatLockUntil(record.lockedUntil);
+    const err = new Error(`Too many failed attempts. OTP verification is locked for 24 hours. Try again after ${lockTimeStr}.`);
     err.status = 429;
-    err.cooldownRemaining = rem;
     err.isLocked = true;
+    err.remainingAttempts = 0;
     throw err;
   }
   if (Date.now() > record.expiresAt) {
     otpStore.delete(key);
-    const err = new Error('OTP has expired (valid for 1 minute). Please request a new OTP.');
+    const err = new Error('OTP has expired. Please request a new one.');
     err.status = 400;
     throw err;
   }
   if (String(otp) !== record.otp) {
     record.wrongAttempts = (record.wrongAttempts || 0) + 1;
-    if (record.wrongAttempts >= 3) {
-      record.lockedUntil = Date.now() + 30 * 1000;
+    if (record.wrongAttempts >= 5) {
+      const lockUntil = Date.now() + 24 * 60 * 60 * 1000;
+      record.lockedUntil = lockUntil;
       record.wrongAttempts = 0;
-      const err = new Error('3 incorrect OTP attempts. Please wait 30 seconds before trying again.');
+      const lockTimeStr = formatLockUntil(lockUntil);
+      const err = new Error(`Too many failed attempts. OTP verification is locked for 24 hours. Try again after ${lockTimeStr}.`);
       err.status = 429;
-      err.cooldownRemaining = 30;
       err.isLocked = true;
+      err.remainingAttempts = 0;
       throw err;
     }
-    const rem = 3 - record.wrongAttempts;
-    const err = new Error(`Invalid OTP. ${rem} attempt${rem === 1 ? '' : 's'} remaining before 30s lockout.`);
+    const rem = 5 - record.wrongAttempts;
+    const err = new Error(`Invalid OTP. ${rem} attempt${rem === 1 ? '' : 's'} remaining.`);
     err.status = 400;
     err.remainingAttempts = rem;
     throw err;

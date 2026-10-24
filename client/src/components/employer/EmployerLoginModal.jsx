@@ -25,6 +25,16 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
   const [validityTimer, setValidityTimer] = useState(0);
   const [errors, setErrors] = useState({});
   const [cmsConfig, setCmsConfig] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+
+  const isOtpLocked = Boolean(
+    isLocked ||
+    errors.otp?.toLowerCase().includes('locked') ||
+    errors.email?.toLowerCase().includes('locked') ||
+    errors.forgotOtp?.toLowerCase().includes('locked') ||
+    errors.forgot?.toLowerCase().includes('locked') ||
+    error?.toLowerCase().includes('locked')
+  );
 
   // Fetch Employer / Consultant Login CMS config
   useEffect(() => {
@@ -109,6 +119,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       setResendTimer(0);
       setLockoutTimer(0);
       setValidityTimer(0);
+      setIsLocked(false);
     }
   }, [isOpen]);
 
@@ -260,13 +271,17 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        if (data.isLocked) {
+          setIsLocked(true);
+        }
         setErrors({ email: data.message || 'Failed to send OTP' });
       } else {
         setOtpSent(true);
         setOtp(['', '', '', '']);
         setResendTimer(data.cooldownSeconds || 30);
-        setValidityTimer(data.expiresInSeconds || 60);
+        setValidityTimer(data.expiresInSeconds || 120);
         setLockoutTimer(0);
+        setIsLocked(false);
         setSuccessMessage(data.message || 'OTP sent successfully to your registered email');
       }
     } catch (err) {
@@ -277,7 +292,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
   };
 
   const handleResendEmailOtp = async () => {
-    if (resendTimer > 0 || loading) return;
+    if (resendTimer > 0 || loading || isOtpLocked) return;
     setErrors({});
     setSuccessMessage('');
     setLoading(true);
@@ -290,6 +305,9 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        if (data.isLocked) {
+          setIsLocked(true);
+        }
         if (data.cooldownRemaining) {
           setResendTimer(data.cooldownRemaining);
         }
@@ -297,8 +315,9 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       } else {
         setOtp(['', '', '', '']);
         setResendTimer(data.cooldownSeconds || 30);
-        setValidityTimer(data.expiresInSeconds || 60);
+        setValidityTimer(data.expiresInSeconds || 120);
         setLockoutTimer(0);
+        setIsLocked(false);
         setSuccessMessage('A fresh OTP has been sent to your email!');
       }
     } catch (err) {
@@ -309,6 +328,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
   };
 
   const handleVerifyEmailOtp = async () => {
+    if (isOtpLocked) return;
     const enteredOtp = otp.join('');
     if (enteredOtp.length !== 4) {
       setErrors({ otp: 'Please enter the complete 4-digit OTP' });
@@ -325,11 +345,15 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        if (data.isLocked) {
+          setIsLocked(true);
+        }
         if (data.isLocked || data.cooldownRemaining) {
           setLockoutTimer(data.cooldownRemaining || 30);
         }
         setErrors({ otp: data.message || 'Invalid or expired OTP' });
       } else {
+        setIsLocked(false);
         localStorage.setItem('employerToken', data.token);
         onLoginSuccess?.(data);
       }
@@ -357,13 +381,17 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.isLocked) {
+          setIsLocked(true);
+        }
         setErrors({ forgot: data.message || 'User not found' });
       } else {
         setForgotStep(2);
         setOtp(['', '', '', '']);
         setResendTimer(data.cooldownSeconds || 30);
-        setValidityTimer(data.expiresInSeconds || 60);
+        setValidityTimer(data.expiresInSeconds || 120);
         setLockoutTimer(0);
+        setIsLocked(false);
         setSuccessMessage(data.message || 'OTP sent successfully to your registered email');
       }
     } catch (err) {
@@ -374,7 +402,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
   };
 
   const handleForgotResendOtp = async () => {
-    if (resendTimer > 0) return;
+    if (resendTimer > 0 || isOtpLocked) return;
     setErrors({});
     setSuccessMessage('');
     setLoading(true);
@@ -387,6 +415,9 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.isLocked) {
+          setIsLocked(true);
+        }
         if (data.cooldownRemaining) {
           setResendTimer(data.cooldownRemaining);
         }
@@ -394,8 +425,9 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       } else {
         setOtp(['', '', '', '']);
         setResendTimer(data.cooldownSeconds || 30);
-        setValidityTimer(data.expiresInSeconds || 60);
+        setValidityTimer(data.expiresInSeconds || 120);
         setLockoutTimer(0);
+        setIsLocked(false);
         setSuccessMessage('OTP resent successfully to your email!');
       }
     } catch (err) {
@@ -406,6 +438,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
   };
 
   const handleForgotVerifyOtp = async () => {
+    if (isOtpLocked) return;
     const enteredOtp = otp.join('');
     if (enteredOtp.length !== 4) {
       setErrors({ forgotOtp: 'Please enter 4-digit OTP' });
@@ -421,11 +454,15 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       });
       const data = await response.json();
       if (!response.ok) {
+        if (data.isLocked) {
+          setIsLocked(true);
+        }
         if (data.isLocked || data.cooldownRemaining) {
           setLockoutTimer(data.cooldownRemaining || 30);
         }
         setErrors({ forgotOtp: data.message || 'Invalid or expired OTP' });
       } else {
+        setIsLocked(false);
         setForgotStep(3);
         setSuccessMessage('');
       }
@@ -581,27 +618,23 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                   )}
 
                   {/* OTP Validity Countdown & Lockout Alert */}
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pb-1">
-                    {validityTimer > 0 ? (
-                      <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Valid for: <strong className="font-bold">{Math.floor(validityTimer / 60)}:{String(validityTimer % 60).padStart(2, '0')}</strong> (1 min)
-                      </span>
-                    ) : (
-                      <span className="text-red-500 font-semibold flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        OTP expired (1 min validity). Please click Resend.
-                      </span>
-                    )}
-                  </div>
-
-                  {lockoutTimer > 0 && (
-                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-center text-xs text-red-700 font-bold animate-pulse mb-2">
-                      🔒 3 incorrect attempts. Please wait <strong className="font-extrabold">{lockoutTimer}s</strong> before trying again.
+                  {!isOtpLocked && (
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pb-1">
+                      {validityTimer > 0 ? (
+                        <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                          <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Valid for: <strong className="font-bold">{Math.floor(validityTimer / 60)}:{String(validityTimer % 60).padStart(2, '0')}</strong> (2 min)
+                        </span>
+                      ) : (
+                        <span className="text-red-500 font-semibold flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          OTP expired (2 min validity). Please click Resend.
+                        </span>
+                      )}
                     </div>
                   )}
 
@@ -615,7 +648,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                           type="text"
                           inputMode="numeric"
                           maxLength="1"
-                          disabled={lockoutTimer > 0 || loading}
+                          disabled={lockoutTimer > 0 || loading || isOtpLocked}
                           value={data}
                           onChange={(e) => handleOtpChange(index, e.target.value, 'otp')}
                           onKeyDown={(e) => handleOtpKeyDown(e, index, 'otp')}
@@ -628,32 +661,34 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
 
                   <button 
                     type="submit"
-                    disabled={otp.join('').length !== 4 || loading || lockoutTimer > 0}
+                    disabled={otp.join('').length !== 4 || loading || lockoutTimer > 0 || isOtpLocked}
                     className="w-full py-3.5 bg-palette-900 hover:bg-palette-400 text-white font-bold rounded-full transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Verifying...' : 'Verify OTP'}
+                    {isOtpLocked ? 'Locked for 24 Hours' : loading ? 'Verifying...' : 'Verify OTP'}
                   </button>
 
-                  <div className="flex items-center justify-center pt-1">
-                    {resendTimer > 0 ? (
-                      <span className="text-sm font-medium text-gray-500 flex items-center gap-1.5">
-                        <svg className="w-4 h-4 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Resend OTP in <strong className="text-palette-900 font-bold">{resendTimer}s</strong>
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleForgotResendOtp}
-                        disabled={loading}
-                        className="text-sm font-bold text-palette-400 hover:text-palette-900 transition-colors disabled:opacity-70"
-                      >
-                        Resend OTP
-                      </button>
-                    )}
-                  </div>
+                  {!isOtpLocked && (
+                    <div className="flex items-center justify-center pt-1">
+                      {resendTimer > 0 ? (
+                        <span className="text-sm font-medium text-gray-500 flex items-center gap-1.5">
+                          <svg className="w-4 h-4 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Resend OTP in <strong className="text-palette-900 font-bold">{resendTimer}s</strong>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleForgotResendOtp}
+                          disabled={loading}
+                          className="text-sm font-bold text-palette-400 hover:text-palette-900 transition-colors disabled:opacity-70"
+                        >
+                          Resend OTP
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   <div className="text-center">
                     <button type="button" onClick={() => { setForgotStep(1); setOtp(['', '', '', '']); setSuccessMessage(''); setResendTimer(0); setErrors({}); }} className="text-sm font-semibold text-gray-500 hover:text-palette-900 transition-colors">
@@ -1038,27 +1073,23 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                     )}
 
                     {/* OTP Validity Countdown & Lockout Alert */}
-                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pb-1">
-                      {validityTimer > 0 ? (
-                        <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                          <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Valid for: <strong className="font-bold">{Math.floor(validityTimer / 60)}:{String(validityTimer % 60).padStart(2, '0')}</strong> (1 min)
-                        </span>
-                      ) : (
-                        <span className="text-red-500 font-semibold flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          OTP expired (1 min validity). Please click Resend.
-                        </span>
-                      )}
-                    </div>
-
-                    {lockoutTimer > 0 && (
-                      <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-center text-xs text-red-700 font-bold animate-pulse mb-2">
-                        🔒 3 incorrect attempts. Please wait <strong className="font-extrabold">{lockoutTimer}s</strong> before trying again.
+                    {!isOtpLocked && (
+                      <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pb-1">
+                        {validityTimer > 0 ? (
+                          <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                            <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Valid for: <strong className="font-bold">{Math.floor(validityTimer / 60)}:{String(validityTimer % 60).padStart(2, '0')}</strong> (2 min)
+                          </span>
+                        ) : (
+                          <span className="text-red-500 font-semibold flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            OTP expired (2 min validity). Please click Resend.
+                          </span>
+                        )}
                       </div>
                     )}
 
@@ -1071,7 +1102,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                           type="text"
                           inputMode="numeric"
                           maxLength="1"
-                          disabled={lockoutTimer > 0 || loading}
+                          disabled={lockoutTimer > 0 || loading || isOtpLocked}
                           value={data}
                           onChange={(e) => handleOtpChange(index, e.target.value, 'employer-otp')}
                           onKeyDown={(e) => handleOtpKeyDown(e, index, 'employer-otp')}
@@ -1086,38 +1117,40 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                     <div className="flex items-center justify-between text-xs px-2 pt-1">
                       <button 
                         type="button" 
-                        onClick={() => { setOtpSent(false); setOtp(['', '', '', '']); setErrors({}); setSuccessMessage(''); setLockoutTimer(0); }} 
+                        onClick={() => { setOtpSent(false); setOtp(['', '', '', '']); setErrors({}); setSuccessMessage(''); setLockoutTimer(0); setIsLocked(false); }} 
                         className="font-bold text-palette-400 hover:text-palette-900 transition-colors"
                       >
                         ← Change Email
                       </button>
 
-                      {resendTimer > 0 ? (
-                        <span className="text-gray-400 font-medium">
-                          Resend in <span className="font-bold text-gray-700">{resendTimer}s</span>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={loading || lockoutTimer > 0}
-                          onClick={handleResendEmailOtp}
-                          className="font-bold text-palette-400 hover:text-palette-900 transition-colors disabled:opacity-50 cursor-pointer"
-                        >
-                          Resend OTP
-                        </button>
+                      {!isOtpLocked && (
+                        resendTimer > 0 ? (
+                          <span className="text-gray-400 font-medium">
+                            Resend in <span className="font-bold text-gray-700">{resendTimer}s</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={loading || lockoutTimer > 0}
+                            onClick={handleResendEmailOtp}
+                            className="font-bold text-palette-400 hover:text-palette-900 transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            Resend OTP
+                          </button>
+                        )
                       )}
                     </div>
 
                     <button 
                       type="submit"
-                      disabled={otp.join('').length !== 4 || loading || lockoutTimer > 0}
+                      disabled={otp.join('').length !== 4 || loading || lockoutTimer > 0 || isOtpLocked}
                       className={`w-full py-3.5 text-white font-bold rounded-full transition-all duration-300 ${
-                        otp.join('').length === 4 && !loading && lockoutTimer === 0
+                        otp.join('').length === 4 && !loading && lockoutTimer === 0 && !isOtpLocked
                           ? 'bg-palette-900 hover:bg-palette-400 shadow-lg shadow-palette-900/30 hover:shadow-palette-400/40 transform hover:-translate-y-0.5' 
                           : 'bg-palette-200 cursor-not-allowed'
                       }`}
                     >
-                      {lockoutTimer > 0 ? `Wait ${lockoutTimer}s...` : (loading ? 'Verifying...' : 'Verify & Login')}
+                      {isOtpLocked ? 'Locked for 24 Hours' : lockoutTimer > 0 ? `Wait ${lockoutTimer}s...` : (loading ? 'Verifying...' : 'Verify & Login')}
                     </button>
                   </div>
                 )}

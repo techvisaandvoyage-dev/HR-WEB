@@ -10,7 +10,8 @@ import {
   LogOut, 
   Settings,
   ShieldCheck,
-  Database
+  Database,
+  LifeBuoy
 } from 'lucide-react';
 
 /**
@@ -45,6 +46,11 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
       id: 'consultants',
       label: 'Consultants',
       icon: Briefcase
+    },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: LifeBuoy
     },
     {
       id: 'footer',

@@ -8,11 +8,12 @@ import ConsultantsTab from './pages/ConsultantsTab';
 import FooterEditor from './pages/FooterEditor';
 import SettingsTab from './pages/SettingsTab';
 import AdminLogin from './pages/AdminLogin';
+import SupportTab from './pages/SupportTab';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('adminAuthenticated') === 'true');
   
-  const VALID_TABS = ['overview', 'homepage', 'employees', 'employers', 'consultants', 'footer', 'backup', 'settings', 'seo'];
+  const VALID_TABS = ['overview', 'homepage', 'employees', 'employers', 'consultants', 'support', 'footer', 'backup', 'settings', 'seo'];
 
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -123,6 +124,9 @@ function App() {
       )}
       {activeTab === 'consultants' && (
         <ConsultantsTab />
+      )}
+      {activeTab === 'support' && (
+        <SupportTab />
       )}
       {(activeTab === 'backup' || activeTab === 'settings' || activeTab === 'seo') && (
         <SettingsTab initialSubTab={activeTab === 'seo' ? 'seo' : undefined} />

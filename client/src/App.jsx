@@ -20,6 +20,7 @@ import { isLocationMatch } from './data/preferredLocations';
 import SEOHead from './components/common/SEOHead';
 import { initAnalytics, trackPageView } from './utils/analytics';
 import { formatPhoneWithCountryCode } from './data/countryCodes';
+import SupportWidget from './components/common/SupportWidget';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('employeeToken') || !!localStorage.getItem('employerToken'));
@@ -1034,6 +1035,7 @@ function App() {
           }}
         />
       )}
+      <SupportWidget />
     </>
   )
 }

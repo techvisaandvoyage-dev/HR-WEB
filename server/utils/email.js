@@ -11,16 +11,28 @@ try {
   OtpTracker = require('../models/OtpTracker');
 } catch (_) {}
 
-// key (purpose:email) -> { otpHash, expiresAt, lastSentAt, resendCount, wrongAttempts, lockedUntil }
+let mongoose;
+try {
+  mongoose = require('mongoose');
+} catch (_) {}
+
+const isDbConnected = () => Boolean(mongoose && mongoose.connection && mongoose.connection.readyState === 1);
+
+// key (purpose:email) -> { otpHash, expiresAt, lastSentAt, resendCount }
 const otpStore = new Map();
 
 // Daily in-memory count fallback: email:YYYY-MM-DD -> count
 const dailyCountStore = new Map();
 
+// In-memory lockout store: cleanEmail -> { failedAttempts, lockUntil }
+const lockStore = new Map();
+
 const OTP_COOLDOWN_SECONDS = Number(process.env.OTP_RESEND_COOLDOWN || 30);
 const MAX_DAILY_OTP_ATTEMPTS = 5;
-const OTP_LOCKOUT_SECONDS = 30; // 30 sec cooldown after 3 wrong attempts
-const OTP_EXPIRY_MINUTES = 1; // 1 OTP is valid for 1 minute
+const MAX_FAILED_OTP_ATTEMPTS = 5;
+const OTP_LOCKOUT_MS = 24 * 60 * 60 * 1000; // 24 hours lock
+const OTP_LOCKOUT_SECONDS = 24 * 60 * 60; // 24 hours in seconds
+const OTP_EXPIRY_MINUTES = 2; // OTP is valid for exactly 2 minutes
 
 const generateOtp = (length = 4) => {
   const max = 10 ** length;
@@ -47,6 +59,232 @@ const getTodayDateStr = () => {
   return istDate.toISOString().slice(0, 10);
 };
 
+const formatLockUntil = (date) => {
+  const d = new Date(date);
+  return d.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }) + ' IST';
+};
+
+const getRoleFromPurpose = (purpose = '') => {
+  const p = String(purpose).toLowerCase();
+  if (p.includes('employee')) return 'employee';
+  if (p.includes('consultant')) return 'consultant';
+  if (p.includes('employer')) return 'employer';
+  return 'general';
+};
+
+const getRoleField = (role, type) => {
+  // type: 'FailedAttempts' | 'LockUntil'
+  if (role === 'employee' || role === 'employer' || role === 'consultant') {
+    return `${role}${type}`;
+  }
+  return type.charAt(0).toLowerCase() + type.slice(1);
+};
+
+const checkUserLockout = async (email, purpose = '') => {
+  const cleanEmail = normalizeEmail(email);
+  if (!cleanEmail) return;
+
+  const role = getRoleFromPurpose(purpose);
+  const lockKey = `${role}:${cleanEmail}`;
+  const lockUntilField = getRoleField(role, 'LockUntil');
+  const failedAttemptsField = getRoleField(role, 'FailedAttempts');
+
+  const now = Date.now();
+  let lockUntil = null;
+
+  // 1. Check in-memory store for this role
+  const mem = lockStore.get(lockKey);
+  if (mem && mem.lockUntil) {
+    lockUntil = new Date(mem.lockUntil);
+  }
+
+  // 2. Check DB OtpTracker for this role
+  if (OtpTracker && isDbConnected()) {
+    try {
+      const dbRecord = await OtpTracker.findOne({
+        email: cleanEmail,
+        [lockUntilField]: { $gt: new Date(now) },
+      }).sort({ [lockUntilField]: -1 });
+
+      if (dbRecord && dbRecord[lockUntilField]) {
+        lockUntil = dbRecord[lockUntilField];
+        lockStore.set(lockKey, {
+          failedAttempts: dbRecord[failedAttemptsField] || MAX_FAILED_OTP_ATTEMPTS,
+          lockUntil: new Date(lockUntil).getTime(),
+        });
+      }
+    } catch (dbErr) {
+      console.warn('[OtpTracker] Lock check error:', dbErr.message);
+    }
+  }
+
+  if (lockUntil && new Date(lockUntil).getTime() > now) {
+    const lockTimeStr = formatLockUntil(lockUntil);
+    const action = String(purpose).toLowerCase().includes('login') ? 'login' : 'verification';
+    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.`);
+    err.status = 429;
+    err.isLocked = true;
+    err.lockUntil = lockUntil;
+    err.remainingAttempts = 0;
+    err.role = role;
+    throw err;
+  }
+
+  // Auto-unlock and reset counter on next attempt after lockUntil has passed
+  if (lockUntil && new Date(lockUntil).getTime() <= now) {
+    await resetFailedAttempts(cleanEmail, purpose);
+  }
+};
+
+const recordFailedAttempt = async (email, purpose = '') => {
+  const cleanEmail = normalizeEmail(email);
+  const role = getRoleFromPurpose(purpose);
+  const lockKey = `${role}:${cleanEmail}`;
+  const failedAttemptsField = getRoleField(role, 'FailedAttempts');
+  const lockUntilField = getRoleField(role, 'LockUntil');
+
+  const now = Date.now();
+  const dateStr = getTodayDateStr();
+
+  let failedAttempts = 0;
+  const mem = lockStore.get(lockKey);
+  if (mem && typeof mem.failedAttempts === 'number') {
+    failedAttempts = mem.failedAttempts;
+  } else if (OtpTracker && isDbConnected()) {
+    try {
+      const tracker = await OtpTracker.findOne({ email: cleanEmail, date: dateStr });
+      if (tracker && typeof tracker[failedAttemptsField] === 'number') {
+        failedAttempts = tracker[failedAttemptsField];
+      }
+    } catch (_) {}
+  }
+
+  failedAttempts += 1;
+
+  if (failedAttempts >= MAX_FAILED_OTP_ATTEMPTS) {
+    const lockUntil = new Date(now + OTP_LOCKOUT_MS);
+    lockStore.set(lockKey, {
+      failedAttempts,
+      lockUntil: lockUntil.getTime(),
+    });
+
+    if (OtpTracker && isDbConnected()) {
+      try {
+        await OtpTracker.findOneAndUpdate(
+          { email: cleanEmail, date: dateStr },
+          { $set: { [failedAttemptsField]: failedAttempts, [lockUntilField]: lockUntil } },
+          { upsert: true, returnDocument: 'after' }
+        );
+      } catch (dbErr) {
+        console.warn('[OtpTracker] Lock update error:', dbErr.message);
+      }
+    }
+
+    const lockTimeStr = formatLockUntil(lockUntil);
+    const action = String(purpose).toLowerCase().includes('login') ? 'login' : 'verification';
+    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.`);
+    err.status = 429;
+    err.isLocked = true;
+    err.lockUntil = lockUntil;
+    err.remainingAttempts = 0;
+    err.role = role;
+    throw err;
+  } else {
+    lockStore.set(lockKey, {
+      failedAttempts,
+      lockUntil: null,
+    });
+
+    if (OtpTracker && isDbConnected()) {
+      try {
+        await OtpTracker.findOneAndUpdate(
+          { email: cleanEmail, date: dateStr },
+          { $set: { [failedAttemptsField]: failedAttempts } },
+          { upsert: true, returnDocument: 'after' }
+        );
+      } catch (dbErr) {
+        console.warn('[OtpTracker] Failed attempt increment error:', dbErr.message);
+      }
+    }
+
+    const remaining = MAX_FAILED_OTP_ATTEMPTS - failedAttempts;
+    const err = new Error(`Invalid OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
+    err.status = 400;
+    err.remainingAttempts = remaining;
+    err.role = role;
+    throw err;
+  }
+};
+
+const resetFailedAttempts = async (email, purpose = '') => {
+  const cleanEmail = normalizeEmail(email);
+  const role = getRoleFromPurpose(purpose);
+  const lockKey = `${role}:${cleanEmail}`;
+  const failedAttemptsField = getRoleField(role, 'FailedAttempts');
+  const lockUntilField = getRoleField(role, 'LockUntil');
+
+  lockStore.delete(lockKey);
+
+  if (OtpTracker && isDbConnected()) {
+    try {
+      await OtpTracker.updateMany(
+        { email: cleanEmail },
+        { $set: { [failedAttemptsField]: 0, [lockUntilField]: null } }
+      );
+    } catch (dbErr) {
+      console.warn('[OtpTracker] Reset lock error:', dbErr.message);
+    }
+  }
+};
+
+const adminUnlockUser = async (email, role = '') => {
+  const cleanEmail = normalizeEmail(email);
+  if (!cleanEmail) return false;
+
+  const rolesToClear = role && role !== 'all' ? [role] : ['employee', 'employer', 'consultant', 'general'];
+
+  // 1. Clear in-memory lockStore
+  for (const r of rolesToClear) {
+    lockStore.delete(`${r}:${cleanEmail}`);
+  }
+  lockStore.delete(cleanEmail);
+
+  // 2. Clear any pending blocked OTP records in otpStore
+  for (const [key] of otpStore.entries()) {
+    if (key.includes(cleanEmail)) {
+      otpStore.delete(key);
+    }
+  }
+
+  // 3. Clear in MongoDB OtpTracker
+  if (OtpTracker && isDbConnected()) {
+    try {
+      const updateObj = {};
+      for (const r of rolesToClear) {
+        const failedAttemptsField = getRoleField(r, 'FailedAttempts');
+        const lockUntilField = getRoleField(r, 'LockUntil');
+        updateObj[failedAttemptsField] = 0;
+        updateObj[lockUntilField] = null;
+      }
+      await OtpTracker.updateMany(
+        { email: cleanEmail },
+        { $set: updateObj }
+      );
+    } catch (dbErr) {
+      console.warn('[OtpTracker] Admin unlock error:', dbErr.message);
+    }
+  }
+  return true;
+};
+
 const getRemainingCooldown = (key) => {
   const record = otpStore.get(key);
   if (!record || !record.lastSentAt) return 0;
@@ -66,7 +304,7 @@ const checkAndIncrementDailyLimit = async (email) => {
 
   let currentCount = dailyCountStore.get(memKey) || 0;
 
-  if (OtpTracker) {
+  if (OtpTracker && isDbConnected()) {
     try {
       const tracker = await OtpTracker.findOne({ email: cleanEmail, date: dateStr });
       if (tracker) {
@@ -88,7 +326,7 @@ const checkAndIncrementDailyLimit = async (email) => {
   const newCount = currentCount + 1;
   dailyCountStore.set(memKey, newCount);
 
-  if (OtpTracker) {
+  if (OtpTracker && isDbConnected()) {
     try {
       await OtpTracker.findOneAndUpdate(
         { email: cleanEmail, date: dateStr },
@@ -114,7 +352,7 @@ const rollbackDailyLimit = async (email) => {
     dailyCountStore.set(memKey, current - 1);
   }
 
-  if (OtpTracker) {
+  if (OtpTracker && isDbConnected()) {
     try {
       await OtpTracker.findOneAndUpdate(
         { email: cleanEmail, date: dateStr },
@@ -132,13 +370,16 @@ const saveOtp = (email, otp, expiryMinutes = OTP_EXPIRY_MINUTES, purpose = 'regi
     expiresAt: Date.now() + expiryMinutes * 60 * 1000,
     lastSentAt: Date.now(),
     resendCount: existing ? (existing.resendCount || 0) + 1 : 0,
-    wrongAttempts: existing ? (existing.wrongAttempts || 0) : 0,
-    lockedUntil: existing ? (existing.lockedUntil || 0) : 0,
   });
 };
 
-const consumeOtp = (email, otp, purpose = 'registration', consume = true) => {
-  const key = getStoreKey(email, purpose);
+const consumeOtp = async (email, otp, purpose = 'registration', consume = true) => {
+  const cleanEmail = normalizeEmail(email);
+  const key = getStoreKey(cleanEmail, purpose);
+
+  // 1. Check if user is locked out (24 hours after 5 failed attempts)
+  await checkUserLockout(cleanEmail, purpose);
+
   const record = otpStore.get(key);
 
   if (!record) {
@@ -147,47 +388,21 @@ const consumeOtp = (email, otp, purpose = 'registration', consume = true) => {
     throw err;
   }
 
-  // 1. Check if user is locked out after 3 wrong attempts
-  if (record.lockedUntil && Date.now() < record.lockedUntil) {
-    const remainingLockSec = Math.ceil((record.lockedUntil - Date.now()) / 1000);
-    const err = new Error(`3 incorrect OTP attempts. Please wait ${remainingLockSec}s before trying again.`);
-    err.status = 429;
-    err.cooldownRemaining = remainingLockSec;
-    err.isLocked = true;
-    throw err;
-  }
-
-  // 2. Check if OTP is expired (1 minute validity)
+  // 2. Check if OTP is expired (exactly 2 minutes validity)
   if (Date.now() > record.expiresAt) {
     otpStore.delete(key);
-    const err = new Error('OTP has expired (valid for 1 minute). Please request a new OTP.');
+    const err = new Error('OTP has expired. Please request a new one.');
     err.status = 400;
     throw err;
   }
 
   // 3. Check OTP match
   if (hashOtp(otp) !== record.otpHash) {
-    record.wrongAttempts = (record.wrongAttempts || 0) + 1;
-    if (record.wrongAttempts >= 3) {
-      record.lockedUntil = Date.now() + OTP_LOCKOUT_SECONDS * 1000;
-      record.wrongAttempts = 0; // reset for subsequent round
-      const err = new Error(`3 incorrect OTP attempts. Please wait ${OTP_LOCKOUT_SECONDS} seconds before trying again.`);
-      err.status = 429;
-      err.cooldownRemaining = OTP_LOCKOUT_SECONDS;
-      err.isLocked = true;
-      throw err;
-    } else {
-      const remaining = 3 - record.wrongAttempts;
-      const err = new Error(`Invalid OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before 30s lockout.`);
-      err.status = 400;
-      err.remainingAttempts = remaining;
-      throw err;
-    }
+    await recordFailedAttempt(cleanEmail, purpose);
   }
 
-  // If correct, reset wrong attempts and lockout
-  record.wrongAttempts = 0;
-  record.lockedUntil = 0;
+  // If correct, reset failed attempts
+  await resetFailedAttempts(cleanEmail, purpose);
 
   if (consume) {
     otpStore.delete(key);
@@ -223,6 +438,9 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
     throw err;
   }
 
+  // 1. Check 24-hour lockout (after 5 failed attempts) before sending OTP
+  await checkUserLockout(toEmail, purpose);
+
   const key = getStoreKey(toEmail, purpose);
   const remainingCooldown = getRemainingCooldown(key);
   if (remainingCooldown > 0) {
@@ -232,12 +450,12 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
     throw err;
   }
 
-  // 1. Enforce Daily Limit (Maximum 5 times per day)
+  // 2. Enforce Daily Limit (Maximum 5 times per day)
   await checkAndIncrementDailyLimit(toEmail);
 
-  // 2. Set OTP parameters: 1 minute expiry
+  // 3. Set OTP parameters: 2 minutes expiry
   const otpLength = Number(process.env.MSG91_OTP_LENGTH || 4);
-  const otpExpiryMinutes = OTP_EXPIRY_MINUTES; // 1 minute
+  const otpExpiryMinutes = OTP_EXPIRY_MINUTES; // 2 minutes
   const companyName = process.env.MSG91_COMPANY_NAME || 'sahijob.com';
 
   const otp = generateOtp(otpLength);
@@ -246,7 +464,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
   console.log(`\n========================================`);
   console.log(`⚡ [OTP DISPATCHED] Purpose: ${purpose}`);
   console.log(`Recipient: ${toEmail} | Code: ${otp}`);
-  console.log(`Expires in: ${otpExpiryMinutes}m (60s) | Cooldown: ${OTP_COOLDOWN_SECONDS}s`);
+  console.log(`Expires in: ${otpExpiryMinutes}m (120s) | Cooldown: ${OTP_COOLDOWN_SECONDS}s`);
   console.log(`========================================\n`);
 
   const isPasswordReset = purpose.includes('forgot') || purpose.includes('password');
@@ -263,7 +481,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
         <div style="text-align: center; margin: 28px 0;">
           <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #0d9488; padding: 14px 28px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 8px; display: inline-block;">${otp}</span>
         </div>
-        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>1 minute</strong>. If you did not request a password reset, please disregard this message or contact support immediately.</p>
+        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>2 minutes</strong>. If you did not request a password reset, please disregard this message or contact support immediately.</p>
       </div>
     `
     : `
@@ -274,7 +492,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
         <div style="text-align: center; margin: 28px 0;">
           <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #0d9488; padding: 14px 28px; background: #f0fdfa; border: 1px dashed #0d9488; border-radius: 8px; display: inline-block;">${otp}</span>
         </div>
-        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>1 minute</strong>. Please do not share this code with anyone.</p>
+        <p style="color: #64748b; font-size: 13px;">This OTP is valid for <strong>2 minutes</strong>. Please do not share this code with anyone.</p>
       </div>
     `;
 
@@ -309,7 +527,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
       return {
         message: 'OTP sent successfully to your email',
         cooldownSeconds: OTP_COOLDOWN_SECONDS,
-        expiresInSeconds: 60,
+        expiresInSeconds: 120,
         provider: resendData,
       };
     } catch (resendErr) {
@@ -339,7 +557,7 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
       return {
         message: 'OTP sent successfully to your email',
         cooldownSeconds: OTP_COOLDOWN_SECONDS,
-        expiresInSeconds: 60,
+        expiresInSeconds: 120,
         provider: info,
       };
     } catch (error) {
@@ -358,12 +576,12 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
   console.log(`\n========================================`);
   console.log(`[DEV OTP SERVICE] Purpose: ${purpose}`);
   console.log(`Recipient: ${toEmail} | OTP: ${otp}`);
-  console.log(`Expires in: 1 minute (60s) | Max Daily: 5 times`);
+  console.log(`Expires in: 2 minutes (120s) | Max Daily: 5 times`);
   console.log(`========================================\n`);
   return {
     message: 'OTP sent successfully to your email',
     cooldownSeconds: OTP_COOLDOWN_SECONDS,
-    expiresInSeconds: 60,
+    expiresInSeconds: 120,
   };
 };
 
@@ -383,7 +601,7 @@ const verifyOtp = async ({ email, otp, purpose = 'registration', consume = true 
     err.status = 400;
     throw err;
   }
-  consumeOtp(toEmail, otp, purpose, consume);
+  await consumeOtp(toEmail, otp, purpose, consume);
   return { message: 'OTP verified successfully' };
 };
 
@@ -391,6 +609,7 @@ module.exports = {
   sendOtp,
   verifyOtp,
   resendOtp,
+  adminUnlockUser,
   getRemainingCooldown: (email, purpose) => getRemainingCooldown(getStoreKey(email, purpose)),
   OTP_COOLDOWN_SECONDS,
   OTP_LOCKOUT_SECONDS,

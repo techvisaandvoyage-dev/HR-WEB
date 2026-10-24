@@ -624,7 +624,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
         setShowOtpBox(true);
         setOtp(['', '', '', '']);
         setResendTimer(data.cooldownSeconds || 30);
-        setValidityTimer(data.expiresInSeconds || 60);
+        setValidityTimer(data.expiresInSeconds || 120);
         setLockoutTimer(0);
         setSuccessMessage('A 4-digit verification code has been sent to your email.');
       }
@@ -665,7 +665,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
       } else {
         setOtp(['', '', '', '']);
         setResendTimer(data.cooldownSeconds || 30);
-        setValidityTimer(data.expiresInSeconds || 60);
+        setValidityTimer(data.expiresInSeconds || 120);
         setLockoutTimer(0);
         setSuccessMessage('A fresh OTP has been sent to your email!');
       }
@@ -1366,23 +1366,17 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
                           <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          Valid for: <strong className="font-bold">{Math.floor(validityTimer / 60)}:{String(validityTimer % 60).padStart(2, '0')}</strong> (1 min)
+                          Valid for: <strong className="font-bold">{Math.floor(validityTimer / 60)}:{String(validityTimer % 60).padStart(2, '0')}</strong> (2 min)
                         </span>
                       ) : (
                         <span className="text-red-500 font-semibold flex items-center gap-1">
                           <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          OTP expired (1 min validity). Please click Resend.
+                          OTP expired (2 min validity). Please click Resend.
                         </span>
                       )}
                     </div>
-
-                    {lockoutTimer > 0 && (
-                      <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-center text-xs text-red-700 font-bold animate-pulse mb-2">
-                        🔒 3 incorrect attempts. Please wait <strong className="font-extrabold">{lockoutTimer}s</strong> before trying again.
-                      </div>
-                    )}
 
                     <div className="space-y-3">
                       <label className="block text-sm font-bold text-gray-900 text-center">

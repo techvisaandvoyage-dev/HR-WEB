@@ -60,6 +60,9 @@ app.use('/api/education', require('./routes/educationRoutes'));
 app.use('/api/institutions', require('./routes/institutionRoutes'));
 app.use('/api/occupations', require('./routes/occupationRoutes'));
 app.use('/api/companies', require('./routes/companyRoutes'));
+app.use('/api/support', require('./routes/supportRoutes'));
+app.use('/api/admin/support', require('./routes/adminSupportRoutes'));
+app.use('/api/admin/otp-locks', require('./routes/adminOtpLockRoutes'));
 
 // SEO, Sitemap & Robots
 const seoRoutes = require('./routes/seoRoutes');
@@ -103,5 +106,8 @@ server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   // Initialize automated 15-day database backup scheduler
   initBackupScheduler();
+  // Idempotently seed default support problems
+  const { seedSupportProblems } = require('./controllers/supportController');
+  seedSupportProblems();
 });
 

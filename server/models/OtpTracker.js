@@ -21,6 +21,39 @@ const OtpTrackerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  failedAttempts: {
+    type: Number,
+    default: 0,
+  },
+  lockUntil: {
+    type: Date,
+    default: null,
+  },
+  // Role-specific failed attempts and lock timestamps
+  employeeFailedAttempts: {
+    type: Number,
+    default: 0,
+  },
+  employeeLockUntil: {
+    type: Date,
+    default: null,
+  },
+  employerFailedAttempts: {
+    type: Number,
+    default: 0,
+  },
+  employerLockUntil: {
+    type: Date,
+    default: null,
+  },
+  consultantFailedAttempts: {
+    type: Number,
+    default: 0,
+  },
+  consultantLockUntil: {
+    type: Date,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -86,10 +86,11 @@ exports.sendRegistrationOtp = async (req, res) => {
       }
     }
 
+    const isConsultantRole = Boolean(isConsultant || hiringFor === 'consultant');
     const result = await sendOtp({
       email,
       name: fullName || email.split('@')[0],
-      purpose: 'registration:employer',
+      purpose: isConsultantRole ? 'registration:consultant' : 'registration:employer',
     });
 
     res.json({
@@ -118,10 +119,11 @@ exports.resendRegistrationOtp = async (req, res) => {
       return res.status(400).json({ message: 'Email is required to resend OTP' });
     }
 
+    const isConsultant = Boolean(req.body.isConsultant || req.body.hiringFor === 'consultant');
     const result = await resendOtp({
       email,
       name: fullName || email.split('@')[0],
-      purpose: 'registration:employer',
+      purpose: isConsultant ? 'registration:consultant' : 'registration:employer',
     });
 
     res.json({
@@ -150,10 +152,11 @@ exports.verifyRegistrationOtp = async (req, res) => {
       return res.status(400).json({ message: 'Email and OTP are required' });
     }
 
+    const isConsultant = Boolean(req.body.isConsultant || req.body.hiringFor === 'consultant');
     await verifyOtp({
       email,
       otp,
-      purpose: 'registration:employer',
+      purpose: isConsultant ? 'registration:consultant' : 'registration:employer',
       consume: false,
     });
 
@@ -243,11 +246,12 @@ exports.register = async (req, res) => {
 
     // If OTP was provided, verify and consume it
     if (otp) {
+      const isConsultant = Boolean(req.body.isConsultant || req.body.hiringFor === 'consultant' || employer?.isConsultant);
       try {
         await verifyOtp({
           email: cleanEmail,
           otp,
-          purpose: 'registration:employer',
+          purpose: isConsultant ? 'registration:consultant' : 'registration:employer',
           consume: true,
         });
       } catch (otpErr) {
@@ -911,10 +915,11 @@ exports.googleAuth = async (req, res) => {
       }
     }
 
+    const isConsultantAcc = Boolean(employer.isConsultant === true || req.body.isConsultant === true);
     const result = await sendOtp({
       email: employer.email,
-      name: employer.fullName || 'Employer',
-      purpose: 'login:employer',
+      name: employer.fullName || (isConsultantAcc ? 'Consultant' : 'Employer'),
+      purpose: isConsultantAcc ? 'login:consultant' : 'login:employer',
     });
 
     res.json({
@@ -951,10 +956,11 @@ exports.resendLoginOtp = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Employer not found with this email.' });
     }
 
+    const isConsultantAcc = Boolean(employer.isConsultant === true);
     const result = await resendOtp({
       email: employer.email,
-      name: employer.fullName || 'Employer',
-      purpose: 'login:employer',
+      name: employer.fullName || (isConsultantAcc ? 'Consultant' : 'Employer'),
+      purpose: isConsultantAcc ? 'login:consultant' : 'login:employer',
     });
 
     res.json({
@@ -993,10 +999,11 @@ exports.verifyLoginOtp = async (req, res) => {
 
     // Verify OTP
     try {
+      const isConsultantAcc = Boolean(employer.isConsultant === true);
       await verifyOtp({
         email: employer.email,
         otp: String(otp).trim(),
-        purpose: 'login:employer',
+        purpose: isConsultantAcc ? 'login:consultant' : 'login:employer',
         consume: true,
       });
     } catch (otpErr) {
