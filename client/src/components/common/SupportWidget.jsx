@@ -12,9 +12,25 @@ export default function SupportWidget() {
     return null;
   }
 
+  // Helper to check if a user is logged in
+  const checkUserLoggedIn = () => {
+    try {
+      return Boolean(
+        localStorage.getItem('employeeToken') ||
+        localStorage.getItem('employerToken') ||
+        localStorage.getItem('token') ||
+        localStorage.getItem('userProfile')
+      );
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const isUserLoggedIn = checkUserLoggedIn();
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('new'); // 'new' | 'updates'
-  const [step, setStep] = useState(1); // 1 = Contact Details Form first, 2 = Options & Issue selection
+  const [step, setStep] = useState(() => (checkUserLoggedIn() ? 2 : 1)); // 2 = direct problems if logged in, 1 = contact form if visitor
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [problemFetchError, setProblemFetchError] = useState('');
@@ -23,12 +39,36 @@ export default function SupportWidget() {
   const [selectedRole, setSelectedRole] = useState('employee'); // 'employee' | 'employer' | 'consultant'
   const [selectedProblemId, setSelectedProblemId] = useState('');
 
-  // Contact details fields (Shown FIRST in Step 1)
-  const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
+  // Contact details fields (Pre-filled from storage if available)
+  const [contactName, setContactName] = useState(() => {
+    try {
+      const stored = localStorage.getItem('userProfile');
+      if (stored) {
+        const p = JSON.parse(stored);
+        return p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || '';
+      }
+    } catch (_) {}
+    return '';
+  });
+  const [contactEmail, setContactEmail] = useState(() => {
+    try {
+      const stored = localStorage.getItem('userProfile');
+      if (stored) return JSON.parse(stored).email || '';
+    } catch (_) {}
+    return '';
+  });
   const [countryIso, setCountryIso] = useState('IN');
   const [countryCode, setCountryCode] = useState('+91');
-  const [contactPhone, setContactPhone] = useState('');
+  const [contactPhone, setContactPhone] = useState(() => {
+    try {
+      const stored = localStorage.getItem('userProfile');
+      if (stored) {
+        const mob = JSON.parse(stored).mobile;
+        if (mob) return String(mob).replace(/\D/g, '').slice(-10);
+      }
+    } catch (_) {}
+    return '';
+  });
   const [contactErrors, setContactErrors] = useState({});
 
   // Active / Submitted Request Tracking state
@@ -60,17 +100,18 @@ export default function SupportWidget() {
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Auto pre-fill contact details from logged-in userProfile or drafts if available, but ALWAYS allow editing
-  const prefillFromStorage = () => {
+  // Auto pre-fill contact details from logged-in userProfile or employer account
+  const prefillFromStorage = async () => {
     try {
+      // 1. Employee / Candidate Profile
       const storedProfile = localStorage.getItem('userProfile');
       if (storedProfile) {
         const parsed = JSON.parse(storedProfile);
         const nameCandidate = parsed.name || `${parsed.firstName || ''} ${parsed.lastName || ''}`.trim();
-        if (nameCandidate && !contactName) setContactName(nameCandidate);
-        if (parsed.email && !contactEmail) setContactEmail(parsed.email);
+        if (nameCandidate) setContactName(nameCandidate);
+        if (parsed.email) setContactEmail(parsed.email);
         if (parsed.countryCode) {
-          const match = COUNTRY_CODES.find(c => c.code === parsed.countryCode);
+          const match = COUNTRY_CODES.find((c) => c.code === parsed.countryCode);
           if (match) {
             setCountryCode(match.code);
             setCountryIso(match.country);
@@ -78,13 +119,13 @@ export default function SupportWidget() {
             setCountryCode(parsed.countryCode);
           }
         }
-        if (parsed.mobile && !contactPhone) {
+        if (parsed.mobile) {
           const rawMob = String(parsed.mobile).trim();
           if (rawMob.startsWith('+')) {
             const parts = rawMob.split(' ');
             if (parts.length > 1) {
               const codeCandidate = parts[0];
-              const match = COUNTRY_CODES.find(c => c.code === codeCandidate);
+              const match = COUNTRY_CODES.find((c) => c.code === codeCandidate);
               if (match) {
                 setCountryCode(match.code);
                 setCountryIso(match.country);
@@ -97,6 +138,44 @@ export default function SupportWidget() {
             setContactPhone(rawMob.replace(/\D/g, '').slice(0, 10));
           }
         }
+        setSelectedRole('employee');
+      }
+
+      // 2. Employer Profile (if employer token exists)
+      const empToken = localStorage.getItem('employerToken');
+      if (empToken) {
+        const isConsultantRoute = window.location.pathname.includes('/consultant');
+        setSelectedRole(isConsultantRoute ? 'consultant' : 'employer');
+        try {
+          const res = await fetch(`${API_URL}/api/employer/auth/me`, {
+            headers: { Authorization: `Bearer ${empToken}` },
+          });
+          const data = await res.json();
+          if (data.success && data.data) {
+            const emp = data.data;
+            if (emp.fullName) setContactName(emp.fullName);
+            if (emp.email) setContactEmail(emp.email);
+            if (emp.isConsultant) setSelectedRole('consultant');
+            if (emp.mobile) {
+              const rawMob = String(emp.mobile).trim();
+              if (rawMob.startsWith('+')) {
+                const parts = rawMob.split(' ');
+                if (parts.length > 1) {
+                  const match = COUNTRY_CODES.find((c) => c.code === parts[0]);
+                  if (match) {
+                    setCountryCode(match.code);
+                    setCountryIso(match.country);
+                  }
+                  setContactPhone(parts.slice(1).join('').replace(/\D/g, '').slice(0, 10));
+                } else {
+                  setContactPhone(rawMob.replace(/\D/g, '').slice(-10));
+                }
+              } else {
+                setContactPhone(rawMob.replace(/\D/g, '').slice(0, 10));
+              }
+            }
+          }
+        } catch (_) {}
       }
     } catch (_) {}
   };
@@ -104,7 +183,9 @@ export default function SupportWidget() {
   // When widget is opened
   useEffect(() => {
     if (isOpen) {
-      setStep(1); // ALWAYS show contact form first
+      const loggedIn = checkUserLoggedIn();
+      // If logged in: skip Step 1 contact form and go straight to Step 2 problems
+      setStep(loggedIn ? 2 : 1);
       prefillFromStorage();
       fetchProblems();
 
@@ -180,7 +261,7 @@ export default function SupportWidget() {
     setContactErrors({});
     setSubmitError('');
     setSubmitSuccess(false);
-    setStep(1);
+    setStep(checkUserLoggedIn() ? 2 : 1);
   };
 
   const handleClose = () => {
@@ -538,9 +619,19 @@ export default function SupportWidget() {
                     <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Your Contact Details</h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">Please fill your details to see support options</p>
                   </div>
-                  <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                    Step 1 of 2
-                  </span>
+                  {isUserLoggedIn ? (
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="text-xs font-bold text-palette-900 hover:underline cursor-pointer"
+                    >
+                      ← Back to Issues
+                    </button>
+                  ) : (
+                    <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                      Step 1 of 2
+                    </span>
+                  )}
                 </div>
 
                 {submitError && (
@@ -676,32 +767,48 @@ export default function SupportWidget() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Back button & User summary */}
                 <div className="flex items-center justify-between pb-1">
-                  <button
-                    type="button"
-                    onClick={() => { setStep(1); setSubmitError(''); }}
-                    className="text-xs font-bold text-gray-500 hover:text-palette-900 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    ← Back to Details
-                  </button>
+                  {isUserLoggedIn ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="text-xs font-black text-gray-900">
+                        {contactName ? `Hi, ${contactName.split(' ')[0]}` : 'Select Your Issue'}
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setStep(1); setSubmitError(''); }}
+                      className="text-xs font-bold text-gray-500 hover:text-palette-900 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      ← Back to Details
+                    </button>
+                  )}
                   <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Step 2 of 2
+                    {isUserLoggedIn ? 'Direct Support' : 'Step 2 of 2'}
                   </span>
                 </div>
 
                 {/* Contact Pill Banner */}
-                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
-                  <div className="truncate">
-                    <span className="font-extrabold text-gray-900">{contactName}</span>
-                    <span className="text-gray-500 text-[11px]"> ({contactEmail} • {countryCode} {contactPhone})</span>
+                {(contactName || contactEmail) && (
+                  <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
+                    <div className="truncate">
+                      <span className="font-extrabold text-gray-900">{contactName || 'Logged In Account'}</span>
+                      {(contactEmail || contactPhone) && (
+                        <span className="text-gray-500 text-[11px]">
+                          {' '}({contactEmail}{contactPhone ? ` • ${countryCode} ${contactPhone}` : ''})
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="text-[11px] font-bold text-palette-900 hover:underline shrink-0 ml-2 cursor-pointer"
+                      title="Edit contact details"
+                    >
+                      Edit
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="text-[11px] font-bold text-palette-900 hover:underline shrink-0 ml-2 cursor-pointer"
-                  >
-                    Edit
-                  </button>
-                </div>
+                )}
 
                 {submitError && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-semibold flex items-start gap-2">
