@@ -13,9 +13,24 @@ const adminAuth = (req, res, next) => {
     adminSecretHeader &&
     (adminSecretHeader === process.env.ADMIN_SECRET || adminSecretHeader === 'sahijob_admin_secret_2026')
   );
-  const hasBearerToken = Boolean(authHeader && authHeader.startsWith('Bearer '));
+  const jwt = require('jsonwebtoken');
 
-  if (isSessionAdmin || isSecretAdmin || hasBearerToken) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretjwtkey_replace_me_in_production');
+      if (decoded && (decoded.role === 'admin' || decoded.id === 'admin')) {
+        req.admin = {
+          id: decoded.id || 'admin',
+          email: decoded.email,
+          role: 'admin',
+        };
+        return next();
+      }
+    } catch (_) {}
+  }
+
+  if (isSessionAdmin || isSecretAdmin) {
     req.admin = {
       id: 'admin',
       role: 'admin',

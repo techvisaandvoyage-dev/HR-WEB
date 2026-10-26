@@ -100,6 +100,9 @@ function App() {
       onSelectTab={handleSelectTab}
       onLogout={() => {
         sessionStorage.removeItem('adminAuthenticated');
+        sessionStorage.removeItem('adminToken');
+        sessionStorage.removeItem('adminEmail');
+        localStorage.removeItem('adminToken');
         setIsAuthenticated(false);
       }}
     >

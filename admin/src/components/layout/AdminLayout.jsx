@@ -100,11 +100,13 @@ export default function AdminLayout({ children, activeTab, onSelectTab, onLogout
 
           {/* Right Admin Profile & Actions */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full">
-              <div className="w-6 h-6 rounded-full bg-green-700 text-white flex items-center justify-center text-xs font-black">
-                A
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full max-w-[200px]">
+              <div className="w-6 h-6 rounded-full bg-green-700 text-white flex items-center justify-center text-xs font-black shrink-0">
+                {(sessionStorage.getItem('adminEmail') || 'A')[0].toUpperCase()}
               </div>
-              <span className="text-xs font-bold text-gray-800">Admin User</span>
+              <span className="text-xs font-bold text-gray-800 truncate" title={sessionStorage.getItem('adminEmail') || 'Admin User'}>
+                {sessionStorage.getItem('adminEmail') ? sessionStorage.getItem('adminEmail').split('@')[0] : 'Admin User'}
+              </span>
             </div>
 
             <button

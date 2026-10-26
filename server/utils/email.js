@@ -476,12 +476,32 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
   console.log(`Expires in: ${otpExpiryMinutes}m (120s) | Cooldown: ${OTP_COOLDOWN_SECONDS}s`);
   console.log(`========================================\n`);
 
+  const isAdminLogin = purpose.includes('admin');
   const isPasswordReset = purpose.includes('forgot') || purpose.includes('password');
-  const subject = isPasswordReset
+  const subject = isAdminLogin
+    ? `${otp} is your Admin Portal login code for ${companyName}`
+    : isPasswordReset
     ? `${otp} is your password reset OTP for ${companyName}`
     : `${otp} is your verification code for ${companyName}`;
 
-  const html = isPasswordReset
+  const html = isAdminLogin
+    ? `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #d1fae5; border-radius: 12px; background: #ffffff;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <h2 style="color: #065f46; margin: 0;">🛡️ Admin Portal Authentication</h2>
+          <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Authorized Management Access Verification</p>
+        </div>
+        <p style="color: #334155; font-size: 15px;">Hello Administrator,</p>
+        <p style="color: #475569; font-size: 14px; line-height: 1.5;">A login request was initiated for the <strong>${companyName} Admin Portal</strong>. Please use the one-time verification code below to complete your sign-in:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #065f46; padding: 14px 28px; background: #ecfdf5; border: 1.5px dashed #059669; border-radius: 10px; display: inline-block;">${otp}</span>
+        </div>
+        <p style="color: #64748b; font-size: 12px; line-height: 1.5;">This code is strictly confidential and expires in <strong>2 minutes</strong>. If you did not initiate this login request, please investigate your account security immediately.</p>
+        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+        <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0;">&copy; ${new Date().getFullYear()} ${companyName}. Secure Admin Access Protocol.</p>
+      </div>
+    `
+    : isPasswordReset
     ? `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
         <h2 style="color: #0d9488; margin-bottom: 8px;">Password Reset Request</h2>
