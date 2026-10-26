@@ -305,7 +305,7 @@ export default function SupportWidget() {
       return;
     }
 
-    if (!validateContact()) {
+    if (!isUserLoggedIn && !validateContact()) {
       setStep(1);
       setSubmitError('Please verify your contact details.');
       return;
@@ -326,12 +326,12 @@ export default function SupportWidget() {
         headers['Authorization'] = `Bearer ${activeToken}`;
       }
 
-      const fullPhone = `${countryCode} ${contactPhone.trim()}`.trim();
+      const fullPhone = contactPhone ? `${countryCode} ${contactPhone.trim()}`.trim() : '';
       const bodyPayload = {
         problemId: selectedProblemId,
         targetRole: selectedRole,
-        name: contactName.trim(),
-        email: contactEmail.trim().toLowerCase(),
+        name: contactName?.trim() || '',
+        email: contactEmail?.trim()?.toLowerCase() || '',
         phone: fullPhone,
       };
 
@@ -609,7 +609,7 @@ export default function SupportWidget() {
                   </button>
                 </div>
               </div>
-            ) : step === 1 ? (
+            ) : step === 1 && !isUserLoggedIn ? (
               /* ========================================================
                * STEP 1: ONLY CONTACT DETAILS FORM (FIRST)
                * ======================================================== */
@@ -765,16 +765,9 @@ export default function SupportWidget() {
                * STEP 2: OPTIONS & ISSUE SELECTION (AFTER FORM FILLED)
                * ======================================================== */
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Back button & User summary */}
-                <div className="flex items-center justify-between pb-1">
-                  {isUserLoggedIn ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span className="text-xs font-black text-gray-900">
-                        {contactName ? `Hi, ${contactName.split(' ')[0]}` : 'Select Your Issue'}
-                      </span>
-                    </div>
-                  ) : (
+                {/* Back button & User summary (ONLY FOR GUEST USERS) */}
+                {!isUserLoggedIn && (
+                  <div className="flex items-center justify-between pb-1">
                     <button
                       type="button"
                       onClick={() => { setStep(1); setSubmitError(''); }}
@@ -782,17 +775,17 @@ export default function SupportWidget() {
                     >
                       ← Back to Details
                     </button>
-                  )}
-                  <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    {isUserLoggedIn ? 'Direct Support' : 'Step 2 of 2'}
-                  </span>
-                </div>
+                    <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Step 2 of 2
+                    </span>
+                  </div>
+                )}
 
-                {/* Contact Pill Banner */}
-                {(contactName || contactEmail) && (
+                {/* Contact Pill Banner (ONLY FOR GUEST USERS) */}
+                {!isUserLoggedIn && (contactName || contactEmail) && (
                   <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
                     <div className="truncate">
-                      <span className="font-extrabold text-gray-900">{contactName || 'Logged In Account'}</span>
+                      <span className="font-extrabold text-gray-900">{contactName || 'Guest'}</span>
                       {(contactEmail || contactPhone) && (
                         <span className="text-gray-500 text-[11px]">
                           {' '}({contactEmail}{contactPhone ? ` • ${countryCode} ${contactPhone}` : ''})
