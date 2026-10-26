@@ -22,8 +22,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const DEFAULT_SEO = {
   siteName: 'SahiJob',
-  metaTitle: 'SahiJob: Jobs - Recruitment - Job Search - Employment in India',
-  metaDescription: 'Connect with 10,000+ employers. Apply to thousands of job opportunities across top companies, industries and locations in India. Apply online.',
+  metaTitle: 'sahijob.com - Find Your Dream Job in India | Top Recruitment Portal',
+  metaDescription: 'Search and apply for top jobs in IT, Sales, Marketing, and Engineering across India on sahijob.com. Connect with verified employers and get hired.',
   canonicalUrl: 'https://sahijob.com',
   metaKeywords: 'jobs in india, freshers jobs, it jobs, marketing careers, sahijob, recruitment portal',
   favicon: '',

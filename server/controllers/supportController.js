@@ -93,52 +93,44 @@ exports.createSupportRequest = async (req, res) => {
     let finalEmail = '';
     let finalPhone = '';
 
-    // 2. Auth check: If user is authenticated, use DB details
+    // 2. Resolve Contact Details (prefer user-typed values, fall back to logged-in user profile if blank)
+    const { name, email, phone } = req.body;
+
     if (req.user && req.userType && req.userType !== 'guest') {
       finalUserType = req.userType;
       finalUserId = req.user._id;
-
-      if (req.userType === 'employee') {
-        finalName = req.user.name || 'Candidate';
-        finalEmail = (req.user.email || '').toLowerCase().trim();
-        finalPhone = req.user.mobile || '';
-      } else {
-        // Employer or Consultant
-        finalName = req.user.fullName || (req.user.isConsultant ? 'Consultant' : 'Employer');
-        finalEmail = (req.user.email || '').toLowerCase().trim();
-        finalPhone = req.user.mobile || '';
-      }
+      finalName = sanitizeString(name, 100) || (req.userType === 'employee' ? req.user.name : req.user.fullName) || 'User';
+      finalEmail = String(email || req.user.email || '').toLowerCase().trim();
+      finalPhone = sanitizeString(phone, 20) || req.user.mobile || '';
     } else {
-      // 3. Guest check: Validate input fields
-      const { name, email, phone } = req.body;
-
       finalName = sanitizeString(name, 100);
       finalEmail = String(email || '').trim().toLowerCase();
       finalPhone = sanitizeString(phone, 20);
+    }
 
-      if (!finalName) {
-        return res.status(400).json({
-          success: false,
-          message: 'Please enter your full name.',
-          field: 'name',
-        });
-      }
+    // 3. Validation: Name, Email & Phone must always be valid
+    if (!finalName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter your full name.',
+        field: 'name',
+      });
+    }
 
-      if (!finalEmail || !isValidEmail(finalEmail)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Please provide a valid email address.',
-          field: 'email',
-        });
-      }
+    if (!finalEmail || !isValidEmail(finalEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address.',
+        field: 'email',
+      });
+    }
 
-      if (!finalPhone || !isValidPhone(finalPhone)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Please provide a valid 10-digit mobile number.',
-          field: 'phone',
-        });
-      }
+    if (!finalPhone || !isValidPhone(finalPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid 10-digit mobile number.',
+        field: 'phone',
+      });
     }
 
     // 4. Spam protection: Check identical pending request (same user/email + same problem)
@@ -275,3 +267,88 @@ exports.seedSupportProblems = async () => {
     console.warn('⚠️ [Support] SupportProblem seed warning:', err.message);
   }
 };
+
+// Predefined follow-up options the user is allowed to choose from
+const ALLOWED_USER_FOLLOWUPS = [
+  "Yes, my issue is resolved. Thank you!",
+  "Still facing issue with OTP verification",
+  "I tried again, but still getting error",
+  "Please call me on my phone number",
+  "Waiting for resolution, please check soon",
+  "Please unlock my account, still showing locked"
+];
+
+/**
+ * @desc    Get status and messages for a submitted request
+ * @route   GET /api/support/requests/:id/messages
+ * @access  Public
+ */
+exports.getPublicRequestMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await SupportRequest.findById(id)
+      .select('problemText name email status messages createdAt resolvedAt hasUnreadAdminReply')
+      .lean();
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Support request not found.' });
+    }
+    return res.status(200).json({ 
+      success: true, 
+      data: request,
+      allowedFollowUps: ALLOWED_USER_FOLLOWUPS
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch status.' });
+  }
+};
+
+/**
+ * @desc    User sends a predefined follow-up response to admin
+ * @route   POST /api/support/requests/:id/followup
+ * @access  Public
+ */
+exports.submitUserFollowUp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { optionText } = req.body;
+
+    if (!optionText || !ALLOWED_USER_FOLLOWUPS.includes(String(optionText).trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid follow-up option selected.',
+        allowedOptions: ALLOWED_USER_FOLLOWUPS,
+      });
+    }
+
+    const request = await SupportRequest.findById(id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Support request not found.' });
+    }
+
+    request.messages.push({
+      sender: 'user',
+      text: String(optionText).trim(),
+      createdAt: new Date(),
+    });
+    
+    // If user says still facing issue, reopen status if it was resolved
+    const lower = optionText.toLowerCase();
+    if (lower.includes('still') || lower.includes('error') || lower.includes('locked')) {
+      request.status = 'pending';
+      request.resolvedAt = null;
+    }
+    await request.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Update sent to support team.',
+      data: request.messages[request.messages.length - 1],
+      allMessages: request.messages,
+    });
+  } catch (error) {
+    console.error('submitUserFollowUp error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to send follow-up.' });
+  }
+};
+
+exports.ALLOWED_USER_FOLLOWUPS = ALLOWED_USER_FOLLOWUPS;

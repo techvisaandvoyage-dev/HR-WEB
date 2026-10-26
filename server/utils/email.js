@@ -264,10 +264,19 @@ const adminUnlockUser = async (email, role = '') => {
     }
   }
 
-  // 3. Clear in MongoDB OtpTracker
+  // 3. Also reset in-memory daily count so user can immediately send OTP
+  const dateStr = getTodayDateStr();
+  const memKey = `${cleanEmail}:${dateStr}`;
+  dailyCountStore.delete(memKey);
+
+  // 4. Clear in MongoDB OtpTracker — reset both lock fields AND daily sendCount
   if (OtpTracker && isDbConnected()) {
     try {
-      const updateObj = {};
+      const updateObj = {
+        sendCount: 0,        // reset daily send limit so user can request OTP immediately
+        failedAttempts: 0,
+        lockUntil: null,
+      };
       for (const r of rolesToClear) {
         const failedAttemptsField = getRoleField(r, 'FailedAttempts');
         const lockUntilField = getRoleField(r, 'LockUntil');

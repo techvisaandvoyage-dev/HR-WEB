@@ -25,6 +25,8 @@ import {
   ShieldAlert,
   Lock,
   Unlock,
+  Send,
+  Copy,
 } from 'lucide-react';
 import OtpLockedUsers from './support/OtpLockedUsers';
 
@@ -63,6 +65,8 @@ export default function SupportTab() {
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [problemsError, setProblemsError] = useState('');
+  const [problemRoleFilter, setProblemRoleFilter] = useState('all'); // 'all' | 'employee' | 'employer' | 'consultant' | 'universal'
+  const [problemSearch, setProblemSearch] = useState('');
 
   // Problem modal state
   const [isProblemModalOpen, setIsProblemModalOpen] = useState(false);
@@ -76,6 +80,47 @@ export default function SupportTab() {
 
   // Delete problem confirmation
   const [problemToDelete, setProblemToDelete] = useState(null);
+
+  // Reply Modal State
+  const [replyRequest, setReplyRequest] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [replyError, setReplyError] = useState('');
+
+  const handleOpenReplyModal = (reqItem) => {
+    setReplyRequest(reqItem);
+    setReplyText('');
+    setReplyError('');
+  };
+
+  const handleSendReply = async (e) => {
+    if (e) e.preventDefault();
+    if (!replyText.trim() || !replyRequest) return;
+    setIsSendingReply(true);
+    setReplyError('');
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/requests/${replyRequest._id}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: replyText.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updatedMessages = data.allMessages || [...(replyRequest.messages || []), data.data];
+        setReplyRequest((prev) => ({ ...prev, messages: updatedMessages }));
+        setRequests((prev) =>
+          prev.map((r) => (r._id === replyRequest._id ? { ...r, messages: updatedMessages, hasUnreadAdminReply: true } : r))
+        );
+        setReplyText('');
+      } else {
+        setReplyError(data.message || 'Failed to send reply');
+      }
+    } catch (err) {
+      setReplyError('Network error sending reply');
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
 
   // Debounce search input (400ms)
   useEffect(() => {
@@ -291,10 +336,15 @@ export default function SupportTab() {
   };
 
   // Open problem modal for add
-  const handleOpenAddProblem = () => {
+  const handleOpenAddProblem = (prefilledRole) => {
     setEditingProblem(null);
     setProblemFormTitle('');
-    setProblemFormRole('all');
+    const targetRole =
+      prefilledRole ||
+      (['employee', 'employer', 'consultant'].includes(problemRoleFilter)
+        ? problemRoleFilter
+        : 'employee');
+    setProblemFormRole(targetRole);
     setProblemFormOrder(problems.length);
     setProblemFormActive(true);
     setProblemFormError('');
@@ -308,6 +358,17 @@ export default function SupportTab() {
     setProblemFormRole(prob.role || 'all');
     setProblemFormOrder(prob.order || 0);
     setProblemFormActive(Boolean(prob.isActive));
+    setProblemFormError('');
+    setIsProblemModalOpen(true);
+  };
+
+  // Duplicate problem
+  const handleDuplicateProblem = (prob) => {
+    setEditingProblem(null);
+    setProblemFormTitle(`${prob.title}`);
+    setProblemFormRole(prob.role || 'all');
+    setProblemFormOrder((prob.order || 0) + 1);
+    setProblemFormActive(true);
     setProblemFormError('');
     setIsProblemModalOpen(true);
   };
@@ -767,6 +828,22 @@ export default function SupportTab() {
                                 </button>
                               )}
 
+                              {/* Reply / Chat Thread Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenReplyModal(reqItem)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-xs transition-colors cursor-pointer"
+                                title="Reply to this request"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Reply</span>
+                                {reqItem.messages && reqItem.messages.length > 0 && (
+                                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-600 text-white font-extrabold">
+                                    {reqItem.messages.length}
+                                  </span>
+                                )}
+                              </button>
+
                               {isPending ? (
                                 <button
                                   type="button"
@@ -866,22 +943,154 @@ export default function SupportTab() {
        * ========================================================= */}
       {activeSubTab === 'problems' && (
         <div className="space-y-6">
+          {/* Header Card */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
             <div>
               <h2 className="text-base font-bold text-gray-900">Predefined Selection Problems</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                These are the role-categorized choices users can select in the floating widget.
+                Manage and customize the issue options available for Candidate, Employer, and Consultant in the support widget.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={handleOpenAddProblem}
+              onClick={() => handleOpenAddProblem()}
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-sm shadow-sm transition-colors cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>Add New Problem</span>
+              <span>
+                Add Problem {problemRoleFilter === 'employee' ? 'for Candidate' : problemRoleFilter === 'employer' ? 'for Employer' : problemRoleFilter === 'consultant' ? 'for Consultant' : ''}
+              </span>
             </button>
+          </div>
+
+          {/* Role Summary & Filter Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button
+              type="button"
+              onClick={() => setProblemRoleFilter('all')}
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                problemRoleFilter === 'all'
+                  ? 'border-green-600 bg-green-50/60 shadow-xs ring-1 ring-green-600'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-600">All Roles</span>
+                <span className="text-base font-extrabold text-gray-900">{problems.length}</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Total defined choices</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProblemRoleFilter('employee')}
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                problemRoleFilter === 'employee'
+                  ? 'border-blue-600 bg-blue-50/70 shadow-xs ring-1 ring-blue-600'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-700">👨‍💼 Candidate</span>
+                <span className="text-base font-extrabold text-blue-900">
+                  {problems.filter((p) => p.role === 'employee' || p.role === 'all').length}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Options visible to candidates</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProblemRoleFilter('employer')}
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                problemRoleFilter === 'employer'
+                  ? 'border-purple-600 bg-purple-50/70 shadow-xs ring-1 ring-purple-600'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-700">🏢 Employer</span>
+                <span className="text-base font-extrabold text-purple-900">
+                  {problems.filter((p) => p.role === 'employer' || p.role === 'all').length}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Options visible to employers</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setProblemRoleFilter('consultant')}
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                problemRoleFilter === 'consultant'
+                  ? 'border-amber-600 bg-amber-50/70 shadow-xs ring-1 ring-amber-600'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-700">🤝 Consultant</span>
+                <span className="text-base font-extrabold text-amber-900">
+                  {problems.filter((p) => p.role === 'consultant' || p.role === 'all').length}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Options visible to consultants</p>
+            </button>
+          </div>
+
+          {/* Filter Bar with Search and Tabs */}
+          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              {[
+                { id: 'all', label: 'All Roles', count: problems.length },
+                { id: 'employee', label: '👨‍💼 Candidate', count: problems.filter((p) => p.role === 'employee' || p.role === 'all').length },
+                { id: 'employer', label: '🏢 Employer', count: problems.filter((p) => p.role === 'employer' || p.role === 'all').length },
+                { id: 'consultant', label: '🤝 Consultant', count: problems.filter((p) => p.role === 'consultant' || p.role === 'all').length },
+                { id: 'universal', label: '🌐 Universal Only', count: problems.filter((p) => p.role === 'all').length },
+              ].map((tab) => {
+                const isActive = problemRoleFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setProblemRoleFilter(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-green-700 text-white shadow-xs'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-white text-gray-600'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full md:w-64">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={problemSearch}
+                onChange={(e) => setProblemSearch(e.target.value)}
+                placeholder="Search problem title..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
+              />
+              {problemSearch && (
+                <button
+                  type="button"
+                  onClick={() => setProblemSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Problems List Card */}
@@ -903,126 +1112,171 @@ export default function SupportTab() {
                   Retry
                 </button>
               </div>
-            ) : problems.length === 0 ? (
-              <div className="py-16 text-center space-y-3">
-                <SlidersHorizontal className="w-10 h-10 text-gray-300 mx-auto" />
-                <h4 className="text-base font-bold text-gray-800">No support problems defined</h4>
-                <p className="text-xs text-gray-500">Click "Add New Problem" to create your first problem option.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-black uppercase tracking-wider text-gray-500">
-                      <th className="py-3.5 px-5 w-20">Order</th>
-                      <th className="py-3.5 px-6">Problem Title</th>
-                      <th className="py-3.5 px-4 w-32">Role</th>
-                      <th className="py-3.5 px-5 w-28">Status</th>
-                      <th className="py-3.5 px-5 w-32 text-center">Toggle Active</th>
-                      <th className="py-3.5 px-5 text-right w-24">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-xs">
-                    {problems.map((prob) => {
-                      return (
-                        <tr key={prob._id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="py-4 px-5 font-bold text-gray-500">
-                            #{prob.order || 0}
-                          </td>
+            ) : (() => {
+              const displayList = problems.filter((prob) => {
+                const matchesRole =
+                  problemRoleFilter === 'all'
+                    ? true
+                    : problemRoleFilter === 'universal'
+                    ? prob.role === 'all'
+                    : prob.role === problemRoleFilter || prob.role === 'all';
+                const matchesSearch = problemSearch.trim()
+                  ? prob.title.toLowerCase().includes(problemSearch.toLowerCase())
+                  : true;
+                return matchesRole && matchesSearch;
+              });
 
-                          <td className="py-4 px-6 font-bold text-gray-900">
-                            {prob.title}
-                          </td>
+              return displayList.length === 0 ? (
+                <div className="py-16 text-center space-y-3">
+                  <SlidersHorizontal className="w-10 h-10 text-gray-300 mx-auto" />
+                  <h4 className="text-base font-bold text-gray-800">No support problems found</h4>
+                  <p className="text-xs text-gray-500">
+                    {problemSearch
+                      ? `No problems matching "${problemSearch}"`
+                      : 'No problems defined for this role filter.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAddProblem()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Problem Option</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-black uppercase tracking-wider text-gray-500">
+                        <th className="py-3.5 px-5 w-20">Order</th>
+                        <th className="py-3.5 px-6">Problem Title</th>
+                        <th className="py-3.5 px-4 w-36">Role</th>
+                        <th className="py-3.5 px-5 w-28">Status</th>
+                        <th className="py-3.5 px-5 w-32 text-center">Toggle Active</th>
+                        <th className="py-3.5 px-5 text-right w-28">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-xs">
+                      {displayList.map((prob) => {
+                        return (
+                          <tr key={prob._id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="py-4 px-5 font-bold text-gray-500">
+                              #{prob.order || 0}
+                            </td>
 
-                          <td className="py-4 px-4">
-                            {prob.role === 'employee' ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                Candidate
-                              </span>
-                            ) : prob.role === 'employer' ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                                Employer
-                              </span>
-                            ) : prob.role === 'consultant' ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                Consultant
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">
-                                All Roles
-                              </span>
-                            )}
-                          </td>
+                            <td className="py-4 px-6 font-bold text-gray-900">
+                              {prob.title}
+                            </td>
 
-                          <td className="py-4 px-5">
-                            {prob.isActive ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                Active
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
-                                Inactive
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="py-4 px-5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleProblem(prob)}
-                              className="cursor-pointer focus:outline-none transition-transform active:scale-95"
-                              title={prob.isActive ? 'Deactivate problem' : 'Activate problem'}
-                            >
-                              {prob.isActive ? (
-                                <ToggleRight className="w-7 h-7 text-emerald-600" />
+                            <td className="py-4 px-4">
+                              {prob.role === 'employee' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                  <span>👨‍💼</span>
+                                  <span>Candidate</span>
+                                </span>
+                              ) : prob.role === 'employer' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                  <span>🏢</span>
+                                  <span>Employer</span>
+                                </span>
+                              ) : prob.role === 'consultant' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <span>🤝</span>
+                                  <span>Consultant</span>
+                                </span>
                               ) : (
-                                <ToggleLeft className="w-7 h-7 text-gray-300" />
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  <span>🌐</span>
+                                  <span>All Roles</span>
+                                </span>
                               )}
-                            </button>
-                          </td>
+                            </td>
 
-                          <td className="py-4 px-5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                            <td className="py-4 px-5">
+                              {prob.isActive ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  Active
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+                                  Inactive
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="py-4 px-5 text-center">
                               <button
                                 type="button"
-                                onClick={() => handleOpenEditProblem(prob)}
-                                className="p-1.5 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
-                                title="Edit problem"
+                                onClick={() => handleToggleProblem(prob)}
+                                className="cursor-pointer focus:outline-none transition-transform active:scale-95"
+                                title={prob.isActive ? 'Deactivate problem' : 'Activate problem'}
                               >
-                                <Pencil className="w-4 h-4" />
+                                {prob.isActive ? (
+                                  <ToggleRight className="w-7 h-7 text-emerald-600" />
+                                ) : (
+                                  <ToggleLeft className="w-7 h-7 text-gray-300" />
+                                )}
                               </button>
+                            </td>
 
-                              <button
-                                type="button"
-                                onClick={() => setProblemToDelete(prob)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Delete problem"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                            <td className="py-4 px-5 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDuplicateProblem(prob)}
+                                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Duplicate problem to another role"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditProblem(prob)}
+                                  className="p-1.5 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Edit problem"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setProblemToDelete(prob)}
+                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete problem"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
 
       {/* =========================================================
-       * MODAL: ADD / EDIT PROBLEM
+       * MODAL: ADD / EDIT PROBLEM (WITH VISUAL ROLE SELECTOR)
        * ========================================================= */}
       {isProblemModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-base font-extrabold text-gray-900">
-                {editingProblem ? 'Edit Support Problem' : 'Add New Support Problem'}
-              </h3>
+              <div>
+                <h3 className="text-base font-extrabold text-gray-900">
+                  {editingProblem ? 'Edit Support Problem Option' : 'Add New Support Problem Option'}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Configure the problem choice shown in the user support widget.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsProblemModalOpen(false)}
@@ -1040,6 +1294,45 @@ export default function SupportTab() {
                 </div>
               )}
 
+              {/* Visual Role Picker */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Target Role <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'employee', label: 'Candidate', icon: '👨‍💼', desc: 'Job seeker issues' },
+                    { id: 'employer', label: 'Employer', icon: '🏢', desc: 'Recruiter & company issues' },
+                    { id: 'consultant', label: 'Consultant', icon: '🤝', desc: 'Agency / partner issues' },
+                    { id: 'all', label: 'All Roles', icon: '🌐', desc: 'Universal to everyone' },
+                  ].map((r) => {
+                    const isSel = problemFormRole === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setProblemFormRole(r.id)}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                          isSel
+                            ? 'border-green-600 bg-green-50/80 text-green-950 ring-1 ring-green-600 font-bold shadow-xs'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white font-medium'
+                        }`}
+                      >
+                        <span className="text-lg">{r.icon}</span>
+                        <div>
+                          <div className="text-xs font-bold">{r.label}</div>
+                          <div className="text-[10px] text-gray-400 leading-tight">{r.desc}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                  Select which users will see this problem choice in their widget step 2.
+                </p>
+              </div>
+
+              {/* Problem Title Input */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
                   Problem Title <span className="text-red-500">*</span>
@@ -1048,29 +1341,13 @@ export default function SupportTab() {
                   type="text"
                   value={problemFormTitle}
                   onChange={(e) => setProblemFormTitle(e.target.value)}
-                  placeholder="e.g. OTP not received"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
+                  placeholder="e.g. OTP not received, Unable to login, Resume upload error"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 font-medium"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Target Role <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={problemFormRole}
-                  onChange={(e) => setProblemFormRole(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 font-medium"
-                >
-                  <option value="all">All Roles (Universal)</option>
-                  <option value="employee">Candidate (Employee)</option>
-                  <option value="employer">Employer</option>
-                  <option value="consultant">Consultant</option>
-                </select>
-                <p className="text-[11px] text-gray-400 mt-1">Users will only see this choice under the selected role.</p>
-              </div>
-
+              {/* Display Order */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
                   Display Order
@@ -1082,10 +1359,11 @@ export default function SupportTab() {
                   placeholder="0"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">Lower numbers appear first in the list.</p>
+                <p className="text-[11px] text-gray-400 mt-1">Lower numbers appear first in the widget selection list.</p>
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
+              {/* Active Toggle Checkbox */}
+              <div className="flex items-center gap-3 pt-1">
                 <input
                   type="checkbox"
                   id="problem-active-chk"
@@ -1094,7 +1372,7 @@ export default function SupportTab() {
                   className="w-4 h-4 text-green-700 rounded border-gray-300 focus:ring-green-600 cursor-pointer"
                 />
                 <label htmlFor="problem-active-chk" className="text-xs font-bold text-gray-800 cursor-pointer">
-                  Active (visible in widget for users)
+                  Active (visible in floating widget for users)
                 </label>
               </div>
 
@@ -1102,14 +1380,15 @@ export default function SupportTab() {
                 <button
                   type="button"
                   onClick={() => setIsProblemModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   disabled={isSavingProblem}
-                  className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs shadow-md transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSavingProblem ? (
                     <>
@@ -1117,7 +1396,7 @@ export default function SupportTab() {
                       <span>Saving...</span>
                     </>
                   ) : (
-                    <span>Save Problem</span>
+                    <span>{editingProblem ? 'Update Problem Option' : 'Create Problem Option'}</span>
                   )}
                 </button>
               </div>
@@ -1159,6 +1438,174 @@ export default function SupportTab() {
                 Yes, Delete
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+       * MODAL: ADMIN REPLY & THREAD VIEWER
+       * ========================================================= */}
+      {replyRequest && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[88vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-800 to-green-700 text-white p-5 shrink-0 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center border border-white/20">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-base leading-tight">{replyRequest.name}</h3>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-white">
+                      {replyRequest.userType}
+                    </span>
+                  </div>
+                  <p className="text-emerald-100 text-xs font-medium">
+                    {replyRequest.email} • {replyRequest.phone}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setReplyRequest(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Problem Details Banner */}
+            <div className="bg-emerald-50/60 border-b border-emerald-100 px-5 py-3 flex items-center justify-between gap-3 text-xs">
+              <div className="truncate">
+                <span className="font-bold text-gray-500">Problem: </span>
+                <span className="font-extrabold text-gray-900">{replyRequest.problemText}</span>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold shrink-0 ${
+                replyRequest.status === 'resolved' 
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                  : 'bg-amber-100 text-amber-800 border border-amber-200'
+              }`}>
+                {replyRequest.status === 'resolved' ? 'Resolved' : 'Pending'}
+              </span>
+            </div>
+
+            {/* Messages Thread */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-3 bg-gray-50/50">
+              {(!replyRequest.messages || replyRequest.messages.length === 0) ? (
+                <div className="py-10 text-center space-y-2 text-gray-400">
+                  <MessageSquare className="w-8 h-8 mx-auto text-gray-300" />
+                  <p className="text-xs font-semibold">No messages in this thread yet.</p>
+                  <p className="text-[11px] text-gray-400">Send a reply below to reach out to the user.</p>
+                </div>
+              ) : (
+                replyRequest.messages.map((m, idx) => {
+                  const isAdmin = m.sender === 'admin';
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}
+                    >
+                      <span className="text-[10px] font-bold text-gray-400 mb-1 px-1">
+                        {isAdmin ? 'Admin' : `${replyRequest.name} (User Option)`} • {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div
+                        className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-xs font-medium shadow-xs leading-relaxed ${
+                          isAdmin
+                            ? 'bg-emerald-700 text-white rounded-tr-xs'
+                            : 'bg-white text-gray-800 border border-gray-200 rounded-tl-xs'
+                        }`}
+                      >
+                        {m.text}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Error banner */}
+            {replyError && (
+              <div className="px-5 py-2 bg-red-50 text-red-600 text-xs font-semibold flex items-center gap-1.5 border-t border-red-100">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{replyError}</span>
+              </div>
+            )}
+
+            {/* Reply Input Form */}
+            <form onSubmit={handleSendReply} className="p-4 bg-white border-t border-gray-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Type a message to the user..."
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 bg-gray-50/50"
+                />
+                <button
+                  type="submit"
+                  disabled={isSendingReply || !replyText.trim()}
+                  className="px-4 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs shadow-xs transition-colors disabled:opacity-40 flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  {isSendingReply ? (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Send className="w-3.5 h-3.5" />
+                  )}
+                  <span>Send</span>
+                </button>
+              </div>
+
+              {/* Quick action buttons inside drawer */}
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <div className="flex items-center gap-2">
+                  {replyRequest.email && activeLockedEmails.includes(replyRequest.email.toLowerCase()) && (
+                    <button
+                      type="button"
+                      onClick={() => handleUnlockFromRequest(replyRequest)}
+                      className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Unlock className="w-3 h-3" />
+                      <span>Unlock User OTP</span>
+                    </button>
+                  )}
+                  {replyRequest.status === 'pending' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleResolve(replyRequest._id);
+                        setReplyRequest((p) => ({ ...p, status: 'resolved' }));
+                      }}
+                      className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Check className="w-3 h-3" />
+                      <span>Mark Resolved</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleReopen(replyRequest._id);
+                        setReplyRequest((p) => ({ ...p, status: 'pending' }));
+                      }}
+                      className="px-2.5 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reopen</span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setReplyRequest(null)}
+                  className="text-gray-400 hover:text-gray-600 font-bold text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

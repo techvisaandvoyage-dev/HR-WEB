@@ -307,16 +307,17 @@ const unlockUserOtp = async (req, res) => {
     const previousLockUntil =
       existingTracker[lockUntilField] || existingTracker.lockUntil || null;
 
-    // 1. Clear in-memory lockout map & reset OTP tokens via email utility
+    // 1. Clear in-memory lockout map & reset OTP tokens via email utility (also resets dailyCountStore)
     if (typeof adminUnlockUser === 'function') {
       await adminUnlockUser(email, role);
     }
 
-    // 2. Clear MongoDB OtpTracker records
+    // 2. Clear MongoDB OtpTracker records — also reset daily sendCount
     const updateQuery = {
       $set: {
         [failedAttemptsField]: 0,
         [lockUntilField]: null,
+        sendCount: 0,   // reset daily OTP send limit so user can immediately request OTP
       },
     };
     if (role === 'general') {

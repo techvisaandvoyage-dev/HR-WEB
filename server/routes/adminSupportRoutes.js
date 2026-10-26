@@ -10,6 +10,8 @@ const {
   resolveSupportRequest,
   reopenSupportRequest,
   deleteSupportRequest,
+  adminReply,
+  getRequestMessages,
 } = require('../controllers/adminSupportController');
 
 // Support Problems Admin Routes
@@ -21,6 +23,8 @@ router.delete('/problems/:id', deleteProblem);
 
 // Support Requests Admin Routes
 router.get('/requests', getSupportRequests);
+router.get('/requests/:id/messages', getRequestMessages);
+router.post('/requests/:id/reply', adminReply);
 router.patch('/requests/:id/resolve', resolveSupportRequest);
 router.patch('/requests/:id/reopen', reopenSupportRequest);
 router.delete('/requests/:id', deleteSupportRequest);

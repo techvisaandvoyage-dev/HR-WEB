@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { COUNTRY_CODES } from '../../data/countryCodes';
 
-export default function CountryCodeDropdown({ value = '+91', onChange, disabled = false }) {
+export default function CountryCodeDropdown({ value = '+91', onChange, disabled = false, size = 'md', buttonClassName = '' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const dropdownRef = useRef(null);
@@ -28,6 +28,8 @@ export default function CountryCodeDropdown({ value = '+91', onChange, disabled 
     c.country.toLowerCase().includes(search.toLowerCase())
   );
 
+  const isSmall = size === 'sm';
+
   return (
     <div className="relative shrink-0 select-none" ref={dropdownRef}>
       <button
@@ -39,12 +41,14 @@ export default function CountryCodeDropdown({ value = '+91', onChange, disabled 
             setSearch('');
           }
         }}
-        className={`flex items-center gap-1.5 px-3 py-3 text-sm font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-l-xl border-r border-gray-200 transition-colors cursor-pointer outline-none ${
+        className={`flex items-center gap-1.5 ${
+          isSmall ? 'px-2.5 py-2.5 text-xs' : 'px-3 py-3 text-sm'
+        } font-semibold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-l-xl border-r border-gray-200 transition-colors cursor-pointer outline-none ${
           disabled ? 'opacity-60 cursor-not-allowed' : ''
-        }`}
+        } ${buttonClassName}`}
         aria-label="Select Country Code"
       >
-        <span className="text-base leading-none">{selectedObj.flag}</span>
+        <span className={isSmall ? 'text-sm leading-none' : 'text-base leading-none'}>{selectedObj.flag}</span>
         <span className="font-bold text-gray-800">{selectedObj.code}</span>
         <svg
           className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}

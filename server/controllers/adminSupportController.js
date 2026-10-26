@@ -377,3 +377,51 @@ exports.deleteSupportRequest = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Admin sends a reply message to a support request thread
+ * @route   POST /api/admin/support/requests/:id/reply
+ * @access  Admin
+ */
+exports.adminReply = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+    if (!text || !String(text).trim()) {
+      return res.status(400).json({ success: false, message: 'Reply text is required.' });
+    }
+    const request = await SupportRequest.findById(id);
+    if (!request) return res.status(404).json({ success: false, message: 'Support request not found.' });
+
+    const msg = { sender: 'admin', text: String(text).trim(), createdAt: new Date() };
+    request.messages.push(msg);
+    request.hasUnreadAdminReply = true;
+    await request.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Reply sent.',
+      data: request.messages[request.messages.length - 1],
+      allMessages: request.messages,
+    });
+  } catch (error) {
+    console.error('adminReply error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to send reply.' });
+  }
+};
+
+/**
+ * @desc    Get messages for a support request (used by admin chat panel)
+ * @route   GET /api/admin/support/requests/:id/messages
+ * @access  Admin
+ */
+exports.getRequestMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await SupportRequest.findById(id).select('messages name email status hasUnreadAdminReply').lean();
+    if (!request) return res.status(404).json({ success: false, message: 'Support request not found.' });
+    return res.status(200).json({ success: true, data: request });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch messages.' });
+  }
+};

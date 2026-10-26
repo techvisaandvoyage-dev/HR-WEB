@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const SupportMessageSchema = new mongoose.Schema({
+  sender: { type: String, enum: ['admin', 'user'], required: true },
+  text: { type: String, required: true, trim: true, maxlength: 2000 },
+  createdAt: { type: Date, default: Date.now },
+});
+
 const SupportRequestSchema = new mongoose.Schema({
   problemId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -56,6 +62,9 @@ const SupportRequestSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     default: null,
   },
+  // Messaging thread: admin replies + user follow-up selections
+  messages: { type: [SupportMessageSchema], default: [] },
+  hasUnreadAdminReply: { type: Boolean, default: false },
 }, { timestamps: true });
 
 // Add required indexes on status, userType, createdAt, email
@@ -65,3 +74,4 @@ SupportRequestSchema.index({ email: 1, createdAt: -1 });
 SupportRequestSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('SupportRequest', SupportRequestSchema);
+

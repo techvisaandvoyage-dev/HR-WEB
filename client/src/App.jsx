@@ -564,8 +564,8 @@ function App() {
     <>
       {/* Dynamic SEO & Google Sitelinks Structured Data */}
       <SEOHead
-        title={seoConfig?.metaTitle || 'SahiJob: Jobs - Recruitment - Job Search - Employment in India'}
-        description={seoConfig?.metaDescription || 'Connect with 10,000+ employers. Apply to thousands of job opportunities across top companies, industries and locations in India.'}
+        title={seoConfig?.metaTitle || 'sahijob.com - Find Your Dream Job in India | Top Recruitment Portal'}
+        description={seoConfig?.metaDescription || 'Search and apply for top jobs in IT, Sales, Marketing, and Engineering across India on sahijob.com. Connect with verified employers and get hired.'}
         canonicalUrl={seoConfig?.canonicalUrl ? `${seoConfig.canonicalUrl}${location.pathname}` : ''}
         favicon={seoConfig?.favicon || '/favicon.svg'}
         googleSiteVerification={seoConfig?.googleSiteVerification}
