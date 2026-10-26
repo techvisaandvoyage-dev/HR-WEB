@@ -672,7 +672,6 @@ export default function SupportTab() {
                   className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 bg-white outline-none focus:border-green-600 cursor-pointer"
                 >
                   <option value="all">All Roles</option>
-                  <option value="guest">Guest</option>
                   <option value="employee">Candidate</option>
                   <option value="employer">Employer</option>
                   <option value="consultant">Consultant</option>

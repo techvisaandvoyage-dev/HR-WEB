@@ -1512,18 +1512,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                   ))}
                 </div>
 
-                {/* 4. Export CSV Report */}
-                <button
-                  onClick={handleExportAnalyticsCSV}
-                  disabled={isExportingCSV || loadingStats}
-                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition-all border border-emerald-200 cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  title="Download Analytics CSV Report"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Export CSV</span>
-                </button>
-
-                {/* 5. Refresh Stats */}
+                {/* Refresh Stats */}
                 <button
                   onClick={() => fetchStats(chartDaysRange)}
                   disabled={loadingStats}

@@ -15,10 +15,12 @@ import {
   Share2,
   Eye,
   KeyRound,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react';
 import DatabaseBackupManager from './DatabaseBackupManager';
 import SEOSettingsManager from './SEOSettingsManager';
+import AuthorizedAdminsManager from './AuthorizedAdminsManager';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -26,7 +28,7 @@ export default function SettingsTab({ initialSubTab }) {
   const [activeSidebarTab, setActiveSidebarTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sub = params.get('subtab') || (params.get('tab') === 'seo' ? 'seo' : null);
-    if (sub === 'seo' || sub === 'backup') return sub;
+    if (sub === 'seo' || sub === 'backup' || sub === 'admins') return sub;
     return initialSubTab || 'backup';
   });
 
@@ -72,6 +74,12 @@ export default function SettingsTab({ initialSubTab }) {
       label: 'SEO',
       description: 'Meta Tags & Search',
       icon: Globe
+    },
+    {
+      id: 'admins',
+      label: 'Admin Access',
+      description: 'Authorized Login Emails',
+      icon: ShieldCheck
     }
   ];
 
@@ -422,6 +430,11 @@ export default function SettingsTab({ initialSubTab }) {
           {/* TAB 2: SEO */}
           {activeSidebarTab === 'seo' && (
             <SEOSettingsManager />
+          )}
+
+          {/* TAB 3: AUTHORIZED ADMINS */}
+          {activeSidebarTab === 'admins' && (
+            <AuthorizedAdminsManager />
           )}
 
         </div>

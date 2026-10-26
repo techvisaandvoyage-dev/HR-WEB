@@ -476,15 +476,35 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
   console.log(`Expires in: ${otpExpiryMinutes}m (120s) | Cooldown: ${OTP_COOLDOWN_SECONDS}s`);
   console.log(`========================================\n`);
 
-  const isAdminLogin = purpose.includes('admin');
+  const isAdminAddEmail = purpose === 'admin:add-email';
+  const isAdminLogin = purpose.includes('admin') && !isAdminAddEmail;
   const isPasswordReset = purpose.includes('forgot') || purpose.includes('password');
-  const subject = isAdminLogin
+  const subject = isAdminAddEmail
+    ? `${otp} is your Admin Authorization verification code for ${companyName}`
+    : isAdminLogin
     ? `${otp} is your Admin Portal login code for ${companyName}`
     : isPasswordReset
     ? `${otp} is your password reset OTP for ${companyName}`
     : `${otp} is your verification code for ${companyName}`;
 
-  const html = isAdminLogin
+  const html = isAdminAddEmail
+    ? `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #d1fae5; border-radius: 12px; background: #ffffff;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <h2 style="color: #065f46; margin: 0;">🛡️ New Administrator Verification</h2>
+          <p style="color: #64748b; font-size: 13px; margin: 4px 0 0 0;">Authorized Management Access Setup</p>
+        </div>
+        <p style="color: #334155; font-size: 15px;">Hello,</p>
+        <p style="color: #475569; font-size: 14px; line-height: 1.5;">A request was made to authorize <strong>${toEmail}</strong> as an Administrator on <strong>${companyName}</strong>. Use the one-time verification code below to confirm this authorization:</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #065f46; padding: 14px 28px; background: #ecfdf5; border: 1.5px dashed #059669; border-radius: 10px; display: inline-block;">${otp}</span>
+        </div>
+        <p style="color: #64748b; font-size: 12px; line-height: 1.5;">This code is strictly confidential and expires in <strong>2 minutes</strong>. If you did not request this authorization, you may safely ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 20px 0;" />
+        <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0;">&copy; ${new Date().getFullYear()} ${companyName}. Secure Admin Access Protocol.</p>
+      </div>
+    `
+    : isAdminLogin
     ? `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #d1fae5; border-radius: 12px; background: #ffffff;">
         <div style="text-align: center; margin-bottom: 16px;">

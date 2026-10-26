@@ -57,6 +57,15 @@ const siteSettingsSchema = new mongoose.Schema({
     type: Number,
     default: 15
   },
+  // Authorized Admin Emails Whitelist (Only these emails can log into the Admin portal via OTP)
+  authorizedAdminEmails: {
+    type: [String],
+    default: [
+      'yashrajsingh28359@gmail.com',
+      'gauravajm@gmail.com',
+      'merakimovies@gmail.com',
+    ],
+  },
   // SEO & Search Engine Optimization
   seo: {
     // A. General SEO

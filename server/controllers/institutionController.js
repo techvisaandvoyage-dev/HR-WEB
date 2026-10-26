@@ -7,12 +7,13 @@ const institutionService = require('../services/institutionService');
  */
 const searchInstitutions = async (req, res) => {
   try {
-    const { q, country, state, city, type, limit, cursor } = req.query;
+    const { q, country, state, city, district, type, limit, cursor } = req.query;
 
     const safeQ = typeof q === 'string' ? q.slice(0, 150) : '';
     const safeCountry = typeof country === 'string' ? country.slice(0, 80) : '';
     const safeState = typeof state === 'string' ? state.slice(0, 80) : '';
     const safeCity = typeof city === 'string' ? city.slice(0, 80) : '';
+    const safeDistrict = typeof district === 'string' ? district.slice(0, 80) : '';
     const safeType = typeof type === 'string' ? type.slice(0, 50) : '';
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
     const safeCursor = parseInt(cursor, 10) || 0;
@@ -22,6 +23,7 @@ const searchInstitutions = async (req, res) => {
       country: safeCountry,
       state: safeState,
       city: safeCity,
+      district: safeDistrict,
       type: safeType,
       limit: safeLimit,
       cursor: safeCursor

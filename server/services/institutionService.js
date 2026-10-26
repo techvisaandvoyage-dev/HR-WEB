@@ -1,4 +1,5 @@
 const Institution = require('../models/Institution');
+const worldCollegesService = require('./worldCollegesService');
 
 // In-memory cache for ultra-fast query responses (3 min TTL)
 const queryCache = new Map();
@@ -1154,6 +1155,57 @@ const searchMasterInstitutions = async (params = {}) => {
     }
   }
 
+  // STEP 1.5: Query World Colleges & Universities Dataset (Additive Hook)
+  try {
+    const wcuMatches = worldCollegesService.searchWorldColleges({
+      q: rawQ,
+      country,
+      state,
+      district: params.district || city,
+      type,
+      limit: 60
+    });
+
+    if (Array.isArray(wcuMatches) && wcuMatches.length > 0) {
+      const existingCompositeMap = new Map();
+      for (const existing of dbResults) {
+        const cKey = worldCollegesService.makeCompositeKey(
+          existing.name,
+          existing.country,
+          existing.state,
+          existing.city || existing.district
+        );
+        existingCompositeMap.set(cKey, existing);
+      }
+
+      for (const wcuItem of wcuMatches) {
+        const wKey = wcuItem.compositeKey;
+        if (existingCompositeMap.has(wKey)) {
+          // Rule: Existing dataset has priority. Merge only missing fields!
+          const existing = existingCompositeMap.get(wKey);
+          if (!existing.affiliatedUniversity && wcuItem.affiliatedUniversity) {
+            existing.affiliatedUniversity = wcuItem.affiliatedUniversity;
+          }
+          if (!existing.website && wcuItem.website) {
+            existing.website = wcuItem.website;
+          }
+          if (!existing.institutionCode && wcuItem.institutionCode) {
+            existing.institutionCode = wcuItem.institutionCode;
+          }
+          if (!existing.address && wcuItem.address) {
+            existing.address = wcuItem.address;
+          }
+        } else {
+          // Brand new record from 50k dataset! Add to candidate pool
+          dbResults.push(wcuItem);
+          existingCompositeMap.set(wKey, wcuItem);
+        }
+      }
+    }
+  } catch (wcuErr) {
+    console.warn('[institutionService] World colleges lookup non-fatal error:', wcuErr.message);
+  }
+
   // STEP 2: Multi-source Live Fallback if local results are insufficient (< 5)
   if (dbResults.length < 5 && normalizedQ.length >= 2) {
     try {
@@ -1223,7 +1275,7 @@ const searchMasterInstitutions = async (params = {}) => {
 
   for (const item of paginated) {
     const loc = resolveLocationDetails(item.name, item.description || '', item.city || item.district || '', item.state || '', item.country || 'India');
-    const key = `${normalizeText(item.name)}|${(loc.country || '').toLowerCase()}|${(loc.city || loc.state || '').toLowerCase()}`;
+    const key = worldCollegesService.makeCompositeKey(item.name, loc.country, loc.state, loc.city || item.district);
     if (!seenMap.has(key)) {
       seenMap.set(key, true);
       formattedResults.push({
@@ -1234,6 +1286,7 @@ const searchMasterInstitutions = async (params = {}) => {
         sector: item.sector || 'higher_education',
         city: loc.city || item.city || item.district || '',
         state: loc.state || item.state || '',
+        district: item.district || loc.city || '',
         country: loc.country || item.country || 'India',
         countryCode: loc.country === 'India' ? 'IN' : (item.countryCode || ''),
         affiliatedUniversity: item.affiliatedUniversity || '',
@@ -1266,10 +1319,23 @@ const searchMasterInstitutions = async (params = {}) => {
  */
 const getInstitutionById = async (id) => {
   if (!id) return null;
+  // 1. Try local MongoDB
   const item = await Institution.findOne({
     $or: [{ id: id }, { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }]
   }).lean();
-  return item;
+  if (item) return item;
+
+  // 2. Try Premier Institutions
+  const premier = PREMIER_INSTITUTIONS.find(p => p.id === id);
+  if (premier) return premier;
+
+  // 3. Try World Colleges Dataset
+  try {
+    const wcuItem = worldCollegesService.getWorldCollegeById(id);
+    if (wcuItem) return wcuItem;
+  } catch (_) {}
+
+  return null;
 };
 
 module.exports = {
