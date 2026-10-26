@@ -2442,6 +2442,7 @@ export default function EmployersTab() {
                           <th className="py-3.5 px-4">Company / Business</th>
                           <th className="py-3.5 px-4">Acc Type</th>
                           <th className="py-3.5 px-4">Recruiter Info</th>
+                          <th className="py-3.5 px-4">Phone No.</th>
                           <th className="py-3.5 px-4">Industry</th>
                           <th className="py-3.5 px-4">Location</th>
                           <th className="py-3.5 px-4">Job Posted</th>
@@ -2451,14 +2452,14 @@ export default function EmployersTab() {
                       <tbody className="divide-y divide-gray-100">
                         {loading ? (
                           <tr>
-                            <td colSpan="8" className="py-12 text-center text-gray-400">
+                            <td colSpan="9" className="py-12 text-center text-gray-400">
                               <RefreshCw className="w-5 h-5 mx-auto animate-spin text-emerald-600 mb-2" />
                               Loading employers directory...
                             </td>
                           </tr>
                         ) : filteredAndSortedEmployers.length === 0 ? (
                           <tr>
-                            <td colSpan="8" className="py-12 text-center text-gray-400">
+                            <td colSpan="9" className="py-12 text-center text-gray-400">
                               No employer records found.
                             </td>
                           </tr>
@@ -2502,6 +2503,16 @@ export default function EmployersTab() {
                                   <td className="py-3.5 px-4">
                                     <p className="font-semibold text-gray-800">{empr.fullName || 'N/A'}</p>
                                     <p className="text-gray-500 text-[11px]">{empr.email}</p>
+                                  </td>
+                                  <td className="py-3.5 px-4 whitespace-nowrap">
+                                    {empr.mobile ? (
+                                      <div className="flex items-center gap-1.5 font-mono text-gray-800 font-bold text-[11px]">
+                                        <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <span>{empr.mobile}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-400 text-[11px] font-mono italic">Not provided</span>
+                                    )}
                                   </td>
                                   <td className="py-3.5 px-4 text-gray-600 font-medium">{empr.industry || 'N/A'}</td>
                                   <td className="py-3.5 px-4 text-gray-600">{empr.location || 'N/A'}</td>
@@ -2591,7 +2602,7 @@ export default function EmployersTab() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-base">{selectedEmployer.companyName || selectedEmployer.fullName}</h3>
-                  <p className="text-xs text-gray-500">{selectedEmployer.email}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{selectedEmployer.email}</p>
                 </div>
               </div>
 
@@ -2613,6 +2624,17 @@ export default function EmployersTab() {
                 <div>
                   <span className="text-gray-400 block text-[10px] uppercase font-bold">Designation</span>
                   <span className="font-bold text-gray-800">{selectedEmployer.designation || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px] uppercase font-bold">Phone Number</span>
+                  {selectedEmployer.mobile ? (
+                    <span className="font-bold text-gray-800 flex items-center gap-1.5 font-mono">
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{selectedEmployer.mobile}</span>
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-xs italic font-normal">Not provided</span>
+                  )}
                 </div>
                 <div>
                   <span className="text-gray-400 block text-[10px] uppercase font-bold">Industry</span>

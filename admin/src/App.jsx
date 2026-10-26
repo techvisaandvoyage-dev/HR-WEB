@@ -18,6 +18,18 @@ function App() {
   const [activeTab, setActiveTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const urlTab = params.get('tab');
+    if (urlTab === 'all-jobs' || urlTab === 'jobs') {
+      params.set('tab', 'overview');
+      params.set('subtab', 'jobs');
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      return 'overview';
+    }
+    if (urlTab === 'applications') {
+      params.set('tab', 'overview');
+      params.set('subtab', 'applications');
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      return 'overview';
+    }
     if (urlTab && VALID_TABS.includes(urlTab)) {
       return urlTab;
     }
@@ -29,18 +41,39 @@ function App() {
   });
 
   const handleSelectTab = (newTab) => {
-    setActiveTab(newTab);
-    localStorage.setItem('adminActiveTab', newTab);
+    // Gracefully route jobs & applications to overview subtabs so screen never goes blank
+    if (newTab === 'all-jobs' || newTab === 'jobs') {
+      setActiveTab('overview');
+      localStorage.setItem('adminActiveTab', 'overview');
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', 'overview');
+      params.set('subtab', 'jobs');
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      return;
+    }
+    if (newTab === 'applications') {
+      setActiveTab('overview');
+      localStorage.setItem('adminActiveTab', 'overview');
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', 'overview');
+      params.set('subtab', 'applications');
+      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      return;
+    }
+
+    const safeTab = VALID_TABS.includes(newTab) ? newTab : 'overview';
+    setActiveTab(safeTab);
+    localStorage.setItem('adminActiveTab', safeTab);
     const params = new URLSearchParams(window.location.search);
-    params.set('tab', newTab);
+    params.set('tab', safeTab);
     
     // Clean up specific sub-keys when changing main tabs
-    if (newTab !== 'employees' && newTab !== 'employers' && newTab !== 'consultants') {
+    if (safeTab !== 'employees' && safeTab !== 'employers' && safeTab !== 'consultants') {
       params.delete('section');
       params.delete('step');
       params.delete('authSub');
     }
-    if (newTab !== 'employers' && newTab !== 'consultants' && newTab !== 'footer' && newTab !== 'homepage' && newTab !== 'overview') {
+    if (safeTab !== 'employers' && safeTab !== 'consultants' && safeTab !== 'footer' && safeTab !== 'homepage' && safeTab !== 'overview') {
       params.delete('subtab');
     }
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);

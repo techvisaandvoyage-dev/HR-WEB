@@ -89,6 +89,25 @@ const formatSalary = (val) => {
 };
 
 /**
+ * Format phone number for Google Sheets:
+ * Prepends a single quote (') if it starts with '+' or '='
+ * so Google Sheets stores it as text instead of evaluating as a formula (#ERROR!).
+ */
+const formatPhoneForSheet = (mobile, countryCode) => {
+  if (!mobile || String(mobile).trim() === '' || String(mobile).trim().toLowerCase() === 'n/a') {
+    return 'N/A';
+  }
+  let s = String(mobile).trim();
+  if (countryCode && !s.startsWith('+')) {
+    s = `${countryCode} ${s}`;
+  }
+  if (s.startsWith('+') || s.startsWith('=')) {
+    return `'${s}`;
+  }
+  return s;
+};
+
+/**
  * Helper to convert application and candidate into a row array
  */
 const formatApplicationRow = (app, candidate = {}) => {
@@ -150,7 +169,7 @@ const formatApplicationRow = (app, candidate = {}) => {
     cand.name || 'Candidate',
     jobTitle,
     cand.email || '',
-    cand.mobile || cand.phone || '',
+    formatPhoneForSheet(cand.mobile || cand.phone, cand.countryCode),
     qual,
     institute,
     func,
@@ -605,7 +624,7 @@ const formatCandidateRow = (cand, appCount = 0) => {
     candIdDisplay,
     cand.name || 'N/A',
     cand.email || 'N/A',
-    cand.mobile || cand.phone || 'N/A',
+    formatPhoneForSheet(cand.mobile || cand.phone, cand.countryCode),
     sourceType,
     utmSource,
     referredJobTitle,
@@ -654,7 +673,7 @@ const formatEmployerRow = (empr, stats = {}) => {
     empr.fullName || 'N/A',
     empr.designation || 'Recruiter',
     empr.email || 'N/A',
-    empr.mobile || 'N/A',
+    formatPhoneForSheet(empr.mobile, empr.countryCode),
     empr.industry || 'General',
     empr.location || 'N/A',
     empr.employees || 'Team',

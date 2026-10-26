@@ -11,6 +11,10 @@ const EmployerSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  countryCode: {
+    type: String,
+    default: '+91'
+  },
   accountType: {
     type: String,
     enum: ['company', 'individual'],

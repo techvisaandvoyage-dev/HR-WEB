@@ -179,7 +179,7 @@ exports.verifyRegistrationOtp = async (req, res) => {
 exports.register = async (req, res) => {
   try {
     const { 
-      mobile, accountType, fullName, email, password,
+      mobile, countryCode, accountType, fullName, email, password,
       hiringFor, companyName, industry, employees, designation, location, aboutCompany, website,
       otp
     } = req.body;
@@ -266,7 +266,8 @@ exports.register = async (req, res) => {
       }
       if (fullName) employer.fullName = fullName;
       if (accountType) employer.accountType = accountType;
-      if (mobile) employer.mobile = mobile;
+      if (mobile !== undefined) employer.mobile = mobile;
+      if (countryCode !== undefined) employer.countryCode = countryCode;
       const isTargetConsultant = req.body.isConsultant !== undefined 
         ? Boolean(req.body.isConsultant === true)
         : Boolean(employer.isConsultant === true);
@@ -287,6 +288,7 @@ exports.register = async (req, res) => {
       const createData = {
         employerId,
         mobile: mobile || '',
+        countryCode: countryCode || '+91',
         accountType: accountType || 'company',
         fullName,
         email: cleanEmail,
@@ -449,13 +451,14 @@ exports.getMe = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { 
-      fullName, mobile, companyName, industry, employees, 
+      fullName, mobile, countryCode, companyName, industry, employees, 
       designation, location, aboutCompany, website, hiringFor, companyLogo, logo
     } = req.body;
 
     const updateData = {};
     if (fullName !== undefined) updateData.fullName = fullName;
     if (mobile !== undefined) updateData.mobile = mobile;
+    if (countryCode !== undefined) updateData.countryCode = countryCode;
     if (companyName !== undefined) updateData.companyName = companyName;
     if (industry !== undefined) updateData.industry = industry;
     if (employees !== undefined) updateData.employees = employees;
@@ -480,6 +483,13 @@ exports.updateProfile = async (req, res) => {
 
     if (!employer) {
       return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
+
+    try {
+      const { triggerLiveEmployerSync } = require('../../services/googleSheetService');
+      triggerLiveEmployerSync();
+    } catch (syncErr) {
+      console.warn('[GoogleSheet] Error triggering live employer sync after profile update:', syncErr.message);
     }
 
     res.status(200).json({

@@ -724,4 +724,87 @@ exports.syncEmployersSheetAdmin = async (req, res) => {
   }
 };
 
+// @desc    Get all jobs for Admin
+// @route   GET /api/admin/jobs
+// @access  Admin
+exports.getAllJobsAdmin = async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    let query = {};
+    if (status && status !== 'All') {
+      query.status = status;
+    }
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { title: searchRegex },
+        { company: searchRegex },
+        { location: searchRegex }
+      ];
+    }
+    const jobs = await Job.find(query)
+      .populate('employerId', 'fullName companyName email mobile location isConsultant')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Attach application counts
+    const jobIds = jobs.map(j => j._id);
+    const applications = await Application.find({ jobId: { $in: jobIds } }).lean();
+    const appCountMap = {};
+    applications.forEach(a => {
+      const idStr = String(a.jobId);
+      appCountMap[idStr] = (appCountMap[idStr] || 0) + 1;
+    });
+
+    const enrichedJobs = jobs.map(j => ({
+      ...j,
+      id: j._id,
+      applicationsCount: appCountMap[String(j._id)] || 0
+    }));
+
+    res.json({ success: true, count: enrichedJobs.length, data: enrichedJobs });
+  } catch (error) {
+    console.error('Error fetching admin jobs:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching jobs', error: error.message });
+  }
+};
+
+// @desc    Get all applications for Admin
+// @route   GET /api/admin/applications
+// @access  Admin
+exports.getAllApplicationsAdmin = async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    let query = {};
+    if (status && status !== 'All') {
+      query.status = status;
+    }
+    const applications = await Application.find(query)
+      .populate('jobId', 'title company location status salary jobType')
+      .populate('employeeId', 'name email mobile designation location totalExperience resumeUrl avatar')
+      .populate('employerId', 'companyName fullName email mobile')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let filtered = applications;
+    if (search) {
+      const s = search.toLowerCase();
+      filtered = applications.filter(a => 
+        (a.employeeId?.name && a.employeeId.name.toLowerCase().includes(s)) ||
+        (a.employeeId?.email && a.employeeId.email.toLowerCase().includes(s)) ||
+        (a.employeeId?.mobile && a.employeeId.mobile.toLowerCase().includes(s)) ||
+        (a.jobId?.title && a.jobId.title.toLowerCase().includes(s)) ||
+        (a.employerId?.companyName && a.employerId.companyName.toLowerCase().includes(s)) ||
+        (a.applicationNumber && String(a.applicationNumber).includes(s))
+      );
+    }
+
+    res.json({ success: true, count: filtered.length, data: filtered });
+  } catch (error) {
+    console.error('Error fetching admin applications:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching applications', error: error.message });
+  }
+};
+
+
 

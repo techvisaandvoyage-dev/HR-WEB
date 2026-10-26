@@ -763,7 +763,8 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
           accountType,
           fullName: fullName.trim(),
           email: email.trim(),
-          mobile: mobile.trim(),
+          mobile: mobile.trim() ? (mobile.trim().startsWith('+') ? mobile.trim() : `${countryCode} ${mobile.trim()}`) : '',
+          countryCode: countryCode || '+91',
           // Skip password & OTP for Google auth users
           ...(isGoogleAuth ? {} : { password, otp: otp.join('') }),
           hiringFor,

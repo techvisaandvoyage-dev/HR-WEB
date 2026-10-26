@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 import { currentLocationOptions } from '../../../data/preferredLocations';
 import { uploadFileToStorage, deleteFileFromStorage } from '../../../utils/firebaseStorage';
-import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
+import { COUNTRY_CODES, formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
 const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -41,8 +41,34 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
     name: '',
     email: '',
     phone: '',
+    countryCode: '+91',
     accountType: 'Company/business'
   });
+  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const countryDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target)) {
+        setIsCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCountryObj = useMemo(() => {
+    return COUNTRY_CODES.find(c => c.code === (accountData.countryCode || '+91')) || COUNTRY_CODES[0];
+  }, [accountData.countryCode]);
+
+  const filteredCountryCodes = useMemo(() => {
+    return COUNTRY_CODES.filter(c => 
+      c.name.toLowerCase().includes(countrySearch.toLowerCase()) || 
+      c.code.includes(countrySearch)
+    );
+  }, [countrySearch]);
 
   const [companyData, setCompanyData] = useState({
     hiringFor: 'your_company',
@@ -131,10 +157,24 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
       const data = await response.json();
       if (data.success && data.data) {
         const emp = data.data;
+
+        let rawMobile = String(emp.mobile || '').trim();
+        let detectedCode = emp.countryCode || '+91';
+
+        if (rawMobile.startsWith('+')) {
+          const matched = COUNTRY_CODES.find(c => rawMobile.startsWith(c.code));
+          if (matched) {
+            detectedCode = matched.code;
+            rawMobile = rawMobile.slice(matched.code.length).trim();
+          }
+        }
+        const digitsOnly = rawMobile.replace(/\D/g, '').slice(0, 10);
+
         setAccountData({
           name: emp.fullName || '',
           email: emp.email || '',
-          phone: emp.mobile || '',
+          phone: digitsOnly,
+          countryCode: detectedCode,
           accountType: emp.accountType || 'Company/business'
         });
         setCompanyData({
@@ -162,18 +202,35 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
   const handleEdit = (field) => setEditingField(field);
   
   const handleSaveField = async () => {
+    if (editingField === 'account.phone' && accountData.phone && accountData.phone.length !== 10) {
+      setPhoneError('Phone number must be exactly 10 digits.');
+      return;
+    }
+    setPhoneError('');
     setEditingField(null);
     await handleSaveAll(false);
   };
 
   const handleSaveAll = async (showAlert = true) => {
+    if (accountData.phone && accountData.phone.length !== 10) {
+      setPhoneError('Phone number must be exactly 10 digits.');
+      if (showAlert) alert('Phone number must be exactly 10 digits.');
+      return;
+    }
+    setPhoneError('');
+
     try {
       const token = localStorage.getItem('employerToken');
       if (!token) return;
 
+      const formattedMobile = accountData.phone 
+        ? `${accountData.countryCode || '+91'} ${accountData.phone}`.trim() 
+        : '';
+
       const payload = {
         fullName: accountData.name,
-        mobile: accountData.phone,
+        mobile: formattedMobile,
+        countryCode: accountData.countryCode || '+91',
         companyName: companyData.companyName,
         companyLogo: companyData.companyLogo,
         industry: companyData.industry,
@@ -199,10 +256,12 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
         if (showAlert) {
           showToast('Profile updated successfully!');
         }
+      } else {
+        throw new Error(data.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      if (showAlert) alert('Failed to update profile. Please try again.');
+      if (showAlert) alert('Failed to update profile: ' + (error.message || 'Please try again.'));
     }
   };
 
@@ -373,6 +432,91 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3]" 
                 placeholder="Select location" 
               />
+            ) : field === 'phone' ? (
+              <div className="space-y-1.5">
+                <div className={`flex items-center w-full max-w-[380px] bg-white border rounded-[8px] px-3 py-2 ring-2 relative transition-all ${phoneError ? 'border-red-500 ring-red-100' : 'border-[#16a34a] ring-[#ecfdf3]'}`}>
+                  {/* Custom Country Code Dropdown Trigger */}
+                  <div className="relative shrink-0" ref={countryDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                      className="flex items-center gap-1.5 text-gray-900 font-bold border-none outline-none cursor-pointer pr-2 text-[14px] hover:text-[#16a34a] transition-colors"
+                    >
+                      <span className="text-base leading-none">{selectedCountryObj.flag}</span>
+                      <span>{selectedCountryObj.code}</span>
+                      <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isCountryDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Dropdown Menu Popup */}
+                    {isCountryDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        {/* Search Box */}
+                        <div className="p-2 border-b border-gray-100 bg-gray-50">
+                          <input
+                            type="text"
+                            value={countrySearch}
+                            onChange={(e) => setCountrySearch(e.target.value)}
+                            placeholder="Search country or code..."
+                            className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-[#16a34a] text-gray-900"
+                            autoFocus
+                          />
+                        </div>
+
+                        {/* Scrollable Country List */}
+                        <div className="max-h-52 overflow-y-auto py-1">
+                          {filteredCountryCodes.length === 0 ? (
+                            <div className="p-3 text-xs text-center text-gray-400 font-medium">No country found</div>
+                          ) : (
+                            filteredCountryCodes.map((c, idx) => (
+                              <button
+                                key={`${c.country}-${c.code}-${idx}`}
+                                type="button"
+                                onClick={() => {
+                                  setAccountData(prev => ({ ...prev, countryCode: c.code }));
+                                  setIsCountryDropdownOpen(false);
+                                  setCountrySearch('');
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-[#ecfdf3] transition-colors ${c.code === (accountData.countryCode || '+91') ? 'bg-[#ecfdf3] font-bold text-[#15803d]' : 'text-gray-700'}`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span className="text-base leading-none">{c.flag}</span>
+                                  <span className="truncate">{c.name}</span>
+                                </div>
+                                <span className="font-semibold text-gray-400 shrink-0 ml-2">{c.code}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <span className="text-gray-300 mr-2.5 shrink-0">|</span>
+
+                  {/* 10-Digit Mobile Input */}
+                  <input 
+                    type="tel" 
+                    maxLength={10}
+                    value={accountData.phone} 
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val.length <= 10) {
+                        setAccountData(prev => ({ ...prev, phone: val }));
+                      }
+                      if (phoneError) setPhoneError('');
+                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveField(); }}
+                    placeholder="10-digit mobile number"
+                    className="w-full border-none outline-none text-[14px] text-[#101828] bg-transparent font-medium"
+                    autoFocus
+                  />
+                </div>
+                {phoneError && (
+                  <p className="text-red-500 text-xs font-semibold pl-1">{phoneError}</p>
+                )}
+              </div>
             ) : (
               <input 
                 type={type} 
@@ -385,7 +529,13 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
             )
           ) : (
             <span className={`text-[14.5px] font-medium ${field === 'website' ? 'text-[#16a34a] hover:underline' : 'text-[#101828]'} ${type === 'textarea' ? 'block max-w-md break-words' : 'truncate block'}`}>
-              {field === 'phone' ? (formatPhoneWithCountryCode(value) || '—') : (value || '—')}
+              {field === 'phone' ? (
+                accountData.phone ? (
+                  <span className="font-mono">
+                    {accountData.countryCode || '+91'} {accountData.phone}
+                  </span>
+                ) : '—'
+              ) : (value || '—')}
             </span>
           )}
         </div>

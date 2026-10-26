@@ -12,7 +12,9 @@ const {
   updateSiteSettings,
   getSheetsStatus,
   syncCandidatesSheetAdmin,
-  syncEmployersSheetAdmin
+  syncEmployersSheetAdmin,
+  getAllJobsAdmin,
+  getAllApplicationsAdmin
 } = require('../controllers/adminController');
 
 router.get('/stats', getDashboardStats);
@@ -20,6 +22,8 @@ router.get('/employees', getAllEmployees);
 router.get('/employees/:id', getEmployeeById);
 router.get('/employers', getAllEmployers);
 router.get('/employers/:id', getEmployerById);
+router.get('/jobs', getAllJobsAdmin);
+router.get('/applications', getAllApplicationsAdmin);
 router.put('/employers/:id/controls', updateEmployerControls);
 router.get('/site-settings', getSiteSettings);
 router.put('/site-settings', updateSiteSettings);

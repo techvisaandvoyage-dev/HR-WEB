@@ -12,15 +12,13 @@ export default function SupportWidget() {
     return null;
   }
 
-  // Helper to check if a user is logged in
+  // Helper to check if a user is genuinely logged in with an active auth token
   const checkUserLoggedIn = () => {
     try {
-      return Boolean(
-        localStorage.getItem('employeeToken') ||
-        localStorage.getItem('employerToken') ||
-        localStorage.getItem('token') ||
-        localStorage.getItem('userProfile')
-      );
+      const empToken = localStorage.getItem('employerToken');
+      const candToken = localStorage.getItem('employeeToken');
+      const isValid = (t) => t && t !== 'null' && t !== 'undefined' && t !== 'false' && String(t).trim().length > 10;
+      return Boolean(isValid(empToken) || isValid(candToken));
     } catch (_) {
       return false;
     }
@@ -30,7 +28,7 @@ export default function SupportWidget() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('new'); // 'new' | 'updates'
-  const [step, setStep] = useState(() => (checkUserLoggedIn() ? 2 : 1)); // 2 = direct problems if logged in, 1 = contact form if visitor
+  const [step, setStep] = useState(1); // 1 = contact form (Name, Email, Phone), 2 = problem options
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [problemFetchError, setProblemFetchError] = useState('');
@@ -39,21 +37,25 @@ export default function SupportWidget() {
   const [selectedRole, setSelectedRole] = useState('employee'); // 'employee' | 'employer' | 'consultant'
   const [selectedProblemId, setSelectedProblemId] = useState('');
 
-  // Contact details fields (Pre-filled from storage if available)
+  // Contact details fields (Pre-filled from storage if available for logged-in users)
   const [contactName, setContactName] = useState(() => {
     try {
-      const stored = localStorage.getItem('userProfile');
-      if (stored) {
-        const p = JSON.parse(stored);
-        return p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || '';
+      if (checkUserLoggedIn()) {
+        const stored = localStorage.getItem('userProfile');
+        if (stored) {
+          const p = JSON.parse(stored);
+          return p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || '';
+        }
       }
     } catch (_) {}
     return '';
   });
   const [contactEmail, setContactEmail] = useState(() => {
     try {
-      const stored = localStorage.getItem('userProfile');
-      if (stored) return JSON.parse(stored).email || '';
+      if (checkUserLoggedIn()) {
+        const stored = localStorage.getItem('userProfile');
+        if (stored) return JSON.parse(stored).email || '';
+      }
     } catch (_) {}
     return '';
   });
@@ -61,10 +63,12 @@ export default function SupportWidget() {
   const [countryCode, setCountryCode] = useState('+91');
   const [contactPhone, setContactPhone] = useState(() => {
     try {
-      const stored = localStorage.getItem('userProfile');
-      if (stored) {
-        const mob = JSON.parse(stored).mobile;
-        if (mob) return String(mob).replace(/\D/g, '').slice(-10);
+      if (checkUserLoggedIn()) {
+        const stored = localStorage.getItem('userProfile');
+        if (stored) {
+          const mob = JSON.parse(stored).mobile;
+          if (mob) return String(mob).replace(/\D/g, '').slice(-10);
+        }
       }
     } catch (_) {}
     return '';
@@ -184,8 +188,17 @@ export default function SupportWidget() {
   useEffect(() => {
     if (isOpen) {
       const loggedIn = checkUserLoggedIn();
-      // If logged in: skip Step 1 contact form and go straight to Step 2 problems
-      setStep(loggedIn ? 2 : 1);
+      // If visitor (without login): ALWAYS show Step 1 contact form first
+      if (!loggedIn) {
+        setStep(1);
+      } else {
+        const hasContactInfo = Boolean(
+          contactName &&
+          contactPhone &&
+          contactPhone.replace(/\D/g, '').length === 10
+        );
+        setStep(hasContactInfo ? 2 : 1);
+      }
       prefillFromStorage();
       fetchProblems();
 
@@ -261,7 +274,17 @@ export default function SupportWidget() {
     setContactErrors({});
     setSubmitError('');
     setSubmitSuccess(false);
-    setStep(checkUserLoggedIn() ? 2 : 1);
+    const loggedIn = checkUserLoggedIn();
+    if (!loggedIn) {
+      setStep(1);
+    } else {
+      const hasContactInfo = Boolean(
+        contactName &&
+        contactPhone &&
+        contactPhone.replace(/\D/g, '').length === 10
+      );
+      setStep(hasContactInfo ? 2 : 1);
+    }
   };
 
   const handleClose = () => {
@@ -305,7 +328,7 @@ export default function SupportWidget() {
       return;
     }
 
-    if (!isUserLoggedIn && !validateContact()) {
+    if (!validateContact()) {
       setStep(1);
       setSubmitError('Please verify your contact details.');
       return;
@@ -609,7 +632,7 @@ export default function SupportWidget() {
                   </button>
                 </div>
               </div>
-            ) : step === 1 && !isUserLoggedIn ? (
+            ) : step === 1 ? (
               /* ========================================================
                * STEP 1: ONLY CONTACT DETAILS FORM (FIRST)
                * ======================================================== */
@@ -765,27 +788,25 @@ export default function SupportWidget() {
                * STEP 2: OPTIONS & ISSUE SELECTION (AFTER FORM FILLED)
                * ======================================================== */
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Back button & User summary (ONLY FOR GUEST USERS) */}
-                {!isUserLoggedIn && (
-                  <div className="flex items-center justify-between pb-1">
-                    <button
-                      type="button"
-                      onClick={() => { setStep(1); setSubmitError(''); }}
-                      className="text-xs font-bold text-gray-500 hover:text-palette-900 transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      ← Back to Details
-                    </button>
-                    <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      Step 2 of 2
-                    </span>
-                  </div>
-                )}
+                {/* Back button & Step Indicator */}
+                <div className="flex items-center justify-between pb-1">
+                  <button
+                    type="button"
+                    onClick={() => { setStep(1); setSubmitError(''); }}
+                    className="text-xs font-bold text-gray-500 hover:text-palette-900 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    ← Back to Details
+                  </button>
+                  <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Step 2 of 2
+                  </span>
+                </div>
 
-                {/* Contact Pill Banner (ONLY FOR GUEST USERS) */}
-                {!isUserLoggedIn && (contactName || contactEmail) && (
+                {/* Contact Pill Banner with Edit option */}
+                {(contactName || contactEmail || contactPhone) && (
                   <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
                     <div className="truncate">
-                      <span className="font-extrabold text-gray-900">{contactName || 'Guest'}</span>
+                      <span className="font-extrabold text-gray-900">{contactName || 'Guest User'}</span>
                       {(contactEmail || contactPhone) && (
                         <span className="text-gray-500 text-[11px]">
                           {' '}({contactEmail}{contactPhone ? ` • ${countryCode} ${contactPhone}` : ''})
@@ -794,7 +815,7 @@ export default function SupportWidget() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setStep(1)}
+                      onClick={() => { setStep(1); setSubmitError(''); }}
                       className="text-[11px] font-bold text-palette-900 hover:underline shrink-0 ml-2 cursor-pointer"
                       title="Edit contact details"
                     >
