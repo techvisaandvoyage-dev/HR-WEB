@@ -27,6 +27,7 @@ import {
   SlidersHorizontal,
   Check,
   AlertCircle,
+  ArrowLeft,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -70,7 +71,10 @@ export default function DashboardOverview({ onNavigateTab }) {
 
   const [activeSubTab, setActiveSubTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('subtab') || 'overview';
+    const sub = params.get('subtab');
+    if (!sub || sub === 'overview') return 'overview';
+    if (sub === 'employees' || sub === 'candidates' || sub === 'candidate') return 'candidate';
+    return sub;
   });
 
   // Employer Sub-Section State ('list' or 'controls')
@@ -291,11 +295,30 @@ export default function DashboardOverview({ onNavigateTab }) {
     }, 3200);
   };
 
-  const handleSubTabChange = (tabKey) => {
-    setActiveSubTab(tabKey);
+  const handleSubTabChange = (tabKey, isPush = true) => {
+    let safeKey = tabKey && tabKey !== 'overview' ? tabKey : 'overview';
+    if (safeKey === 'employees' || safeKey === 'candidates') {
+      safeKey = 'candidate';
+    }
+    setActiveSubTab(safeKey);
     const params = new URLSearchParams(window.location.search);
-    params.set('subtab', tabKey);
-    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    params.set('tab', 'overview');
+    if (safeKey === 'overview') {
+      params.delete('subtab');
+    } else {
+      params.set('subtab', safeKey);
+    }
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    const stateObj = { isSentinel: false, adminApp: true, tab: 'overview', subtab: safeKey };
+    if (isPush) {
+      window.history.pushState(stateObj, '', newUrl);
+    } else {
+      window.history.replaceState(stateObj, '', newUrl);
+    }
+  };
+
+  const handleBackToOverview = () => {
+    handleSubTabChange('overview', true);
   };
 
   // Fetch Dashboard Stats
@@ -498,13 +521,28 @@ export default function DashboardOverview({ onNavigateTab }) {
     fetchGlobalSettings();
     fetchSheetStatus();
     fetchEmployers();
+
+    const handlePopState = (e) => {
+      const params = new URLSearchParams(window.location.search);
+      const sub = params.get('subtab');
+      if (!sub || sub === 'overview') {
+        setActiveSubTab('overview');
+      } else if (sub === 'employees' || sub === 'candidates' || sub === 'candidate') {
+        setActiveSubTab('candidate');
+      } else {
+        setActiveSubTab(sub);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {
     if (activeSubTab === 'employers' && employers.length === 0) {
       fetchEmployers();
       fetchGlobalSettings();
-    } else if (activeSubTab === 'employees' && employees.length === 0) {
+    } else if ((activeSubTab === 'candidate' || activeSubTab === 'employees' || activeSubTab === 'candidates') && employees.length === 0) {
       fetchEmployees();
     } else if (activeSubTab === 'jobs') {
       fetchJobs();
@@ -1352,9 +1390,22 @@ export default function DashboardOverview({ onNavigateTab }) {
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">sahijob.com Portal Overview</h1>
-          <p className="text-gray-500 mt-1">Real-time statistics for registered employers, job seekers, and portal activity.</p>
+        <div className="flex items-center gap-3.5">
+          {activeSubTab !== 'overview' && (
+            <button
+              type="button"
+              onClick={handleBackToOverview}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-emerald-50 text-gray-800 hover:text-emerald-700 font-bold text-xs rounded-2xl border border-gray-200 hover:border-emerald-300 shadow-xs transition-all cursor-pointer group shrink-0"
+              title="Back to Overview"
+            >
+              <ArrowLeft className="w-4 h-4 text-emerald-600 group-hover:-translate-x-1 transition-transform" />
+              <span>Back to Overview</span>
+            </button>
+          )}
+          <div>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">sahijob.com Portal Overview</h1>
+            <p className="text-gray-500 mt-1">Real-time statistics for registered employers, job seekers, and portal activity.</p>
+          </div>
         </div>
         {activeSubTab === 'overview' && (
           <button
@@ -1383,9 +1434,9 @@ export default function DashboardOverview({ onNavigateTab }) {
         </button>
 
         <button
-          onClick={() => handleSubTabChange('employees')}
+          onClick={() => handleSubTabChange('candidate')}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer whitespace-nowrap ${
-            activeSubTab === 'employees'
+            (activeSubTab === 'candidate' || activeSubTab === 'employees' || activeSubTab === 'candidates')
               ? 'bg-emerald-600 text-white shadow-xs'
               : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80'
           }`}
@@ -1448,7 +1499,7 @@ export default function DashboardOverview({ onNavigateTab }) {
             
             {/* Total Employees */}
             <div 
-              onClick={() => handleSubTabChange('employees')}
+              onClick={() => handleSubTabChange('candidate')}
               className="bg-white rounded-3xl p-6 border border-gray-100/80 shadow-xs hover:shadow-md transition-all group cursor-pointer"
             >
               <div className="flex items-center justify-between">
@@ -2277,7 +2328,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                   {/* Drill-down Quick Actions */}
                   <div className="flex items-center gap-2 pl-2 border-l border-white/20">
                     <button
-                      onClick={() => handleSubTabChange('employees')}
+                      onClick={() => handleSubTabChange('candidate')}
                       className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
                     >
                       <Users className="w-3.5 h-3.5" />
@@ -2313,7 +2364,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                 <h4 className="text-sm font-black text-gray-900">Job Seekers Database</h4>
                 <p className="text-xs text-gray-500 mt-1">Browse and search registered candidates, qualifications, and resumes.</p>
                 <button
-                  onClick={() => handleSubTabChange('employees')}
+                  onClick={() => handleSubTabChange('candidate')}
                   className="mt-4 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Users className="w-3.5 h-3.5" />
@@ -2349,7 +2400,7 @@ export default function DashboardOverview({ onNavigateTab }) {
       {/* ========================================================================= */}
       {/* 2. EMPLOYEES DIRECTORY TAB                                                */}
       {/* ========================================================================= */}
-      {activeSubTab === 'employees' && (
+      {(activeSubTab === 'candidate' || activeSubTab === 'employees' || activeSubTab === 'candidates') && (
         <div className="space-y-6 animate-in fade-in duration-200">
           
           {/* Header Card */}
@@ -3984,8 +4035,8 @@ export default function DashboardOverview({ onNavigateTab }) {
         };
 
         return (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100">
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-5xl xl:max-w-6xl w-full max-h-[92vh] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100">
               
               {/* Modal Header */}
               <div className="p-5 sm:p-6 border-b border-gray-100 flex items-start justify-between bg-white shrink-0 gap-4">
@@ -3995,7 +4046,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                   </div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="font-extrabold text-gray-900 text-base sm:text-lg leading-tight truncate">
+                      <h3 className="font-extrabold text-gray-900 text-base sm:text-xl leading-tight break-words">
                         {title}
                       </h3>
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
@@ -4047,104 +4098,104 @@ export default function DashboardOverview({ onNavigateTab }) {
                   <h4 className="font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-3">
                     Job Overview & Details
                   </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {/* Role / Job Category */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Role / Category</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate" title={jobCategory}>
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Role / Category</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {jobCategory}
                       </span>
                     </div>
 
                     {/* Industry */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Industry</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate" title={industry}>
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Industry</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {industry}
                       </span>
                     </div>
 
                     {/* Salary */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Salary</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate" title={salary}>
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Salary</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {salary}
                       </span>
                       {salaryType && (
-                        <span className="text-[10px] text-gray-500 font-medium block">
+                        <span className="text-[10px] text-gray-500 font-medium block mt-0.5">
                           {salaryType} pay
                         </span>
                       )}
                     </div>
 
                     {/* Job Type */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Job Type</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate">
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Job Type</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {jobType}
                       </span>
                     </div>
 
                     {/* Experience */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Experience</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate">
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Experience</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {experience}
                       </span>
                     </div>
 
                     {/* Work Mode */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Work Mode</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate">
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Work Mode</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {workLocation}
                       </span>
                     </div>
 
                     {/* Openings */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Openings</span>
-                      <span className="font-bold text-gray-900 text-xs block">
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Openings</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {openings} Position(s)
                       </span>
                     </div>
 
                     {/* Education */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Education</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate" title={educationText}>
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Education</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {educationText}
                       </span>
                     </div>
 
                     {/* Location */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Location</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate" title={location}>
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Location</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {location}
                       </span>
                     </div>
 
                     {/* Applications */}
-                    <div className="p-3 bg-blue-50/60 rounded-2xl border border-blue-100/80">
-                      <span className="text-blue-500 font-bold block text-[10px] uppercase">Applications</span>
-                      <span className="font-bold text-blue-700 text-xs block">
+                    <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100/80">
+                      <span className="text-blue-500 font-bold block text-[10px] uppercase mb-1">Applications</span>
+                      <span className="font-bold text-blue-700 text-xs block break-words leading-snug">
                         {applicationsCount} candidate(s)
                       </span>
                     </div>
 
                     {/* Views */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Views</span>
-                      <span className="font-bold text-gray-900 text-xs block">
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Views</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {viewsCount} view(s)
                       </span>
                     </div>
 
                     {/* Posted Date */}
-                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
-                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Posted Date</span>
-                      <span className="font-bold text-gray-900 text-xs block truncate">
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Posted Date</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
                         {postedDate}
                       </span>
                     </div>
@@ -4287,15 +4338,15 @@ export default function DashboardOverview({ onNavigateTab }) {
                         Posted By / Employer Contact
                       </h4>
                     </div>
-                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                       <div>
                         <span className="text-gray-400 font-bold block text-[10px] uppercase">Company</span>
-                        <span className="font-bold text-gray-900 text-xs">{employer.companyName || companyName}</span>
+                        <span className="font-bold text-gray-900 text-xs break-words">{employer.companyName || companyName}</span>
                       </div>
                       {employer.fullName && (
                         <div>
                           <span className="text-gray-400 font-bold block text-[10px] uppercase">Recruiter Name</span>
-                          <span className="font-bold text-gray-900 text-xs">{employer.fullName}</span>
+                          <span className="font-bold text-gray-900 text-xs break-words">{employer.fullName}</span>
                         </div>
                       )}
                       {employer.email && (
@@ -4306,18 +4357,30 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </a>
                         </div>
                       )}
-                      {employer.mobile && (
-                        <div>
-                          <span className="text-gray-400 font-bold block text-[10px] uppercase">Mobile / Phone</span>
-                          <a href={`tel:${employer.mobile}`} className="font-bold text-gray-900 hover:text-emerald-600 text-xs">
-                            {employer.mobile}
+                      <div>
+                        <span className="text-gray-400 font-bold block text-[10px] uppercase">Mobile / Phone</span>
+                        {employer.mobile || employer.phone ? (
+                          <a
+                            href={`tel:${employer.mobile || employer.phone}`}
+                            className="font-bold text-gray-900 hover:text-emerald-600 text-xs flex items-center gap-1.5 mt-0.5 break-words"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>
+                              {(employer.mobile || employer.phone).startsWith('+')
+                                ? (employer.mobile || employer.phone)
+                                : `${employer.countryCode || '+91'} ${employer.mobile || employer.phone}`}
+                            </span>
                           </a>
-                        </div>
-                      )}
+                        ) : (
+                          <span className="font-bold text-gray-400 text-xs block mt-0.5">
+                            N/A
+                          </span>
+                        )}
+                      </div>
                       {employer.location && (
                         <div>
                           <span className="text-gray-400 font-bold block text-[10px] uppercase">Location</span>
-                          <span className="font-bold text-gray-900 text-xs">{employer.location}</span>
+                          <span className="font-bold text-gray-900 text-xs break-words">{employer.location}</span>
                         </div>
                       )}
                       <div>
@@ -4502,21 +4565,52 @@ export default function DashboardOverview({ onNavigateTab }) {
                     No jobs posted yet.
                   </div>
                 ) : (
-                  (detailEmployer?.jobs || selectedEmployer?.jobs).map((job) => (
-                    <div key={job._id || job.id} className="p-3.5 bg-white border border-gray-200/80 rounded-2xl flex items-center justify-between shadow-xs">
-                      <div>
-                        <p className="font-bold text-gray-900 text-xs">{job.jobTitle || job.title}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          {job.location || 'Remote'} • {job.jobType || 'Full-time'}
-                        </p>
+                  (detailEmployer?.jobs || selectedEmployer?.jobs).map((job) => {
+                    const empObj = detailEmployer || selectedEmployer || job.employerId;
+                    const enrichedJob = {
+                      ...job,
+                      employerId: (typeof job.employerId === 'object' && job.employerId !== null) 
+                        ? job.employerId 
+                        : empObj,
+                      company: job.company || empObj?.companyName || 'Company'
+                    };
+                    const isActive = (job.status || 'Active') === 'Active';
+
+                    return (
+                      <div 
+                        key={job._id || job.id} 
+                        onClick={() => setSelectedJobDetail(enrichedJob)}
+                        className="p-3.5 bg-white hover:bg-emerald-50/40 border border-gray-200/80 hover:border-emerald-300 rounded-2xl flex items-center justify-between shadow-xs transition-all cursor-pointer group"
+                      >
+                        <div className="min-w-0 pr-3">
+                          <p className="font-bold text-gray-900 group-hover:text-emerald-700 text-xs transition-colors truncate">
+                            {job.jobTitle || job.title}
+                          </p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            {job.location || 'Remote'} • {job.jobType || 'Full-time'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {job.status || 'Active'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedJobDetail(enrichedJob);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] rounded-xl shadow-xs transition-all cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Job</span>
+                          </button>
+                        </div>
                       </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        (job.status || 'Active') === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {job.status || 'Active'}
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -4952,76 +5046,6 @@ export default function DashboardOverview({ onNavigateTab }) {
                         )}
                       </div>
                     )}
-
-                    {/* 4. ACTIVITY TIMELINE CARD */}
-                    <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
-                      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-emerald-600" />
-                          Candidate Job-Link Activity Timeline
-                        </h4>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                          {visits.length} Events Logged
-                        </span>
-                      </div>
-
-                      {visits.length === 0 ? (
-                        <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-400 font-medium border border-gray-100">
-                          {isJobLink 
-                            ? 'No secondary telemetry visits logged yet for this candidate.' 
-                            : 'Registered directly — no job link visits recorded.'}
-                        </div>
-                      ) : (
-                        <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-gray-100">
-                          {visits.map((v, i) => {
-                            let badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
-                            let eventLabel = 'Landed on Link';
-                            if (v.event === 'signed_up') {
-                              badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                              eventLabel = 'Signed Up via Link';
-                            } else if (v.event === 'logged_in') {
-                              badgeColor = 'bg-purple-100 text-purple-800 border-purple-200';
-                              eventLabel = 'Logged In via Link';
-                            } else if (v.event === 'started_application') {
-                              badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
-                              eventLabel = 'Started Application';
-                            } else if (v.event === 'applied') {
-                              badgeColor = 'bg-green-100 text-green-800 border-green-200';
-                              eventLabel = 'Applied for Job';
-                            }
-
-                            return (
-                              <div key={v._id || i} className="relative flex items-start gap-3 pl-1">
-                                <div className="w-6 h-6 rounded-full bg-white border-2 border-emerald-500 flex items-center justify-center shrink-0 z-10 shadow-2xs">
-                                  <div className="w-2 h-2 rounded-full bg-emerald-600" />
-                                </div>
-                                <div className="flex-1 p-3 bg-gray-50/80 rounded-xl border border-gray-200/70">
-                                  <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
-                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border ${badgeColor}`}>
-                                      {eventLabel}
-                                    </span>
-                                    <span className="text-[10px] text-gray-400 font-medium">
-                                      {v.createdAt ? new Date(v.createdAt).toLocaleString() : 'N/A'}
-                                    </span>
-                                  </div>
-                                  <p className="font-bold text-gray-900 text-xs">
-                                    {v.jobTitle || 'Job Opening'}
-                                  </p>
-                                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-gray-500">
-                                    {v.employerName && <span>Company: <strong className="text-gray-700">{v.employerName}</strong></span>}
-                                    {v.utmSource && (
-                                      <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-100">
-                                        UTM: {v.utmSource}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 );
               })()}

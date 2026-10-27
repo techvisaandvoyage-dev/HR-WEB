@@ -75,7 +75,7 @@ export default function ContentForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl animate-in slide-in-from-bottom-2 fade-in duration-300">
+    <form onSubmit={handleSubmit} className="space-y-6 w-full animate-in slide-in-from-bottom-2 fade-in duration-300">
       {message && (
         <div className={`p-4 rounded-xl text-sm font-semibold flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
           <span>{message.type === 'success' ? '✓' : '!'}</span>

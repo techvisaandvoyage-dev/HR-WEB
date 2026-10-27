@@ -218,9 +218,11 @@ export default function FooterEditor() {
         </div>
 
         {activeTab !== 'library' && activeTab !== 'columns' && (
-          <div className="p-6">
-            {activeTab === 'content' && <ContentForm />}
-            {activeTab === 'social' && <SocialLinksForm />}
+          <div className="p-6 md:p-8 flex justify-center">
+            <div className="w-full max-w-4xl">
+              {activeTab === 'content' && <ContentForm />}
+              {activeTab === 'social' && <SocialLinksForm />}
+            </div>
           </div>
         )}
 

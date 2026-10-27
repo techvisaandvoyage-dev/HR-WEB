@@ -30,6 +30,9 @@ function App() {
       window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
       return 'overview';
     }
+    if (urlTab === 'candidate' || urlTab === 'candidates') {
+      return 'employees';
+    }
     if (urlTab && VALID_TABS.includes(urlTab)) {
       return urlTab;
     }
@@ -48,7 +51,8 @@ function App() {
       const params = new URLSearchParams(window.location.search);
       params.set('tab', 'overview');
       params.set('subtab', 'jobs');
-      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.pushState({ isSentinel: false, adminApp: true, tab: 'overview', subtab: 'jobs' }, '', newUrl);
       return;
     }
     if (newTab === 'applications') {
@@ -57,7 +61,8 @@ function App() {
       const params = new URLSearchParams(window.location.search);
       params.set('tab', 'overview');
       params.set('subtab', 'applications');
-      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.pushState({ isSentinel: false, adminApp: true, tab: 'overview', subtab: 'applications' }, '', newUrl);
       return;
     }
 
@@ -76,29 +81,68 @@ function App() {
     if (safeTab !== 'employers' && safeTab !== 'consultants' && safeTab !== 'footer' && safeTab !== 'homepage' && safeTab !== 'overview') {
       params.delete('subtab');
     }
-    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({ isSentinel: false, adminApp: true, tab: safeTab }, '', newUrl);
   };
 
   useEffect(() => {
-    // Sync URL initially
+    // Normalize URL query params
     const params = new URLSearchParams(window.location.search);
-    if (!params.get('tab')) {
-      params.set('tab', activeTab);
-      window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+    let tabFromUrl = params.get('tab');
+    if (!tabFromUrl || !VALID_TABS.includes(tabFromUrl)) {
+      tabFromUrl = activeTab || 'overview';
+      params.set('tab', tabFromUrl);
     }
+    if (params.get('subtab') === 'overview') {
+      params.delete('subtab');
+    }
+    const currentUrl = `${window.location.pathname}?${params.toString()}`;
 
-    const handlePopState = () => {
+    // Establish multi-layer Sentinel history barriers so browser back button NEVER exits Admin
+    try {
+      window.history.replaceState({ isSentinel: true, adminApp: true }, '', currentUrl);
+      window.history.pushState({ isSentinel: true, adminApp: true }, '', currentUrl);
+      window.history.pushState({ isSentinel: false, adminApp: true, tab: tabFromUrl }, '', currentUrl);
+    } catch (_) {}
+
+    const handlePopState = (e) => {
+      // If user hit the sentinel barrier or state outside admin:
+      if (!e.state || e.state.isSentinel || !e.state.adminApp) {
+        const curParams = new URLSearchParams(window.location.search);
+        let curTab = curParams.get('tab');
+        if (!curTab || !VALID_TABS.includes(curTab)) {
+          curTab = 'overview';
+          curParams.set('tab', 'overview');
+          curParams.delete('subtab');
+        }
+        if (curParams.get('subtab') === 'overview') {
+          curParams.delete('subtab');
+        }
+        const safeUrl = `${window.location.pathname}?${curParams.toString()}`;
+        // Re-push usable state on top of the sentinel barrier to keep user inside Admin
+        window.history.pushState({ isSentinel: false, adminApp: true, tab: curTab }, '', safeUrl);
+        setActiveTab(curTab);
+        localStorage.setItem('adminActiveTab', curTab);
+        return;
+      }
+
+      // Normal internal back-navigation between tabs
       const currentParams = new URLSearchParams(window.location.search);
-      const tabFromUrl = currentParams.get('tab');
-      if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) {
-        setActiveTab(tabFromUrl);
-        localStorage.setItem('adminActiveTab', tabFromUrl);
+      const tab = currentParams.get('tab');
+      if (tab === 'candidate' || tab === 'candidates') {
+        setActiveTab('employees');
+        localStorage.setItem('adminActiveTab', 'employees');
+      } else if (tab && VALID_TABS.includes(tab)) {
+        setActiveTab(tab);
+        localStorage.setItem('adminActiveTab', tab);
+      } else {
+        setActiveTab('overview');
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeTab]);
+  }, []);
 
   // Dynamically apply site favicon to Admin browser tab
   useEffect(() => {

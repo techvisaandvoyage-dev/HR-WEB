@@ -42,7 +42,7 @@ exports.getDashboardStats = async (req, res) => {
     const recentJobs = await Job.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate('employerId', 'fullName companyName email');
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant');
 
     // Recent 5 Applications
     const recentApplications = await Application.find()
@@ -50,7 +50,7 @@ exports.getDashboardStats = async (req, res) => {
       .limit(5)
       .populate('jobId', 'title company location')
       .populate('employeeId', 'name email mobile')
-      .populate('employerId', 'companyName fullName email');
+      .populate('employerId', 'companyName fullName email mobile phone countryCode');
 
     // Registration chart data (7, 14, or 30 days)
     const daysRange = parseInt(req.query.days) || 7;
@@ -473,21 +473,38 @@ exports.getEmployerById = async (req, res) => {
     }
 
     const jobs = await Job.find({ employerId: employer._id })
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant')
       .sort({ createdAt: -1 })
       .lean();
 
-    const activeJobs = jobs.filter(j => (j.status || '').toLowerCase() === 'active').length;
-    const closedJobs = jobs.filter(j => (j.status || '').toLowerCase() === 'closed').length;
+    // Attach application counts
+    const jobIds = jobs.map(j => j._id);
+    const applications = await Application.find({ jobId: { $in: jobIds } }).lean();
+    const appCountMap = {};
+    applications.forEach(a => {
+      const idStr = String(a.jobId);
+      appCountMap[idStr] = (appCountMap[idStr] || 0) + 1;
+    });
+
+    const enrichedJobs = jobs.map(j => ({
+      ...j,
+      id: j._id,
+      employerId: (j.employerId && typeof j.employerId === 'object') ? j.employerId : employer,
+      applicationsCount: appCountMap[String(j._id)] || 0
+    }));
+
+    const activeJobs = enrichedJobs.filter(j => (j.status || '').toLowerCase() === 'active').length;
+    const closedJobs = enrichedJobs.filter(j => (j.status || '').toLowerCase() === 'closed').length;
 
     res.json({
       success: true,
       data: {
         ...employer,
         id: employer._id,
-        totalJobs: jobs.length,
+        totalJobs: enrichedJobs.length,
         activeJobs,
         closedJobs,
-        jobs
+        jobs: enrichedJobs
       }
     });
   } catch (error) {
@@ -744,7 +761,7 @@ exports.getAllJobsAdmin = async (req, res) => {
       ];
     }
     const jobs = await Job.find(query)
-      .populate('employerId', 'fullName companyName email mobile location isConsultant')
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant')
       .sort({ createdAt: -1 })
       .lean();
 
