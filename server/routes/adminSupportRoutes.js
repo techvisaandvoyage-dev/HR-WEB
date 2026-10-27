@@ -5,6 +5,7 @@ const {
   createProblem,
   updateProblem,
   toggleProblemActive,
+  moveProblem,
   deleteProblem,
   getSupportRequests,
   resolveSupportRequest,
@@ -19,6 +20,7 @@ router.get('/problems', getAllProblems);
 router.post('/problems', createProblem);
 router.put('/problems/:id', updateProblem);
 router.patch('/problems/:id/toggle', toggleProblemActive);
+router.patch('/problems/:id/move', moveProblem);
 router.delete('/problems/:id', deleteProblem);
 
 // Support Requests Admin Routes

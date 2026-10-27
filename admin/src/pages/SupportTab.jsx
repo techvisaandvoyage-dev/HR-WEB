@@ -19,6 +19,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   SlidersHorizontal,
   ToggleLeft,
   ToggleRight,
@@ -484,7 +486,8 @@ export default function SupportTab() {
         ? problemRoleFilter
         : 'employee');
     setProblemFormRole(targetRole);
-    setProblemFormOrder(problems.length);
+    const roleProblems = problems.filter((p) => p.role === targetRole);
+    setProblemFormOrder(roleProblems.length);
     setProblemFormActive(true);
     setProblemFormError('');
     setIsProblemModalOpen(true);
@@ -495,7 +498,7 @@ export default function SupportTab() {
     setEditingProblem(prob);
     setProblemFormTitle(prob.title);
     setProblemFormRole(prob.role || 'all');
-    setProblemFormOrder(prob.order || 0);
+    setProblemFormOrder(prob.order !== undefined ? prob.order : 0);
     setProblemFormActive(Boolean(prob.isActive));
     setProblemFormError('');
     setIsProblemModalOpen(true);
@@ -510,6 +513,25 @@ export default function SupportTab() {
     setProblemFormActive(true);
     setProblemFormError('');
     setIsProblemModalOpen(true);
+  };
+
+  // Move problem position up or down
+  const handleMoveProblem = async (probId, direction) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/problems/${probId}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        fetchProblems();
+      } else {
+        alert(json.message || 'Failed to move problem');
+      }
+    } catch (err) {
+      alert('Error moving problem');
+    }
   };
 
   // Toggle problem active status
@@ -1254,18 +1276,20 @@ export default function SupportTab() {
                 </button>
               </div>
             ) : (() => {
-              const displayList = problems.filter((prob) => {
-                const matchesRole =
-                  problemRoleFilter === 'all'
-                    ? true
-                    : problemRoleFilter === 'universal'
-                    ? prob.role === 'all'
-                    : prob.role === problemRoleFilter || prob.role === 'all';
-                const matchesSearch = problemSearch.trim()
-                  ? prob.title.toLowerCase().includes(problemSearch.toLowerCase())
-                  : true;
-                return matchesRole && matchesSearch;
-              });
+              const displayList = problems
+                .filter((prob) => {
+                  const matchesRole =
+                    problemRoleFilter === 'all'
+                      ? true
+                      : problemRoleFilter === 'universal'
+                      ? prob.role === 'all'
+                      : prob.role === problemRoleFilter || prob.role === 'all';
+                  const matchesSearch = problemSearch.trim()
+                    ? prob.title.toLowerCase().includes(problemSearch.toLowerCase())
+                    : true;
+                  return matchesRole && matchesSearch;
+                })
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
               return displayList.length === 0 ? (
                 <div className="py-16 text-center space-y-3">
@@ -1290,7 +1314,7 @@ export default function SupportTab() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-black uppercase tracking-wider text-gray-500">
-                        <th className="py-3.5 px-5 w-20">Order</th>
+                        <th className="py-3.5 px-5 w-24">Order</th>
                         <th className="py-3.5 px-6">Problem Title</th>
                         <th className="py-3.5 px-4 w-36">Role</th>
                         <th className="py-3.5 px-5 w-28">Status</th>
@@ -1299,11 +1323,35 @@ export default function SupportTab() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-xs">
-                      {displayList.map((prob) => {
+                      {displayList.map((prob, index) => {
                         return (
                           <tr key={prob._id} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="py-4 px-5 font-bold text-gray-500">
-                              #{prob.order || 0}
+                            <td className="py-3 px-5">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-bold font-mono text-xs border border-gray-200">
+                                  #{prob.order ?? 0}
+                                </span>
+                                <div className="flex flex-col gap-0.5">
+                                  <button
+                                    type="button"
+                                    disabled={index === 0}
+                                    onClick={() => handleMoveProblem(prob._id, 'up')}
+                                    title="Move Up"
+                                    className="p-0.5 rounded text-gray-400 hover:text-green-700 hover:bg-green-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-gray-400 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                  >
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={index === displayList.length - 1}
+                                    onClick={() => handleMoveProblem(prob._id, 'down')}
+                                    title="Move Down"
+                                    className="p-0.5 rounded text-gray-400 hover:text-green-700 hover:bg-green-50 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-gray-400 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                  >
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
                             </td>
 
                             <td className="py-4 px-6 font-bold text-gray-900">
@@ -1495,12 +1543,15 @@ export default function SupportTab() {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={problemFormOrder}
                   onChange={(e) => setProblemFormOrder(e.target.value)}
                   placeholder="0"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 font-semibold"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">Lower numbers appear first in the widget selection list.</p>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Lower numbers appear first. Setting an existing order automatically shifts subsequent options down without duplicates.
+                </p>
               </div>
 
               {/* Active Toggle Checkbox */}

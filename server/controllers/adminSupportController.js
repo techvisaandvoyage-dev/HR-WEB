@@ -8,17 +8,48 @@ const escapeRegex = (string = '') => {
 };
 
 /* ========================================================
- * Problem Management Controllers
+ * Problem Management Helpers & Controllers
  * ======================================================== */
 
 /**
- * @desc    Get all problems (including inactive)
+ * Normalizes all problems for a specific role so orders are strictly contiguous: 0, 1, 2, 3...
+ * Prevents any duplicate orders or skipped gaps.
+ */
+const normalizeRoleOrders = async (role) => {
+  if (!role) return;
+  try {
+    const list = await SupportProblem.find({ role }).sort({ order: 1, updatedAt: -1, createdAt: 1 });
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].order !== i) {
+        await SupportProblem.updateOne({ _id: list[i]._id }, { $set: { order: i } });
+      }
+    }
+  } catch (err) {
+    console.error('normalizeRoleOrders error:', err);
+  }
+};
+
+/**
+ * Normalizes all roles across the database to fix legacy duplicate orders
+ */
+const autoFixAllRolesOrders = async () => {
+  const roles = ['employee', 'employer', 'consultant', 'all'];
+  for (const r of roles) {
+    await normalizeRoleOrders(r);
+  }
+};
+
+/**
+ * @desc    Get all problems (including inactive) with contiguous order normalization
  * @route   GET /api/admin/support/problems
  * @access  Admin
  */
 exports.getAllProblems = async (req, res) => {
   try {
-    const problems = await SupportProblem.find().sort({ order: 1, createdAt: 1 }).lean();
+    // Automatically repair any legacy duplicate orders across all roles
+    await autoFixAllRolesOrders();
+
+    const problems = await SupportProblem.find().sort({ role: 1, order: 1, createdAt: 1 }).lean();
     return res.status(200).json({
       success: true,
       data: problems,
@@ -34,7 +65,7 @@ exports.getAllProblems = async (req, res) => {
 };
 
 /**
- * @desc    Create a new problem
+ * @desc    Create a new problem (automatically shifts subsequent items down)
  * @route   POST /api/admin/support/problems
  * @access  Admin
  */
@@ -49,17 +80,31 @@ exports.createProblem = async (req, res) => {
       });
     }
 
+    const targetRole = ['all', 'employee', 'employer', 'consultant'].includes(role) ? role : 'all';
+    const targetOrder = Math.max(0, parseInt(order, 10) || 0);
+
+    // Shift all existing problems in this role with order >= targetOrder down by 1
+    await SupportProblem.updateMany(
+      { role: targetRole, order: { $gte: targetOrder } },
+      { $inc: { order: 1 } }
+    );
+
     const problem = await SupportProblem.create({
       title: title.trim(),
-      role: ['all', 'employee', 'employer', 'consultant'].includes(role) ? role : 'all',
-      order: Number(order) || 0,
+      role: targetRole,
+      order: targetOrder,
       isActive: Boolean(isActive),
     });
+
+    // Ensure contiguous ordering without gaps or duplicates
+    await normalizeRoleOrders(targetRole);
+
+    const freshProblem = await SupportProblem.findById(problem._id).lean();
 
     return res.status(201).json({
       success: true,
       message: 'Support problem created successfully',
-      data: problem,
+      data: freshProblem || problem,
     });
   } catch (error) {
     console.error('createProblem error:', error);
@@ -72,7 +117,7 @@ exports.createProblem = async (req, res) => {
 };
 
 /**
- * @desc    Update a problem
+ * @desc    Update a problem (shifts intermediate items when order changes)
  * @route   PUT /api/admin/support/problems/:id
  * @access  Admin
  */
@@ -89,19 +134,75 @@ exports.updateProblem = async (req, res) => {
       });
     }
 
-    if (title !== undefined) problem.title = String(title).trim();
+    const oldRole = problem.role;
+    const oldOrder = problem.order;
+
+    let targetRole = oldRole;
     if (role !== undefined && ['all', 'employee', 'employer', 'consultant'].includes(role)) {
-      problem.role = role;
+      targetRole = role;
     }
-    if (order !== undefined) problem.order = Number(order) || 0;
+
+    let targetOrder = oldOrder;
+    if (order !== undefined) {
+      targetOrder = Math.max(0, parseInt(order, 10) || 0);
+    }
+
+    if (targetRole === oldRole) {
+      // Reordering within the same role
+      if (targetOrder < oldOrder) {
+        // Moving up: shift intermediate items down
+        await SupportProblem.updateMany(
+          {
+            role: targetRole,
+            _id: { $ne: problem._id },
+            order: { $gte: targetOrder, $lt: oldOrder },
+          },
+          { $inc: { order: 1 } }
+        );
+      } else if (targetOrder > oldOrder) {
+        // Moving down: shift intermediate items up
+        await SupportProblem.updateMany(
+          {
+            role: targetRole,
+            _id: { $ne: problem._id },
+            order: { $gt: oldOrder, $lte: targetOrder },
+          },
+          { $inc: { order: -1 } }
+        );
+      }
+    } else {
+      // Role changed
+      // In old role: items after oldOrder shift up
+      await SupportProblem.updateMany(
+        { role: oldRole, order: { $gt: oldOrder } },
+        { $inc: { order: -1 } }
+      );
+      // In new role: items at or after targetOrder shift down
+      await SupportProblem.updateMany(
+        { role: targetRole, order: { $gte: targetOrder } },
+        { $inc: { order: 1 } }
+      );
+    }
+
+    if (title !== undefined) problem.title = String(title).trim();
+    problem.role = targetRole;
+    problem.order = targetOrder;
     if (isActive !== undefined) problem.isActive = Boolean(isActive);
 
     await problem.save();
 
+    // Normalize roles to keep contiguous 0, 1, 2...
+    await normalizeRoleOrders(targetRole);
+    if (targetRole !== oldRole) {
+      await normalizeRoleOrders(oldRole);
+    }
+
+    const updatedProblem = await SupportProblem.findById(id).lean();
+
     return res.status(200).json({
       success: true,
       message: 'Problem updated successfully',
-      data: problem,
+      data: updatedProblem || problem,
     });
   } catch (error) {
     console.error('updateProblem error:', error);
@@ -149,6 +250,79 @@ exports.toggleProblemActive = async (req, res) => {
 };
 
 /**
+ * @desc    Move problem up or down by 1 position in its role
+ * @route   PATCH /api/admin/support/problems/:id/move
+ * @access  Admin
+ */
+exports.moveProblem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { direction } = req.body; // 'up' or 'down'
+
+    if (!['up', 'down'].includes(direction)) {
+      return res.status(400).json({
+        success: false,
+        message: "Direction must be 'up' or 'down'",
+      });
+    }
+
+    const problem = await SupportProblem.findById(id);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found',
+      });
+    }
+
+    // Normalize first to ensure contiguous indices
+    await normalizeRoleOrders(problem.role);
+    const refreshed = await SupportProblem.findById(id);
+    const currentOrder = refreshed.order;
+
+    const targetOrder = direction === 'up' ? currentOrder - 1 : currentOrder + 1;
+    if (targetOrder < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Problem is already at the top',
+      });
+    }
+
+    const neighbor = await SupportProblem.findOne({
+      role: refreshed.role,
+      order: targetOrder,
+    });
+
+    if (!neighbor) {
+      return res.status(200).json({
+        success: true,
+        message: 'Problem cannot be moved further',
+      });
+    }
+
+    // Swap orders
+    neighbor.order = currentOrder;
+    refreshed.order = targetOrder;
+
+    await neighbor.save();
+    await refreshed.save();
+
+    await normalizeRoleOrders(refreshed.role);
+
+    return res.status(200).json({
+      success: true,
+      message: `Problem moved ${direction} successfully`,
+    });
+  } catch (error) {
+    console.error('moveProblem error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to move problem',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * @desc    Delete a problem
  * @route   DELETE /api/admin/support/problems/:id
  * @access  Admin
@@ -164,6 +338,14 @@ exports.deleteProblem = async (req, res) => {
         message: 'Problem not found',
       });
     }
+
+    // Shift subsequent items up
+    await SupportProblem.updateMany(
+      { role: problem.role, order: { $gt: problem.order } },
+      { $inc: { order: -1 } }
+    );
+
+    await normalizeRoleOrders(problem.role);
 
     return res.status(200).json({
       success: true,
