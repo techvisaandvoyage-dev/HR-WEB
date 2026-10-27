@@ -129,7 +129,8 @@ const checkUserLockout = async (email, purpose = '') => {
   if (lockUntil && new Date(lockUntil).getTime() > now) {
     const lockTimeStr = formatLockUntil(lockUntil);
     const action = String(purpose).toLowerCase().includes('login') ? 'login' : 'verification';
-    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.`);
+    const extraHint = action === 'login' ? ' Continue with Google or login with password instead.' : '';
+    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.${extraHint}`);
     err.status = 429;
     err.isLocked = true;
     err.lockUntil = lockUntil;
@@ -190,7 +191,8 @@ const recordFailedAttempt = async (email, purpose = '') => {
 
     const lockTimeStr = formatLockUntil(lockUntil);
     const action = String(purpose).toLowerCase().includes('login') ? 'login' : 'verification';
-    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.`);
+    const extraHint = action === 'login' ? ' Continue with Google or login with password instead.' : '';
+    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.${extraHint}`);
     err.status = 429;
     err.isLocked = true;
     err.lockUntil = lockUntil;
@@ -385,9 +387,12 @@ const saveOtp = (email, otp, expiryMinutes = OTP_EXPIRY_MINUTES, purpose = 'regi
 const consumeOtp = async (email, otp, purpose = 'registration', consume = true) => {
   const cleanEmail = normalizeEmail(email);
   const key = getStoreKey(cleanEmail, purpose);
+  const isAdmin = purpose && String(purpose).toLowerCase().includes('admin');
 
-  // 1. Check if user is locked out (24 hours after 5 failed attempts)
-  await checkUserLockout(cleanEmail, purpose);
+  // 1. Check if user is locked out (24 hours after 5 failed attempts) - Skip for Admin
+  if (!isAdmin) {
+    await checkUserLockout(cleanEmail, purpose);
+  }
 
   const record = otpStore.get(key);
 
@@ -407,7 +412,13 @@ const consumeOtp = async (email, otp, purpose = 'registration', consume = true) 
 
   // 3. Check OTP match
   if (hashOtp(otp) !== record.otpHash) {
-    await recordFailedAttempt(cleanEmail, purpose);
+    if (!isAdmin) {
+      await recordFailedAttempt(cleanEmail, purpose);
+    } else {
+      const err = new Error('Invalid OTP. Please check and try again.');
+      err.status = 400;
+      throw err;
+    }
   }
 
   // If correct, reset failed attempts
@@ -447,8 +458,12 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
     throw err;
   }
 
-  // 1. Check 24-hour lockout (after 5 failed attempts) before sending OTP
-  await checkUserLockout(toEmail, purpose);
+  const isAdmin = purpose && String(purpose).toLowerCase().includes('admin');
+
+  // 1. Check 24-hour lockout (after 5 failed attempts) before sending OTP - Skip for Admin
+  if (!isAdmin) {
+    await checkUserLockout(toEmail, purpose);
+  }
 
   const key = getStoreKey(toEmail, purpose);
   const remainingCooldown = getRemainingCooldown(key);
@@ -459,8 +474,10 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
     throw err;
   }
 
-  // 2. Enforce Daily Limit (Maximum 5 times per day)
-  await checkAndIncrementDailyLimit(toEmail);
+  // 2. Enforce Daily Limit (Maximum 5 times per day) - Skip for Admin
+  if (!isAdmin) {
+    await checkAndIncrementDailyLimit(toEmail);
+  }
 
   // 3. Set OTP parameters: 2 minutes expiry
   const otpLength = Number(process.env.MSG91_OTP_LENGTH || 4);

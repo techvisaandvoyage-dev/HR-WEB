@@ -204,6 +204,10 @@ const getLockedUsers = async (req, res) => {
       success: true,
       data: paginatedData,
       activeLockedEmails: allActiveLockedEmails,
+      activeLocks: rawLockedList.map((item) => ({
+        email: item.email.toLowerCase(),
+        role: item.role.toLowerCase(),
+      })),
       counts: {
         totalLocked: totalRecords,
       },

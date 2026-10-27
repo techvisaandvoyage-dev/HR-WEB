@@ -1,5 +1,6 @@
 const SupportProblem = require('../models/SupportProblem');
 const SupportRequest = require('../models/SupportRequest');
+const { getIO } = require('../socket');
 
 // Helper to escape regex special characters
 const escapeRegex = (string = '') => {
@@ -294,6 +295,23 @@ exports.resolveSupportRequest = async (req, res) => {
     request.resolvedBy = req.user?._id || null;
     await request.save();
 
+    try {
+      const io = getIO();
+      if (io) {
+        io.to(`support_${id}`).emit('support_status_change', {
+          requestId: id,
+          status: 'resolved',
+          resolvedAt: request.resolvedAt,
+        });
+        io.to('support_admin_room').emit('support_request_updated', {
+          requestId: id,
+          status: 'resolved',
+        });
+      }
+    } catch (sockErr) {
+      console.warn('Socket emit error in resolveSupportRequest:', sockErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Support request marked as resolved',
@@ -331,6 +349,22 @@ exports.reopenSupportRequest = async (req, res) => {
     request.resolvedBy = null;
     await request.save();
 
+    try {
+      const io = getIO();
+      if (io) {
+        io.to(`support_${id}`).emit('support_status_change', {
+          requestId: id,
+          status: 'pending',
+        });
+        io.to('support_admin_room').emit('support_request_updated', {
+          requestId: id,
+          status: 'pending',
+        });
+      }
+    } catch (sockErr) {
+      console.warn('Socket emit error in reopenSupportRequest:', sockErr.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Support request reopened',
@@ -361,6 +395,16 @@ exports.deleteSupportRequest = async (req, res) => {
         success: false,
         message: 'Support request not found',
       });
+    }
+
+    try {
+      const io = getIO();
+      if (io) {
+        io.to(`support_${id}`).emit('support_request_deleted', { requestId: id });
+        io.to('support_admin_room').emit('support_request_deleted', { requestId: id });
+      }
+    } catch (sockErr) {
+      console.warn('Socket emit error in deleteSupportRequest:', sockErr.message);
     }
 
     return res.status(200).json({
@@ -397,6 +441,29 @@ exports.adminReply = async (req, res) => {
     request.messages.push(msg);
     request.hasUnreadAdminReply = true;
     await request.save();
+
+    // Broadcast message instantly to client room and admin room
+    try {
+      const io = getIO();
+      if (io) {
+        io.to(`support_${id}`).emit('support_message', {
+          requestId: id,
+          message: msg,
+          allMessages: request.messages,
+          status: request.status,
+          hasUnreadAdminReply: true,
+        });
+        io.to('support_admin_room').emit('support_request_updated', {
+          requestId: id,
+          status: request.status,
+          messagesCount: request.messages.length,
+          lastMessage: msg,
+          hasUnreadAdminReply: true,
+        });
+      }
+    } catch (sockErr) {
+      console.warn('Socket emit error in adminReply:', sockErr.message);
+    }
 
     return res.status(200).json({
       success: true,

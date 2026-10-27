@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { sendOtp, resendOtp, verifyOtp } = require('../utils/email');
+const { sendOtp, resendOtp, verifyOtp, adminUnlockUser } = require('../utils/email');
 const SiteSettings = require('../models/SiteSettings');
 
 // Fallback baseline of authorized Administrator emails
@@ -70,6 +70,11 @@ exports.sendAdminOtp = async (req, res) => {
       });
     }
 
+    // Admin login has no OTP limits - clear any prior limits or lockout
+    if (typeof adminUnlockUser === 'function') {
+      await adminUnlockUser(cleanEmail).catch(() => {});
+    }
+
     const result = await sendOtp({
       email: cleanEmail,
       name: 'Administrator',
@@ -116,6 +121,11 @@ exports.resendAdminOtp = async (req, res) => {
         success: false,
         message: 'Access denied. This email is not authorized for Admin access.',
       });
+    }
+
+    // Admin login has no OTP limits - clear any prior limits or lockout
+    if (typeof adminUnlockUser === 'function') {
+      await adminUnlockUser(cleanEmail).catch(() => {});
     }
 
     const result = await resendOtp({

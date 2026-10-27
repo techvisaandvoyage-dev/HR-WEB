@@ -9,6 +9,7 @@ const SiteSettings = require('../models/SiteSettings');
 // @access  Admin
 exports.getDashboardStats = async (req, res) => {
   try {
+    const existingJobIds = await Job.distinct('_id');
     const [
       totalEmployees,
       totalEmployers,
@@ -22,7 +23,7 @@ exports.getDashboardStats = async (req, res) => {
       Job.countDocuments(),
       Job.countDocuments({ status: 'Active' }),
       Job.countDocuments({ status: 'Closed' }),
-      Application.countDocuments()
+      Application.countDocuments({ jobId: { $in: existingJobIds } })
     ]);
 
     // Recent 5 Employees
@@ -784,9 +785,10 @@ exports.getAllApplicationsAdmin = async (req, res) => {
       .populate('employeeId', 'name email mobile designation location totalExperience resumeUrl avatar')
       .populate('employerId', 'companyName fullName email mobile')
       .sort({ createdAt: -1 })
-      .lean();
+    // Only keep applications linked to existing valid jobs
+    const validApplications = applications.filter(a => a.jobId && a.jobId._id);
 
-    let filtered = applications;
+    let filtered = validApplications;
     if (search) {
       const s = search.toLowerCase();
       filtered = applications.filter(a => 

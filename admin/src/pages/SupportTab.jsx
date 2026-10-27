@@ -29,6 +29,7 @@ import {
   Copy,
 } from 'lucide-react';
 import OtpLockedUsers from './support/OtpLockedUsers';
+import { socket } from '../utils/socket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -40,6 +41,7 @@ export default function SupportTab() {
 
   // OTP Locked Users active cache for quick badges & actions
   const [activeLockedEmails, setActiveLockedEmails] = useState([]);
+  const [activeLocks, setActiveLocks] = useState([]); // Array of { email, role }
   const [lockedCount, setLockedCount] = useState(0);
   const [unlockToast, setUnlockToast] = useState(null);
 
@@ -142,19 +144,84 @@ export default function SupportTab() {
       const json = await res.json();
       if (json.success) {
         setActiveLockedEmails(json.activeLockedEmails || []);
+        setActiveLocks(
+          json.activeLocks ||
+          (json.data || []).map((d) => ({
+            email: (d.email || '').toLowerCase().trim(),
+            role: (d.role || '').toLowerCase().trim(),
+          }))
+        );
         setLockedCount(json.counts?.totalLocked || 0);
       }
     } catch (_) {}
   }, []);
 
-  const handleLocksUpdated = useCallback((emails) => {
-    setActiveLockedEmails(emails);
-    setLockedCount(emails.length);
+  const handleLocksUpdated = useCallback((emails, locks) => {
+    setActiveLockedEmails(emails || []);
+    if (locks) setActiveLocks(locks);
+    setLockedCount((emails || []).length);
+  }, []);
+
+  // Determine if a specific support request's user is locked for THAT specific role
+  const isRequestLocked = useCallback((reqItem) => {
+    if (!reqItem || reqItem.status !== 'pending' || !reqItem.email) return false;
+    const email = reqItem.email.toLowerCase().trim();
+    const userType = (reqItem.userType || 'guest').toLowerCase();
+
+    // 1. Employee / Candidate ticket: only locked if role is employee
+    if (userType === 'employee' || userType === 'candidate') {
+      return activeLocks.some((l) => l.email === email && (l.role === 'employee' || l.role === 'all'));
+    }
+
+    // 2. Employer ticket: only locked if role is employer
+    if (userType === 'employer') {
+      return activeLocks.some((l) => l.email === email && (l.role === 'employer' || l.role === 'all'));
+    }
+
+    // 3. Consultant ticket: only locked if role is consultant
+    if (userType === 'consultant') {
+      return activeLocks.some((l) => l.email === email && (l.role === 'consultant' || l.role === 'all'));
+    }
+
+    // 4. Guest ticket: match problem category if defined
+    const problemRole = (reqItem.problemId?.role || '').toLowerCase();
+    if (problemRole === 'employer') {
+      return activeLocks.some((l) => l.email === email && (l.role === 'employer' || l.role === 'all'));
+    }
+    if (problemRole === 'consultant') {
+      return activeLocks.some((l) => l.email === email && (l.role === 'consultant' || l.role === 'all'));
+    }
+    if (problemRole === 'employee' || problemRole === 'candidate') {
+      return activeLocks.some((l) => l.email === email && (l.role === 'employee' || l.role === 'all'));
+    }
+
+    // Default guest fallback: check employee lock
+    return activeLocks.some((l) => l.email === email && l.role === 'employee');
+  }, [activeLocks]);
+
+  // Fetch request messages (used by admin reply modal)
+  const fetchRequestMessages = useCallback(async (reqId) => {
+    if (!reqId) return;
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/requests/${reqId}/messages`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setReplyRequest((prev) => {
+          if (!prev || (prev._id !== reqId && prev._id?.toString() !== reqId.toString())) return prev;
+          return {
+            ...prev,
+            messages: json.data.messages || [],
+            status: json.data.status || prev.status,
+            hasUnreadAdminReply: json.data.hasUnreadAdminReply,
+          };
+        });
+      }
+    } catch (_) {}
   }, []);
 
   // Fetch support requests
-  const fetchRequests = useCallback(async () => {
-    setLoadingRequests(true);
+  const fetchRequests = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoadingRequests(true);
     setRequestsError('');
     try {
       const params = new URLSearchParams({
@@ -181,10 +248,78 @@ export default function SupportTab() {
     } catch (err) {
       setRequestsError('Network error while fetching requests');
     } finally {
-      setLoadingRequests(false);
+      if (!isSilent) setLoadingRequests(false);
       fetchActiveLockedEmails();
     }
   }, [page, limit, filterStatus, filterUserType, debouncedSearch, fetchActiveLockedEmails]);
+
+  // Socket.io integration for instant admin support updates
+  useEffect(() => {
+    if (!socket.connected) {
+      socket.connect();
+    }
+    socket.emit('join_support_admin');
+
+    const handleSupportRequestUpdated = (data) => {
+      fetchRequests(true);
+      if (replyRequest && (replyRequest._id === data?.requestId || replyRequest._id?.toString() === data?.requestId?.toString())) {
+        fetchRequestMessages(replyRequest._id);
+      }
+    };
+
+    const handleSupportRequestNew = () => {
+      fetchRequests(true);
+    };
+
+    socket.on('support_request_updated', handleSupportRequestUpdated);
+    socket.on('support_request_new', handleSupportRequestNew);
+
+    return () => {
+      socket.emit('leave_support_admin');
+      socket.off('support_request_updated', handleSupportRequestUpdated);
+      socket.off('support_request_new', handleSupportRequestNew);
+    };
+  }, [fetchRequests, fetchRequestMessages, replyRequest]);
+
+  // When Reply Modal is open, listen directly to messages room and poll silently every 3s
+  useEffect(() => {
+    if (!replyRequest?._id) return;
+    const reqId = replyRequest._id.toString();
+
+    socket.emit('join_support', reqId);
+
+    const handleIncomingMessage = (data) => {
+      const pId = (data?.requestId || data?._id || '').toString();
+      if (pId === reqId) {
+        if (data.allMessages) {
+          setReplyRequest((prev) => (prev ? { ...prev, messages: data.allMessages, status: data.status || prev.status } : prev));
+        } else if (data.message) {
+          setReplyRequest((prev) => (prev ? { ...prev, messages: [...(prev.messages || []), data.message], status: data.status || prev.status } : prev));
+        }
+      }
+    };
+
+    const handleIncomingStatus = (data) => {
+      const pId = (data?.requestId || data?._id || '').toString();
+      if (pId === reqId) {
+        setReplyRequest((prev) => (prev ? { ...prev, status: data.status } : prev));
+      }
+    };
+
+    socket.on('support_message', handleIncomingMessage);
+    socket.on('support_status_change', handleIncomingStatus);
+
+    const pollInterval = setInterval(() => {
+      fetchRequestMessages(reqId);
+    }, 3000);
+
+    return () => {
+      socket.emit('leave_support', reqId);
+      socket.off('support_message', handleIncomingMessage);
+      socket.off('support_status_change', handleIncomingStatus);
+      clearInterval(pollInterval);
+    };
+  }, [replyRequest?._id, fetchRequestMessages]);
 
   // Fetch problems list
   const fetchProblems = useCallback(async () => {
@@ -225,7 +360,11 @@ export default function SupportTab() {
     const actionKey = `unlock_${reqItem._id}`;
     setActionLoading((prev) => ({ ...prev, [actionKey]: true }));
     try {
-      const targetRole = reqItem.userType && reqItem.userType !== 'guest' ? reqItem.userType : 'employee';
+      const userType = (reqItem.userType || 'guest').toLowerCase();
+      const matchingLock = activeLocks.find(
+        (l) => l.email === reqItem.email?.toLowerCase().trim() && (userType === 'guest' || l.role === userType)
+      );
+      const targetRole = matchingLock ? matchingLock.role : (userType !== 'guest' ? userType : 'employee');
       const res = await fetch(`${API_URL}/api/admin/otp-locks/unlock`, {
         method: 'PATCH',
         headers: {
@@ -675,6 +814,7 @@ export default function SupportTab() {
                   <option value="employee">Candidate</option>
                   <option value="employer">Employer</option>
                   <option value="consultant">Consultant</option>
+                  <option value="guest">Guest</option>
                 </select>
               </div>
 
@@ -727,13 +867,13 @@ export default function SupportTab() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-black uppercase tracking-wider text-gray-500">
-                      <th className="py-3.5 px-5">User</th>
-                      <th className="py-3.5 px-4">Contact</th>
-                      <th className="py-3.5 px-4">Role</th>
-                      <th className="py-3.5 px-5">Problem Selected</th>
-                      <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4">Submitted At</th>
-                      <th className="py-3.5 px-5 text-right">Actions</th>
+                      <th className="py-3.5 px-5 whitespace-nowrap min-w-[170px]">User</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap">Contact</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap">Role</th>
+                      <th className="py-3.5 px-5 whitespace-nowrap">Problem Selected</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap">Status</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap">Submitted At</th>
+                      <th className="py-3.5 px-5 text-right whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-xs">
@@ -744,12 +884,14 @@ export default function SupportTab() {
                       return (
                         <tr key={reqItem._id} className="hover:bg-gray-50/60 transition-colors">
                           {/* Name & Avatar */}
-                          <td className="py-4 px-5 font-bold text-gray-900">
+                          <td className="py-4 px-5 font-bold text-gray-900 whitespace-nowrap">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 text-gray-700 flex items-center justify-center font-black text-xs shrink-0">
                                 {reqItem.name ? reqItem.name.charAt(0).toUpperCase() : 'U'}
                               </div>
-                              <span className="font-bold text-gray-900">{reqItem.name || 'Anonymous'}</span>
+                              <span className="font-bold text-gray-900 whitespace-nowrap" title={reqItem.name}>
+                                {reqItem.name || 'Anonymous'}
+                              </span>
                             </div>
                           </td>
 
@@ -759,7 +901,7 @@ export default function SupportTab() {
                               <div className="flex items-center gap-1.5 text-gray-700 flex-wrap">
                                 <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                 <span className="font-medium truncate max-w-[170px]" title={reqItem.email}>{reqItem.email}</span>
-                                {reqItem.email && activeLockedEmails.includes(reqItem.email.toLowerCase()) && (
+                                {isRequestLocked(reqItem) && (
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200" title="User is currently locked out of OTP">
                                     <Lock className="w-2.5 h-2.5" />
                                     Locked
@@ -810,7 +952,7 @@ export default function SupportTab() {
                           {/* Actions */}
                           <td className="py-4 px-5 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-2">
-                              {reqItem.email && activeLockedEmails.includes(reqItem.email.toLowerCase()) && (
+                              {isRequestLocked(reqItem) && (
                                 <button
                                   type="button"
                                   onClick={() => handleUnlockFromRequest(reqItem)}
@@ -1559,7 +1701,7 @@ export default function SupportTab() {
               {/* Quick action buttons inside drawer */}
               <div className="flex items-center justify-between pt-1 text-xs">
                 <div className="flex items-center gap-2">
-                  {replyRequest.email && activeLockedEmails.includes(replyRequest.email.toLowerCase()) && (
+                  {isRequestLocked(replyRequest) && (
                     <button
                       type="button"
                       onClick={() => handleUnlockFromRequest(replyRequest)}

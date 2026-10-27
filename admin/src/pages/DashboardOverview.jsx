@@ -545,6 +545,10 @@ export default function DashboardOverview({ onNavigateTab }) {
     });
   }, [jobs, jobStatusFilter, jobSearch]);
 
+  const totalJobApplications = useMemo(() => {
+    return jobs.reduce((sum, j) => sum + (j.applicationsCount !== undefined ? j.applicationsCount : (j.applications || 0)), 0);
+  }, [jobs]);
+
   const filteredApplications = useMemo(() => {
     return applications.filter(app => {
       if (appStatusFilter !== 'All' && (app.status || 'New') !== appStatusFilter) {
@@ -1540,7 +1544,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                     {loadingStats ? '...' : totals.totalApplications.toLocaleString()}
                   </h3>
                   <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    Total Processed
+                    Total
                   </span>
                 </div>
               </div>
@@ -3429,7 +3433,7 @@ export default function DashboardOverview({ onNavigateTab }) {
             <div className="bg-white p-5 rounded-2xl border border-gray-100/80 shadow-xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block mb-1">Candidate Applications</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-blue-700">{totals.totalApplications}</span>
+                <span className="text-2xl font-black text-blue-700">{totalJobApplications}</span>
                 <span className="text-[11px] font-semibold text-blue-600">Submitted</span>
               </div>
             </div>
@@ -3527,13 +3531,8 @@ export default function DashboardOverview({ onNavigateTab }) {
                           className="hover:bg-gray-50/70 transition-colors"
                         >
                           <td className="py-4 px-5">
-                            <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
-                              <span>{job.title || job.jobTitle}</span>
-                              {job.easyApply && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                                  Easy Apply
-                                </span>
-                              )}
+                            <div className="font-bold text-gray-900 text-sm">
+                              {job.title || job.jobTitle}
                             </div>
                             <span className="font-mono text-[10px] text-gray-400 block mt-0.5">
                               ID: #{String(job._id || job.id).substring(18)}
@@ -3665,7 +3664,7 @@ export default function DashboardOverview({ onNavigateTab }) {
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Total Submissions</span>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-black text-gray-900">{applications.length || totals.totalApplications}</span>
-                <span className="text-[11px] font-semibold text-gray-500">Processed</span>
+                <span className="text-[11px] font-semibold text-gray-500">All Time</span>
               </div>
             </div>
 
@@ -3900,144 +3899,484 @@ export default function DashboardOverview({ onNavigateTab }) {
       {/* ========================================================================= */}
 
       {/* Job Details Modal */}
-      {selectedJobDetail && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
-                  <Briefcase className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-gray-900 text-base leading-tight">
-                      {selectedJobDetail.title || selectedJobDetail.jobTitle}
-                    </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      (selectedJobDetail.status || 'Active') === 'Active' 
-                        ? 'bg-emerald-100 text-emerald-800' 
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {selectedJobDetail.status || 'Active'}
-                    </span>
+      {selectedJobDetail && (() => {
+        const title = selectedJobDetail.title || selectedJobDetail.jobTitle || 'Untitled Position';
+        const companyName = selectedJobDetail.company || selectedJobDetail.employerId?.companyName || 'Company';
+        const location = selectedJobDetail.location || selectedJobDetail.details?.workLocation || 'Not specified';
+        const status = selectedJobDetail.status || 'Active';
+        const isActive = status === 'Active';
+        const jobId = selectedJobDetail._id || selectedJobDetail.id;
+
+        // Details object & fallbacks
+        const details = selectedJobDetail.details || {};
+        const jobCategory = details.jobCategory || details.category || selectedJobDetail.role || 'General';
+        const industry = details.industry || selectedJobDetail.employerId?.industry || 'General';
+        const salary = selectedJobDetail.salary || 'Not specified';
+        const salaryType = details.salaryType || '';
+        const salaryNote = details.salaryNote || selectedJobDetail.salaryNote || '';
+        const jobType = selectedJobDetail.jobType || details.employmentType || 'Full-time';
+        const experience = details.experience || 'Any';
+        const workLocation = details.workLocation || selectedJobDetail.workLocation || 'Not specified';
+        const openings = details.openings || '1';
+        const qualification = details.qualification || 'Any Graduate';
+        const stream = details.stream || '';
+        const educationText = stream ? `${qualification} (${stream})` : qualification;
+        const applicationsCount = selectedJobDetail.applicationsCount !== undefined 
+          ? selectedJobDetail.applicationsCount 
+          : (selectedJobDetail.applications || 0);
+        const viewsCount = selectedJobDetail.views || 0;
+        const postedDate = selectedJobDetail.createdAt 
+          ? new Date(selectedJobDetail.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) 
+          : 'N/A';
+
+        // Role & Description Content
+        const aboutRoleContent = details.aboutRole || selectedJobDetail.aboutRole || details.about || selectedJobDetail.about;
+        const responsibilitiesContent = details.responsibilities || selectedJobDetail.responsibilities;
+        const separateDescription = selectedJobDetail.description && selectedJobDetail.description !== aboutRoleContent 
+          ? selectedJobDetail.description 
+          : null;
+
+        // Skills parsing
+        const rawSkills = details.skillsRequired || selectedJobDetail.skills;
+        let skillsList = [];
+        if (Array.isArray(rawSkills)) {
+          skillsList = rawSkills.map(s => (typeof s === 'string' ? s : s?.name || '')).map(s => s.replace(/[;,]+$/, '').trim()).filter(Boolean);
+        } else if (typeof rawSkills === 'string') {
+          skillsList = rawSkills.split(/[,;\n•]+/).map(s => s.replace(/[;,]+$/, '').trim()).filter(Boolean);
+        }
+        // Additional qualifications if any
+        const extraQualifications = (selectedJobDetail.qualifications || [])
+          .filter(q => q && q.name && !skillsList.includes(q.name.replace(/[;,]+$/, '').trim()));
+
+        // Screening questions
+        const screeningQuestions = selectedJobDetail.screeningQuestions || [];
+
+        // Employer info
+        const employer = selectedJobDetail.employerId && typeof selectedJobDetail.employerId === 'object' 
+          ? selectedJobDetail.employerId 
+          : null;
+
+        // Rich text cleaner & renderer
+        const renderRichText = (content) => {
+          if (!content) return null;
+          if (typeof content !== 'string') return <div>{String(content)}</div>;
+          
+          const hasHtml = /<[a-z][\s\S]*>/i.test(content);
+          const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim();
+          if (!textOnly && !hasHtml) return null;
+
+          if (!hasHtml) {
+            return <div className="text-gray-700 leading-relaxed whitespace-pre-line text-xs font-normal">{content}</div>;
+          }
+
+          const sanitized = content
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+            .replace(/on\w+="[^"]*"/gi, '')
+            .replace(/on\w+='[^']*'/gi, '');
+
+          return (
+            <div 
+              className="text-gray-700 leading-relaxed text-xs font-normal space-y-2 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-2 [&>li]:mb-1 [&>strong]:font-bold [&>strong]:text-gray-900 [&>b]:font-bold [&>b]:text-gray-900 [&_a]:text-emerald-600 [&_a]:underline"
+              dangerouslySetInnerHTML={{ __html: sanitized }}
+            />
+          );
+        };
+
+        return (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[92vh] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100">
+              
+              {/* Modal Header */}
+              <div className="p-5 sm:p-6 border-b border-gray-100 flex items-start justify-between bg-white shrink-0 gap-4">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0 border border-emerald-100/80 shadow-2xs">
+                    <Briefcase className="w-6 h-6" />
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {selectedJobDetail.company || selectedJobDetail.employerId?.companyName} • {selectedJobDetail.location}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedJobDetail(null)}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
-              {/* Key Overview Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase">Salary</span>
-                  <span className="font-bold text-gray-900">{selectedJobDetail.salary || 'Not specified'}</span>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase">Job Type</span>
-                  <span className="font-bold text-gray-900">{selectedJobDetail.jobType || selectedJobDetail.details?.employmentType || 'Full-time'}</span>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase">Experience</span>
-                  <span className="font-bold text-gray-900">{selectedJobDetail.details?.experience || 'Any'}</span>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase">Location</span>
-                  <span className="font-bold text-gray-900">{selectedJobDetail.location || 'Remote'}</span>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase">Applications</span>
-                  <span className="font-bold text-blue-700">{selectedJobDetail.applicationsCount !== undefined ? selectedJobDetail.applicationsCount : (selectedJobDetail.applications || 0)} candidates</span>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase">Posted Date</span>
-                  <span className="font-bold text-gray-900">{selectedJobDetail.createdAt ? new Date(selectedJobDetail.createdAt).toLocaleDateString() : 'N/A'}</span>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selectedJobDetail.description && (
-                <div className="space-y-1.5">
-                  <h4 className="font-bold text-gray-900 uppercase text-[10px] tracking-wider">Job Description</h4>
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-gray-700 leading-relaxed whitespace-pre-line text-xs">
-                    {selectedJobDetail.description}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="font-extrabold text-gray-900 text-base sm:text-lg leading-tight truncate">
+                        {title}
+                      </h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        isActive 
+                          ? 'bg-emerald-100 text-emerald-800' 
+                          : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {status}
+                      </span>
+                      {workLocation && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                          {workLocation}
+                        </span>
+                      )}
+                      {selectedJobDetail.easyApply && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
+                          ⚡ Easy Apply
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 font-medium flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-gray-700">{companyName}</span>
+                      <span>•</span>
+                      <span>{location}</span>
+                      {employer?.isConsultant && (
+                        <>
+                          <span>•</span>
+                          <span className="text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded text-[10px]">Consultant</span>
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
-              )}
-
-              {/* Responsibilities */}
-              {selectedJobDetail.details?.responsibilities && (
-                <div className="space-y-1.5">
-                  <h4 className="font-bold text-gray-900 uppercase text-[10px] tracking-wider">Responsibilities</h4>
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-gray-700 leading-relaxed whitespace-pre-line text-xs">
-                    {selectedJobDetail.details.responsibilities}
-                  </div>
-                </div>
-              )}
-
-              {/* Skills */}
-              {selectedJobDetail.details?.skillsRequired && (
-                <div className="space-y-1.5">
-                  <h4 className="font-bold text-gray-900 uppercase text-[10px] tracking-wider">Skills Required</h4>
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-gray-700 text-xs">
-                    {selectedJobDetail.details.skillsRequired}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => handleToggleJobStatus(selectedJobDetail._id || selectedJobDetail.id, selectedJobDetail.status || 'Active')}
-                disabled={togglingJobId === (selectedJobDetail._id || selectedJobDetail.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                  (selectedJobDetail.status || 'Active') === 'Active'
-                    ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                }`}
-              >
-                {togglingJobId === (selectedJobDetail._id || selectedJobDetail.id) 
-                  ? 'Updating...' 
-                  : ((selectedJobDetail.status || 'Active') === 'Active' ? 'Close This Job' : 'Reactivate Job')}
-              </button>
-
-              <div className="flex items-center gap-2">
-                <a
-                  href={`${clientOrigin}/apply-job/${selectedJobDetail._id || selectedJobDetail.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 shadow-xs transition-colors"
-                >
-                  <span>Open Job on Website</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
 
                 <button
                   type="button"
                   onClick={() => setSelectedJobDetail(null)}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                  className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
                 >
-                  Close
+                  <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 text-xs divide-y divide-gray-100">
+                
+                {/* 1. Key Overview Grid */}
+                <div>
+                  <h4 className="font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-3">
+                    Job Overview & Details
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                    {/* Role / Job Category */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Role / Category</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate" title={jobCategory}>
+                        {jobCategory}
+                      </span>
+                    </div>
+
+                    {/* Industry */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Industry</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate" title={industry}>
+                        {industry}
+                      </span>
+                    </div>
+
+                    {/* Salary */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Salary</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate" title={salary}>
+                        {salary}
+                      </span>
+                      {salaryType && (
+                        <span className="text-[10px] text-gray-500 font-medium block">
+                          {salaryType} pay
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Job Type */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Job Type</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate">
+                        {jobType}
+                      </span>
+                    </div>
+
+                    {/* Experience */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Experience</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate">
+                        {experience}
+                      </span>
+                    </div>
+
+                    {/* Work Mode */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Work Mode</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate">
+                        {workLocation}
+                      </span>
+                    </div>
+
+                    {/* Openings */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Openings</span>
+                      <span className="font-bold text-gray-900 text-xs block">
+                        {openings} Position(s)
+                      </span>
+                    </div>
+
+                    {/* Education */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Education</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate" title={educationText}>
+                        {educationText}
+                      </span>
+                    </div>
+
+                    {/* Location */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Location</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate" title={location}>
+                        {location}
+                      </span>
+                    </div>
+
+                    {/* Applications */}
+                    <div className="p-3 bg-blue-50/60 rounded-2xl border border-blue-100/80">
+                      <span className="text-blue-500 font-bold block text-[10px] uppercase">Applications</span>
+                      <span className="font-bold text-blue-700 text-xs block">
+                        {applicationsCount} candidate(s)
+                      </span>
+                    </div>
+
+                    {/* Views */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Views</span>
+                      <span className="font-bold text-gray-900 text-xs block">
+                        {viewsCount} view(s)
+                      </span>
+                    </div>
+
+                    {/* Posted Date */}
+                    <div className="p-3 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase">Posted Date</span>
+                      <span className="font-bold text-gray-900 text-xs block truncate">
+                        {postedDate}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. About the Role / Role Overview */}
+                <div className="pt-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                    <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                      Role Overview / About Role
+                    </h4>
+                  </div>
+                  {aboutRoleContent && renderRichText(aboutRoleContent) ? (
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      {renderRichText(aboutRoleContent)}
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-gray-50/60 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs">
+                      No specific role summary provided by employer.
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Key Responsibilities */}
+                <div className="pt-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
+                    <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                      Responsibilities
+                    </h4>
+                  </div>
+                  {responsibilitiesContent && renderRichText(responsibilitiesContent) ? (
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      {renderRichText(responsibilitiesContent)}
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-gray-50/60 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs">
+                      No responsibilities specified.
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Additional Job Description (if separate from aboutRole) */}
+                {separateDescription && renderRichText(separateDescription) && (
+                  <div className="pt-5 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-3.5 bg-blue-500 rounded-full"></span>
+                      <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                        Job Description
+                      </h4>
+                    </div>
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      {renderRichText(separateDescription)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Skills Required */}
+                <div className="pt-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-purple-500 rounded-full"></span>
+                    <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                      Skills & Qualifications
+                    </h4>
+                  </div>
+                  {(skillsList.length > 0 || extraQualifications.length > 0) ? (
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      <div className="flex flex-wrap gap-2">
+                        {skillsList.map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-emerald-800 text-xs font-semibold rounded-xl border border-emerald-200 shadow-2xs"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>{skill}</span>
+                          </span>
+                        ))}
+                        {extraQualifications.map((q, idx) => (
+                          <span
+                            key={`qual-${idx}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-800 text-xs font-semibold rounded-xl border border-indigo-200 shadow-2xs"
+                          >
+                            <Award className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            <span>{q.name.replace(/[;,]+$/, '').trim()}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-gray-50/60 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs">
+                      No specific skills listed.
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. Screening Questions */}
+                {screeningQuestions.length > 0 && (
+                  <div className="pt-5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-3.5 bg-amber-500 rounded-full"></span>
+                        <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                          Screening Questions ({screeningQuestions.length})
+                        </h4>
+                      </div>
+                    </div>
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100 space-y-2">
+                      {screeningQuestions.map((q, idx) => (
+                        <div key={idx} className="p-3 bg-white rounded-xl border border-gray-100 flex items-center justify-between gap-3 shadow-2xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className="font-medium text-gray-800 text-xs">{q.question}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-[10px] font-semibold rounded-md">
+                              {q.type || 'Yes/No'}
+                            </span>
+                            {q.required && (
+                              <span className="px-2 py-0.5 bg-rose-50 text-rose-700 text-[10px] font-bold rounded-md border border-rose-100">
+                                Required
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 7. Recruiter / Employer Details */}
+                {employer && (
+                  <div className="pt-5 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-3.5 bg-indigo-500 rounded-full"></span>
+                      <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                        Posted By / Employer Contact
+                      </h4>
+                    </div>
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      <div>
+                        <span className="text-gray-400 font-bold block text-[10px] uppercase">Company</span>
+                        <span className="font-bold text-gray-900 text-xs">{employer.companyName || companyName}</span>
+                      </div>
+                      {employer.fullName && (
+                        <div>
+                          <span className="text-gray-400 font-bold block text-[10px] uppercase">Recruiter Name</span>
+                          <span className="font-bold text-gray-900 text-xs">{employer.fullName}</span>
+                        </div>
+                      )}
+                      {employer.email && (
+                        <div>
+                          <span className="text-gray-400 font-bold block text-[10px] uppercase">Email</span>
+                          <a href={`mailto:${employer.email}`} className="font-bold text-emerald-600 hover:underline text-xs break-all">
+                            {employer.email}
+                          </a>
+                        </div>
+                      )}
+                      {employer.mobile && (
+                        <div>
+                          <span className="text-gray-400 font-bold block text-[10px] uppercase">Mobile / Phone</span>
+                          <a href={`tel:${employer.mobile}`} className="font-bold text-gray-900 hover:text-emerald-600 text-xs">
+                            {employer.mobile}
+                          </a>
+                        </div>
+                      )}
+                      {employer.location && (
+                        <div>
+                          <span className="text-gray-400 font-bold block text-[10px] uppercase">Location</span>
+                          <span className="font-bold text-gray-900 text-xs">{employer.location}</span>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-gray-400 font-bold block text-[10px] uppercase">Recruiter Type</span>
+                        <span className={`inline-block mt-0.5 px-2 py-0.5 font-bold text-[10px] rounded-md ${
+                          employer.isConsultant 
+                            ? 'bg-purple-100 text-purple-800' 
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {employer.isConsultant ? 'Consultant' : 'Direct Employer'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleToggleJobStatus(jobId, status)}
+                  disabled={togglingJobId === jobId}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                    isActive
+                      ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  }`}
+                >
+                  {togglingJobId === jobId 
+                    ? 'Updating...' 
+                    : (isActive ? 'Close This Job' : 'Reactivate Job')}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`${clientOrigin}/apply-job/${jobId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl inline-flex items-center gap-1.5 shadow-xs transition-colors"
+                  >
+                    <span>Open Job on Website</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedJobDetail(null)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       
       {/* Slide-out Employer Details Sidebar Drawer */}
       {selectedEmployer && (

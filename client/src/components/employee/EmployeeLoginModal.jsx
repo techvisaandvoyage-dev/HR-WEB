@@ -138,6 +138,16 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     (errors.forgot && (errors.forgot.toLowerCase().includes('locked') || errors.forgot.toLowerCase().includes('too many failed attempts')))
   );
 
+  const formatLockMessage = (msg) => {
+    if (!msg) return '';
+    const lower = String(msg).toLowerCase();
+    if ((lower.includes('locked') || lower.includes('too many failed attempts')) && !lower.includes('google')) {
+      const clean = String(msg).trim().replace(/\.$/, '');
+      return `${clean}. Continue with Google or login with password instead.`;
+    }
+    return msg;
+  };
+
   // Countdown timer for Resend OTP
   useEffect(() => {
     let interval = null;
@@ -1086,11 +1096,11 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                         className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 ${errors.email ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30' : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'}`}
                       />
                       {errors.email && (
-                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-sm font-semibold pl-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <div className="flex items-start gap-1.5 mt-1.5 text-red-600 text-sm font-semibold pl-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
-                          {errors.email}
+                          <span>{formatLockMessage(errors.email)}</span>
                         </div>
                       )}
                       {!errors.email && <p className="text-xs text-gray-500 mt-1 pl-2">We will send a 4-digit verification code to your email</p>}
@@ -1135,7 +1145,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
                         <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>{errors.otp}</span>
+                        <span>{formatLockMessage(errors.otp)}</span>
                       </div>
                     )}
 

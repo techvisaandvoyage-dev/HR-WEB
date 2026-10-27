@@ -1,5 +1,6 @@
 const SupportProblem = require('../models/SupportProblem');
 const SupportRequest = require('../models/SupportRequest');
+const { getIO } = require('../socket');
 
 // Strip HTML tags and limit length
 const sanitizeString = (str = '', maxLength = 250) => {
@@ -156,7 +157,7 @@ exports.createSupportRequest = async (req, res) => {
       });
     }
 
-    // 5. Spam protection: Max 3 requests per hour per user / email / IP
+    // 5. Spam protection: Max 15 requests per hour per user / email / IP
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const hourlyOrConditions = [];
 
@@ -176,10 +177,10 @@ exports.createSupportRequest = async (req, res) => {
     };
 
     const recentRequestsCount = await SupportRequest.countDocuments(hourlyFilter);
-    if (recentRequestsCount >= 3) {
+    if (recentRequestsCount >= 15) {
       return res.status(429).json({
         success: false,
-        message: 'Too many requests. You have reached the maximum of 3 support requests per hour. Please try again later.',
+        message: 'Too many requests. You have reached the maximum of 15 support requests per hour. Please try again later.',
       });
     }
 
@@ -195,6 +196,24 @@ exports.createSupportRequest = async (req, res) => {
       ip: clientIp,
       status: 'pending',
     });
+
+    try {
+      const io = getIO();
+      if (io) {
+        io.to('support_admin_room').emit('support_request_new', {
+          _id: newRequest._id,
+          name: newRequest.name,
+          email: newRequest.email,
+          phone: newRequest.phone,
+          problemText: newRequest.problemText,
+          userType: newRequest.userType,
+          status: newRequest.status,
+          createdAt: newRequest.createdAt,
+        });
+      }
+    } catch (sockErr) {
+      console.warn('Socket emit error in createSupportRequest:', sockErr.message);
+    }
 
     return res.status(201).json({
       success: true,
@@ -338,6 +357,28 @@ exports.submitUserFollowUp = async (req, res) => {
       request.resolvedAt = null;
     }
     await request.save();
+
+    try {
+      const io = getIO();
+      if (io) {
+        io.to(`support_${id}`).emit('support_message', {
+          requestId: id,
+          message: request.messages[request.messages.length - 1],
+          allMessages: request.messages,
+          status: request.status,
+          hasUnreadAdminReply: false,
+        });
+        io.to('support_admin_room').emit('support_request_updated', {
+          requestId: id,
+          status: request.status,
+          messagesCount: request.messages.length,
+          lastMessage: request.messages[request.messages.length - 1],
+          hasUnreadAdminReply: false,
+        });
+      }
+    } catch (sockErr) {
+      console.warn('Socket emit error in submitUserFollowUp:', sockErr.message);
+    }
 
     return res.status(200).json({
       success: true,

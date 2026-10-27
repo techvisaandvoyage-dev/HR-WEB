@@ -1,8 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import './SupportWidget.css';
 import { COUNTRY_CODES } from '../../data/countryCodes';
+import { socket } from '../../utils/socket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const ROLE_LABELS = {
+  candidate: 'Candidate',
+  employer: 'Employer',
+  consultant: 'Consultant',
+};
+
+// Predefined follow-up quick replies matching backend ALLOWED_USER_FOLLOWUPS
+const DEFAULT_QUICK_REPLIES = [
+  'Yes, my issue is resolved. Thank you!',
+  'I tried again, but still getting error',
+  'Please call me on my phone number',
+  'Waiting for resolution, please check soon',
+];
+
+const getInitials = (n) => {
+  if (!n) return '?';
+  const parts = String(n).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const getFirstName = (n) => {
+  if (!n) return 'there';
+  const first = String(n).trim().split(/\s+/)[0];
+  return first || 'there';
+};
 
 export default function SupportWidget() {
   const location = useLocation();
@@ -12,70 +42,136 @@ export default function SupportWidget() {
     return null;
   }
 
-  // Helper to check if a user is genuinely logged in with an active auth token
-  const checkUserLoggedIn = () => {
+  // ---------------------------------------------------------------------------
+  // AUTH STATE (Read-Only)
+  // ---------------------------------------------------------------------------
+  const readCurrentAuth = useCallback(() => {
     try {
       const empToken = localStorage.getItem('employerToken');
       const candToken = localStorage.getItem('employeeToken');
       const isValid = (t) => t && t !== 'null' && t !== 'undefined' && t !== 'false' && String(t).trim().length > 10;
-      return Boolean(isValid(empToken) || isValid(candToken));
+
+      // 1. Candidate / Employee
+      if (isValid(candToken)) {
+        let profile = {};
+        try {
+          const stored = localStorage.getItem('userProfile');
+          if (stored) profile = JSON.parse(stored);
+        } catch (_) {}
+
+        const fullName = profile.name || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Candidate';
+        const email = profile.email || '';
+        const phone = (profile.mobile || profile.phone || '').toString().replace(/\D/g, '').slice(-10);
+
+        return {
+          isLoggedIn: true,
+          role: 'candidate',
+          backendRole: 'employee',
+          name: fullName,
+          email,
+          phone,
+          token: candToken,
+          isEmployer: false,
+        };
+      }
+
+      // 2. Employer or Consultant
+      if (isValid(empToken)) {
+        const isConsultantRoute = window.location.pathname.startsWith('/consultant');
+        return {
+          isLoggedIn: true,
+          role: isConsultantRoute ? 'consultant' : 'employer',
+          backendRole: isConsultantRoute ? 'consultant' : 'employer',
+          name: '',
+          email: '',
+          phone: '',
+          token: empToken,
+          isEmployer: true,
+        };
+      }
+
+      // 3. Guest
+      return {
+        isLoggedIn: false,
+        role: 'candidate',
+        backendRole: 'employee',
+        name: '',
+        email: '',
+        phone: '',
+        token: null,
+        isEmployer: false,
+      };
     } catch (_) {
-      return false;
+      return {
+        isLoggedIn: false,
+        role: 'candidate',
+        backendRole: 'employee',
+        name: '',
+        email: '',
+        phone: '',
+        token: null,
+        isEmployer: false,
+      };
     }
-  };
+  }, []);
 
-  const isUserLoggedIn = checkUserLoggedIn();
+  const [authData, setAuthData] = useState(() => readCurrentAuth());
 
+  // Fetch employer details if employer token is present
+  const syncAuthState = useCallback(async () => {
+    const current = readCurrentAuth();
+    if (!current.isLoggedIn) {
+      setAuthData(current);
+      return;
+    }
+
+    if (current.isEmployer && current.token) {
+      try {
+        const res = await fetch(`${API_URL}/api/employer/auth/me`, {
+          headers: { Authorization: `Bearer ${current.token}` },
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          const emp = json.data;
+          const isConsultant = Boolean(emp.isConsultant || window.location.pathname.startsWith('/consultant'));
+          setAuthData({
+            isLoggedIn: true,
+            role: isConsultant ? 'consultant' : 'employer',
+            backendRole: isConsultant ? 'consultant' : 'employer',
+            name: emp.fullName || emp.companyName || 'Employer',
+            email: emp.email || '',
+            phone: (emp.mobile || '').toString().replace(/\D/g, '').slice(-10),
+            token: current.token,
+            isEmployer: true,
+          });
+          return;
+        }
+      } catch (_) {}
+    }
+
+    setAuthData(current);
+  }, [readCurrentAuth]);
+
+  // ---------------------------------------------------------------------------
+  // WIDGET UI STATE
+  // ---------------------------------------------------------------------------
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('new'); // 'new' | 'updates'
-  const [step, setStep] = useState(1); // 1 = contact form (Name, Email, Phone), 2 = problem options
+  const [activeTab, setActiveTab] = useState('new'); // 'new' | 'upd'
+
+  // Guest flow state: Step 1 (contact form), Step 2 (role & issue selection)
+  const [guestStep, setGuestStep] = useState(1);
+  const [guestRole, setGuestRole] = useState('candidate'); // 'candidate' | 'employer' | 'consultant'
+  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '' });
+  const [countryCode, setCountryCode] = useState('+91');
+  const [contactErrors, setContactErrors] = useState({});
+
+  // Problems list & selection
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [problemFetchError, setProblemFetchError] = useState('');
-
-  // Selected role & problem
-  const [selectedRole, setSelectedRole] = useState('employee'); // 'employee' | 'employer' | 'consultant'
   const [selectedProblemId, setSelectedProblemId] = useState('');
 
-  // Contact details fields (Pre-filled from storage if available for logged-in users)
-  const [contactName, setContactName] = useState(() => {
-    try {
-      if (checkUserLoggedIn()) {
-        const stored = localStorage.getItem('userProfile');
-        if (stored) {
-          const p = JSON.parse(stored);
-          return p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || '';
-        }
-      }
-    } catch (_) {}
-    return '';
-  });
-  const [contactEmail, setContactEmail] = useState(() => {
-    try {
-      if (checkUserLoggedIn()) {
-        const stored = localStorage.getItem('userProfile');
-        if (stored) return JSON.parse(stored).email || '';
-      }
-    } catch (_) {}
-    return '';
-  });
-  const [countryIso, setCountryIso] = useState('IN');
-  const [countryCode, setCountryCode] = useState('+91');
-  const [contactPhone, setContactPhone] = useState(() => {
-    try {
-      if (checkUserLoggedIn()) {
-        const stored = localStorage.getItem('userProfile');
-        if (stored) {
-          const mob = JSON.parse(stored).mobile;
-          if (mob) return String(mob).replace(/\D/g, '').slice(-10);
-        }
-      }
-    } catch (_) {}
-    return '';
-  });
-  const [contactErrors, setContactErrors] = useState({});
-
-  // Active / Submitted Request Tracking state
+  // Active / Submitted request tracking state
   const [activeRequest, setActiveRequest] = useState(() => {
     try {
       const saved = localStorage.getItem('sahijob_active_support_request');
@@ -89,131 +185,135 @@ export default function SupportWidget() {
   const [sendingFollowUp, setSendingFollowUp] = useState(false);
   const [followUpSuccessMsg, setFollowUpSuccessMsg] = useState('');
 
-  // Predefined options for user follow-up (No typing allowed)
-  const userQuickOptions = [
-    "Yes, my issue is resolved. Thank you!",
-    "Still facing issue with OTP verification",
-    "I tried again, but still getting error",
-    "Please call me on my phone number",
-    "Waiting for resolution, please check soon",
-    "Please unlock my account, still showing locked"
-  ];
-
-  // Submission state
+  // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Auto pre-fill contact details from logged-in userProfile or employer account
-  const prefillFromStorage = async () => {
-    try {
-      // 1. Employee / Candidate Profile
-      const storedProfile = localStorage.getItem('userProfile');
-      if (storedProfile) {
-        const parsed = JSON.parse(storedProfile);
-        const nameCandidate = parsed.name || `${parsed.firstName || ''} ${parsed.lastName || ''}`.trim();
-        if (nameCandidate) setContactName(nameCandidate);
-        if (parsed.email) setContactEmail(parsed.email);
-        if (parsed.countryCode) {
-          const match = COUNTRY_CODES.find((c) => c.code === parsed.countryCode);
-          if (match) {
-            setCountryCode(match.code);
-            setCountryIso(match.country);
-          } else {
-            setCountryCode(parsed.countryCode);
-          }
-        }
-        if (parsed.mobile) {
-          const rawMob = String(parsed.mobile).trim();
-          if (rawMob.startsWith('+')) {
-            const parts = rawMob.split(' ');
-            if (parts.length > 1) {
-              const codeCandidate = parts[0];
-              const match = COUNTRY_CODES.find((c) => c.code === codeCandidate);
-              if (match) {
-                setCountryCode(match.code);
-                setCountryIso(match.country);
-              }
-              setContactPhone(parts.slice(1).join('').replace(/\D/g, '').slice(0, 10));
-            } else {
-              setContactPhone(rawMob.replace(/\D/g, '').slice(-10));
-            }
-          } else {
-            setContactPhone(rawMob.replace(/\D/g, '').slice(0, 10));
-          }
-        }
-        setSelectedRole('employee');
-      }
+  const messagesEndRef = useRef(null);
 
-      // 2. Employer Profile (if employer token exists)
-      const empToken = localStorage.getItem('employerToken');
-      if (empToken) {
-        const isConsultantRoute = window.location.pathname.includes('/consultant');
-        setSelectedRole(isConsultantRoute ? 'consultant' : 'employer');
-        try {
-          const res = await fetch(`${API_URL}/api/employer/auth/me`, {
-            headers: { Authorization: `Bearer ${empToken}` },
-          });
-          const data = await res.json();
-          if (data.success && data.data) {
-            const emp = data.data;
-            if (emp.fullName) setContactName(emp.fullName);
-            if (emp.email) setContactEmail(emp.email);
-            if (emp.isConsultant) setSelectedRole('consultant');
-            if (emp.mobile) {
-              const rawMob = String(emp.mobile).trim();
-              if (rawMob.startsWith('+')) {
-                const parts = rawMob.split(' ');
-                if (parts.length > 1) {
-                  const match = COUNTRY_CODES.find((c) => c.code === parts[0]);
-                  if (match) {
-                    setCountryCode(match.code);
-                    setCountryIso(match.country);
-                  }
-                  setContactPhone(parts.slice(1).join('').replace(/\D/g, '').slice(0, 10));
-                } else {
-                  setContactPhone(rawMob.replace(/\D/g, '').slice(-10));
-                }
-              } else {
-                setContactPhone(rawMob.replace(/\D/g, '').slice(0, 10));
-              }
-            }
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
-  };
+  // ---------------------------------------------------------------------------
+  // SYNC AUTH ON EVENT / PERIODICALLY WHEN OPEN
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    syncAuthState();
+    const handleStorageChange = () => syncAuthState();
+    window.addEventListener('storage', handleStorageChange);
 
-  // When widget is opened
+    // Periodically re-check auth state while widget is open (detects login/logout on the same page)
+    let interval = null;
+    if (isOpen) {
+      interval = setInterval(() => {
+        syncAuthState();
+      }, 1000);
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      if (interval) clearInterval(interval);
+    };
+  }, [isOpen, syncAuthState]);
+
+  // When widget opens: refresh problems & details
   useEffect(() => {
     if (isOpen) {
-      const loggedIn = checkUserLoggedIn();
-      // If visitor (without login): ALWAYS show Step 1 contact form first
-      if (!loggedIn) {
-        setStep(1);
-      } else {
-        const hasContactInfo = Boolean(
-          contactName &&
-          contactPhone &&
-          contactPhone.replace(/\D/g, '').length === 10
-        );
-        setStep(hasContactInfo ? 2 : 1);
-      }
-      prefillFromStorage();
       fetchProblems();
-
-      // Check if there is an active tracked request
-      try {
-        const saved = localStorage.getItem('sahijob_active_support_request');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setActiveRequest(parsed);
-          fetchRequestDetails(parsed.id);
-        }
-      } catch (_) {}
+      if (activeRequest?.id) {
+        fetchRequestDetails(activeRequest.id);
+      }
     }
   }, [isOpen]);
 
+  // Close panel on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  // Scroll messages to bottom when updated
+  useEffect(() => {
+    if (activeTab === 'upd' && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [requestDetails?.messages, activeTab]);
+
+  // ---------------------------------------------------------------------------
+  // SOCKET.IO REAL-TIME SUPPORT CHAT INTEGRATION
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!activeRequest?.id) return;
+    const reqId = activeRequest.id.toString();
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+    socket.emit('join_support', reqId);
+
+    const handleSupportMessage = (payload) => {
+      const payloadId = (payload?.requestId || payload?._id || '').toString();
+      if (payloadId === reqId) {
+        setRequestDetails((prev) => {
+          if (!prev) {
+            return {
+              _id: reqId,
+              status: payload.status || 'pending',
+              messages: payload.allMessages || (payload.message ? [payload.message] : []),
+              hasUnreadAdminReply: payload.hasUnreadAdminReply ?? true,
+            };
+          }
+          return {
+            ...prev,
+            status: payload.status || prev.status,
+            messages: payload.allMessages || [...(prev.messages || []), payload.message],
+            hasUnreadAdminReply: payload.hasUnreadAdminReply ?? true,
+          };
+        });
+      }
+    };
+
+    const handleStatusChange = (payload) => {
+      const payloadId = (payload?.requestId || payload?._id || '').toString();
+      if (payloadId === reqId) {
+        setRequestDetails((prev) => (prev ? { ...prev, status: payload.status } : null));
+      }
+    };
+
+    const handleDeleted = (payload) => {
+      const payloadId = (payload?.requestId || payload?._id || '').toString();
+      if (payloadId === reqId) {
+        handleClearAndNewRequest();
+      }
+    };
+
+    socket.on('support_message', handleSupportMessage);
+    socket.on('support_status_change', handleStatusChange);
+    socket.on('support_request_deleted', handleDeleted);
+
+    return () => {
+      socket.emit('leave_support', reqId);
+      socket.off('support_message', handleSupportMessage);
+      socket.off('support_status_change', handleStatusChange);
+      socket.off('support_request_deleted', handleDeleted);
+    };
+  }, [activeRequest?.id]);
+
+  // Periodic silent polling backup (every 3s) while widget is open & on updates tab
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'upd' || !activeRequest?.id) return;
+    const timer = setInterval(() => {
+      fetchRequestDetails(activeRequest.id, true);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [isOpen, activeTab, activeRequest?.id]);
+
+  // ---------------------------------------------------------------------------
+  // API CALLS (Existing endpoints reused exactly)
+  // ---------------------------------------------------------------------------
   const fetchProblems = async () => {
     setLoadingProblems(true);
     setProblemFetchError('');
@@ -225,16 +325,16 @@ export default function SupportWidget() {
       } else {
         setProblemFetchError(data.message || 'Unable to load support options');
       }
-    } catch (err) {
+    } catch (_) {
       setProblemFetchError('Unable to connect to support service. Please try again.');
     } finally {
       setLoadingProblems(false);
     }
   };
 
-  const fetchRequestDetails = async (reqId) => {
+  const fetchRequestDetails = async (reqId, isSilent = false) => {
     if (!reqId) return;
-    setLoadingDetails(true);
+    if (!isSilent) setLoadingDetails(true);
     try {
       const res = await fetch(`${API_URL}/api/support/requests/${reqId}/messages`);
       const data = await res.json();
@@ -243,7 +343,7 @@ export default function SupportWidget() {
       }
     } catch (_) {
     } finally {
-      setLoadingDetails(false);
+      if (!isSilent) setLoadingDetails(false);
     }
   };
 
@@ -251,6 +351,18 @@ export default function SupportWidget() {
     if (!activeRequest?.id || sendingFollowUp) return;
     setSendingFollowUp(true);
     setFollowUpSuccessMsg('');
+
+    // Instant optimistic update
+    const optimisticMsg = {
+      sender: 'user',
+      text: optionText,
+      createdAt: new Date().toISOString(),
+    };
+    setRequestDetails((prev) => (prev ? {
+      ...prev,
+      messages: [...(prev.messages || []), optimisticMsg],
+    } : prev));
+
     try {
       const res = await fetch(`${API_URL}/api/support/requests/${activeRequest.id}/followup`, {
         method: 'POST',
@@ -260,7 +372,12 @@ export default function SupportWidget() {
       const data = await res.json();
       if (data.success) {
         setFollowUpSuccessMsg('Response sent to support team.');
-        fetchRequestDetails(activeRequest.id);
+        if (optionText.toLowerCase().includes('resolved')) {
+          setRequestDetails((prev) => (prev ? { ...prev, status: 'resolved' } : null));
+        }
+        if (data.allMessages) {
+          setRequestDetails((prev) => (prev ? { ...prev, messages: data.allMessages } : null));
+        }
         setTimeout(() => setFollowUpSuccessMsg(''), 3000);
       }
     } catch (_) {
@@ -269,92 +386,87 @@ export default function SupportWidget() {
     }
   };
 
-  const handleReset = () => {
-    setSelectedProblemId('');
-    setContactErrors({});
-    setSubmitError('');
-    setSubmitSuccess(false);
-    const loggedIn = checkUserLoggedIn();
-    if (!loggedIn) {
-      setStep(1);
-    } else {
-      const hasContactInfo = Boolean(
-        contactName &&
-        contactPhone &&
-        contactPhone.replace(/\D/g, '').length === 10
-      );
-      setStep(hasContactInfo ? 2 : 1);
-    }
-  };
-
-  const handleClose = () => {
-    setIsOpen(false);
-    if (submitSuccess) {
-      handleReset();
-    }
-  };
-
-  const validateContact = () => {
+  // ---------------------------------------------------------------------------
+  // VALIDATION & SUBMISSION
+  // ---------------------------------------------------------------------------
+  const validateContactForm = () => {
     const errors = {};
-    if (!contactName.trim()) {
-      errors.name = 'Please enter your full name';
+    if (!contactForm.name.trim() || contactForm.name.trim().length < 2) {
+      errors.name = 'Enter your full name';
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!contactEmail.trim() || !emailRegex.test(contactEmail.trim())) {
-      errors.email = 'Please enter a valid email address';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!contactForm.email.trim() || !emailRegex.test(contactForm.email.trim())) {
+      errors.email = 'Enter a valid email address';
     }
-    const cleanPhone = contactPhone.replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length !== 10) {
-      errors.phone = 'Please enter a valid 10-digit mobile number';
+    const cleanPhone = contactForm.phone.replace(/\D/g, '');
+    if (countryCode === '+91') {
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        errors.phone = 'Enter a valid 10-digit mobile number';
+      }
+    } else {
+      if (!/^\d{7,15}$/.test(cleanPhone)) {
+        errors.phone = 'Enter a valid mobile number';
+      }
     }
     setContactErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleProceedToIssues = (e) => {
+  const handleGuestContinue = (e) => {
     e.preventDefault();
-    if (!validateContact()) {
-      return;
-    }
-    setStep(2);
+    if (!validateContactForm()) return;
+    setGuestStep(2);
     setSubmitError('');
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (!selectedProblemId || isSubmitting) return;
 
-    if (!selectedProblemId) {
-      setSubmitError('Please select an issue option from the list.');
-      return;
-    }
-
-    if (!validateContact()) {
-      setStep(1);
-      setSubmitError('Please verify your contact details.');
-      return;
+    // For guest users, verify contact details are filled
+    if (!authData.isLoggedIn) {
+      if (!validateContactForm()) {
+        setGuestStep(1);
+        return;
+      }
     }
 
     setIsSubmitting(true);
     setSubmitError('');
 
     try {
-      const employerToken = localStorage.getItem('employerToken');
-      const employeeToken = localStorage.getItem('employeeToken');
-      const activeToken = employerToken || employeeToken;
-
-      const headers = {
-        'Content-Type': 'application/json',
-      };
+      const activeToken = authData.isLoggedIn ? authData.token : null;
+      const headers = { 'Content-Type': 'application/json' };
       if (activeToken) {
         headers['Authorization'] = `Bearer ${activeToken}`;
       }
 
-      const fullPhone = contactPhone ? `${countryCode} ${contactPhone.trim()}`.trim() : '';
+      const activeName = authData.isLoggedIn
+        ? (authData.name || 'User')
+        : contactForm.name.trim();
+
+      const activeEmail = authData.isLoggedIn
+        ? (authData.email || '')
+        : contactForm.email.trim().toLowerCase();
+
+      const rawPhone = authData.isLoggedIn
+        ? (authData.phone || '')
+        : contactForm.phone.trim();
+
+      const fullPhone = rawPhone
+        ? (authData.isLoggedIn
+            ? (rawPhone.startsWith('+') ? rawPhone : `+91 ${rawPhone}`)
+            : `${countryCode} ${rawPhone}`)
+        : '';
+      const targetRole = authData.isLoggedIn
+        ? authData.backendRole
+        : (guestRole === 'candidate' ? 'employee' : guestRole);
+
       const bodyPayload = {
         problemId: selectedProblemId,
-        targetRole: selectedRole,
-        name: contactName?.trim() || '',
-        email: contactEmail?.trim()?.toLowerCase() || '',
+        targetRole,
+        name: activeName,
+        email: activeEmail,
         phone: fullPhone,
       };
 
@@ -365,594 +477,537 @@ export default function SupportWidget() {
       });
 
       const data = await res.json();
-
       if (res.ok && data.success) {
-        if (data.data?._id) {
-          const reqInfo = {
-            id: data.data._id,
-            problemText: data.data.problemText,
-            email: contactEmail.trim().toLowerCase(),
-            submittedAt: Date.now(),
-          };
-          localStorage.setItem('sahijob_active_support_request', JSON.stringify(reqInfo));
-          setActiveRequest(reqInfo);
-          fetchRequestDetails(reqInfo.id);
-        }
-        // Directly transition to Updates & Chat screen
-        setActiveTab('updates');
-        setSubmitSuccess(false);
-        setFollowUpSuccessMsg('Request submitted successfully! Our support team has been notified.');
-        setTimeout(() => setFollowUpSuccessMsg(''), 5000);
+        const reqInfo = {
+          id: data.data._id,
+          problemText: data.data.problemText,
+          email: activeEmail,
+          submittedAt: Date.now(),
+        };
+        localStorage.setItem('sahijob_active_support_request', JSON.stringify(reqInfo));
+        setActiveRequest(reqInfo);
+        fetchRequestDetails(reqInfo.id);
+
+        setSubmitSuccess(true);
       } else {
         setSubmitError(data.message || 'Failed to submit support request. Please try again.');
       }
-    } catch (err) {
+    } catch (_) {
       setSubmitError('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Filter problems by selected role or generic 'all'
+  // Reset to create a new request
+  const handleStartNewRequest = () => {
+    setSelectedProblemId('');
+    setSubmitSuccess(false);
+    setSubmitError('');
+    setActiveTab('new');
+    if (!authData.isLoggedIn) {
+      setGuestStep(1);
+    }
+  };
+
+  // Clear current active request and start fresh
+  const handleClearAndNewRequest = () => {
+    try {
+      localStorage.removeItem('sahijob_active_support_request');
+    } catch (_) {}
+    setActiveRequest(null);
+    setRequestDetails(null);
+    handleStartNewRequest();
+  };
+
+  // ---------------------------------------------------------------------------
+  // FILTER PROBLEMS BY CURRENT EFFECTIVE ROLE & COUNTRY
+  // ---------------------------------------------------------------------------
+  const currentRole = authData.isLoggedIn ? authData.role : guestRole;
+  const currentBackendRole = currentRole === 'candidate' ? 'employee' : currentRole;
+  const currentCountry = COUNTRY_CODES.find((c) => c.code === countryCode) || COUNTRY_CODES[0];
+
   const filteredProblems = problems.filter(
-    (p) => !p.role || p.role === 'all' || p.role === selectedRole
+    (p) => !p.role || p.role === 'all' || p.role === currentBackendRole || p.role === currentRole
   );
 
-  const roleTabs = [
-    { id: 'employee', label: 'Candidate', icon: '👨‍💼' },
-    { id: 'employer', label: 'Employer', icon: '🏢' },
-    { id: 'consultant', label: 'Consultant', icon: '🤝' },
-  ];
+  // Unread badge indicator for Updates & Chat tab
+  const hasUnread = Boolean(
+    activeRequest &&
+    activeTab !== 'upd' &&
+    (requestDetails?.hasUnreadAdminReply || requestDetails?.status !== 'resolved')
+  );
 
   return (
     <>
-      {/* Floating Circular Trigger Button */}
-      <div className="fixed bottom-6 right-6 z-[90]">
-        <button
-          id="sahijob-support-widget-btn"
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label="Need Help? Open Support Widget"
-          className="group relative flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-palette-900 hover:bg-palette-400 text-white shadow-2xl shadow-palette-900/40 hover:shadow-palette-400/50 transition-all duration-300 transform hover:scale-105 focus:outline-none cursor-pointer"
-        >
-          {isOpen ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      {/* Floating Action Button (FAB) */}
+      <button
+        id="sjFab"
+        type="button"
+        className="sj-fab"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-controls="sjPanel"
+        aria-label={isOpen ? 'Close support chat' : 'Open support chat'}
+      >
+        {isOpen ? (
+          <svg className="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        ) : (
+          <>
+            <svg className="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5Z" />
             </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-white transition-transform duration-200 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+            <span className="sj-fab-ping">
+              <span className="sj-fab-ping-ring" />
+              <span className="sj-fab-ping-dot" />
+            </span>
+          </>
+        )}
+      </button>
+
+      {/* Floating Support Panel Dialog */}
+      <section
+        id="sjPanel"
+        className="sj-panel"
+        role="dialog"
+        aria-label="SahiJob Support"
+        hidden={!isOpen}
+      >
+        {/* Header */}
+        <header className="sj-head">
+          <div className="sj-logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="12" cy="12" r="3.5" />
+              <path d="m5.6 5.6 3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9" />
             </svg>
-          )}
-
-          {/* Pulse ring animation */}
-          {!isOpen && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white"></span>
-            </span>
-          )}
-
-          {/* Tooltip on hover */}
-          {!isOpen && (
-            <span className="hidden sm:block absolute right-full mr-3 px-3 py-1.5 bg-gray-900/90 backdrop-blur-xs text-white text-xs font-semibold rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              Need Help? Support
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Floating Popup Panel */}
-      {isOpen && (
-        <div 
-          id="sahijob-support-widget-panel"
-          className="fixed bottom-24 right-4 sm:right-6 z-[95] w-[390px] max-w-[calc(100vw-32px)] bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[88vh] animate-in fade-in slide-in-from-bottom-5 duration-300"
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-palette-900 via-[#25732c] to-palette-400 text-white p-4 sm:p-5 shrink-0 flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center border border-white/20">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-extrabold text-base leading-tight">SahiJob Support</h3>
-                <p className="text-emerald-100 text-xs font-medium">Quick resolution assistance</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
-              aria-label="Close support panel"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
+          <div className="grow">
+            <h2>SahiJob Support</h2>
+            <p>Quick resolution assistance</p>
+          </div>
+          <button
+            type="button"
+            id="sjClose"
+            className="sj-close"
+            onClick={() => setIsOpen(false)}
+            aria-label="Close support"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
 
-          {/* Sub Navigation Bar: [New Request] vs [Track Request / Messages] */}
-          {activeRequest && (
-            <div className="flex items-center border-b border-gray-100 bg-gray-50/70 p-1.5 shrink-0 gap-1 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => { setActiveTab('new'); setSubmitSuccess(false); setStep(1); }}
-                className={`flex-1 py-1.5 rounded-xl transition-all cursor-pointer text-center ${
-                  activeTab === 'new'
-                    ? 'bg-white text-palette-900 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                + New Request
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('updates');
-                  fetchRequestDetails(activeRequest.id);
-                }}
-                className={`flex-1 py-1.5 rounded-xl transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 ${
-                  activeTab === 'updates'
-                    ? 'bg-white text-palette-900 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                <span>💬 Updates & Chat</span>
-                {requestDetails?.messages?.length > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center font-black">
-                    {requestDetails.messages.length}
+        {/* Tab Navigation */}
+        <div className="sj-tabs" role="tablist">
+          <button
+            type="button"
+            className="sj-tab"
+            role="tab"
+            id="tabNew"
+            aria-selected={activeTab === 'new'}
+            onClick={() => {
+              setActiveTab('new');
+              if (submitSuccess) setSubmitSuccess(false);
+            }}
+          >
+            New request
+          </button>
+          <button
+            type="button"
+            className="sj-tab"
+            role="tab"
+            id="tabUpd"
+            aria-selected={activeTab === 'upd'}
+            onClick={() => {
+              setActiveTab('upd');
+              if (activeRequest?.id) fetchRequestDetails(activeRequest.id);
+            }}
+          >
+            Updates &amp; chat
+            <span className={`sj-dot ${hasUnread ? 'on' : ''}`} id="sjDot" />
+          </button>
+        </div>
+
+        {/* Panel Body */}
+        <div className="sj-body" id="sjBody">
+          {/* TAB 1: UPDATES & CHAT */}
+          {activeTab === 'upd' ? (
+            !activeRequest ? (
+              <div className="sj-empty">
+                <b>No active requests</b>
+                When you submit a request, its status and replies will show here.
+              </div>
+            ) : (
+              <>
+                {/* Request Status Banner */}
+                <div className="sj-status">
+                  <span className={`sj-badge ${requestDetails?.status === 'resolved' ? 'done' : ''}`}>
+                    {requestDetails?.status === 'resolved' ? 'Resolved' : 'In progress'}
                   </span>
+                  <small>Request status</small>
+                  <b>{requestDetails?.problemText || activeRequest.problemText}</b>
+                </div>
+
+                {/* Follow-up success notification */}
+                {followUpSuccessMsg && (
+                  <div className="sj-alert-success">{followUpSuccessMsg}</div>
                 )}
-              </button>
-            </div>
-          )}
 
-          {/* Panel Content Area */}
-          <div className="p-5 overflow-y-auto flex-1 scrollbar-thin">
-            {/* VIEW 1: ACTIVE REQUEST TRACKING & CHAT */}
-            {activeTab === 'updates' && activeRequest ? (
-              <div className="space-y-4">
-                {/* Request Header Banner */}
-                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-3.5 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
-                      Request Status
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                      requestDetails?.status === 'resolved'
-                        ? 'bg-emerald-200 text-emerald-900'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {requestDetails?.status === 'resolved' ? '✅ Resolved' : '⏳ In Progress'}
-                    </span>
+                {/* Messages Thread */}
+                <div className="sj-msgs" aria-live="polite">
+                  <div className="sj-msg sys">
+                    Request received. Our support team has been notified. Replies will appear here.
                   </div>
-                  <p className="text-xs font-bold text-gray-900">
-                    {requestDetails?.problemText || activeRequest.problemText}
-                  </p>
-                </div>
 
-                {/* Messages List */}
-                <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
-                  {loadingDetails ? (
-                    <div className="py-8 text-center text-xs text-gray-400">Loading conversation...</div>
-                  ) : (!requestDetails?.messages || requestDetails.messages.length === 0) ? (
-                    <div className="py-6 text-center space-y-1 bg-gray-50 rounded-2xl border border-gray-100 p-4">
-                      <p className="text-xs font-bold text-gray-700">Request received!</p>
-                      <p className="text-[11px] text-gray-500 leading-relaxed">
-                        Our support admin has been notified. Any replies will appear here.
-                      </p>
-                    </div>
-                  ) : (
-                    requestDetails.messages.map((msg, idx) => {
-                      const isAdmin = msg.sender === 'admin';
-                      return (
-                        <div key={idx} className={`flex flex-col ${isAdmin ? 'items-start' : 'items-end'}`}>
-                          <span className="text-[10px] font-bold text-gray-400 px-1 mb-0.5">
-                            {isAdmin ? 'Admin Support' : 'You'} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <div className={`p-3 rounded-2xl text-xs font-medium max-w-[88%] leading-relaxed ${
-                            isAdmin
-                              ? 'bg-palette-900 text-white rounded-tl-xs shadow-xs'
-                              : 'bg-gray-100 text-gray-800 rounded-tr-xs'
-                          }`}>
-                            {msg.text}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Predefined Quick Option Reply Section */}
-                <div className="pt-2 border-t border-gray-100 space-y-2">
-                  <p className="text-[11px] font-extrabold text-gray-700">
-                    Send quick update to Admin:
-                  </p>
-
-                  {followUpSuccessMsg && (
-                    <div className="p-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-[11px] font-bold text-center">
-                      {followUpSuccessMsg}
+                  {loadingDetails && (
+                    <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--ink3)', padding: '12px 0' }}>
+                      Checking for updates...
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 gap-1.5">
-                    {userQuickOptions.map((opt, i) => (
+                  {requestDetails?.messages?.map((msg, idx) => {
+                    const isAdmin = msg.sender === 'admin';
+                    const timeStr = msg.createdAt
+                      ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : '';
+                    return (
+                      <div key={idx} className={`sj-msg ${isAdmin ? 'sys' : 'me'}`}>
+                        <span className="sj-msg-meta">
+                          {isAdmin ? 'Support Admin' : 'You'} {timeStr ? `• ${timeStr}` : ''}
+                        </span>
+                        <div>{msg.text}</div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Predefined Quick Replies (Allowed only while request is in progress) */}
+                {requestDetails?.status !== 'resolved' && (
+                  <div className="sj-quick">
+                    <p>Send a quick update to support</p>
+                    {(requestDetails?.allowedFollowUps || DEFAULT_QUICK_REPLIES).map((opt, i) => (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => handleSendFollowUpOption(opt)}
                         disabled={sendingFollowUp}
-                        className="w-full text-left p-2.5 rounded-xl border border-gray-200 hover:border-palette-900 hover:bg-emerald-50/50 text-gray-800 text-[11px] font-bold transition-all disabled:opacity-50 cursor-pointer flex items-center justify-between"
+                        onClick={() => handleSendFollowUpOption(opt)}
                       >
-                        <span>{opt}</span>
-                        <span className="text-gray-400 hover:text-palette-900">→</span>
+                        {opt}
                       </button>
                     ))}
                   </div>
+                )}
+              </>
+            )
+          ) : submitSuccess ? (
+            /* SUCCESS STATE AFTER SUBMISSION */
+            <div className="sj-empty">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--g600)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto' }}>
+                <circle cx="12" cy="12" r="10" />
+                <path d="m8 12.5 2.8 2.8L16 9.5" />
+              </svg>
+              <b style={{ marginTop: '10px' }}>Request submitted</b>
+              Our support team has been notified. We will reply in Updates &amp; chat.
+            </div>
+          ) : !authData.isLoggedIn && guestStep === 1 ? (
+            /* =========================================================
+             * A) GUEST STEP 1: CONTACT DETAILS FORM
+             * ========================================================= */
+            <form id="contactForm" onSubmit={handleGuestContinue} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="sj-title">
+                <div>
+                  <h3>Your contact details</h3>
+                  <p>Fill in your details to see support options</p>
                 </div>
+                <span className="sj-step">Step 1 of 2</span>
               </div>
-            ) : submitSuccess ? (
-              /* SUCCESS STATE */
-              <div className="py-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 text-palette-900 flex items-center justify-center shadow-inner">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-palette-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
 
-                <div className="space-y-2 px-2">
-                  <h4 className="text-lg font-bold text-gray-900">Request Submitted!</h4>
-                  <p className="text-sm font-medium text-gray-600 leading-relaxed">
-                    Your support request has been submitted. Our team will review it and reply shortly.
-                  </p>
-                </div>
-
-                <div className="pt-2 space-y-2">
-                  {activeRequest && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('updates');
-                        fetchRequestDetails(activeRequest.id);
-                      }}
-                      className="w-full py-3 bg-palette-900 hover:bg-palette-400 text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer text-xs"
-                    >
-                      💬 View Updates & Chat
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors cursor-pointer text-xs"
-                  >
-                    Submit Another Request
-                  </button>
-                </div>
+              {/* Full Name */}
+              <div className="sj-field">
+                <label htmlFor="fName">Full name <i>*</i></label>
+                <input
+                  id="fName"
+                  className={`sj-input ${contactErrors.name ? 'bad' : ''}`}
+                  autoComplete="name"
+                  placeholder="e.g. Rahul Sharma"
+                  value={contactForm.name}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setContactForm((prev) => ({ ...prev, name: val }));
+                    if (contactErrors.name) setContactErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                />
+                {contactErrors.name && <div className="sj-err">{contactErrors.name}</div>}
               </div>
-            ) : step === 1 ? (
-              /* ========================================================
-               * STEP 1: ONLY CONTACT DETAILS FORM (FIRST)
-               * ======================================================== */
-              <form onSubmit={handleProceedToIssues} className="space-y-4">
-                <div className="flex items-center justify-between pb-1 border-b border-gray-100">
-                  <div>
-                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider">Your Contact Details</h4>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Please fill your details to see support options</p>
-                  </div>
-                  {isUserLoggedIn ? (
-                    <button
-                      type="button"
-                      onClick={() => setStep(2)}
-                      className="text-xs font-bold text-palette-900 hover:underline cursor-pointer"
-                    >
-                      ← Back to Issues
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                      Step 1 of 2
-                    </span>
-                  )}
-                </div>
 
-                {submitError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-semibold flex items-start gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 mt-0.5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              {/* Email ID */}
+              <div className="sj-field">
+                <label htmlFor="fEmail">Email ID <i>*</i></label>
+                <input
+                  id="fEmail"
+                  type="email"
+                  className={`sj-input ${contactErrors.email ? 'bad' : ''}`}
+                  autoComplete="email"
+                  placeholder="name@example.com"
+                  value={contactForm.email}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setContactForm((prev) => ({ ...prev, email: val }));
+                    if (contactErrors.email) setContactErrors((prev) => ({ ...prev, email: '' }));
+                  }}
+                />
+                {contactErrors.email && <div className="sj-err">{contactErrors.email}</div>}
+              </div>
+
+              {/* Mobile Number */}
+              <div className="sj-field">
+                <label htmlFor="fPhone">Mobile number <i>*</i></label>
+                <div className="sj-phone">
+                  <div className="sj-cc-wrap" title="Select country code">
+                    <span className="sj-cc-flag">{currentCountry.flag}</span>
+                    <span className="sj-cc-code">{countryCode}</span>
+                    <svg className="sj-cc-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
                     </svg>
-                    <span>{submitError}</span>
+                    <select
+                      id="fCountryCode"
+                      className="sj-cc-select-overlay"
+                      value={countryCode}
+                      onChange={(e) => {
+                        setCountryCode(e.target.value);
+                        if (contactErrors.phone) setContactErrors((prev) => ({ ...prev, phone: '' }));
+                      }}
+                      aria-label="Select Country Code"
+                    >
+                      {COUNTRY_CODES.map((c, i) => (
+                        <option key={`${c.country}-${c.code}-${i}`} value={c.code}>
+                          {c.flag} {c.code} &mdash; {c.name.split(' (')[0]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    id="fPhone"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={countryCode === '+91' ? 10 : 15}
+                    className={`sj-input ${contactErrors.phone ? 'bad' : ''}`}
+                    autoComplete="tel-national"
+                    placeholder={countryCode === '+91' ? '9876543210' : 'Mobile number'}
+                    value={contactForm.phone}
+                    onChange={(e) => {
+                      const maxLen = countryCode === '+91' ? 10 : 15;
+                      const clean = e.target.value.replace(/\D/g, '').slice(0, maxLen);
+                      setContactForm((prev) => ({ ...prev, phone: clean }));
+                      if (contactErrors.phone) setContactErrors((prev) => ({ ...prev, phone: '' }));
+                    }}
+                  />
+                </div>
+                {contactErrors.phone ? (
+                  <div className="sj-err">{contactErrors.phone}</div>
+                ) : (
+                  <div className="sj-hint">
+                    {countryCode === '+91'
+                      ? 'Enter a 10-digit mobile number'
+                      : 'Enter a valid mobile number'}
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={contactName}
-                    onChange={(e) => {
-                      setContactName(e.target.value);
-                      setContactErrors((prev) => ({ ...prev, name: '' }));
-                    }}
-                    placeholder="e.g. Rahul Sharma"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition-all placeholder:text-gray-400 ${
-                      contactErrors.name
-                        ? 'border-red-500 bg-red-50/20'
-                        : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
-                    }`}
-                  />
-                  {contactErrors.name && (
-                    <p className="text-[10px] text-red-500 font-semibold mt-1">{contactErrors.name}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Email ID <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={contactEmail}
-                    onChange={(e) => {
-                      setContactEmail(e.target.value);
-                      setContactErrors((prev) => ({ ...prev, email: '' }));
-                    }}
-                    placeholder="name@example.com"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition-all placeholder:text-gray-400 ${
-                      contactErrors.email
-                        ? 'border-red-500 bg-red-50/20'
-                        : 'border-gray-300 focus:border-palette-400 focus:ring-1 focus:ring-palette-400'
-                    }`}
-                  />
-                  {contactErrors.email && (
-                    <p className="text-[10px] text-red-500 font-semibold mt-1">{contactErrors.email}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Mobile Number <span className="text-red-500">*</span>
-                  </label>
-                  <div
-                    className={`flex items-center rounded-xl border bg-white transition-all overflow-hidden ${
-                      contactErrors.phone
-                        ? 'border-red-500 bg-red-50/20 ring-1 ring-red-500'
-                        : 'border-gray-300 focus-within:border-palette-400 focus-within:ring-1 focus-within:ring-palette-400'
-                    }`}
-                  >
-                    {/* Country Code Dropdown */}
-                    <div className="relative shrink-0 flex items-center bg-gray-50 hover:bg-gray-100 rounded-l-xl border-r border-gray-200 transition-colors">
-                      <select
-                        value={countryIso}
-                        onChange={(e) => {
-                          const iso = e.target.value;
-                          setCountryIso(iso);
-                          const found = COUNTRY_CODES.find((c) => c.country === iso);
-                          if (found) {
-                            setCountryCode(found.code);
-                          }
-                        }}
-                        className="appearance-none bg-transparent pl-3 pr-7 py-2.5 text-xs font-bold text-gray-800 cursor-pointer outline-none max-w-[125px] truncate"
-                        aria-label="Country Code"
-                      >
-                        {COUNTRY_CODES.map((c) => (
-                          <option key={`${c.country}-${c.code}`} value={c.country} className="text-gray-800 font-medium py-1">
-                            {c.flag} {c.code} ({c.name.split(' (')[0]})
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute right-2 text-gray-400">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* 10-digit mobile number input */}
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      value={contactPhone}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setContactPhone(val);
-                        setContactErrors((prev) => ({ ...prev, phone: '' }));
-                      }}
-                      placeholder="9876543210"
-                      maxLength={10}
-                      className="w-full px-3 py-2.5 bg-transparent text-xs text-gray-800 outline-none placeholder:text-gray-400 font-medium"
-                    />
+              </div>
+            </form>
+          ) : (
+            /* =========================================================
+             * B) STEP 2 (GUEST) OR DIRECT ISSUE VIEW (LOGGED-IN USER)
+             * ========================================================= */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* User summary card */}
+              {authData.isLoggedIn ? (
+                /* Logged-In User Card: Avatar, Name, Email, Role badge */
+                <div className="sj-chip">
+                  <div className="sj-av">{getInitials(authData.name)}</div>
+                  <div className="grow">
+                    <b>Hi, {getFirstName(authData.name)}</b>
+                    <span>{authData.email || 'Logged in user'}</span>
                   </div>
-                  {contactErrors.phone ? (
-                    <p className="text-[10px] text-red-500 font-semibold mt-1">{contactErrors.phone}</p>
-                  ) : (
-                    <p className="text-[10px] text-gray-400 mt-1">Enter 10-digit mobile number</p>
-                  )}
                 </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-palette-900 hover:bg-palette-400 text-white font-bold rounded-xl shadow-md transition-all duration-200 cursor-pointer text-xs flex items-center justify-center gap-1.5 mt-2"
-                >
-                  <span>Next: Select Your Issue</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </form>
-            ) : (
-              /* ========================================================
-               * STEP 2: OPTIONS & ISSUE SELECTION (AFTER FORM FILLED)
-               * ======================================================== */
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Back button & Step Indicator */}
-                <div className="flex items-center justify-between pb-1">
+              ) : (
+                /* Guest summary chip with Back & Edit buttons */
+                <>
                   <button
                     type="button"
-                    onClick={() => { setStep(1); setSubmitError(''); }}
-                    className="text-xs font-bold text-gray-500 hover:text-palette-900 transition-colors flex items-center gap-1 cursor-pointer"
+                    className="sj-link"
+                    id="goBack"
+                    onClick={() => {
+                      setGuestStep(1);
+                      setSubmitError('');
+                    }}
                   >
-                    ← Back to Details
+                    ← Back to details
                   </button>
-                  <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Step 2 of 2
-                  </span>
-                </div>
-
-                {/* Contact Pill Banner with Edit option */}
-                {(contactName || contactEmail || contactPhone) && (
-                  <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl px-3 py-2 text-xs flex items-center justify-between">
-                    <div className="truncate">
-                      <span className="font-extrabold text-gray-900">{contactName || 'Guest User'}</span>
-                      {(contactEmail || contactPhone) && (
-                        <span className="text-gray-500 text-[11px]">
-                          {' '}({contactEmail}{contactPhone ? ` • ${countryCode} ${contactPhone}` : ''})
-                        </span>
-                      )}
+                  <div className="sj-chip">
+                    <div className="sj-av">{getInitials(contactForm.name)}</div>
+                    <div className="grow">
+                      <b>{contactForm.name}</b>
+                      <span>{contactForm.email} · {countryCode} {contactForm.phone}</span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => { setStep(1); setSubmitError(''); }}
-                      className="text-[11px] font-bold text-palette-900 hover:underline shrink-0 ml-2 cursor-pointer"
-                      title="Edit contact details"
+                      className="sj-link"
+                      id="goEdit"
+                      style={{ color: 'var(--g800)' }}
+                      onClick={() => {
+                        setGuestStep(1);
+                        setSubmitError('');
+                      }}
                     >
                       Edit
                     </button>
                   </div>
-                )}
+                </>
+              )}
 
-                {submitError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-semibold flex items-start gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 mt-0.5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <span>{submitError}</span>
+              {/* Segmented role switch (ONLY shown for Guest users) */}
+              {!authData.isLoggedIn && (
+                <div>
+                  <div className="sj-q" style={{ marginBottom: '8px' }}>Who is this issue for?</div>
+                  <div className="sj-seg" role="radiogroup" aria-label="Account type">
+                    {Object.keys(ROLE_LABELS).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        role="radio"
+                        aria-checked={guestRole === r}
+                        onClick={() => {
+                          setGuestRole(r);
+                          setSelectedProblemId('');
+                          setSubmitError('');
+                        }}
+                      >
+                        {ROLE_LABELS[r]}
+                      </button>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* 1. Role Selection */}
-                <div className="space-y-1.5 pb-1">
-                  <label className="block text-xs font-bold text-gray-800">
-                    Whose issue is this?
-                  </label>
-                  <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-2xl border border-gray-200/60">
-                    {roleTabs.map((tab) => {
-                      const isActive = selectedRole === tab.id;
-                      return (
+              {/* Submit Error alert */}
+              {submitError && (
+                <div className="sj-alert-err">{submitError}</div>
+              )}
+
+              {/* Issues header & counter */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div className="sj-q">
+                  {authData.isLoggedIn ? 'What do you need help with?' : `Select an issue for ${ROLE_LABELS[guestRole]}`}
+                </div>
+                <span className="sj-count">{filteredProblems.length} options</span>
+              </div>
+
+              {/* Predefined Issues List */}
+              {loadingProblems ? (
+                <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--ink3)', padding: '24px 0' }}>
+                  Loading issues...
+                </div>
+              ) : problemFetchError ? (
+                <div className="sj-alert-err">
+                  <span>{problemFetchError}</span>
+                  <button
+                    type="button"
+                    onClick={fetchProblems}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--err)', cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : filteredProblems.length === 0 ? (
+                <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--ink3)', padding: '20px 0' }}>
+                  No issues available for this role.
+                </div>
+              ) : (
+                <ul className="sj-issues" role="radiogroup" aria-label="Issue">
+                  {filteredProblems.map((p) => {
+                    const isSelected = selectedProblemId === p._id;
+                    return (
+                      <li key={p._id}>
                         <button
-                          key={tab.id}
                           type="button"
+                          className="sj-issue"
+                          role="radio"
+                          aria-checked={isSelected}
                           onClick={() => {
-                            setSelectedRole(tab.id);
-                            setSelectedProblemId('');
+                            setSelectedProblemId(p._id);
+                            setSubmitError('');
                           }}
-                          className={`py-2 px-1 rounded-xl text-xs font-extrabold transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer ${
-                            isActive
-                              ? 'bg-palette-900 text-white shadow-sm scale-[1.02]'
-                              : 'text-gray-600 hover:text-gray-900 hover:bg-white/60'
-                          }`}
                         >
-                          <span className="text-sm">{tab.icon}</span>
-                          <span>{tab.label}</span>
+                          <span>{p.title}</span>
+                          <span className="r" />
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 2. Predefined Problems List */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-gray-800">
-                      Select issue for {selectedRole === 'employee' ? 'Candidate' : selectedRole === 'employer' ? 'Employer' : 'Consultant'}:
-                    </label>
-                    <span className="text-[10px] font-bold text-gray-400">
-                      {filteredProblems.length} options
-                    </span>
-                  </div>
-
-                  {loadingProblems ? (
-                    <div className="py-8 text-center space-y-2 bg-gray-50/50 rounded-2xl border border-gray-100">
-                      <div className="w-5 h-5 border-2 border-palette-900 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                      <p className="text-xs text-gray-500">Loading issues...</p>
-                    </div>
-                  ) : problemFetchError ? (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs">
-                      {problemFetchError}
-                    </div>
-                  ) : filteredProblems.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-gray-400 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                      No issues found for this role.
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1.5 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-emerald-300/80 hover:[&::-webkit-scrollbar-thumb]:bg-emerald-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-                      {filteredProblems.map((problem) => {
-                        const isSelected = selectedProblemId === problem._id;
-                        return (
-                          <div
-                            key={problem._id}
-                            onClick={() => { setSelectedProblemId(problem._id); setSubmitError(''); }}
-                            className={`group flex items-center justify-between p-3.5 rounded-2xl border text-xs font-semibold cursor-pointer transition-all duration-200 select-none ${
-                              isSelected
-                                ? 'border-palette-900 bg-emerald-50/80 text-palette-900 shadow-sm ring-1 ring-palette-900/30'
-                                : 'border-gray-200 hover:border-palette-400/80 hover:bg-emerald-50/20 bg-white text-gray-700 hover:shadow-xs'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 pr-2">
-                              <span className={`w-1.5 h-1.5 rounded-full transition-colors ${isSelected ? 'bg-palette-900' : 'bg-gray-300 group-hover:bg-palette-400'}`} />
-                              <span className="leading-snug">{problem.title}</span>
-                            </div>
-
-                            <div className={`w-5 h-5 shrink-0 rounded-full border flex items-center justify-center transition-all ${
-                              isSelected
-                                ? 'border-palette-900 bg-palette-900 text-white shadow-xs'
-                                : 'border-gray-300 bg-gray-50 group-hover:border-palette-400'
-                            }`}>
-                              {isSelected ? (
-                                <svg className="w-3 h-3 text-white" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              ) : (
-                                <span className="w-2 h-2 rounded-full bg-transparent group-hover:bg-gray-200 transition-colors" />
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !selectedProblemId || loadingProblems}
-                  className={`w-full py-3 font-bold rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
-                    !selectedProblemId || isSubmitting
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
-                      : 'bg-palette-900 hover:bg-palette-400 text-white cursor-pointer hover:shadow-lg'
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Submitting Request...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{selectedProblemId ? 'Submit Request' : 'Select an issue above'}</span>
-                      {selectedProblemId && <span>→</span>}
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-          </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Panel Footer (Sticky Bottom) */}
+        <footer className="sj-foot" id="sjFoot">
+          {activeTab === 'upd' ? (
+            <button
+              type="button"
+              className="sj-btn sj-btn-secondary"
+              id="startNew"
+              onClick={handleClearAndNewRequest}
+            >
+              Start a new request
+            </button>
+          ) : submitSuccess ? (
+            <button
+              type="button"
+              className="sj-btn"
+              id="viewUpd"
+              onClick={() => {
+                setSubmitSuccess(false);
+                setActiveTab('upd');
+                if (activeRequest?.id) fetchRequestDetails(activeRequest.id);
+              }}
+            >
+              View updates
+            </button>
+          ) : !authData.isLoggedIn && guestStep === 1 ? (
+            <button
+              type="button"
+              className="sj-btn"
+              id="goNext"
+              onClick={handleGuestContinue}
+            >
+              <span>Continue</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="sj-btn"
+              id="sjSend"
+              disabled={!selectedProblemId || isSubmitting}
+              onClick={handleSubmit}
+            >
+              {isSubmitting
+                ? 'Sending…'
+                : selectedProblemId
+                ? 'Submit request'
+                : 'Select an issue above'}
+            </button>
+          )}
+        </footer>
+      </section>
     </>
   );
 }
