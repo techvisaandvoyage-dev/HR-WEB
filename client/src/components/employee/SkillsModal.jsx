@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { preferredLocationOptions } from '../../data/preferredLocations';
+import { getSuggestedSkills, allSkillsOptions } from '../../utils/skillsData';
 import { IconPen, IconClose, IconPlus } from './ProfileIcons';
 
 const CURRENCY_OPTIONS = [
@@ -17,7 +18,7 @@ const CURRENCY_OPTIONS = [
   { value: 'QAR', label: 'QAR (﷼)' },
   { value: 'OMR', label: 'OMR (﷼)' },
   { value: 'KWD', label: 'KWD (د.ك)' },
-  { value: 'BHD', label: 'BHD (.د.ب)' }
+  { value: 'BHD', label: 'BHD (.د.b)' }
 ];
 
 const TOTAL_EXP_OPTIONS = [
@@ -77,7 +78,21 @@ const SkillsModal = ({
   });
 
   const [skillInput, setSkillInput] = useState('');
+  const [showSkillDropdown, setShowSkillDropdown] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [errors, setErrors] = useState({});
+  const skillWrapperRef = useRef(null);
+
+  // Click outside listener to close skill dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (skillWrapperRef.current && !skillWrapperRef.current.contains(e.target)) {
+        setShowSkillDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isOpen && formData) {
@@ -85,7 +100,7 @@ const SkillsModal = ({
       let initialSkills = [];
       if (p.skills) {
         if (Array.isArray(p.skills)) {
-          initialSkills = p.skills;
+          initialSkills = p.skills.map(s => (typeof s === 'string' ? s : (s?.name || s?.label || String(s || '')))).filter(Boolean);
         } else if (typeof p.skills === 'string') {
           initialSkills = p.skills.split(',').map(s => s.trim()).filter(Boolean);
         }
@@ -104,17 +119,34 @@ const SkillsModal = ({
         skills: initialSkills
       });
       setSkillInput('');
+      setShowSkillDropdown(false);
+      setHighlightedIndex(-1);
       setErrors({});
     }
   }, [isOpen, formData]);
 
   if (!isOpen) return null;
 
+  // Matching skills from dictionary
+  const matchingSkills = useMemo(() => {
+    const q = (skillInput || '').trim().toLowerCase();
+    if (!q) return [];
+    return (allSkillsOptions || [])
+      .filter(item => {
+        const itemLower = String(item.label || item.value || '').toLowerCase();
+        const alreadyAdded = form.skills.some(s => String(s || '').toLowerCase() === itemLower);
+        return !alreadyAdded && itemLower.includes(q);
+      })
+      .slice(0, 10);
+  }, [skillInput, form.skills]);
+
   const handleAddSkill = (skillToAdd) => {
     const trimmed = (skillToAdd || '').trim();
     if (!trimmed) return;
-    if (form.skills.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+    if (form.skills.some(s => String(s || '').toLowerCase() === trimmed.toLowerCase())) {
       setSkillInput('');
+      setShowSkillDropdown(false);
+      setHighlightedIndex(-1);
       return;
     }
     setForm(prev => ({
@@ -122,21 +154,43 @@ const SkillsModal = ({
       skills: [...prev.skills, trimmed]
     }));
     setSkillInput('');
+    setShowSkillDropdown(false);
+    setHighlightedIndex(-1);
     setErrors(prev => ({ ...prev, skills: '' }));
   };
 
   const handleRemoveSkill = (skillToRemove) => {
     setForm(prev => ({
       ...prev,
-      skills: prev.skills.filter(s => s.toLowerCase() !== skillToRemove.toLowerCase())
+      skills: prev.skills.filter(s => String(s || '').toLowerCase() !== String(skillToRemove || '').toLowerCase())
     }));
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown') {
+      if (matchingSkills.length > 0) {
+        e.preventDefault();
+        setHighlightedIndex(prev => (prev < matchingSkills.length - 1 ? prev + 1 : 0));
+        setShowSkillDropdown(true);
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (matchingSkills.length > 0) {
+        e.preventDefault();
+        setHighlightedIndex(prev => (prev > 0 ? prev - 1 : matchingSkills.length - 1));
+        setShowSkillDropdown(true);
+      }
+    } else if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
-      handleAddSkill(skillInput);
+      if (showSkillDropdown && highlightedIndex >= 0 && matchingSkills[highlightedIndex]) {
+        handleAddSkill(matchingSkills[highlightedIndex].label || matchingSkills[highlightedIndex].value);
+      } else {
+        handleAddSkill(skillInput);
+      }
+      setShowSkillDropdown(false);
+      setHighlightedIndex(-1);
+    } else if (e.key === 'Escape') {
+      setShowSkillDropdown(false);
     }
   };
 
@@ -164,10 +218,12 @@ const SkillsModal = ({
     onClose();
   };
 
-  // Filter suggested skills so already added ones don't appear
-  const availableSuggestions = DEFAULT_SUGGESTED_SKILLS.filter(
-    s => !form.skills.some(existing => existing.toLowerCase() === s.toLowerCase())
-  ).slice(0, 7);
+  // Filter suggested skills safely
+  const dynamicSuggestions = form.skills.length > 0 ? getSuggestedSkills(form.skills) : [];
+  const basePool = dynamicSuggestions.length > 0 ? dynamicSuggestions : DEFAULT_SUGGESTED_SKILLS;
+  const availableSuggestions = basePool.filter(
+    s => !form.skills.some(existing => String(existing || '').toLowerCase() === String(s || '').toLowerCase())
+  ).slice(0, 8);
 
   return (
     <div className="sj-modal-backdrop" onClick={onClose}>
@@ -337,16 +393,62 @@ const SkillsModal = ({
                 </div>
               )}
 
-              {/* Add Skill Input */}
+              {/* Add Skill Input with Autocomplete Dropdown */}
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="sj-in"
-                  placeholder="Type a skill and press Enter"
-                  value={skillInput}
-                  onChange={(e) => setSkillInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
+                <div className="relative flex-1" ref={skillWrapperRef}>
+                  <input
+                    type="text"
+                    className="sj-in w-full"
+                    placeholder="Search or type a skill (e.g. React, Tally, Python)..."
+                    value={skillInput}
+                    onChange={(e) => {
+                      setSkillInput(e.target.value);
+                      setShowSkillDropdown(true);
+                      setHighlightedIndex(-1);
+                    }}
+                    onFocus={() => {
+                      if (skillInput.trim()) setShowSkillDropdown(true);
+                    }}
+                    onKeyDown={handleKeyDown}
+                    autoComplete="off"
+                  />
+
+                  {/* Dropdown Menu */}
+                  {showSkillDropdown && matchingSkills.length > 0 && (
+                    <div 
+                      className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto py-1.5"
+                      style={{ boxShadow: '0 12px 30px rgba(0,0,0,0.15)' }}
+                    >
+                      <div className="px-3.5 py-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
+                        <span>Suggested Skills ({matchingSkills.length})</span>
+                        <span className="text-[10px] text-gray-400 font-normal">Use ↑↓ and Enter</span>
+                      </div>
+                      {matchingSkills.map((item, idx) => {
+                        const skillName = item.label || item.value;
+                        const isHighlighted = highlightedIndex === idx;
+                        return (
+                          <button
+                            key={item.value || idx}
+                            type="button"
+                            className={`w-full text-left px-3.5 py-2.5 text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                              isHighlighted 
+                                ? 'bg-emerald-50 text-emerald-800 font-semibold' 
+                                : 'text-gray-800 hover:bg-gray-50'
+                            }`}
+                            onMouseEnter={() => setHighlightedIndex(idx)}
+                            onClick={() => handleAddSkill(skillName)}
+                          >
+                            <span className="truncate">{skillName}</span>
+                            <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex-shrink-0 flex items-center gap-1">
+                              <IconPlus className="w-3 h-3" /> Add
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   className="sj-btn-save flex-shrink-0"

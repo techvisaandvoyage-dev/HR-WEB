@@ -86,9 +86,10 @@ const MultiSelectLocationDropdown = ({
   const wrapperRef = useRef(null);
 
   // Multi-select values are comma-separated; single-select values remain one location.
-  const selectedValues = Array.isArray(value) 
+  const selectedValues = (Array.isArray(value) 
     ? value 
-    : (typeof value === 'string' && value ? value.split(',').map(v => v.trim()).filter(v => v) : []);
+    : (typeof value === 'string' && value ? value.split(',').map(v => v.trim()).filter(Boolean) : [])
+  ).map(v => (typeof v === 'string' ? v : (v?.value || v?.label || String(v || '')))).filter(Boolean);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -259,15 +260,17 @@ const MultiSelectLocationDropdown = ({
           </div>
           
           <div className="overflow-y-auto custom-scrollbar p-2">
-            {displayedOptions.length > 0 ? (
+            {(displayedOptions || []).length > 0 ? (
               displayedOptions.map((opt, idx) => {
-                const isSelected = selectedValues.some(v => 
-                  v.toLowerCase() === opt.value.toLowerCase() ||
-                  v.toLowerCase() === opt.label.toLowerCase()
-                );
+                const optValue = typeof opt === 'string' ? opt : (opt?.value || opt?.label || '');
+                const optLabel = typeof opt === 'string' ? opt : (opt?.label || opt?.value || '');
+                const isSelected = selectedValues.some(v => {
+                  const vLower = String(v || '').toLowerCase();
+                  return vLower === String(optValue).toLowerCase() || vLower === String(optLabel).toLowerCase();
+                });
                 return (
                   <label 
-                    key={`${opt.value}-${idx}`} 
+                    key={`${optValue}-${idx}`} 
                     className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${isSelected ? 'bg-green-50/70 text-green-950 font-medium' : 'hover:bg-gray-50 text-gray-700'}`}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -275,7 +278,7 @@ const MultiSelectLocationDropdown = ({
                       <input
                         type={multiple ? 'checkbox' : 'radio'}
                         checked={isSelected}
-                        onChange={() => handleCheckboxChange(opt.value)}
+                        onChange={() => handleCheckboxChange(optValue)}
                         className={`peer w-5 h-5 appearance-none border border-gray-300 cursor-pointer checked:bg-green-500 checked:border-green-500 transition-all ${multiple ? 'rounded-md' : 'rounded-full'}`}
                       />
                       <svg className="absolute w-3 h-3 text-white left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
@@ -284,7 +287,7 @@ const MultiSelectLocationDropdown = ({
                     </div>
                     <div className="ml-3 flex-1 min-w-0">
                       <span className="text-[13.5px] block truncate">
-                        {opt.label}
+                        {optLabel}
                       </span>
                     </div>
                   </label>

@@ -356,7 +356,7 @@ const EmployeeProfile = () => {
   useEffect(() => {
     if (activeTab === 'security' || activeTab === 'privacy') return;
 
-    const tabsList = ['basic', 'edu', 'work', 'skills'];
+    const tabsList = ['basic', 'edu', 'work', 'skills', 'documents'];
     const observer = new IntersectionObserver(
       (entries) => {
         if (isProgrammaticScrollRef.current) return;
@@ -426,7 +426,7 @@ const EmployeeProfile = () => {
     if (formData.documents?.resume) {
       score += 15;
     } else {
-      missing.push({ label: 'Upload Resume', target: 'basic', points: 15 });
+      missing.push({ label: 'Upload Resume', target: 'documents', points: 15 });
     }
 
     return { score, missing };
@@ -692,7 +692,9 @@ const EmployeeProfile = () => {
 
   const p = formData.professionalDetails || {};
   const currentSkills = p.skills
-    ? p.skills.split(',').map(s => s.trim()).filter(Boolean)
+    ? (Array.isArray(p.skills) ? p.skills : String(p.skills).split(','))
+        .map(s => (typeof s === 'string' ? s.trim() : (s?.name || s?.label || String(s || ''))))
+        .filter(Boolean)
     : [];
 
   return (
@@ -742,25 +744,25 @@ const EmployeeProfile = () => {
             ) : activeTab === 'privacy' ? (
               <PrivacySettingsSection userEmail={formData.email} />
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-5" id="vProfile">
                 {/* 1. Basic Details Card */}
-                <section className="sj-card sj-sec" id="basic">
-                  <div className="sj-sh">
+                <section className="card sec sj-card sj-sec" id="basic">
+                  <div className="sh sj-sh">
                     <div>
                       <h2>{cmsConfig?.step1?.title || 'Basic Details'}</h2>
                       <p>Your name, contact and location</p>
                     </div>
                     <button
                       type="button"
-                      className="sj-sb2"
+                      className="sb2 sj-sb2"
                       onClick={() => setIsBasicModalOpen(true)}
                     >
-                      <IconPen className="w-4 h-4 text-emerald-700" />
+                      <IconPen className="w-4 h-4" />
                       <span>Edit</span>
                     </button>
                   </div>
 
-                  <div className="sj-kv">
+                  <div className="kv sj-kv" id="bBody">
                     <div>
                       <span>First name</span>
                       <b>{formData.firstName || '—'}</b>
@@ -777,15 +779,15 @@ const EmployeeProfile = () => {
                       <span>Phone</span>
                       <b>{formData.countryCode ? `${formData.countryCode} ` : ''}{formData.phone || '—'}</b>
                     </div>
-                    <div className="sj-w2">
+                    <div className="w2 sj-w2">
                       <span>Email</span>
                       <b>{formData.email || '—'}</b>
                     </div>
-                    <div className="sj-full">
+                    <div className="full sj-full">
                       <span>Brief about yourself</span>
                       <b>
                         {formData.brief || (
-                          <em style={{ color: 'var(--sj-mut)', fontWeight: 500 }}>
+                          <em style={{ color: 'var(--mut)', fontWeight: 500 }}>
                             Add a short introduction recruiters will see first.
                           </em>
                         )}
@@ -795,95 +797,97 @@ const EmployeeProfile = () => {
                 </section>
 
                 {/* 2. Education Card */}
-                <section className="sj-card sj-sec" id="education">
-                  <div className="sj-sh">
+                <section className="card sec sj-card sj-sec" id="edu">
+                  <div className="sh sj-sh">
                     <div>
                       <h2>{cmsConfig?.step2?.title || 'Education'}</h2>
                       <p>Course, university and more help recruiters understand your background</p>
                     </div>
                     <button
                       type="button"
-                      className="sj-sb2"
+                      className="sb2 sj-sb2"
                       onClick={() => handleOpenEducationModal(-1)}
                     >
-                      <IconPlus className="w-4 h-4 text-emerald-700" />
+                      <IconPlus className="w-4 h-4" />
                       <span>Add</span>
                     </button>
                   </div>
 
-                  {formData.qualifications && formData.qualifications.length > 0 ? (
-                    <>
-                      <div className="sj-tl sj-edl">
-                        {formData.qualifications.map((edu, idx) => (
-                          <div key={idx} className={`sj-r ${edu.isPrimary ? 'sj-cur' : ''}`}>
-                            <div className="sj-rt2">
-                              <b>{edu.course || edu.educationType}</b>
-                              {edu.isPrimary && <span className="sj-tag">PRIMARY</span>}
-                              <button
-                                type="button"
-                                className="sj-ib ml-auto"
-                                onClick={() => handleOpenEducationModal(idx)}
-                                aria-label={`Edit ${edu.course || edu.educationType}`}
-                              >
-                                <IconPen className="w-4 h-4 text-gray-500" />
-                              </button>
+                  <div id="eBody">
+                    {formData.qualifications && formData.qualifications.length > 0 ? (
+                      <>
+                        <div className="tl edl sj-tl sj-edl">
+                          {formData.qualifications.map((edu, idx) => (
+                            <div key={idx} className={`r ${edu.isPrimary ? 'cur' : ''} sj-r ${edu.isPrimary ? 'sj-cur' : ''}`}>
+                              <div className="rt2 sj-rt2">
+                                <b>{edu.course || edu.educationType}</b>
+                                {edu.isPrimary && <span className="tag sj-tag">PRIMARY</span>}
+                                <button
+                                  type="button"
+                                  className="ib sj-ib ml-auto"
+                                  onClick={() => handleOpenEducationModal(idx)}
+                                  aria-label={`Edit ${edu.course || edu.educationType}`}
+                                >
+                                  <IconPen className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <small>{edu.university || edu.board || 'Institution not specified'}</small>
+                              <small>
+                                {edu.educationType}
+                                {edu.courseType ? ` · ${edu.courseType}` : ''}
+                                {edu.startYear ? ` · ${edu.startYear} – ${edu.endYear}` : (edu.endYear ? ` · Passing: ${edu.endYear}` : '')}
+                                {edu.percentage ? ` · ${edu.percentage}${edu.gradingSystem && edu.gradingSystem.includes('%') ? '%' : ''}` : ''}
+                              </small>
                             </div>
-                            <small>{edu.university || edu.board || 'Institution not specified'}</small>
-                            <small>
-                              {edu.educationType}
-                              {edu.courseType ? ` · ${edu.courseType}` : ''}
-                              {edu.startYear ? ` · ${edu.startYear} – ${edu.endYear}` : (edu.endYear ? ` · Passing: ${edu.endYear}` : '')}
-                              {edu.percentage ? ` · ${edu.percentage}${edu.gradingSystem && edu.gradingSystem.includes('%') ? '%' : ''}` : ''}
-                            </small>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
 
-                      <button
-                        type="button"
-                        className="sj-add"
-                        onClick={() => handleOpenEducationModal(-1)}
-                      >
-                        <IconPlus className="w-4 h-4" />
-                        <span>Add another education</span>
-                      </button>
-                    </>
-                  ) : (
-                    <div className="sj-empty">
-                      <b>No education added yet</b>
-                      <span>Add your highest qualification first.</span>
-                      <div className="mt-3">
                         <button
                           type="button"
-                          className="sj-btn sj-btn-p"
+                          className="add sj-add"
                           onClick={() => handleOpenEducationModal(-1)}
                         >
                           <IconPlus className="w-4 h-4" />
-                          <span>Add education</span>
+                          <span>Add another education</span>
                         </button>
+                      </>
+                    ) : (
+                      <div className="empty sj-empty">
+                        <b>No education added yet</b>
+                        <span>Add your highest qualification first.</span>
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            className="btn p sj-btn sj-btn-p"
+                            onClick={() => handleOpenEducationModal(-1)}
+                          >
+                            <IconPlus className="w-4 h-4" />
+                            <span>Add education</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </section>
 
                 {/* 3. Work Experience Card */}
-                <section className="sj-card sj-sec" id="experience">
-                  <div className="sj-sh">
+                <section className="card sec sj-card sj-sec" id="work">
+                  <div className="sh sj-sh">
                     <div>
                       <h2>{cmsConfig?.step3?.title || 'Work Experience'}</h2>
                       <p>Add details of your previous and current employment</p>
                     </div>
-                    <div className="sj-seg">
+                    <div className="seg sj-seg" id="xseg">
                       <button
                         type="button"
-                        className={formData.isFresher ? 'sj-on' : ''}
+                        className={formData.isFresher ? 'on sj-on' : ''}
                         onClick={() => setFormData(prev => ({ ...prev, isFresher: true }))}
                       >
                         Fresher
                       </button>
                       <button
                         type="button"
-                        className={!formData.isFresher ? 'sj-on' : ''}
+                        className={!formData.isFresher ? 'on sj-on' : ''}
                         onClick={() => setFormData(prev => ({ ...prev, isFresher: false }))}
                       >
                         Experienced
@@ -891,183 +895,192 @@ const EmployeeProfile = () => {
                     </div>
                   </div>
 
-                  {formData.isFresher ? (
-                    <div className="sj-empty">
-                      <b>You’re listed as a fresher</b>
-                      <span>No problem. Switch to “Experienced” whenever you add a job.</span>
-                    </div>
-                  ) : (
-                    <>
-                      {formData.experience && formData.experience.length > 0 ? (
-                        <div className="space-y-3">
-                          {formData.experience.map((co, cIdx) => {
-                            const isCurrent = co.roles?.some(r => r.currentCompany);
-                            return (
-                              <div key={cIdx} className={`sj-co ${isCurrent ? 'sj-now' : ''}`}>
-                                <div className="sj-co-head">
-                                  <span className="sj-ic">
-                                    {(co.companyName?.[0] || '?').toUpperCase()}
-                                  </span>
-                                  <div className="sj-cn">
-                                    <h3>
-                                      {co.companyName}
-                                      {isCurrent && (
-                                        <span className="sj-live">
-                                          <i></i>Current company
-                                        </span>
-                                      )}
-                                    </h3>
-                                    <p>
-                                      {calculateCompanyDuration(co)} · {co.roles?.length || 1} role{co.roles?.length > 1 ? 's' : ''}
-                                      {co.noticePeriod ? ` · ${co.noticePeriod}` : ''}
-                                    </p>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="sj-ib"
-                                    onClick={() => handleOpenExperienceModal(cIdx)}
-                                    aria-label={`Edit ${co.companyName}`}
-                                  >
-                                    <IconPen className="w-4 h-4 text-gray-500" />
-                                  </button>
-                                </div>
-
-                                <div className="sj-tl">
-                                  {co.roles?.map((role, rIdx) => (
-                                    <div key={rIdx} className={`sj-r ${role.currentCompany ? 'sj-cur' : ''}`}>
-                                      <div className="sj-rt2">
-                                        <b>{role.jobTitle || 'Role'}</b>
-                                        {role.currentCompany && <span className="sj-tag">CURRENT</span>}
-                                      </div>
-                                      <small>
-                                        {role.employmentType || 'Full-time'}
-                                        {role.joiningDate ? ` · ${formatMonthYear(role.joiningDate)} – ${role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)}` : ''}
-                                      </small>
-                                      {role.roleDescription && <p>{role.roleDescription}</p>}
+                  <div id="wBody">
+                    {formData.isFresher ? (
+                      <div className="empty sj-empty">
+                        <b>You’re listed as a fresher</b>
+                        <span>No problem. Switch to “Experienced” whenever you add a job.</span>
+                      </div>
+                    ) : (
+                      <>
+                        {formData.experience && formData.experience.length > 0 ? (
+                          <div className="space-y-3">
+                            {formData.experience.map((co, cIdx) => {
+                              const isCurrent = co.roles?.some(r => r.currentCompany);
+                              return (
+                                <div key={cIdx} className={`co ${isCurrent ? 'now' : ''} sj-co ${isCurrent ? 'sj-now' : ''}`}>
+                                  <div className="ch2 sj-co-head">
+                                    <span className="ic sj-ic">
+                                      {(co.companyName?.[0] || '?').toUpperCase()}
+                                    </span>
+                                    <div className="cn sj-cn">
+                                      <h3>
+                                        {co.companyName}
+                                        {isCurrent && (
+                                          <span className="live sj-live">
+                                            <i></i>Current company
+                                          </span>
+                                        )}
+                                      </h3>
+                                      <p>
+                                        {calculateCompanyDuration(co)} · {co.roles?.length || 1} role{co.roles?.length > 1 ? 's' : ''}
+                                        {co.noticePeriod ? ` · ${co.noticePeriod}` : ''}
+                                      </p>
                                     </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="sj-empty">
-                          <b>No experience added yet</b>
-                          <span>Add companies and the roles you held.</span>
-                        </div>
-                      )}
+                                    <button
+                                      type="button"
+                                      className="ib sj-ib"
+                                      onClick={() => handleOpenExperienceModal(cIdx)}
+                                      aria-label={`Edit ${co.companyName}`}
+                                    >
+                                      <IconPen className="w-4 h-4" />
+                                    </button>
+                                  </div>
 
-                      <button
-                        type="button"
-                        className="sj-add mt-3"
-                        onClick={() => handleOpenExperienceModal(-1)}
-                      >
-                        <IconPlus className="w-4 h-4" />
-                        <span>Add experience</span>
-                      </button>
-                    </>
-                  )}
+                                  <div className="tl sj-tl">
+                                    {co.roles?.map((role, rIdx) => (
+                                      <div key={rIdx} className={`r ${role.currentCompany ? 'cur' : ''} sj-r ${role.currentCompany ? 'sj-cur' : ''}`}>
+                                        <div className="rt2 sj-rt2">
+                                          <b>{role.jobTitle || 'Role'}</b>
+                                          {role.currentCompany && <span className="tag sj-tag">CURRENT</span>}
+                                        </div>
+                                        <small>
+                                          {role.employmentType || 'Full-time'}
+                                          {role.joiningDate ? ` · ${formatMonthYear(role.joiningDate)} – ${role.currentCompany ? 'Present' : formatMonthYear(role.leavingDate)}` : ''}
+                                          {calculateRoleDuration(role.joiningDate, role.leavingDate, role.currentCompany) ? ` · ${calculateRoleDuration(role.joiningDate, role.leavingDate, role.currentCompany)}` : ''}
+                                        </small>
+                                        {role.roleDescription && <p>{role.roleDescription}</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="empty sj-empty">
+                            <b>No experience added yet</b>
+                            <span>Add companies and the roles you held.</span>
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          className="add sj-add"
+                          style={{ marginTop: (formData.experience && formData.experience.length > 0) ? '4px' : '14px' }}
+                          onClick={() => handleOpenExperienceModal(-1)}
+                        >
+                          <IconPlus className="w-4 h-4" />
+                          <span>Add experience</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </section>
 
-                {/* 4. Key Skills & Preferences Card (Preserved title per user request) */}
-                <section className="sj-card sj-sec" id="professional">
-                  <div className="sj-sh">
+                {/* 4. Key Skills & Preferences Card */}
+                <section className="card sec sj-card sj-sec" id="skills">
+                  <div className="sh sj-sh">
                     <div>
                       <h2>{cmsConfig?.step4?.title || 'Key Skills & Preferences'}</h2>
                       <p>Highlight your skills and preferences to find matching jobs</p>
                     </div>
                     <button
                       type="button"
-                      className="sj-sb2"
+                      className="sb2 sj-sb2"
                       onClick={() => setIsSkillsModalOpen(true)}
                     >
-                      <IconPen className="w-4 h-4 text-emerald-700" />
+                      <IconPen className="w-4 h-4" />
                       <span>Edit</span>
                     </button>
                   </div>
 
-                  <div className="sj-kv">
-                    <div>
-                      <span>Designation / Role</span>
-                      <b>{formData.designation || p.designation || '—'}</b>
+                  <div id="kBody">
+                    <div className="kv sj-kv">
+                      <div>
+                        <span>Designation / Role</span>
+                        <b>{formData.designation || p.designation || '—'}</b>
+                      </div>
+                      <div>
+                        <span>Function</span>
+                        <b>{p.function || formData.industry || '—'}</b>
+                      </div>
+                      <div>
+                        <span>Preferred location</span>
+                        <b>{formData.preferredLocation || p.preferredLocation || '—'}</b>
+                      </div>
+                      <div>
+                        <span>Total experience</span>
+                        <b>{p.totalExperience || formData.totalExperience || (formData.isFresher ? 'Fresher' : '—')}</b>
+                      </div>
+                      <div>
+                        <span>Current CTC</span>
+                        <b>
+                          {p.currentSalary
+                            ? `${getCurrencySymbol(p.currency)} ${p.currentSalary} (${p.salaryType || 'Yearly'})`
+                            : '—'}
+                        </b>
+                      </div>
+                      <div>
+                        <span>Expected CTC</span>
+                        <b>
+                          {p.expectedSalary
+                            ? `${getCurrencySymbol(p.currency)} ${p.expectedSalary} (${p.salaryType || 'Yearly'})`
+                            : '—'}
+                        </b>
+                      </div>
+                      <div className="full sj-full">
+                        <span>LinkedIn</span>
+                        <b>
+                          {p.linkedinUrl ? (
+                            <a
+                              href={p.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: 'var(--p)', textDecoration: 'none' }}
+                              className="hover:underline"
+                            >
+                              {p.linkedinUrl}
+                            </a>
+                          ) : (
+                            '—'
+                          )}
+                        </b>
+                      </div>
                     </div>
-                    <div>
-                      <span>Function</span>
-                      <b>{p.function || formData.industry || '—'}</b>
-                    </div>
-                    <div>
-                      <span>Preferred location</span>
-                      <b>{formData.preferredLocation || p.preferredLocation || '—'}</b>
-                    </div>
-                    <div>
-                      <span>Total experience</span>
-                      <b>{p.totalExperience || formData.totalExperience || (formData.isFresher ? 'Fresher' : '—')}</b>
-                    </div>
-                    <div>
-                      <span>Current CTC</span>
-                      <b>
-                        {p.currentSalary
-                          ? `${getCurrencySymbol(p.currency)} ${p.currentSalary} (${p.salaryType || 'Yearly'})`
-                          : '—'}
-                      </b>
-                    </div>
-                    <div>
-                      <span>Expected CTC</span>
-                      <b>
-                        {p.expectedSalary
-                          ? `${getCurrencySymbol(p.currency)} ${p.expectedSalary} (${p.salaryType || 'Yearly'})`
-                          : '—'}
-                      </b>
-                    </div>
-                    <div className="sj-full">
-                      <span>LinkedIn</span>
-                      <b>
-                        {p.linkedinUrl ? (
-                          <a
-                            href={p.linkedinUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-emerald-700 hover:underline"
-                          >
-                            {p.linkedinUrl}
-                          </a>
-                        ) : (
-                          '—'
-                        )}
-                      </b>
-                    </div>
-                  </div>
 
-                  <div className="mt-5">
-                    <span style={{ color: 'var(--sj-mut)', fontSize: '13px', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
-                      Key Skills
-                    </span>
-                    <div className="sj-sk">
-                      {currentSkills.length > 0 ? (
-                        currentSkills.map((s, idx) => (
-                          <span key={idx} className="sj-pill">
-                            {s}
-                          </span>
-                        ))
-                      ) : (
-                        <em style={{ color: 'var(--sj-mut)' }}>No skills added</em>
-                      )}
+                    <div style={{ marginTop: '20px' }}>
+                      <span className="lb" style={{ color: 'var(--mut)', fontSize: '12.5px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                        Key skills
+                      </span>
+                      <div className="sk sj-sk">
+                        {currentSkills.length > 0 ? (
+                          currentSkills.map((s, idx) => (
+                            <span key={idx} className="pill sj-pill">
+                              {s}
+                            </span>
+                          ))
+                        ) : (
+                          <em style={{ color: 'var(--mut)' }}>No skills added</em>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </section>
 
-                {/* 5. Documents & Media Card (Exact original design restored) */}
-                <section id="documents" className="scroll-mt-40 bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-6 md:p-8">
-                  <div className="mb-6 pb-2 border-b border-gray-100">
-                    <h3 className="text-xl font-bold text-gray-800">{cmsConfig?.step5?.title || 'Documents & Media'}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">{cmsConfig?.step5?.subtitle || 'Manage your introductory video, resume, and cover letter.'}</p>
+                {/* 5. Documents & Media Card */}
+                <section className="card sec sj-card sj-sec" id="documents">
+                  <div className="sh sj-sh">
+                    <div>
+                      <h2>{cmsConfig?.step5?.title || 'Documents & Media'}</h2>
+                      <p>{cmsConfig?.step5?.subtitle || 'Upload your resume, cover letter, and introductory video'}</p>
+                    </div>
                   </div>
                   {(() => {
                     const vCfg = cmsConfig?.step5?.videoConfig || {};
                     const fIntro = getStepField('step5', 'introVideo', 'Introductory Video', 'Upload MP4/MOV or attach video link', false);
                     const videoSectionTitle = vCfg.sectionTitle || fIntro.label || 'Introductory Video';
-                    const videoSectionSubtitle = vCfg.sectionSubtitle || fIntro.placeholder || 'Upload MP4/MOV or attach video link';
+                    const videoSectionSubtitle = vCfg.sectionSubtitle || fIntro.placeholder || 'Upload MP4/MOV (Max 3 mins, 200MB) or attach video link';
                     const uploadTabLabel = vCfg.uploadTabLabel || 'Upload File';
                     const linkTabLabel = vCfg.linkTabLabel || 'Paste Link';
                     const uploadDropzoneTitle = vCfg.uploadDropzoneTitle || 'Click or drag video to upload';
@@ -1080,12 +1093,12 @@ const EmployeeProfile = () => {
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {/* Resume Upload */}
-                          <div className="p-4 border border-gray-200 rounded-xl">
-                            <label className="block text-sm font-bold text-gray-900 mb-3">
-                              {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).label}
+                          <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-xs">
+                            <label className="block text-sm font-bold text-gray-900 mb-2">
+                              {getStepField('step5', 'resume', 'Resume (PDF/DOCX)', 'Supported Formats: doc, docx, pdf, upto 300KB', true).label}
                               {getStepField('step5', 'resume', '', '', true).isRequired && <span className="text-red-500 ml-0.5">*</span>}
                             </label>
-                            <input key={docs.resume ? 'res-has' : 'res-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
+                            <input key={docs.resume ? 'res-has' : 'res-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
                             {isUploading && uploadingType === 'resume' && (
                               <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse mt-2">
                                 <span className="relative flex h-3 w-3">
@@ -1100,7 +1113,7 @@ const EmployeeProfile = () => {
                               {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
                             </p>
                             {docs.resume && (
-                              <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                              <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-200">
                                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
                                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1112,9 +1125,9 @@ const EmployeeProfile = () => {
                                       href={docs.resume.startsWith('http') ? docs.resume : '#'} 
                                       target="_blank" 
                                       rel="noreferrer" 
-                                      className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
+                                      className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-700 hover:underline truncate block"
                                     >
-                                      {docsMeta?.resume?.name || getFileName(docs.resume, 'Resume Document')}
+                                      {docsMeta?.resume?.name || getFileName(docs.resume, 'Uploaded Document (Click to view)')}
                                     </a>
                                     <p className="text-[11px] text-gray-500 font-medium">
                                       {docsMeta?.resume?.size ? `${docsMeta.resume.size} • ` : ''}Uploaded Document
@@ -1124,7 +1137,7 @@ const EmployeeProfile = () => {
                                 <button 
                                   type="button" 
                                   onClick={() => setDoc('resume', '')} 
-                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0" 
+                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0 cursor-pointer" 
                                   title="Remove Resume"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1136,14 +1149,14 @@ const EmployeeProfile = () => {
                           </div>
 
                           {/* Cover Letter Upload */}
-                          <div className="p-4 border border-gray-200 rounded-xl">
-                            <label className="flex items-center justify-between text-sm font-bold text-gray-900 mb-3">
-                              <span>{getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').label}</span>
+                          <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-xs">
+                            <label className="flex items-center justify-between text-sm font-bold text-gray-900 mb-2">
+                              <span>{getStepField('step5', 'coverLetter', 'Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').label}</span>
                               {getStepField('step5', 'coverLetter', '', '', false).isRequired && (
                                 <span className="text-red-500 font-bold ml-0.5">*</span>
                               )}
                             </label>
-                            <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-palette-50 file:text-palette-900 hover:file:bg-palette-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'coverLetter')} />
+                            <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'coverLetter')} />
                             {isUploading && uploadingType === 'coverLetter' && (
                               <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse mt-2">
                                 <span className="relative flex h-3 w-3">
@@ -1158,7 +1171,7 @@ const EmployeeProfile = () => {
                               {getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
                             </p>
                             {docs.coverLetter && (
-                              <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
+                              <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-200">
                                 <div className="flex items-center gap-2.5 min-w-0 pr-2">
                                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1170,7 +1183,7 @@ const EmployeeProfile = () => {
                                       href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} 
                                       target="_blank" 
                                       rel="noreferrer" 
-                                      className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
+                                      className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-700 hover:underline truncate block"
                                     >
                                       {docsMeta?.coverLetter?.name || getFileName(docs.coverLetter, 'Cover Letter Document')}
                                     </a>
@@ -1182,7 +1195,7 @@ const EmployeeProfile = () => {
                                 <button 
                                   type="button" 
                                   onClick={() => setDoc('coverLetter', '')} 
-                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0" 
+                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0 cursor-pointer" 
                                   title="Remove Cover Letter"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1194,11 +1207,11 @@ const EmployeeProfile = () => {
                           </div>
 
                           {/* Introductory Video Card in Profile */}
-                          <div className="col-span-1 md:col-span-2 p-5 border border-emerald-100 rounded-2xl bg-gradient-to-br from-emerald-50/40 via-white to-gray-50 space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="col-span-1 md:col-span-2 p-6 border border-emerald-100 rounded-2xl bg-white shadow-xs space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                               <div>
-                                <label className="block text-sm font-bold text-gray-900 flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                <label className="block text-base font-bold text-gray-900 flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block"></span>
                                   {videoSectionTitle}
                                   {fIntro.isRequired && (
                                     <span className="text-red-500 font-bold ml-0.5">*</span>
@@ -1208,18 +1221,18 @@ const EmployeeProfile = () => {
                                   {videoSectionSubtitle}
                                 </p>
                               </div>
-                              <div className="flex bg-gray-200/80 p-1 rounded-xl text-xs font-semibold self-start">
+                              <div className="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold self-start border border-gray-200">
                                 <button
                                   type="button"
                                   onClick={() => setVideoProfileMode('upload')}
-                                  className={`px-3 py-1 rounded-lg transition-all ${videoProfileMode === 'upload' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                                  className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${videoProfileMode === 'upload' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                                 >
                                   {uploadTabLabel}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setVideoProfileMode('link')}
-                                  className={`px-3 py-1 rounded-lg transition-all ${videoProfileMode === 'link' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                                  className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${videoProfileMode === 'link' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'}`}
                                 >
                                   {linkTabLabel}
                                 </button>
@@ -1227,7 +1240,7 @@ const EmployeeProfile = () => {
                             </div>
 
                             {videoProfileMode === 'upload' && !docs.introVideo && (
-                              <div className="p-6 border-2 border-dashed border-gray-300 rounded-2xl bg-white text-center hover:border-emerald-400 transition-all relative">
+                              <div className="p-8 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50/50 text-center hover:border-emerald-500 hover:bg-emerald-50/20 transition-all relative">
                                 <input
                                   type="file"
                                   disabled={isUploading}
@@ -1235,14 +1248,14 @@ const EmployeeProfile = () => {
                                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                   onChange={e => handleFileUpload(e, 'introVideo')}
                                 />
-                                <div className="mx-auto w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2">
+                                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 border border-emerald-100">
                                   {isUploading && uploadingType === 'introVideo' ? (
-                                    <svg className="animate-spin w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                                    <svg className="animate-spin w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24">
                                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                                     </svg>
                                   ) : (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                     </svg>
                                   )}
@@ -1264,7 +1277,7 @@ const EmployeeProfile = () => {
                                   </div>
                                 ) : (
                                   <>
-                                    <span className="text-sm font-semibold text-emerald-600 hover:underline">
+                                    <span className="text-sm font-bold text-emerald-700 hover:underline">
                                       {uploadDropzoneTitle}
                                     </span>
                                     <p className="text-xs text-gray-500 mt-1">{uploadDropzoneSubtitle}</p>
@@ -1281,12 +1294,12 @@ const EmployeeProfile = () => {
                                     placeholder={linkInputPlaceholder}
                                     value={videoProfileLink}
                                     onChange={e => setVideoProfileLink(e.target.value)}
-                                    className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    className="flex-1 px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-emerald-600"
                                   />
                                   <button
                                     type="button"
                                     onClick={handleAttachVideoLink}
-                                    className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 cursor-pointer"
+                                    className="px-5 py-2.5 bg-emerald-700 text-white text-sm font-bold rounded-xl hover:bg-emerald-800 cursor-pointer transition-colors"
                                   >
                                     {linkAttachButtonText}
                                   </button>
@@ -1296,7 +1309,7 @@ const EmployeeProfile = () => {
                             )}
 
                             {docError.introVideo && (
-                              <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs shadow-xs animate-shake">
+                              <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs shadow-xs">
                                 <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                 </svg>

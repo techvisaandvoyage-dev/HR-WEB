@@ -4,19 +4,22 @@ import { IconCheck, IconLock, IconEye } from './ProfileIcons';
 const ProfileSidebar = ({
   activeTab,
   onTabClick,
-  formData
+  formData,
+  docs
 }) => {
   // Check section completion status
   const isBasicComplete = Boolean(formData?.firstName && formData?.lastName && formData?.phone && formData?.location);
   const isEduComplete = Boolean(formData?.qualifications && formData.qualifications.length > 0);
   const isExpComplete = Boolean(formData?.isFresher || (formData?.experience && formData.experience.length > 0));
   const isSkillsComplete = Boolean(formData?.professionalDetails?.skills && (formData?.designation || formData?.professionalDetails?.role));
+  const isDocsComplete = Boolean(formData?.documents?.resume || docs?.resume);
 
   const navItems = [
     { id: 'basic', label: 'Basic Details', isOk: isBasicComplete },
     { id: 'edu', label: 'Education', isOk: isEduComplete },
     { id: 'work', label: 'Work Experience', isOk: isExpComplete },
-    { id: 'skills', label: 'Key Skills & Preferences', isOk: isSkillsComplete }
+    { id: 'skills', label: 'Key Skills & Preferences', isOk: isSkillsComplete },
+    { id: 'documents', label: 'Documents & Media', isOk: isDocsComplete }
   ];
 
   return (

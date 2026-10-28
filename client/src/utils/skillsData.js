@@ -300,13 +300,27 @@ export const skillSuggestionsMap = {
 };
 
 export const getSuggestedSkills = (currentSkillsArray) => {
-  if (!currentSkillsArray || currentSkillsArray.length === 0) return [];
+  if (!currentSkillsArray) return [];
   
+  let skillsList = [];
+  if (Array.isArray(currentSkillsArray)) {
+    skillsList = currentSkillsArray.map(s => (typeof s === 'string' ? s : (s?.name || s?.label || String(s || '')))).filter(Boolean);
+  } else if (typeof currentSkillsArray === 'string') {
+    skillsList = currentSkillsArray.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  if (skillsList.length === 0) return [];
+  
+  const lowerSkills = skillsList.map(s => s.toLowerCase());
   const suggestions = new Set();
-  currentSkillsArray.forEach(skill => {
+  
+  skillsList.forEach(skill => {
+    const sLower = String(skill || '').toLowerCase();
+    if (!sLower) return;
     Object.keys(skillSuggestionsMap).forEach(k => {
-      if (k.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(k.toLowerCase())) {
-        skillSuggestionsMap[k].forEach(s => suggestions.add(s));
+      const kLower = k.toLowerCase();
+      if (kLower.includes(sLower) || sLower.includes(kLower)) {
+        (skillSuggestionsMap[k] || []).forEach(s => suggestions.add(s));
       }
     });
   });
@@ -315,5 +329,5 @@ export const getSuggestedSkills = (currentSkillsArray) => {
     return [];
   }
   
-  return Array.from(suggestions).filter(s => !currentSkillsArray.includes(s)).slice(0, 8);
+  return Array.from(suggestions).filter(s => !lowerSkills.includes(String(s).toLowerCase())).slice(0, 8);
 };
