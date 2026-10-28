@@ -87,7 +87,7 @@ export default function EmployerPortalEditor({ onSaveSuccess }) {
   const [activeTab, setActiveTab] = useState('sidebar'); // 'sidebar', 'dashboard', 'applications', 'candidates', 'messages', 'other'
   const [previewTab, setPreviewTab] = useState('dashboard'); // 'dashboard', 'applications', 'candidates', 'messages'
   const [portalConfig, setPortalConfig] = useState(DEFAULT_EMPLOYER_PORTAL_CONFIG);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -101,7 +101,6 @@ export default function EmployerPortalEditor({ onSaveSuccess }) {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        setLoading(true);
         const res = await fetch(`${API_URL}/api/homepage`);
         const data = await res.json();
         if (data.success && data.data?.employerPortal) {
@@ -143,8 +142,6 @@ export default function EmployerPortalEditor({ onSaveSuccess }) {
         }
       } catch (err) {
         console.error('Error fetching Employer Portal CMS config:', err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchConfig();
@@ -195,17 +192,8 @@ export default function EmployerPortalEditor({ onSaveSuccess }) {
     { id: 'other', label: 'Profile & Settings', icon: Building2 }
   ];
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-12 text-center shadow-xs">
-        <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-3" />
-        <p className="text-xs font-bold text-gray-500">Loading Employer Portal CMS...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200 pb-12">
+    <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-8 z-[100] bg-emerald-700 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">

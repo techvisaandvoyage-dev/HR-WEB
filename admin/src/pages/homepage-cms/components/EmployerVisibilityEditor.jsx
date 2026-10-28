@@ -39,7 +39,7 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
   const [bannerConfig, setBannerConfig] = useState(DEFAULT_JOB_MATCH_BANNER_CONFIG);
   const [globalCardVisible, setGlobalCardVisible] = useState(true);
   const [globalCardLoading, setGlobalCardLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -56,7 +56,6 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
         // 1. Fetch CMS homepage settings for match banner
         const resHome = await fetch(`${API_URL}/api/homepage`);
         const dataHome = await resHome.json();
@@ -79,8 +78,6 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
       } catch (err) {
         console.error('Error loading visibility settings:', err);
         setErrorMessage('Failed to load visibility settings from server.');
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -177,17 +174,8 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-12 text-center shadow-xs">
-        <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-3" />
-        <p className="text-xs font-bold text-gray-500">Loading Display & Visibility Controls...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200 pb-12">
+    <div className="space-y-6 max-w-6xl mx-auto pb-12">
       
       {/* Toast Notification */}
       {toastMessage && (

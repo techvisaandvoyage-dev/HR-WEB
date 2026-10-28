@@ -347,7 +347,7 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
   };
 
   const [postJobConfig, setPostJobConfig] = useState(DEFAULT_EMPLOYER_POST_JOB_CONFIG);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -420,7 +420,6 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        setLoading(true);
         const res = await fetch(`${API_URL}/api/homepage`);
         const data = await res.json();
         if (data.success && data.data?.employerPostJob) {
@@ -513,8 +512,6 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
         }
       } catch (err) {
         console.error('Error fetching Post a Job CMS config:', err);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -1211,17 +1208,8 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
     { key: 'stream', title: 'Stream / Major', hasModal: true, modalBtnText: 'Edit Streams', onOpenModal: handleOpenStreamsModal }
   ];
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-12 text-center shadow-xs">
-        <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-3" />
-        <p className="text-xs font-bold text-gray-500">Loading Employer Post a Job Controls...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200 pb-12">
+    <div className="space-y-6 max-w-6xl mx-auto pb-12">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -1569,7 +1557,7 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
 
       {/* STEP 1: JOB DETAILS */}
       {activeStep === 1 && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left 7 Columns */}
           <div className="lg:col-span-7 space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
@@ -1729,7 +1717,7 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
 
       {/* STEP 2: JOB DESCRIPTION */}
       {activeStep === 2 && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -1906,7 +1894,7 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
 
       {/* STEP 3: SALARY & REQUIREMENTS */}
       {activeStep === 3 && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -2178,7 +2166,7 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
 
       {/* STEP 4: SCREENING QUESTIONS */}
       {activeStep === 4 && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -2324,7 +2312,7 @@ export default function EmployerPostJobEditor({ onSaveSuccess, registerConfig, l
 
       {/* STEP 5: PREVIEW & FINAL REVIEW */}
       {activeStep === 5 && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-6">
             <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
