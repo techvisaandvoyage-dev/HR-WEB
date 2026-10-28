@@ -1908,20 +1908,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             {/* Drawer Footer */}
             <div className="mt-4 pt-4 border-t border-gray-100 flex gap-3 shrink-0">
               <button 
-                onClick={() => {
-                  navigate('/employer/messages', { 
-                    state: { 
-                      initialEmployee: selectedCandidate,
-                      initialApplication: selectedApplication 
-                    } 
-                  });
-                }}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
+                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-                <span>Message / Chat with Candidate</span>
+                Close
               </button>
             </div>
 

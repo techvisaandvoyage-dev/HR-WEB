@@ -1047,25 +1047,12 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [] }) => {
               </div>
 
               <div className="mt-auto pt-6 border-t border-[#ECECEC] flex gap-3 shrink-0 p-6 bg-white">
-                {selectedEmployee.isPrivate ? (
-                  <button 
-                    onClick={() => setSelectedEmployee(null)}
-                    className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors"
-                  >
-                    Close
-                  </button>
-                ) : (
-                  <button 
-                    disabled={isInitiatingChat}
-                    onClick={() => handleMessageCandidate(selectedEmployee)}
-                    className="w-full py-3 bg-[#111] hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
-                  >
-                    <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    {isInitiatingChat ? 'Opening Chat...' : 'Message Candidate'}
-                  </button>
-                )}
+                <button 
+                  onClick={() => setSelectedEmployee(null)}
+                  className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
