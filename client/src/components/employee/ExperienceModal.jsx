@@ -52,6 +52,8 @@ const ExperienceModal = ({
 
   const [companyName, setCompanyName] = useState('');
   const [noticePeriod, setNoticePeriod] = useState('');
+  const [isCustomNotice, setIsCustomNotice] = useState(false);
+  const [customDays, setCustomDays] = useState('');
   const [roles, setRoles] = useState([
     {
       jobTitle: '',
@@ -89,7 +91,22 @@ const ExperienceModal = ({
               }
             ];
         const isCurrent = initialRoles.some(r => r.currentCompany);
-        setNoticePeriod(isCurrent ? (initialData.noticePeriod || '') : '');
+        const rawNotice = isCurrent ? (initialData.noticePeriod || '') : '';
+        setNoticePeriod(rawNotice);
+        if (rawNotice) {
+          const isStandard = ['immediate', '15 days', '30 days', '45 days', '60 days', '90 days'].includes(rawNotice.trim().toLowerCase());
+          if (!isStandard && /\d+/.test(rawNotice)) {
+            setIsCustomNotice(true);
+            const digits = rawNotice.match(/\d+/);
+            setCustomDays(digits ? digits[0] : '');
+          } else {
+            setIsCustomNotice(false);
+            setCustomDays('');
+          }
+        } else {
+          setIsCustomNotice(false);
+          setCustomDays('');
+        }
         setRoles(initialRoles);
         // Only keep the first role expanded by default, or all expanded if only 1
         const collapseState = {};
@@ -100,6 +117,8 @@ const ExperienceModal = ({
       } else {
         setCompanyName('');
         setNoticePeriod('');
+        setIsCustomNotice(false);
+        setCustomDays('');
         setRoles([
           {
             jobTitle: '',
@@ -329,17 +348,70 @@ const ExperienceModal = ({
             {/* Notice Period (Only for Current Company) */}
             {roles.some(r => r.currentCompany) && (
               <div className="sj-fld sj-full">
-                <label className="sj-lb">{notice.label}</label>
-                <select
-                  className="sj-in"
-                  value={noticePeriod}
-                  onChange={(e) => setNoticePeriod(e.target.value)}
-                >
-                  <option value="">{notice.placeholder}</option>
-                  {noticePeriods.map(item => { const np = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return (
-                    <option key={np} value={np}>{label}</option>
-                  ); })}
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="sj-lb !mb-0">{notice.label}</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isCustomNotice) {
+                        setIsCustomNotice(true);
+                        const digits = (noticePeriod || '').match(/\d+/);
+                        const d = digits ? digits[0] : '';
+                        setCustomDays(d);
+                        if (d) setNoticePeriod(`${d} Days`);
+                      } else {
+                        setIsCustomNotice(false);
+                        setCustomDays('');
+                      }
+                    }}
+                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    {isCustomNotice ? 'Choose from list' : '+ Custom days'}
+                  </button>
+                </div>
+                {!isCustomNotice ? (
+                  <select
+                    className="sj-in"
+                    value={noticePeriod}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') {
+                        setIsCustomNotice(true);
+                        setCustomDays('');
+                      } else {
+                        setNoticePeriod(val);
+                      }
+                    }}
+                  >
+                    <option value="">{notice.placeholder}</option>
+                    {noticePeriods.map(item => { const np = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return (
+                      <option key={np} value={np}>{label}</option>
+                    ); })}
+                    <option value="__custom__">Custom (Enter Days)</option>
+                  </select>
+                ) : (
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      placeholder="e.g. 45"
+                      value={customDays}
+                      onChange={(e) => {
+                        const num = e.target.value.replace(/\D/g, '');
+                        setCustomDays(num);
+                        setNoticePeriod(num ? `${num} Days` : '');
+                      }}
+                      className="sj-in pr-16 font-medium"
+                      autoFocus
+                    />
+                    <div className="absolute right-3 pointer-events-none flex items-center">
+                      <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200 select-none">
+                        Days
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
