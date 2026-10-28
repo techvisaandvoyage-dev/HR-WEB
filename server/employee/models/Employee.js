@@ -62,6 +62,10 @@ const EmployeeSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  noticePeriod: {
+    type: String,
+    default: ''
+  },
   brief: {
     type: String,
     default: ''

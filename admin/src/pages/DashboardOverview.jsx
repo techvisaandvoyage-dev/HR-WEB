@@ -1050,11 +1050,85 @@ export default function DashboardOverview({ onNavigateTab }) {
 
   const getWorkExp = (emp) => {
     if (!emp) return 'Fresher';
+    if (emp.professionalDetails?.totalExperience) return emp.professionalDetails.totalExperience;
     if (emp.totalExperience) return emp.totalExperience;
     if (emp.workExp || emp.experienceYears) return emp.workExp || emp.experienceYears;
     if (emp.isFresher) return 'Fresher';
     if (Array.isArray(emp.experience) && emp.experience.length > 0) return `${emp.experience.length} Year(s)`;
     return 'Fresher';
+  };
+
+  // Employee profiles store employment dates as YYYY-MM. The candidate
+  // dashboard also supports legacy startDate/endDate records.
+  const formatExperienceDate = (value, fallback) => {
+    if (!value) return fallback;
+    const match = String(value).match(/^(\d{4})-(\d{1,2})$/);
+    if (!match) return value;
+    return new Date(Number(match[1]), Number(match[2]) - 1, 1)
+      .toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
+  const formatEducationYear = (qual) => {
+    if (!qual) return '';
+    const start = qual.startYear || qual.startingYear;
+    const end = qual.endYear || qual.yearOfPassing || qual.passingYear || qual.graduationYear || qual.passingOutYear || qual.year;
+    if (start && end) {
+      return `${start} – ${end}`;
+    }
+    if (end) {
+      return String(end);
+    }
+    if (start) {
+      return `${start} – Present`;
+    }
+    return '';
+  };
+
+  const formatEducationScore = (qual) => {
+    if (!qual) return '';
+    const raw = qual.percentage ?? qual.cgpa ?? qual.score ?? qual.grade;
+    if (raw === undefined || raw === null || raw === '') return '';
+    
+    const scoreStr = String(raw).trim();
+    if (!scoreStr) return '';
+
+    const system = (qual.gradingSystem || '').toLowerCase();
+
+    // If already formatted with %, CGPA, or Grade
+    if (scoreStr.includes('%') || scoreStr.toLowerCase().includes('cgpa') || scoreStr.toLowerCase().includes('grade')) {
+      return scoreStr;
+    }
+
+    // Explicit grading system check
+    if (system.includes('percent')) {
+      return `${scoreStr}%`;
+    }
+    if (system.includes('4')) {
+      return `${scoreStr} / 4 CGPA`;
+    }
+    if (system.includes('10') || system.includes('cgpa')) {
+      return `${scoreStr} CGPA`;
+    }
+    if (system.includes('grade')) {
+      return `Grade ${scoreStr}`;
+    }
+
+    // Automatic heuristic when gradingSystem is not explicitly set
+    const num = parseFloat(scoreStr);
+    if (!isNaN(num)) {
+      if (num > 10) {
+        return `${scoreStr}%`;
+      } else {
+        return `${scoreStr} CGPA`;
+      }
+    }
+
+    // Letter grades (e.g. A, A+, B, Distinction)
+    if (/^[A-DFa-df][+-]?$/.test(scoreStr)) {
+      return `Grade ${scoreStr}`;
+    }
+
+    return scoreStr;
   };
 
   const getCurrentDesignation = (emp) => {
@@ -5207,37 +5281,56 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <Briefcase className="w-4 h-4 text-emerald-600" />
                     Work Experience History
                   </h4>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                    Total: {getWorkExp(selectedEmployee)}
-                  </span>
                 </div>
 
                 <div className="space-y-4 pt-1">
                   {selectedEmployee.experience && selectedEmployee.experience.length > 0 ? (
-                    selectedEmployee.experience.map((exp, i) => (
-                      <div key={i} className="mb-3 border-l-2 border-emerald-500 pl-4 ml-1.5 relative space-y-1">
-                        <div className="absolute w-2.5 h-2.5 bg-emerald-500 rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50" />
-                        <h5 className="font-extrabold text-gray-900 text-xs">
-                          {exp.company || exp.companyName || 'Company Name'}
-                        </h5>
-                        {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIdx) => (
-                          <div key={rIdx} className="pt-1">
-                            <p className="font-bold text-emerald-800 text-xs">
-                              {role.jobTitle || role.title || role.role || exp.title || exp.designation || 'Position'}
-                            </p>
-                            <p className="text-[11px] text-gray-400 font-medium">
-                              {role.startDate || exp.startDate || 'Start'} - {role.currentJob || exp.currentJob ? 'Present' : (role.endDate || exp.endDate || 'End')} 
-                              {role.employmentType && ` • ${role.employmentType}`}
-                            </p>
-                            {(role.description || exp.description) && (
-                              <p className="text-xs text-gray-600 leading-relaxed mt-1">
-                                {role.description || exp.description}
-                              </p>
+                    selectedEmployee.experience.map((exp, i) => {
+                      const isCurrent = Boolean(
+                        exp.currentCompany ||
+                        exp.currentJob ||
+                        (Array.isArray(exp.roles) && exp.roles.some(r => r.currentCompany || r.currentJob || String(r.leavingDate || '').toLowerCase() === 'present')) ||
+                        (i === 0 && getCurrentCompany(selectedEmployee) !== 'N/A' && (exp.company || exp.companyName || '').toLowerCase() === getCurrentCompany(selectedEmployee).toLowerCase())
+                      );
+                      const candidateNotice = (isCurrent && exp.noticePeriod) || selectedEmployee.noticePeriod || selectedEmployee.professionalDetails?.noticePeriod;
+
+                      return (
+                        <div key={i} className="mb-3 border-l-2 border-emerald-500 pl-4 ml-1.5 relative space-y-1">
+                          <div className="absolute w-2.5 h-2.5 bg-emerald-500 rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50" />
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h5 className="font-extrabold text-gray-900 text-xs">
+                              {exp.company || exp.companyName || 'Company Name'}
+                            </h5>
+                            {isCurrent && (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                Current Company
+                              </span>
+                            )}
+                            {isCurrent && candidateNotice && candidateNotice !== 'N/A' && (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                                Notice Period: {candidateNotice}
+                              </span>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    ))
+                          {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIdx) => (
+                            <div key={rIdx} className="pt-1">
+                              <p className="font-bold text-emerald-800 text-xs">
+                                {role.jobTitle || role.title || role.role || exp.title || exp.designation || 'Position'}
+                              </p>
+                              <p className="text-[11px] text-gray-400 font-medium">
+                                {formatExperienceDate(role.joiningDate || role.startDate || exp.joiningDate || exp.startDate, 'Start')} - {role.currentCompany || role.currentJob || exp.currentCompany || exp.currentJob ? 'Present' : formatExperienceDate(role.leavingDate || role.endDate || exp.leavingDate || exp.endDate, 'End')} 
+                                {role.employmentType && ` • ${role.employmentType}`}
+                              </p>
+                              {(role.roleDescription || role.description || exp.roleDescription || exp.description) && (
+                                <p className="text-xs text-gray-600 leading-relaxed mt-1">
+                                  {role.roleDescription || role.description || exp.roleDescription || exp.description}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })
                   ) : (
                     <span className="text-gray-400 italic text-xs block py-1">No prior work experience recorded (Fresher).</span>
                   )}
@@ -5252,28 +5345,56 @@ export default function DashboardOverview({ onNavigateTab }) {
                     Education & Qualifications
                   </h4>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                    Highest: {getPrimaryQualification(selectedEmployee)}
+                    Primary: {getPrimaryQualification(selectedEmployee)}
                   </span>
                 </div>
 
                 <div className="space-y-4 pt-1">
                   {(selectedEmployee.qualifications || selectedEmployee.education) && (selectedEmployee.qualifications || selectedEmployee.education).length > 0 ? (
-                    (selectedEmployee.qualifications || selectedEmployee.education).map((qual, i) => (
-                      <div key={i} className="border-l-2 border-emerald-500 pl-4 ml-1.5 relative space-y-1">
-                        <div className="absolute w-2.5 h-2.5 bg-emerald-500 rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50" />
-                        <h5 className="font-extrabold text-gray-900 text-xs">
-                          {qual.degree || qual.course || qual.educationType || 'Degree'} 
-                          {(qual.fieldOfStudy || qual.specialization) ? ` in ${qual.fieldOfStudy || qual.specialization}` : ''}
-                        </h5>
-                        <p className="text-[11px] text-emerald-700 font-bold">
-                          {qual.graduationYear || qual.passingYear || qual.year || 'Passing Year'}
-                          {qual.percentage || qual.cgpa || qual.score ? ` • ${qual.percentage || qual.cgpa || qual.score}` : ''}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {qual.institution || qual.college || qual.university || qual.board || 'Institution / Board'}
-                        </p>
-                      </div>
-                    ))
+                    (() => {
+                      const qualsList = selectedEmployee.qualifications || selectedEmployee.education;
+                      const hasExplicitPrimary = qualsList.some(
+                        q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)
+                      );
+
+                      return qualsList.map((qual, i) => {
+                        const isPrimary = Boolean(
+                          qual.isPrimary === true ||
+                          qual.isPrimary === 'true' ||
+                          qual.isPrimary === 1 ||
+                          (!hasExplicitPrimary && i === 0)
+                        );
+                        const eduYear = formatEducationYear(qual);
+                        const eduScore = formatEducationScore(qual);
+
+                        return (
+                          <div key={i} className="border-l-2 border-emerald-500 pl-4 ml-1.5 relative space-y-1">
+                            <div className="absolute w-2.5 h-2.5 bg-emerald-500 rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50" />
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h5 className="font-extrabold text-gray-900 text-xs">
+                                {qual.degree || qual.course || qual.educationType || 'Degree'} 
+                                {(qual.fieldOfStudy || qual.specialization) ? ` in ${qual.fieldOfStudy || qual.specialization}` : ''}
+                              </h5>
+                              {isPrimary && (
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                  Primary Education
+                                </span>
+                              )}
+                            </div>
+                            {(eduYear || eduScore) && (
+                              <p className="text-[11px] text-emerald-700 font-bold">
+                                {eduYear}
+                                {eduYear && eduScore ? ` • ${eduScore}` : eduScore}
+                                {qual.courseType ? ` • ${qual.courseType}` : ''}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500">
+                              {qual.institution || qual.college || qual.university || qual.board || 'Institution / Board'}
+                            </p>
+                          </div>
+                        );
+                      });
+                    })()
                   ) : (
                     <span className="text-gray-400 italic text-xs block py-1">No education details recorded.</span>
                   )}

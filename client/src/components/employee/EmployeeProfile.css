@@ -277,6 +277,14 @@
   box-shadow: var(--sh);
 }
 
+/* Keep the employment-state switch aligned with the reference card rather
+   than flush against the wide profile-card edge. */
+@media (min-width: 641px) {
+  #work .sj-seg {
+    margin-right: clamp(0px, 8vw, 96px);
+  }
+}
+
 /* ── Timelines (.tl) & Education (.edl) ────────────────────────── */
 .tl, .sj-tl {
   margin: 2px 0 8px 6px;

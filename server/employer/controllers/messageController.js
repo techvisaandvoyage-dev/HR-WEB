@@ -253,3 +253,72 @@ exports.toggleBlock = async (req, res) => {
   }
 };
 
+
+// @desc    Initiate or get conversation for a candidate
+// @route   POST /api/employer/messages/initiate/:employeeId
+// @access  Private
+exports.initiateConversation = async (req, res) => {
+  try {
+    const employerId = req.user.id;
+    const employeeId = req.params.employeeId;
+
+    const employee = await Employee.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Candidate not found' });
+    }
+
+    // Check if an application already exists between this employer and candidate
+    let application = await Application.findOne({ employerId, employeeId })
+      .populate('jobId', 'title location companyLogo')
+      .sort({ createdAt: -1 });
+
+    if (!application) {
+      // Find an active job by this employer, or any job posted by this employer
+      let job = await Job.findOne({ employerId, status: 'Active' });
+      if (!job) {
+        job = await Job.findOne({ employerId });
+      }
+
+      // If employer hasn't posted any jobs yet, create a default "Candidate Outreach" job
+      if (!job) {
+        job = await Job.create({
+          employerId,
+          title: 'Direct Candidate Outreach',
+          location: 'Direct',
+          jobType: ['Full Time'],
+          description: 'Direct candidate conversation initiated by employer.',
+          status: 'Active',
+          views: 0,
+          applicationCount: 0
+        });
+      }
+
+      const seqCount = await Application.countDocuments();
+      const newApp = await Application.create({
+        jobId: job._id,
+        employerId,
+        employeeId,
+        applicationNumber: 500101 + seqCount,
+        status: 'Contacted',
+        appliedDate: new Date(),
+        timeline: [
+          {
+            status: 'Contacted',
+            date: new Date(),
+            note: 'Employer initiated conversation'
+          }
+        ]
+      });
+
+      application = await Application.findById(newApp._id).populate('jobId', 'title location companyLogo');
+    }
+
+    res.status(200).json({
+      success: true,
+      application
+    });
+  } catch (error) {
+    console.error('Error in initiateConversation:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};

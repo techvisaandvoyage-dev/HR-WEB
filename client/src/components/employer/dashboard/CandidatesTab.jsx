@@ -95,6 +95,9 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   // Helper extraction methods
   const getWorkExp = (cand) => {
     if (!cand) return 'Fresher';
+    if (cand.professionalDetails?.totalExperience && cand.professionalDetails.totalExperience !== 'N/A' && cand.professionalDetails.totalExperience !== '') {
+      return cand.professionalDetails.totalExperience;
+    }
     if (cand.totalExperience && cand.totalExperience !== 'N/A' && cand.totalExperience !== '') {
       return cand.totalExperience;
     }
@@ -113,22 +116,27 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
   const getCurrentDesignation = (cand) => {
     if (!cand) return 'N/A';
+    if (cand.currentDesignation) return cand.currentDesignation;
     if (cand.designation && cand.designation !== 'N/A' && cand.designation !== '') {
       return cand.designation;
     }
-    if (cand.experience && cand.experience.length > 0) {
-      const exp = cand.experience[0];
-      const title = exp.roles?.[0]?.jobTitle || exp.title || exp.role;
-      if (title) return title;
+    const exps = cand.experience || [];
+    if (Array.isArray(exps)) {
+      const currentRole = exps.find(e => e.roles?.some(r => r.currentCompany || r.currentJob))?.roles?.find(r => r.currentCompany || r.currentJob);
+      if (currentRole?.jobTitle || currentRole?.title || currentRole?.role) return currentRole.jobTitle || currentRole.title || currentRole.role;
+      if (exps[0]?.roles?.[0]?.jobTitle) return exps[0].roles[0].jobTitle;
+      if (exps[0]?.title || exps[0]?.designation) return exps[0].title || exps[0].designation;
     }
-    return cand.isFresher ? 'Fresher' : 'N/A';
+    return cand.professionalDetails?.designation || (cand.isFresher ? 'Fresher' : 'N/A');
   };
 
   const getCurrentCompany = (cand) => {
     if (!cand) return 'N/A';
-    if (cand.experience && cand.experience.length > 0) {
-      const comp = cand.experience[0].companyName || cand.experience[0].company;
-      if (comp) return comp;
+    if (cand.currentCompany) return cand.currentCompany;
+    const exps = cand.experience || [];
+    if (Array.isArray(exps)) {
+      const currentExp = exps.find(e => e.roles?.some(r => r.currentCompany || r.currentJob) || e.currentCompany || e.currentJob) || exps[0];
+      if (currentExp?.companyName || currentExp?.company) return currentExp.companyName || currentExp.company;
     }
     if (cand.professionalDetails?.currentCompany) {
       return cand.professionalDetails.currentCompany;
@@ -138,15 +146,84 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
   const getHighestQualification = (cand) => {
     if (!cand) return 'N/A';
-    if (cand.education && cand.education.length > 0) {
-      const edu = cand.education[0];
-      return edu.degree || edu.institution || 'Graduate';
+    const quals = cand.qualifications || cand.education || [];
+    if (!Array.isArray(quals) || quals.length === 0) return 'N/A';
+    const primary = quals.find(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)) || quals[0];
+    return primary?.course || primary?.educationType || primary?.degree || primary?.university || 'Graduate';
+  };
+
+  const formatExperienceDate = (value, fallback = '') => {
+    if (!value) return fallback;
+    const match = String(value).match(/^(\d{4})-(\d{1,2})$/);
+    if (!match) {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }
-    if (cand.qualifications && cand.qualifications.length > 0) {
-      const q = cand.qualifications[0];
-      return q.course || q.educationType || q.degree || 'Graduate';
+    return new Date(Number(match[1]), Number(match[2]) - 1, 1)
+      .toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
+  const formatEducationYear = (qual) => {
+    if (!qual) return '';
+    const start = qual.startYear || qual.startingYear;
+    const end = qual.endYear || qual.yearOfPassing || qual.passingYear || qual.graduationYear || qual.passingOutYear || qual.year;
+    if (start && end) {
+      return `${start} – ${end}`;
     }
-    return 'N/A';
+    if (end) {
+      return String(end);
+    }
+    if (start) {
+      return `${start} – Present`;
+    }
+    return '';
+  };
+
+  const formatEducationScore = (qual) => {
+    if (!qual) return '';
+    const raw = qual.percentage ?? qual.cgpa ?? qual.score ?? qual.grade;
+    if (raw === undefined || raw === null || raw === '') return '';
+    
+    const scoreStr = String(raw).trim();
+    if (!scoreStr) return '';
+
+    const system = (qual.gradingSystem || '').toLowerCase();
+
+    // If already formatted with %, CGPA, or Grade
+    if (scoreStr.includes('%') || scoreStr.toLowerCase().includes('cgpa') || scoreStr.toLowerCase().includes('grade')) {
+      return scoreStr;
+    }
+
+    // Explicit grading system check
+    if (system.includes('percent')) {
+      return `${scoreStr}%`;
+    }
+    if (system.includes('4')) {
+      return `${scoreStr} / 4 CGPA`;
+    }
+    if (system.includes('10') || system.includes('cgpa')) {
+      return `${scoreStr} CGPA`;
+    }
+    if (system.includes('grade')) {
+      return `Grade ${scoreStr}`;
+    }
+
+    // Automatic heuristic when gradingSystem is not explicitly set
+    const num = parseFloat(scoreStr);
+    if (!isNaN(num)) {
+      if (num > 10) {
+        return `${scoreStr}%`;
+      } else {
+        return `${scoreStr} CGPA`;
+      }
+    }
+
+    // Letter grades (e.g. A, A+, B, Distinction)
+    if (/^[A-DFa-df][+-]?$/.test(scoreStr)) {
+      return `Grade ${scoreStr}`;
+    }
+
+    return scoreStr;
   };
 
   const getRegisteredDate = (cand) => {
@@ -1286,7 +1363,12 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                           {/* Message */}
                           <button 
                             onClick={() => {
-                              navigate('/employer/messages', { state: { initialEmployee: cand } });
+                              navigate('/employer/messages', { 
+                                state: { 
+                                  initialEmployee: cand,
+                                  initialApplication: item 
+                                } 
+                              });
                             }}
                             className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
                             title="Chat / Message"
@@ -1361,11 +1443,26 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               {/* SECTION 1: BASIC DETAILS */}
               <div className="space-y-4">
                 <div className="flex flex-col items-center text-center bg-gray-50/80 p-6 rounded-2xl border border-gray-100 shadow-2xs">
-                  <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-black text-3xl mb-3 shadow-sm ring-4 ring-white ${selectedCandidate.bg || 'bg-[#18a058]'}`}>
-                    {selectedCandidate.initials || (selectedCandidate.name ? selectedCandidate.name.charAt(0).toUpperCase() : 'C')}
-                  </div>
+                  {selectedCandidate.avatar ? (
+                    <img 
+                      src={selectedCandidate.avatar} 
+                      alt={selectedCandidate.name || 'Candidate'} 
+                      className="w-20 h-20 rounded-2xl object-cover mb-3 shadow-sm ring-4 ring-white"
+                    />
+                  ) : (
+                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-black text-3xl mb-3 shadow-sm ring-4 ring-white ${selectedCandidate.bg || 'bg-[#18a058]'}`}>
+                      {selectedCandidate.initials || (selectedCandidate.name ? selectedCandidate.name.charAt(0).toUpperCase() : 'C')}
+                    </div>
+                  )}
                   <h2 className="text-xl font-extrabold text-gray-900">{selectedCandidate.name}</h2>
-                  <p className="text-xs text-gray-500 font-medium mt-0.5">{selectedCandidate.email}</p>
+                  {(getCurrentDesignation(selectedCandidate) !== 'N/A' || getCurrentCompany(selectedCandidate) !== 'N/A') && (
+                    <p className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100/80 mt-1.5 inline-block">
+                      {getCurrentDesignation(selectedCandidate) !== 'N/A' ? getCurrentDesignation(selectedCandidate) : ''}
+                      {getCurrentDesignation(selectedCandidate) !== 'N/A' && getCurrentCompany(selectedCandidate) !== 'N/A' ? ' • ' : ''}
+                      {getCurrentCompany(selectedCandidate) !== 'N/A' ? getCurrentCompany(selectedCandidate) : ''}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 font-medium mt-1">{selectedCandidate.email}</p>
                   <p className="text-xs font-semibold text-gray-400 mt-1">
                     {(formatPhoneWithCountryCode(selectedCandidate.mobile || selectedCandidate.phone, selectedCandidate.countryCode) || 'Phone not provided')} • {(selectedCandidate.location || selectedCandidate.preferredLocation || 'Location not specified')}
                   </p>
@@ -1394,9 +1491,9 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
                 {/* Brief about yourself / Professional Summary */}
                 <div className="bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Brief About Candidate / Summary</h4>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Brief About Candidate / Professional Summary</h4>
                   <p className="text-xs text-gray-700 leading-relaxed">
-                    {selectedCandidate.brief || selectedCandidate.summary || selectedCandidate.bio || (
+                    {selectedCandidate.brief || selectedCandidate.summary || selectedCandidate.bio || selectedCandidate.professionalDetails?.about || (
                       <span className="text-gray-400 italic">No professional summary provided.</span>
                     )}
                   </p>
@@ -1415,22 +1512,58 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                     Education
                   </h4>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                    Highest: {getHighestQualification(selectedCandidate)}
+                    Primary: {getHighestQualification(selectedCandidate)}
                   </span>
                 </div>
 
                 <div className="space-y-3 pt-1">
                   {(selectedCandidate.qualifications || selectedCandidate.education) && (selectedCandidate.qualifications || selectedCandidate.education).length > 0 ? (
-                    (selectedCandidate.qualifications || selectedCandidate.education).map((qual, i) => (
-                      <div key={i} className="relative pl-4 border-l-2 border-[#18a058] ml-1.5 py-0.5">
-                        <div className="absolute w-2 h-2 bg-[#18a058] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                        <h5 className="font-bold text-gray-900 text-xs">
-                          {qual.degree || qual.course || qual.educationType || 'Degree'} {qual.fieldOfStudy || qual.specialization ? `in ${qual.fieldOfStudy || qual.specialization}` : ''}
-                        </h5>
-                        <p className="text-[11px] text-[#18a058] font-bold mb-0.5">{qual.graduationYear || qual.passingYear || qual.year || 'Graduation Year'}</p>
-                        <p className="text-xs text-gray-500 leading-relaxed">{qual.institution || qual.college || qual.university || 'Institution / University'}</p>
-                      </div>
-                    ))
+                    (() => {
+                      const qualsList = selectedCandidate.qualifications || selectedCandidate.education;
+                      const hasExplicitPrimary = qualsList.some(
+                        q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)
+                      );
+
+                      return qualsList.map((qual, i) => {
+                        const isPrimary = Boolean(
+                          qual.isPrimary === true ||
+                          qual.isPrimary === 'true' ||
+                          qual.isPrimary === 1 ||
+                          (!hasExplicitPrimary && i === 0)
+                        );
+                        const eduYear = formatEducationYear(qual);
+                        const eduScore = formatEducationScore(qual);
+                        const title = qual.degree || qual.course || qual.educationType || 'Degree / Course';
+                        const spec = qual.fieldOfStudy || qual.specialization;
+                        const institute = qual.institution || qual.college || qual.university || qual.board || 'Institution / Board not specified';
+
+                        return (
+                          <div key={i} className="relative pl-4 mb-3 border-l-2 border-[#18a058] ml-1.5 py-0.5 space-y-1">
+                            <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h5 className="font-extrabold text-gray-900 text-xs">
+                                {title} {spec ? `in ${spec}` : ''}
+                              </h5>
+                              {isPrimary && (
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                  Primary Education
+                                </span>
+                              )}
+                            </div>
+                            {(eduYear || eduScore) && (
+                              <p className="text-[11px] text-emerald-700 font-bold">
+                                {eduYear}
+                                {eduYear && eduScore ? ` • ${eduScore}` : eduScore}
+                                {qual.courseType ? ` • ${qual.courseType}` : ''}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 leading-relaxed">
+                              {institute}
+                            </p>
+                          </div>
+                        );
+                      });
+                    })()
                   ) : (
                     <span className="text-gray-400 italic text-xs">No education details provided.</span>
                   )}
@@ -1452,7 +1585,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </div>
 
                 {/* Experience overview chips */}
-                <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl">
+                <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl border border-gray-100">
                   <div>
                     <span className="text-[10px] font-bold text-gray-400 uppercase">Current Designation</span>
                     <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentDesignation(selectedCandidate)}</p>
@@ -1466,33 +1599,60 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 {/* Experience Timeline */}
                 <div className="space-y-4 ml-1">
                   {selectedCandidate.experience && selectedCandidate.experience.length > 0 ? (
-                    selectedCandidate.experience.map((exp, i) => (
-                      <div key={i} className="mb-3">
-                        <h5 className="font-bold text-gray-900 text-xs mb-1.5">{exp.company || exp.companyName || 'Company'}</h5>
-                        <div className="border-l-2 border-[#18a058] ml-1.5 space-y-3 py-1">
-                          {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
-                            const formatDate = (dateStr) => {
-                              if (!dateStr) return '';
-                              const d = new Date(dateStr);
-                              return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                            };
-                            const startDate = role.startDate ? formatDate(role.startDate) : (exp.startDate ? formatDate(exp.startDate) : 'Start');
-                            const endDate = role.currentJob || exp.currentJob ? 'Present' : (role.endDate ? formatDate(role.endDate) : (exp.endDate ? formatDate(exp.endDate) : 'Present'));
+                    selectedCandidate.experience.map((exp, i) => {
+                      const isCurrent = Boolean(
+                        exp.currentCompany ||
+                        exp.currentJob ||
+                        (Array.isArray(exp.roles) && exp.roles.some(r => r.currentCompany || r.currentJob || String(r.leavingDate || '').toLowerCase() === 'present')) ||
+                        (i === 0 && getCurrentCompany(selectedCandidate) !== 'N/A' && (exp.company || exp.companyName || '').toLowerCase() === getCurrentCompany(selectedCandidate).toLowerCase())
+                      );
+                      const candidateNotice = (isCurrent && exp.noticePeriod) || selectedCandidate.noticePeriod || selectedCandidate.professionalDetails?.noticePeriod;
 
-                            return (
-                              <div key={rIndex} className="relative pl-4">
-                                <div className="absolute w-2 h-2 bg-[#18a058] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                                <h5 className="font-bold text-gray-900 text-xs">{role.jobTitle || role.title || role.role || exp.title || 'Role'}</h5>
-                                <p className="text-[11px] text-gray-500 font-medium mb-1">
-                                  {startDate} - {endDate} <span className="text-gray-300 mx-1">|</span> {role.employmentType || exp.employmentType || 'Full-time'}
-                                </p>
-                                <p className="text-xs text-gray-600 leading-relaxed">{role.description || exp.description || 'No description provided.'}</p>
-                              </div>
-                            );
-                          })}
+                      return (
+                        <div key={i} className="mb-4">
+                          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                            <h5 className="font-extrabold text-gray-900 text-xs">
+                              {exp.company || exp.companyName || 'Company Name'}
+                            </h5>
+                            {isCurrent && (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                Current Company
+                              </span>
+                            )}
+                            {isCurrent && candidateNotice && candidateNotice !== 'N/A' && (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                                Notice Period: {candidateNotice}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="border-l-2 border-[#18a058] ml-1.5 space-y-3 py-1">
+                            {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
+                              const start = formatExperienceDate(role.joiningDate || role.startDate || exp.joiningDate || exp.startDate, 'Start');
+                              const isRoleCurrent = role.currentCompany || role.currentJob || exp.currentCompany || exp.currentJob || String(role.leavingDate || '').toLowerCase() === 'present';
+                              const end = isRoleCurrent ? 'Present' : formatExperienceDate(role.leavingDate || role.endDate || exp.leavingDate || exp.endDate, 'End');
+
+                              return (
+                                <div key={rIndex} className="relative pl-4 space-y-0.5">
+                                  <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
+                                  <h5 className="font-bold text-emerald-800 text-xs">
+                                    {role.jobTitle || role.title || role.role || exp.title || exp.designation || 'Position'}
+                                  </h5>
+                                  <p className="text-[11px] text-gray-400 font-medium">
+                                    {start} – {end} {role.employmentType && ` • ${role.employmentType}`}
+                                  </p>
+                                  {(role.roleDescription || role.description || exp.roleDescription || exp.description) && (
+                                    <p className="text-xs text-gray-600 leading-relaxed mt-1">
+                                      {role.roleDescription || role.description || exp.roleDescription || exp.description}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <span className="text-gray-400 italic text-xs">No work experience provided (Fresher).</span>
                   )}
@@ -1505,7 +1665,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                   </svg>
-                  Key Skills & Preferences
+                  Key Skills &amp; Preferences
                 </h4>
 
                 {/* Skills tags */}
@@ -1517,7 +1677,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       const skillsArray = typeof rawSkills === 'string' 
                         ? rawSkills.split(',').map(s => s.trim()).filter(Boolean)
                         : Array.isArray(rawSkills) 
-                          ? rawSkills 
+                          ? rawSkills.map(s => typeof s === 'string' ? s : s?.name || s?.label || String(s || '')).filter(Boolean)
                           : [];
                       
                       if (skillsArray.length === 0) {
@@ -1540,29 +1700,54 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                     <p className="text-xs font-extrabold text-gray-900">{getFunction(selectedCandidate)}</p>
                   </div>
                   <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Preferred Location</h4>
-                    <p className="text-xs font-extrabold text-gray-900">{selectedCandidate.preferredLocation || selectedCandidate.location || 'N/A'}</p>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Experience</h4>
+                    <p className="text-xs font-extrabold text-gray-900">{getWorkExp(selectedCandidate)}</p>
                   </div>
                   <div>
                     <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                      Current {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} Salary
+                      Current {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
                     </h4>
                     <p className="text-xs font-extrabold text-gray-900">
                       {selectedCandidate.professionalDetails?.currentSalary 
                         ? `₹ ${selectedCandidate.professionalDetails.currentSalary}` 
-                        : (selectedCandidate.currentCTC ? `₹ ${selectedCandidate.currentCTC}` : 'N/A')}
+                        : (selectedCandidate.currentCTC && selectedCandidate.currentCTC !== 'N/A' ? `₹ ${selectedCandidate.currentCTC}` : 'N/A')}
                     </p>
                   </div>
                   <div>
                     <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                      Expected {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} Salary
+                      Expected {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
                     </h4>
                     <p className="text-xs font-extrabold text-gray-900">
                       {selectedCandidate.professionalDetails?.expectedSalary 
                         ? `₹ ${selectedCandidate.professionalDetails.expectedSalary}` 
-                        : (selectedCandidate.expectedCTC ? `₹ ${selectedCandidate.expectedCTC}` : 'N/A')}
+                        : (selectedCandidate.expectedCTC && selectedCandidate.expectedCTC !== 'N/A' ? `₹ ${selectedCandidate.expectedCTC}` : 'N/A')}
                     </p>
                   </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Preferred Location</h4>
+                    <p className="text-xs font-extrabold text-gray-900">
+                      {selectedCandidate.preferredLocation || selectedCandidate.professionalDetails?.preferredLocation || selectedCandidate.location || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notice Period</h4>
+                    <p className="text-xs font-extrabold text-gray-900">
+                      {selectedCandidate.noticePeriod || selectedCandidate.professionalDetails?.noticePeriod || 'Immediate / N/A'}
+                    </p>
+                  </div>
+                  {selectedCandidate.professionalDetails?.linkedinUrl && (
+                    <div className="col-span-2 pt-1 border-t border-gray-200/50">
+                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">LinkedIn Profile</h4>
+                      <a 
+                        href={selectedCandidate.professionalDetails.linkedinUrl.startsWith('http') ? selectedCandidate.professionalDetails.linkedinUrl : `https://${selectedCandidate.professionalDetails.linkedinUrl}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline truncate block"
+                      >
+                        {selectedCandidate.professionalDetails.linkedinUrl}
+                      </a>
+                    </div>
+                  )}
                   <div>
                     <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Applied Date</h4>
                     <p className="text-xs font-extrabold text-gray-900">{selectedApplication?.appliedDate || selectedCandidate.date || 'N/A'}</p>
@@ -1724,7 +1909,12 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             <div className="mt-4 pt-4 border-t border-gray-100 flex gap-3 shrink-0">
               <button 
                 onClick={() => {
-                  navigate('/employer/messages', { state: { initialEmployee: selectedCandidate } });
+                  navigate('/employer/messages', { 
+                    state: { 
+                      initialEmployee: selectedCandidate,
+                      initialApplication: selectedApplication 
+                    } 
+                  });
                 }}
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
               >

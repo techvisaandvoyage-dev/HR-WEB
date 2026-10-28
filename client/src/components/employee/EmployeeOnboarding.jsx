@@ -13,6 +13,7 @@ import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import CountryCodeDropdown from '../common/CountryCodeDropdown';
+import { socket } from '../../utils/socket';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -650,6 +651,14 @@ const EmployeeOnboarding = () => {
       }
     };
     fetchCmsConfig();
+  }, []);
+
+  useEffect(() => {
+    const handleCmsUpdate = ({ employeeOnboarding }) => {
+      if (employeeOnboarding && typeof employeeOnboarding === 'object') setCmsConfig(employeeOnboarding);
+    };
+    socket.on('employee_onboarding_config_updated', handleCmsUpdate);
+    return () => socket.off('employee_onboarding_config_updated', handleCmsUpdate);
   }, []);
 
   const getStepField = (stepKey, fieldKey, defaultLabel, defaultPlaceholder, defaultRequired = true) => {

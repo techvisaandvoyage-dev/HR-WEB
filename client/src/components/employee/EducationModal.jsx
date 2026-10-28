@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import { IconPlus, IconGraduationCap, IconTrash, IconClose } from './ProfileIcons';
+import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS } from './EmployeeOnboarding';
 
 const EducationModal = ({
   isOpen,
@@ -9,7 +10,8 @@ const EducationModal = ({
   initialData,
   editIndex,
   onSave,
-  onDelete
+  onDelete,
+  cmsConfig
 }) => {
   const currentYear = new Date().getFullYear();
   const years = [];
@@ -71,21 +73,55 @@ const EducationModal = ({
   if (!isOpen) return null;
 
   const isEdit = editIndex >= 0;
-  const isSchool = form.educationType === '10th' || form.educationType === '12th';
+  const educationData = cmsConfig?.step2?.educationData && Object.keys(cmsConfig.step2.educationData).length
+    ? cmsConfig.step2.educationData : DEFAULT_EDUCATION_DATA;
+  const currentEducationConfig = educationData[form.educationType];
+  const isSchool = currentEducationConfig
+    ? currentEducationConfig.category === 'school'
+    : (form.educationType === '10th' || form.educationType === '12th');
+  const fields = cmsConfig?.step2?.fields || {};
+  const field = (key, label, placeholder = '') => ({
+    label: fields[key]?.label || label,
+    placeholder: fields[key]?.placeholder || placeholder,
+    isRequired: fields[key]?.isRequired !== false
+  });
+  const educationTypes = Object.keys(educationData).length
+    ? Object.keys(educationData) : ['Masters/Post-Graduation', 'Graduation/Diploma', 'Doctorate/PhD', '12th', '10th'];
+  const selectedOptions = Array.isArray(currentEducationConfig?.options) ? currentEducationConfig.options : [];
+  const selectOptions = selectedOptions.map(item => ({
+    value: typeof item === 'string' ? item : (item.value || item.label),
+    label: typeof item === 'string' ? item : (item.label || item.value),
+    isGroupLabel: Boolean(item?.isGroupLabel)
+  })).filter(item => item.value || item.isGroupLabel);
+  const courseTypes = Array.isArray(cmsConfig?.step2?.courseTypeOptions) && cmsConfig.step2.courseTypeOptions.length
+    ? cmsConfig.step2.courseTypeOptions : ['Full time', 'Part time', 'Distance learning'];
+  const mediums = Array.isArray(cmsConfig?.step2?.mediumOptions) && cmsConfig.step2.mediumOptions.length
+    ? cmsConfig.step2.mediumOptions : ['English', 'Hindi', 'Other'];
+  const gradingSystems = Array.isArray(cmsConfig?.step2?.gradingSystems) && cmsConfig.step2.gradingSystems.length
+    ? cmsConfig.step2.gradingSystems : ['Percentage', 'CGPA (10)', 'CGPA (4)', 'Grade'];
+  const educationType = field('educationType', 'Education', 'Select education type');
+  const university = field('university', 'University / Institute', 'Enter University / Institute');
+  const course = field('course', 'Course', 'Enter course (e.g. B.Tech, MBA, B.Com, CA)');
+  const courseType = field('courseType', 'Course type');
+  const schoolMedium = field('schoolMedium', 'School medium', 'Select medium');
+  const startYear = field('startYear', 'Starting year', 'Select year');
+  const endYear = field('endYear', 'Passing out year', 'Select year');
+  const gradingSystem = field('gradingSystem', 'Grading system', 'Select grading system');
+  const percentage = field('percentage', 'Marks / Grade', 'Enter percentage or grade');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const newErrors = {};
 
-    if (!form.educationType) newErrors.educationType = 'Select education type';
+    if (cmsConfig?.step2?.fields?.educationType?.isRequired !== false && !form.educationType) newErrors.educationType = 'Select education type';
     if (isSchool) {
       if (!form.board.trim()) newErrors.board = 'Board is required';
-      if (!form.endYear) newErrors.endYear = 'Passing out year is required';
+      if (cmsConfig?.step2?.fields?.endYear?.isRequired !== false && !form.endYear) newErrors.endYear = 'Passing out year is required';
     } else {
-      if (!form.university.trim()) newErrors.university = 'University / Institute is required';
-      if (!form.course.trim()) newErrors.course = 'Course is required';
-      if (!form.startYear) newErrors.startYear = 'Starting year is required';
-      if (!form.endYear) newErrors.endYear = 'Passing out year is required';
+      if (cmsConfig?.step2?.fields?.university?.isRequired !== false && !form.university.trim()) newErrors.university = 'University / Institute is required';
+      if (cmsConfig?.step2?.fields?.course?.isRequired !== false && !form.course.trim()) newErrors.course = 'Course is required';
+      if (cmsConfig?.step2?.fields?.startYear?.isRequired !== false && !form.startYear) newErrors.startYear = 'Starting year is required';
+      if (cmsConfig?.step2?.fields?.endYear?.isRequired !== false && !form.endYear) newErrors.endYear = 'Passing out year is required';
       if (form.startYear && form.endYear && Number(form.endYear) < Number(form.startYear)) {
         newErrors.endYear = 'Must be after the starting year';
       }
@@ -130,7 +166,7 @@ const EducationModal = ({
             {/* Education Type */}
             <div className="sj-fld sj-full">
               <label className="sj-lb">
-                Education <span className="sj-req">*</span>
+                {educationType.label} {educationType.isRequired && <span className="sj-req">*</span>}
               </label>
               <select
                 className="sj-in"
@@ -140,18 +176,17 @@ const EducationModal = ({
                   setForm(prev => ({
                     ...prev,
                     educationType: val,
+                    board: '',
+                    university: '',
+                    course: '',
                     course: val === '10th' ? 'Class X' : val === '12th' ? 'Class XII' : prev.course
                   }));
                   setErrors(prev => ({ ...prev, educationType: '' }));
                 }}
                 aria-invalid={!!errors.educationType}
               >
-                <option value="">Select education type</option>
-                <option value="Masters/Post-Graduation">Masters/Post-Graduation</option>
-                <option value="Graduation/Diploma">Graduation/Diploma</option>
-                <option value="Doctorate/PhD">Doctorate/PhD</option>
-                <option value="12th">12th</option>
-                <option value="10th">10th</option>
+                <option value="">{educationType.placeholder}</option>
+                {educationTypes.map(item => { const value = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={value} value={value}>{label}</option>; })}
               </select>
               {errors.educationType && <p className="sj-err">{errors.educationType}</p>}
             </div>
@@ -163,23 +198,26 @@ const EducationModal = ({
                   <label className="sj-lb">
                     Board <span className="sj-req">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     className="sj-in"
-                    placeholder="Enter board name (e.g. CBSE, ICSE, State Board)"
                     value={form.board}
                     onChange={(e) => {
                       setForm({ ...form, board: e.target.value });
                       setErrors(prev => ({ ...prev, board: '' }));
                     }}
                     aria-invalid={!!errors.board}
-                  />
+                  >
+                    <option value="">Select board</option>
+                    {(selectOptions.length ? selectOptions : DEFAULT_BOARD_OPTIONS).map(item => item.isGroupLabel ? (
+                      <option key={item.label} value="" disabled>{item.label}</option>
+                    ) : <option key={item.value || item.label} value={item.value || item.label}>{item.label || item.value}</option>)}
+                  </select>
                   {errors.board && <p className="sj-err">{errors.board}</p>}
                 </div>
 
                 <div className="sj-fld">
                   <label className="sj-lb">
-                    Passing out year <span className="sj-req">*</span>
+                    {endYear.label} {endYear.isRequired && <span className="sj-req">*</span>}
                   </label>
                   <select
                     className="sj-in"
@@ -190,23 +228,21 @@ const EducationModal = ({
                     }}
                     aria-invalid={!!errors.endYear}
                   >
-                    <option value="">Select year</option>
+                    <option value="">{endYear.placeholder}</option>
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                   {errors.endYear && <p className="sj-err">{errors.endYear}</p>}
                 </div>
 
                 <div className="sj-fld">
-                  <label className="sj-lb">School medium</label>
+                  <label className="sj-lb">{schoolMedium.label}</label>
                   <select
                     className="sj-in"
                     value={form.schoolMedium}
                     onChange={(e) => setForm({ ...form, schoolMedium: e.target.value })}
                   >
-                    <option value="">Select medium</option>
-                    <option value="English">English</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Other">Other</option>
+                    <option value="">{schoolMedium.placeholder}</option>
+                    {mediums.map(item => { const value = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={value} value={value}>{label}</option>; })}
                   </select>
                 </div>
               </>
@@ -214,7 +250,7 @@ const EducationModal = ({
               <>
                 <div className="sj-fld sj-full">
                   <label className="sj-lb">
-                    University / Institute <span className="sj-req">*</span>
+                    {university.label} {university.isRequired && <span className="sj-req">*</span>}
                   </label>
                   <InstituteAutocomplete
                     value={form.university}
@@ -222,7 +258,7 @@ const EducationModal = ({
                       setForm({ ...form, university: val });
                       setErrors(prev => ({ ...prev, university: '' }));
                     }}
-                    placeholder="Enter University / Institute"
+                    placeholder={university.placeholder}
                     className="sj-in"
                   />
                   {errors.university && <p className="sj-err">{errors.university}</p>}
@@ -230,24 +266,28 @@ const EducationModal = ({
 
                 <div className="sj-fld sj-full">
                   <label className="sj-lb">
-                    Course <span className="sj-req">*</span>
+                    {course.label} {course.isRequired && <span className="sj-req">*</span>}
                   </label>
-                  <JobTitleAutocomplete
+                  <select
+                    className="sj-in"
                     value={form.course}
-                    onChange={(val) => {
-                      setForm({ ...form, course: val });
+                    onChange={(e) => {
+                      setForm({ ...form, course: e.target.value });
                       setErrors(prev => ({ ...prev, course: '' }));
                     }}
-                    placeholder="Enter course (e.g. B.Tech, MBA, B.Com, CA)"
-                    className="sj-in"
-                  />
+                  >
+                    <option value="">{course.placeholder}</option>
+                    {selectOptions.map(item => item.isGroupLabel ? (
+                      <option key={item.label} value="" disabled>{item.label}</option>
+                    ) : <option key={item.value} value={item.value}>{item.label}</option>)}
+                  </select>
                   {errors.course && <p className="sj-err">{errors.course}</p>}
                 </div>
 
                 <div className="sj-fld sj-full">
-                  <span className="sj-lb">Course type</span>
+                  <span className="sj-lb">{courseType.label}</span>
                   <div className="sj-rad">
-                    {['Full time', 'Part time', 'Distance learning'].map(ct => (
+                    {courseTypes.map(item => { const ct = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return (
                       <label
                         key={ct}
                         className={`sj-rad-label ${form.courseType === ct ? 'sj-on' : ''}`}
@@ -256,15 +296,15 @@ const EducationModal = ({
                         <span className="sj-rad-indicator">
                           {form.courseType === ct && <span className="sj-rad-dot" />}
                         </span>
-                        <span>{ct}</span>
+                        <span>{label}</span>
                       </label>
-                    ))}
+                    ); })}
                   </div>
                 </div>
 
                 <div className="sj-fld">
                   <label className="sj-lb">
-                    Starting year <span className="sj-req">*</span>
+                    {startYear.label} {startYear.isRequired && <span className="sj-req">*</span>}
                   </label>
                   <select
                     className="sj-in"
@@ -275,7 +315,7 @@ const EducationModal = ({
                     }}
                     aria-invalid={!!errors.startYear}
                   >
-                    <option value="">Select year</option>
+                    <option value="">{startYear.placeholder}</option>
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                   {errors.startYear && <p className="sj-err">{errors.startYear}</p>}
@@ -283,7 +323,7 @@ const EducationModal = ({
 
                 <div className="sj-fld">
                   <label className="sj-lb">
-                    Passing out year <span className="sj-req">*</span>
+                    {endYear.label} {endYear.isRequired && <span className="sj-req">*</span>}
                   </label>
                   <select
                     className="sj-in"
@@ -294,7 +334,7 @@ const EducationModal = ({
                     }}
                     aria-invalid={!!errors.endYear}
                   >
-                    <option value="">Select year</option>
+                    <option value="">{endYear.placeholder}</option>
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                   {errors.endYear && <p className="sj-err">{errors.endYear}</p>}
@@ -304,25 +344,22 @@ const EducationModal = ({
 
             {/* Grading System & Score */}
             <div className="sj-fld">
-              <label className="sj-lb">Grading system</label>
+              <label className="sj-lb">{gradingSystem.label}</label>
               <select
                 className="sj-in"
                 value={form.gradingSystem}
                 onChange={(e) => setForm({ ...form, gradingSystem: e.target.value })}
               >
-                <option value="Percentage">Percentage</option>
-                <option value="CGPA (10)">CGPA (10 Point Scale)</option>
-                <option value="CGPA (4)">CGPA (4 Point Scale)</option>
-                <option value="Grade">Grade</option>
+                {gradingSystems.map(item => { const value = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={value} value={value}>{label}</option>; })}
               </select>
             </div>
 
             <div className="sj-fld">
-              <label className="sj-lb">Marks / Grade</label>
+              <label className="sj-lb">{percentage.label}</label>
               <input
                 type="text"
                 className="sj-in"
-                placeholder={form.gradingSystem === 'Percentage' ? 'e.g. 78.5' : 'e.g. 8.4'}
+                placeholder={percentage.placeholder || (form.gradingSystem === 'Percentage' ? 'e.g. 78.5' : 'e.g. 8.4')}
                 value={form.percentage}
                 onChange={(e) => setForm({ ...form, percentage: e.target.value })}
               />

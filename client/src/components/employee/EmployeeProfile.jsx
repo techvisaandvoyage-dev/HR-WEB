@@ -30,6 +30,7 @@ import {
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
 import { compressFileIfNeeded } from '../../utils/fileCompressor';
+import { socket } from '../../utils/socket';
 import {
   sortQualifications,
   sortExperience
@@ -256,6 +257,18 @@ const EmployeeProfile = () => {
       }
     };
     fetchCms();
+  }, []);
+
+  // Profile edit controls use the same config as onboarding. Update an open
+  // profile instantly when an admin saves a new configuration.
+  useEffect(() => {
+    const handleCmsUpdate = ({ employeeOnboarding }) => {
+      if (employeeOnboarding && typeof employeeOnboarding === 'object') {
+        setCmsConfig(employeeOnboarding);
+      }
+    };
+    socket.on('employee_onboarding_config_updated', handleCmsUpdate);
+    return () => socket.off('employee_onboarding_config_updated', handleCmsUpdate);
   }, []);
 
   // Fetch initial profile from localStorage and API
@@ -593,6 +606,53 @@ const EmployeeProfile = () => {
     setIsEduModalOpen(true);
   };
 
+  const formatEducationScore = (qual) => {
+    if (!qual) return '';
+    const raw = qual.percentage ?? qual.cgpa ?? qual.score ?? qual.grade;
+    if (raw === undefined || raw === null || raw === '') return '';
+    
+    const scoreStr = String(raw).trim();
+    if (!scoreStr) return '';
+
+    const system = (qual.gradingSystem || '').toLowerCase();
+
+    // If already formatted with %, CGPA, or Grade
+    if (scoreStr.includes('%') || scoreStr.toLowerCase().includes('cgpa') || scoreStr.toLowerCase().includes('grade')) {
+      return scoreStr;
+    }
+
+    // Explicit grading system check
+    if (system.includes('percent')) {
+      return `${scoreStr}%`;
+    }
+    if (system.includes('4')) {
+      return `${scoreStr} / 4 CGPA`;
+    }
+    if (system.includes('10') || system.includes('cgpa')) {
+      return `${scoreStr} CGPA`;
+    }
+    if (system.includes('grade')) {
+      return `Grade ${scoreStr}`;
+    }
+
+    // Automatic heuristic when gradingSystem is not explicitly set
+    const num = parseFloat(scoreStr);
+    if (!isNaN(num)) {
+      if (num > 10) {
+        return `${scoreStr}%`;
+      } else {
+        return `${scoreStr} CGPA`;
+      }
+    }
+
+    // Letter grades (e.g. A, A+, B, Distinction)
+    if (/^[A-DFa-df][+-]?$/.test(scoreStr)) {
+      return `Grade ${scoreStr}`;
+    }
+
+    return scoreStr;
+  };
+
   const handleSaveEducation = (updatedEdu, idx) => {
     setFormData(prev => {
       let quals = [...(prev.qualifications || [])];
@@ -639,14 +699,44 @@ const EmployeeProfile = () => {
   const handleSaveExperience = (updatedExp, idx) => {
     setFormData(prev => {
       let exps = [...(prev.experience || [])];
+      // An employee can have only one active employer. When the edited/new
+      // company contains a current role, close the current flag on every
+      // other company before persisting the profile.
+      const hasCurrentRole = (updatedExp.roles || []).some(role => role?.currentCompany === true);
+      if (hasCurrentRole) {
+        exps = exps.map((experience, experienceIndex) => {
+          if (experienceIndex === idx) return experience;
+          return {
+            ...experience,
+            noticePeriod: '',
+            roles: (experience.roles || []).map(role => ({
+              ...role,
+              currentCompany: false,
+              leavingDate: role.leavingDate || new Date().toISOString().slice(0, 7)
+            }))
+          };
+        });
+      } else {
+        updatedExp = { ...updatedExp, noticePeriod: '' };
+      }
       if (idx >= 0 && idx < exps.length) {
         exps[idx] = updatedExp;
       } else {
         exps.push(updatedExp);
       }
       const sorted = sortExperience(exps);
-      localStorage.setItem('userProfile', JSON.stringify({ ...prev, experience: sorted }));
-      return { ...prev, experience: sorted };
+      const activeNotice = hasCurrentRole ? (updatedExp.noticePeriod || '') : (sorted.find(e => e.roles?.some(r => r.currentCompany))?.noticePeriod || '');
+      const updatedState = {
+        ...prev,
+        experience: sorted,
+        noticePeriod: activeNotice || prev.noticePeriod,
+        professionalDetails: {
+          ...(prev.professionalDetails || {}),
+          noticePeriod: activeNotice || prev.professionalDetails?.noticePeriod
+        }
+      };
+      localStorage.setItem('userProfile', JSON.stringify(updatedState));
+      return updatedState;
     });
     showToast(idx >= 0 ? 'Experience updated' : 'Experience added');
   };
@@ -662,6 +752,7 @@ const EmployeeProfile = () => {
 
   // Skills Modal Handlers
   const handleSaveSkills = (updated) => {
+    let nextState;
     setFormData(prev => {
       const updatedProf = {
         ...(prev.professionalDetails || {}),
@@ -684,9 +775,27 @@ const EmployeeProfile = () => {
         totalExperience: updated.totalExperience,
         professionalDetails: updatedProf
       };
+      nextState = next;
       localStorage.setItem('userProfile', JSON.stringify(next));
       return next;
     });
+
+    try {
+      const token = localStorage.getItem('employeeToken');
+      if (token && nextState) {
+        fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(nextState)
+        }).catch(err => console.error("Direct save preferences error:", err));
+      }
+    } catch (e) {
+      console.error("Direct API save trigger error:", e);
+    }
+
     showToast('Preferences saved');
   };
 
@@ -836,7 +945,7 @@ const EmployeeProfile = () => {
                                 {edu.educationType}
                                 {edu.courseType ? ` · ${edu.courseType}` : ''}
                                 {edu.startYear ? ` · ${edu.startYear} – ${edu.endYear}` : (edu.endYear ? ` · Passing: ${edu.endYear}` : '')}
-                                {edu.percentage ? ` · ${edu.percentage}${edu.gradingSystem && edu.gradingSystem.includes('%') ? '%' : ''}` : ''}
+                                {formatEducationScore(edu) ? ` · ${formatEducationScore(edu)}` : ''}
                               </small>
                             </div>
                           ))}
@@ -848,7 +957,7 @@ const EmployeeProfile = () => {
                           onClick={() => handleOpenEducationModal(-1)}
                         >
                           <IconPlus className="w-4 h-4" />
-                          <span>Add another education</span>
+                          <span>{cmsConfig?.step2?.addBtnText || 'Add another education'}</span>
                         </button>
                       </>
                     ) : (
@@ -862,7 +971,7 @@ const EmployeeProfile = () => {
                             onClick={() => handleOpenEducationModal(-1)}
                           >
                             <IconPlus className="w-4 h-4" />
-                            <span>Add education</span>
+                            <span>{cmsConfig?.step2?.addBtnText || 'Add education'}</span>
                           </button>
                         </div>
                       </div>
@@ -924,7 +1033,7 @@ const EmployeeProfile = () => {
                                       </h3>
                                       <p>
                                         {calculateCompanyDuration(co)} · {co.roles?.length || 1} role{co.roles?.length > 1 ? 's' : ''}
-                                        {co.noticePeriod ? ` · ${co.noticePeriod}` : ''}
+                                        {isCurrent && co.noticePeriod ? ` · ${co.noticePeriod}` : ''}
                                       </p>
                                     </div>
                                     <button
@@ -971,7 +1080,7 @@ const EmployeeProfile = () => {
                           onClick={() => handleOpenExperienceModal(-1)}
                         >
                           <IconPlus className="w-4 h-4" />
-                          <span>Add experience</span>
+                          <span>{cmsConfig?.step3?.addBtnText || 'Add experience'}</span>
                         </button>
                       </>
                     )}
@@ -1467,6 +1576,7 @@ const EmployeeProfile = () => {
         editIndex={editingEduIdx}
         onSave={handleSaveEducation}
         onDelete={handleDeleteEducation}
+        cmsConfig={cmsConfig}
       />
 
       <ExperienceModal
@@ -1476,6 +1586,7 @@ const EmployeeProfile = () => {
         editIndex={editingExpIdx}
         onSave={handleSaveExperience}
         onDelete={handleDeleteExperience}
+        cmsConfig={cmsConfig}
       />
 
       <SkillsModal
@@ -1483,6 +1594,7 @@ const EmployeeProfile = () => {
         onClose={() => setIsSkillsModalOpen(false)}
         formData={formData}
         onSave={handleSaveSkills}
+        cmsConfig={cmsConfig}
       />
 
       {/* Avatar Image Cropper Modal */}

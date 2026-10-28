@@ -799,7 +799,7 @@ exports.getAllApplicationsAdmin = async (req, res) => {
     }
     const applications = await Application.find(query)
       .populate('jobId', 'title company location status salary jobType')
-      .populate('employeeId', 'name email mobile designation location totalExperience resumeUrl avatar')
+      .populate('employeeId', 'name email mobile designation location totalExperience professionalDetails resumeUrl avatar')
       .populate('employerId', 'companyName fullName email mobile')
       .sort({ createdAt: -1 })
     // Only keep applications linked to existing valid jobs

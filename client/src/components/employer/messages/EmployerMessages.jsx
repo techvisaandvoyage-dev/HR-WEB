@@ -129,15 +129,25 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
 
   // 2. Handle initial employee selection from route state
   useEffect(() => {
-    if (initialEmployeeData && candidates.length > 0 && !selectedEmployee) {
-      const emp = candidates.find(c => c.id === initialEmployeeData.id) || initialEmployeeData;
+    if (initialEmployeeData) {
+      const targetId = initialEmployeeData.id || initialEmployeeData._id;
+      const targetEmail = (initialEmployeeData.email || '').toLowerCase();
+
+      const emp = candidates.find(c => 
+        (targetId && (c.id === targetId || c._id === targetId)) ||
+        (targetEmail && c.email && c.email.toLowerCase() === targetEmail)
+      ) || initialEmployeeData;
+
       setSelectedEmployee(emp);
-      // Auto-select their first application if they have any
-      if (emp.history && emp.history.length > 0) {
+
+      // Select specific application if provided or first from history
+      if (initialApplicationData) {
+        setSelectedApplication(initialApplicationData);
+      } else if (emp.history && emp.history.length > 0) {
         setSelectedApplication(emp.history[0]);
       }
     }
-  }, [initialEmployeeData, candidates, selectedEmployee]);
+  }, [initialEmployeeData, initialApplicationData, candidates]);
 
   // 3. Fetch messages and join live socket room when an application is selected
   useEffect(() => {
@@ -367,8 +377,23 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
     }
   };
 
+  // Derived candidates list including selectedEmployee if from direct outreach
+  const allCandidatesList = useMemo(() => {
+    if (!selectedEmployee) return candidates;
+    const targetId = selectedEmployee.id || selectedEmployee._id;
+    const targetEmail = (selectedEmployee.email || '').toLowerCase();
+    const exists = candidates.some(c => 
+      (targetId && (c.id === targetId || c._id === targetId)) ||
+      (targetEmail && c.email && c.email.toLowerCase() === targetEmail)
+    );
+    if (!exists) {
+      return [selectedEmployee, ...candidates];
+    }
+    return candidates;
+  }, [candidates, selectedEmployee]);
+
   // Derived state for filtering
-  const filteredCandidates = candidates.filter(c => {
+  const filteredCandidates = allCandidatesList.filter(c => {
     const term = employeeSearch.toLowerCase();
     return c.name?.toLowerCase().includes(term) || 
            c.email?.toLowerCase().includes(term) || 
@@ -404,7 +429,13 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
           ) : (
             filteredCandidates.map(cand => {
               const appCount = cand.history?.length || 0;
-              const isSelected = selectedEmployee?.id === cand.id;
+              const isSelected = selectedEmployee && (
+                selectedEmployee.id === cand.id || 
+                selectedEmployee._id === cand.id || 
+                selectedEmployee.id === cand._id || 
+                selectedEmployee._id === cand._id ||
+                (selectedEmployee.email && cand.email && selectedEmployee.email.toLowerCase() === cand.email.toLowerCase())
+              );
               
               const candUnreadCount = cand.history?.reduce((total, app) => {
                 const conv = backendConversations.find(c => c.applicationId === app.appId || c.applicationId === app.id); // appId or id depending on how history is shaped

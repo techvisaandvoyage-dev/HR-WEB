@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { currentLocationOptions, preferredLocationOptions, isEmployeeCurrentLocationMatch, isEmployeePreferredLocationMatch } from '../../../data/preferredLocations';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
@@ -61,7 +62,9 @@ const designationToIndustryMap = {
   'Graphic Designer': 'Other',
 };
 
-const AllEmployeesTab = ({ portalConfig }) => {
+const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [] }) => {
+  const navigate = useNavigate();
+  const [isInitiatingChat, setIsInitiatingChat] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -111,6 +114,202 @@ const AllEmployeesTab = ({ portalConfig }) => {
   const experienceOptions = [
     '0 - 1 Yrs', '2 - 3 Yrs', '4 - 6 Yrs', '7 - 10 Yrs', '11 - 15 Yrs', '16 - 20 Yrs', '21 - 25 Yrs', '25+ yrs'
   ];
+
+  const getWorkExp = (emp) => {
+    if (!emp) return 'Fresher';
+    if (emp.professionalDetails?.totalExperience) return emp.professionalDetails.totalExperience;
+    if (emp.totalExperience && emp.totalExperience !== 'N/A' && emp.totalExperience !== '') return emp.totalExperience;
+    if (emp.workExp || emp.experienceYears) return emp.workExp || emp.experienceYears;
+    if (emp.isFresher) return 'Fresher';
+    if (Array.isArray(emp.experience) && emp.experience.length > 0) return `${emp.experience.length} ${emp.experience.length === 1 ? 'Year' : 'Years'}`;
+    return 'Fresher';
+  };
+
+  const getPrimaryQualification = (emp) => {
+    if (!emp) return 'N/A';
+    if (emp.primaryQualification) return emp.primaryQualification;
+    const quals = emp.qualifications || emp.education || [];
+    if (!Array.isArray(quals) || quals.length === 0) return 'N/A';
+    const primary = quals.find(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)) || quals[0];
+    return primary?.course || primary?.educationType || primary?.degree || primary?.university || 'N/A';
+  };
+
+  const getCurrentDesignation = (emp) => {
+    if (!emp) return 'N/A';
+    if (emp.currentDesignation) return emp.currentDesignation;
+    if (emp.designation) return emp.designation;
+    const exps = emp.experience || [];
+    if (Array.isArray(exps)) {
+      const currentRole = exps.find(e => e.roles?.some(r => r.currentCompany || r.currentJob))?.roles?.find(r => r.currentCompany || r.currentJob);
+      if (currentRole?.jobTitle || currentRole?.title || currentRole?.role) return currentRole.jobTitle || currentRole.title || currentRole.role;
+      if (exps[0]?.roles?.[0]?.jobTitle) return exps[0].roles[0].jobTitle;
+      if (exps[0]?.title || exps[0]?.designation) return exps[0].title || exps[0].designation;
+    }
+    return emp.professionalDetails?.designation || 'N/A';
+  };
+
+  const getCurrentCompany = (emp) => {
+    if (!emp) return 'N/A';
+    if (emp.currentCompany) return emp.currentCompany;
+    const exps = emp.experience || [];
+    if (Array.isArray(exps)) {
+      const currentExp = exps.find(e => e.roles?.some(r => r.currentCompany || r.currentJob) || e.currentCompany || e.currentJob) || exps[0];
+      if (currentExp?.companyName || currentExp?.company) return currentExp.companyName || currentExp.company;
+    }
+    return emp.professionalDetails?.currentCompany || 'N/A';
+  };
+
+  const formatExperienceDate = (value, fallback) => {
+    if (!value) return fallback;
+    const match = String(value).match(/^(\d{4})-(\d{1,2})$/);
+    if (!match) {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    }
+    return new Date(Number(match[1]), Number(match[2]) - 1, 1)
+      .toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
+  const formatEducationYear = (qual) => {
+    if (!qual) return '';
+    const start = qual.startYear || qual.startingYear;
+    const end = qual.endYear || qual.yearOfPassing || qual.passingYear || qual.graduationYear || qual.passingOutYear || qual.year;
+    if (start && end) {
+      return `${start} – ${end}`;
+    }
+    if (end) {
+      return String(end);
+    }
+    if (start) {
+      return `${start} – Present`;
+    }
+    return '';
+  };
+
+  const formatEducationScore = (qual) => {
+    if (!qual) return '';
+    const raw = qual.percentage ?? qual.cgpa ?? qual.score ?? qual.grade;
+    if (raw === undefined || raw === null || raw === '') return '';
+    
+    const scoreStr = String(raw).trim();
+    if (!scoreStr) return '';
+
+    const system = (qual.gradingSystem || '').toLowerCase();
+
+    // If already formatted with %, CGPA, or Grade
+    if (scoreStr.includes('%') || scoreStr.toLowerCase().includes('cgpa') || scoreStr.toLowerCase().includes('grade')) {
+      return scoreStr;
+    }
+
+    // Explicit grading system check
+    if (system.includes('percent')) {
+      return `${scoreStr}%`;
+    }
+    if (system.includes('4')) {
+      return `${scoreStr} / 4 CGPA`;
+    }
+    if (system.includes('10') || system.includes('cgpa')) {
+      return `${scoreStr} CGPA`;
+    }
+    if (system.includes('grade')) {
+      return `Grade ${scoreStr}`;
+    }
+
+    // Automatic heuristic when gradingSystem is not explicitly set
+    const num = parseFloat(scoreStr);
+    if (!isNaN(num)) {
+      if (num > 10) {
+        return `${scoreStr}%`;
+      } else {
+        return `${scoreStr} CGPA`;
+      }
+    }
+
+    // Letter grades (e.g. A, A+, B, Distinction)
+    if (/^[A-DFa-df][+-]?$/.test(scoreStr)) {
+      return `Grade ${scoreStr}`;
+    }
+
+    return scoreStr;
+  };
+
+  const handleMessageCandidate = async (emp) => {
+    if (!emp) return;
+    setIsInitiatingChat(true);
+    try {
+      const token = localStorage.getItem('employerToken');
+      const targetId = emp._id || emp.id;
+      const targetEmail = (emp.email || '').toLowerCase();
+
+      // Check if candidate already has applications in candidates prop
+      const matchedCand = candidates?.find(c => 
+        (targetId && (c.id === targetId || c._id === targetId)) ||
+        (targetEmail && c.email && c.email.toLowerCase() === targetEmail)
+      );
+
+      if (matchedCand && matchedCand.history && matchedCand.history.length > 0) {
+        setSelectedEmployee(null);
+        navigate('/employer/messages', { 
+          state: { 
+            initialEmployee: matchedCand,
+            initialApplication: matchedCand.history[0]
+          } 
+        });
+        return;
+      }
+
+      // Initiate or find conversation on backend
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employer/messages/initiate/${targetId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success && data.application) {
+        const appRecord = {
+          appId: data.application._id,
+          applicationNumber: data.application.applicationNumber || 500101,
+          title: data.application.jobId?.title || 'Direct Candidate Outreach',
+          status: data.application.status || 'Contacted',
+          date: new Date(data.application.createdAt).toLocaleDateString(),
+          createdAt: data.application.createdAt
+        };
+        const enrichedCand = {
+          ...emp,
+          id: targetId,
+          history: [appRecord]
+        };
+        setSelectedEmployee(null);
+        navigate('/employer/messages', {
+          state: {
+            initialEmployee: enrichedCand,
+            initialApplication: appRecord
+          }
+        });
+        return;
+      }
+
+      setSelectedEmployee(null);
+      navigate('/employer/messages', { 
+        state: { 
+          initialEmployee: matchedCand || emp 
+        } 
+      });
+    } catch (err) {
+      console.error('Error initiating chat with candidate:', err);
+      setSelectedEmployee(null);
+      navigate('/employer/messages', { 
+        state: { 
+          initialEmployee: emp 
+        } 
+      });
+    } finally {
+      setIsInitiatingChat(false);
+    }
+  };
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -472,14 +671,31 @@ const AllEmployeesTab = ({ portalConfig }) => {
                     <>
                 {/* Header (Avatar, Name, Email, Location) */}
                 <div className="flex flex-col items-center text-center mb-6">
-                  <div className="w-20 h-20 rounded-full bg-[#18a058] flex items-center justify-center text-white font-bold text-3xl mb-3">
-                    {selectedEmployee.name ? selectedEmployee.name.charAt(0).toUpperCase() : '?'}
-                  </div>
+                  {selectedEmployee.avatar ? (
+                    <img 
+                      src={selectedEmployee.avatar} 
+                      alt={selectedEmployee.name || 'Candidate'} 
+                      className="w-20 h-20 rounded-full object-cover mb-3 shadow-sm ring-4 ring-emerald-50 border border-emerald-100" 
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-[#18a058] flex items-center justify-center text-white font-bold text-3xl mb-3 shadow-sm">
+                      {selectedEmployee.name ? selectedEmployee.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+                  )}
                   <h3 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h3>
+
+                  {(getCurrentDesignation(selectedEmployee) !== 'N/A' || getCurrentCompany(selectedEmployee) !== 'N/A') && (
+                    <p className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100/80 mt-1.5 inline-block">
+                      {getCurrentDesignation(selectedEmployee) !== 'N/A' ? getCurrentDesignation(selectedEmployee) : ''}
+                      {getCurrentDesignation(selectedEmployee) !== 'N/A' && getCurrentCompany(selectedEmployee) !== 'N/A' ? ' • ' : ''}
+                      {getCurrentCompany(selectedEmployee) !== 'N/A' ? getCurrentCompany(selectedEmployee) : ''}
+                    </p>
+                  )}
+
                   <p className="text-sm text-gray-500 mt-1">{selectedEmployee.email}</p>
                   <p className="text-xs text-gray-400 mt-1 font-semibold">
                     {selectedEmployee.mobile && `${formatPhoneWithCountryCode(selectedEmployee.mobile, selectedEmployee.countryCode)} • `}
-                    {selectedEmployee.location || 'Location not provided'}
+                    {selectedEmployee.location || selectedEmployee.preferredLocation || 'Location not provided'}
                   </p>
                 </div>
                 
@@ -491,8 +707,10 @@ const AllEmployeesTab = ({ portalConfig }) => {
                   {/* 1. Basic Details - Professional Summary */}
                   <div>
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Brief About Candidate / Professional Summary</h4>
-                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
-                      {selectedEmployee.brief || <span className="text-gray-400 italic">No professional summary provided.</span>}
+                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50/80 p-3.5 rounded-xl border border-gray-100">
+                      {selectedEmployee.brief || selectedEmployee.summary || selectedEmployee.bio || selectedEmployee.professionalDetails?.about || (
+                        <span className="text-gray-400 italic">No professional summary provided.</span>
+                      )}
                     </p>
                   </div>
 
@@ -500,21 +718,63 @@ const AllEmployeesTab = ({ portalConfig }) => {
 
                   {/* 2. Education */}
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
-                      <span>Education</span>
-                    </h4>
-                    <div className="space-y-3 ml-2">
-                      {selectedEmployee.qualifications && selectedEmployee.qualifications.length > 0 ? (
-                        selectedEmployee.qualifications.map((qual, i) => (
-                          <div key={i} className="relative pl-4 mb-3 border-l-2 border-[#18a058] ml-1.5 py-0.5">
-                            <div className="absolute w-2 h-2 bg-[#18a058] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                            <h5 className="font-bold text-gray-900 text-sm">{qual.degree} {qual.fieldOfStudy ? `in ${qual.fieldOfStudy}` : ''}</h5>
-                            <p className="text-xs text-[#18a058] font-semibold mb-1">{qual.graduationYear || 'Year'}</p>
-                            <p className="text-xs text-gray-500 leading-relaxed">{qual.institution || 'Institution'}</p>
-                          </div>
-                        ))
+                    <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Education &amp; Qualifications</h4>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                        Primary: {getPrimaryQualification(selectedEmployee)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 ml-1 pt-1">
+                      {(selectedEmployee.qualifications || selectedEmployee.education) && (selectedEmployee.qualifications || selectedEmployee.education).length > 0 ? (
+                        (() => {
+                          const qualsList = selectedEmployee.qualifications || selectedEmployee.education;
+                          const hasExplicitPrimary = qualsList.some(
+                            q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)
+                          );
+
+                          return qualsList.map((qual, i) => {
+                            const isPrimary = Boolean(
+                              qual.isPrimary === true ||
+                              qual.isPrimary === 'true' ||
+                              qual.isPrimary === 1 ||
+                              (!hasExplicitPrimary && i === 0)
+                            );
+                            const eduYear = formatEducationYear(qual);
+                            const eduScore = formatEducationScore(qual);
+                            const title = qual.degree || qual.course || qual.educationType || 'Degree / Course';
+                            const spec = qual.fieldOfStudy || qual.specialization;
+                            const institute = qual.institution || qual.college || qual.university || qual.board || 'Institution / Board not specified';
+
+                            return (
+                              <div key={i} className="relative pl-4 mb-3 border-l-2 border-[#18a058] ml-1.5 py-0.5 space-y-1">
+                                <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h5 className="font-extrabold text-gray-900 text-xs">
+                                    {title} {spec ? `in ${spec}` : ''}
+                                  </h5>
+                                  {isPrimary && (
+                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                      Primary Education
+                                    </span>
+                                  )}
+                                </div>
+                                {(eduYear || eduScore) && (
+                                  <p className="text-[11px] text-emerald-700 font-bold">
+                                    {eduYear}
+                                    {eduYear && eduScore ? ` • ${eduScore}` : eduScore}
+                                    {qual.courseType ? ` • ${qual.courseType}` : ''}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                  {institute}
+                                </p>
+                              </div>
+                            );
+                          });
+                        })()
                       ) : (
-                        <span className="text-gray-400 italic text-sm">No education details provided.</span>
+                        <span className="text-gray-400 italic text-xs">No education details provided.</span>
                       )}
                     </div>
                   </div>
@@ -523,53 +783,82 @@ const AllEmployeesTab = ({ portalConfig }) => {
 
                   {/* 3. Work Experience */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Work Experience</h4>
-                      <span className="text-xs font-semibold text-gray-500">Total: {selectedEmployee.totalExperience || 'N/A'}</span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                        Total: {getWorkExp(selectedEmployee)}
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl mb-4">
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl mb-4 border border-gray-100">
                       <div>
-                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Designation</h5>
-                        <p className="text-xs font-bold text-gray-900">{selectedEmployee.designation || 'N/A'}</p>
+                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Current Designation</h5>
+                        <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentDesignation(selectedEmployee)}</p>
                       </div>
                       <div>
-                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Function</h5>
-                        <p className="text-xs font-bold text-gray-900">{selectedEmployee.industry || 'N/A'}</p>
+                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Current Company</h5>
+                        <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentCompany(selectedEmployee)}</p>
                       </div>
                     </div>
 
-                    <div className="space-y-4 ml-2">
+                    <div className="space-y-4 ml-1">
                       {selectedEmployee.experience && selectedEmployee.experience.length > 0 ? (
-                        selectedEmployee.experience.map((exp, i) => (
-                          <div key={i} className="mb-4">
-                            <h5 className="font-bold text-gray-900 text-sm mb-2">{exp.company || 'Company'}</h5>
-                            <div className="border-l-2 border-[#29953f] ml-1.5 space-y-4 py-1">
-                              {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
-                                const formatDate = (dateStr) => {
-                                  if (!dateStr) return '';
-                                  const d = new Date(dateStr);
-                                  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                                };
-                                const startDate = role.startDate ? formatDate(role.startDate) : 'Start';
-                                const endDate = role.currentJob ? 'Present' : (role.endDate ? formatDate(role.endDate) : 'Present');
+                        selectedEmployee.experience.map((exp, i) => {
+                          const isCurrent = Boolean(
+                            exp.currentCompany ||
+                            exp.currentJob ||
+                            (Array.isArray(exp.roles) && exp.roles.some(r => r.currentCompany || r.currentJob || String(r.leavingDate || '').toLowerCase() === 'present')) ||
+                            (i === 0 && getCurrentCompany(selectedEmployee) !== 'N/A' && (exp.company || exp.companyName || '').toLowerCase() === getCurrentCompany(selectedEmployee).toLowerCase())
+                          );
+                          const candidateNotice = (isCurrent && exp.noticePeriod) || selectedEmployee.noticePeriod || selectedEmployee.professionalDetails?.noticePeriod;
 
-                                return (
-                                  <div key={rIndex} className="relative pl-4">
-                                    <div className="absolute w-2 h-2 bg-[#29953f] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                                    <h5 className="font-bold text-gray-900 text-sm">{role.jobTitle || 'Role'}</h5>
-                                    <p className="text-[13px] text-gray-500 font-medium mb-1">
-                                      {startDate} - {endDate} <span className="text-gray-300 mx-1">|</span> {role.employmentType || 'Full-time'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 leading-relaxed">{role.description || 'No description provided.'}</p>
-                                  </div>
-                                );
-                              })}
+                          return (
+                            <div key={i} className="mb-4">
+                              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                                <h5 className="font-extrabold text-gray-900 text-xs">
+                                  {exp.company || exp.companyName || 'Company Name'}
+                                </h5>
+                                {isCurrent && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    Current Company
+                                  </span>
+                                )}
+                                {isCurrent && candidateNotice && candidateNotice !== 'N/A' && (
+                                  <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                                    Notice Period: {candidateNotice}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="border-l-2 border-[#18a058] ml-1.5 space-y-3 py-1">
+                                {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
+                                  const start = formatExperienceDate(role.joiningDate || role.startDate || exp.joiningDate || exp.startDate, 'Start');
+                                  const isRoleCurrent = role.currentCompany || role.currentJob || exp.currentCompany || exp.currentJob || String(role.leavingDate || '').toLowerCase() === 'present';
+                                  const end = isRoleCurrent ? 'Present' : formatExperienceDate(role.leavingDate || role.endDate || exp.leavingDate || exp.endDate, 'End');
+
+                                  return (
+                                    <div key={rIndex} className="relative pl-4 space-y-0.5">
+                                      <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
+                                      <h5 className="font-bold text-emerald-800 text-xs">
+                                        {role.jobTitle || role.title || role.role || exp.title || exp.designation || 'Position'}
+                                      </h5>
+                                      <p className="text-[11px] text-gray-400 font-medium">
+                                        {start} – {end} {role.employmentType && ` • ${role.employmentType}`}
+                                      </p>
+                                      {(role.roleDescription || role.description || exp.roleDescription || exp.description) && (
+                                        <p className="text-xs text-gray-600 leading-relaxed mt-1">
+                                          {role.roleDescription || role.description || exp.roleDescription || exp.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
-                        <span className="text-gray-400 italic text-sm">No work experience provided.</span>
+                        <span className="text-gray-400 italic text-xs">No prior work experience recorded (Fresher).</span>
                       )}
                     </div>
                   </div>
@@ -578,54 +867,98 @@ const AllEmployeesTab = ({ portalConfig }) => {
 
                   {/* 4. Key Skills & Preferences */}
                   <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Key Skills & Preferences</h4>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-2">
+                      Key Skills &amp; Preferences
+                    </h4>
                     
                     {/* Skills pills */}
                     <div className="mb-4">
-                      <h5 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Skills</h5>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedEmployee.professionalDetails?.skills && selectedEmployee.professionalDetails.skills.length > 0 ? (
-                          (typeof selectedEmployee.professionalDetails.skills === 'string' 
-                            ? selectedEmployee.professionalDetails.skills.split(',') 
-                            : Array.isArray(selectedEmployee.professionalDetails.skills) 
-                              ? selectedEmployee.professionalDetails.skills 
-                              : []).map((skill, idx) => (
-                            <span key={idx} className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-semibold border border-emerald-100">
-                              {skill.trim()}
+                      <h5 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Key Skills</h5>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(() => {
+                          const rawSkills = selectedEmployee.professionalDetails?.skills || selectedEmployee.skills;
+                          const list = Array.isArray(rawSkills) 
+                            ? rawSkills.map(s => (typeof s === 'string' ? s : s?.name || s?.label || String(s || ''))).filter(Boolean)
+                            : typeof rawSkills === 'string' 
+                              ? rawSkills.split(',').map(s => s.trim()).filter(Boolean)
+                              : [];
+
+                          if (list.length === 0) {
+                            return <span className="text-gray-400 italic text-xs">No skills listed.</span>;
+                          }
+
+                          return list.map((skill, idx) => (
+                            <span key={idx} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold border border-emerald-100/80">
+                              {skill}
                             </span>
-                          ))
-                        ) : (
-                          <span className="text-gray-400 italic text-sm">No skills provided.</span>
-                        )}
+                          ));
+                        })()}
                       </div>
                     </div>
 
-                    {/* Salary & Preferences Grid */}
-                    <div className="grid grid-cols-2 gap-4 bg-gray-50/70 p-4 rounded-xl border border-gray-100">
+                    {/* Preferences Grid */}
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-100">
                       <div>
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                          Current {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
-                        </h4>
-                        <p className="text-sm font-bold text-gray-900">
-                          {selectedEmployee.professionalDetails?.currentSalary ? `₹ ${selectedEmployee.professionalDetails.currentSalary}` : 'N/A'}
-                        </p>
+                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Function / Industry</span>
+                        <span className="font-extrabold text-gray-900 text-xs">
+                          {selectedEmployee.industry || selectedEmployee.function || selectedEmployee.professionalDetails?.functionalArea || 'N/A'}
+                        </span>
                       </div>
+
                       <div>
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                          Expected {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.professionalDetails?.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
-                        </h4>
-                        <p className="text-sm font-bold text-gray-900">
-                          {selectedEmployee.professionalDetails?.expectedSalary ? `₹ ${selectedEmployee.professionalDetails.expectedSalary}` : 'N/A'}
-                        </p>
+                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Total Experience</span>
+                        <span className="font-extrabold text-gray-900 text-xs">{getWorkExp(selectedEmployee)}</span>
                       </div>
+
                       <div>
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Preferred Location</h4>
-                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.preferredLocation || 'N/A'}</p>
+                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                          Current {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
+                        </span>
+                        <span className="font-extrabold text-gray-900 text-xs">
+                          {selectedEmployee.professionalDetails?.currentSalary 
+                            ? `₹ ${selectedEmployee.professionalDetails.currentSalary}` 
+                            : (selectedEmployee.currentCTC ? `₹ ${selectedEmployee.currentCTC}` : 'N/A')}
+                        </span>
                       </div>
+
                       <div>
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Joined On</h4>
-                        <p className="text-sm font-bold text-gray-900">{new Date(selectedEmployee.createdAt).toLocaleDateString()}</p>
+                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">
+                          Expected {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
+                        </span>
+                        <span className="font-extrabold text-gray-900 text-xs">
+                          {selectedEmployee.professionalDetails?.expectedSalary 
+                            ? `₹ ${selectedEmployee.professionalDetails.expectedSalary}` 
+                            : (selectedEmployee.expectedCTC ? `₹ ${selectedEmployee.expectedCTC}` : 'N/A')}
+                        </span>
                       </div>
+
+                      <div>
+                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Preferred Location</span>
+                        <span className="font-extrabold text-gray-900 text-xs">
+                          {selectedEmployee.preferredLocation || selectedEmployee.professionalDetails?.preferredLocation || selectedEmployee.location || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Notice Period</span>
+                        <span className="font-extrabold text-gray-900 text-xs">
+                          {selectedEmployee.noticePeriod || selectedEmployee.professionalDetails?.noticePeriod || 'Immediate / N/A'}
+                        </span>
+                      </div>
+
+                      {selectedEmployee.professionalDetails?.linkedinUrl && (
+                        <div className="col-span-2 pt-1 border-t border-gray-200/50">
+                          <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">LinkedIn Profile</span>
+                          <a 
+                            href={selectedEmployee.professionalDetails.linkedinUrl.startsWith('http') ? selectedEmployee.professionalDetails.linkedinUrl : `https://${selectedEmployee.professionalDetails.linkedinUrl}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline truncate block"
+                          >
+                            {selectedEmployee.professionalDetails.linkedinUrl}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -723,10 +1056,14 @@ const AllEmployeesTab = ({ portalConfig }) => {
                   </button>
                 ) : (
                   <button 
-                    onClick={() => setSelectedEmployee(null)}
-                    className="w-full py-3 bg-[#111] hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm"
+                    disabled={isInitiatingChat}
+                    onClick={() => handleMessageCandidate(selectedEmployee)}
+                    className="w-full py-3 bg-[#111] hover:bg-gray-800 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                   >
-                    Message Candidate
+                    <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    {isInitiatingChat ? 'Opening Chat...' : 'Message Candidate'}
                   </button>
                 )}
               </div>

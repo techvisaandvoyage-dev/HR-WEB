@@ -43,10 +43,10 @@ const BasicDetailsModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     const newErrors = {};
-    if (!form.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!form.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!form.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!form.location) newErrors.location = 'Current location is required';
+    if (cmsConfig?.step1?.fields?.firstName?.isRequired !== false && !form.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (cmsConfig?.step1?.fields?.lastName?.isRequired === true && !form.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (cmsConfig?.step1?.fields?.phone?.isRequired !== false && !form.phone.trim()) newErrors.phone = 'Phone number is required';
+    if (cmsConfig?.step1?.fields?.location?.isRequired !== false && !form.location) newErrors.location = 'Current location is required';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -62,6 +62,17 @@ const BasicDetailsModal = ({
         .filter(c => c !== 'Anywhere in India' && c !== 'Anywhere in India/Multiple Locations')
         .map(loc => ({ label: loc, value: loc, displayName: loc }))
     : currentLocationOptions;
+  const field = (key, label, placeholder = '') => ({
+    label: cmsConfig?.step1?.fields?.[key]?.label || label,
+    placeholder: cmsConfig?.step1?.fields?.[key]?.placeholder || placeholder,
+    isRequired: cmsConfig?.step1?.fields?.[key]?.isRequired !== false
+  });
+  const firstName = field('firstName', 'First name', 'Enter first name');
+  const lastName = field('lastName', 'Last name', 'Enter last name');
+  const phone = field('phone', 'Phone number', 'Enter 10-digit mobile number');
+  const email = field('email', 'Email (read only)');
+  const location = field('location', 'Current location', 'Select Current Location');
+  const brief = field('brief', 'Brief about yourself', 'Write a short introduction recruiters will see first...');
 
   return (
     <div className="sj-modal-backdrop" onClick={onClose}>
@@ -92,12 +103,12 @@ const BasicDetailsModal = ({
           <div className="sj-mb">
             <div className="sj-fld">
               <label className="sj-lb">
-                First name <span className="sj-req">*</span>
+                {firstName.label} {firstName.isRequired && <span className="sj-req">*</span>}
               </label>
               <input
                 type="text"
                 className="sj-in"
-                placeholder="Enter first name"
+                placeholder={firstName.placeholder}
                 value={form.firstName}
                 onChange={(e) => {
                   setForm({ ...form, firstName: e.target.value });
@@ -110,12 +121,12 @@ const BasicDetailsModal = ({
 
             <div className="sj-fld">
               <label className="sj-lb">
-                Last name <span className="sj-req">*</span>
+                {lastName.label} {lastName.isRequired && <span className="sj-req">*</span>}
               </label>
               <input
                 type="text"
                 className="sj-in"
-                placeholder="Enter last name"
+                placeholder={lastName.placeholder}
                 value={form.lastName}
                 onChange={(e) => {
                   setForm({ ...form, lastName: e.target.value });
@@ -128,7 +139,7 @@ const BasicDetailsModal = ({
 
             <div className="sj-fld">
               <label className="sj-lb">
-                Phone number <span className="sj-req">*</span>
+                {phone.label} {phone.isRequired && <span className="sj-req">*</span>}
               </label>
               <div className="flex">
                 <CountryCodeDropdown
@@ -139,7 +150,7 @@ const BasicDetailsModal = ({
                   type="text"
                   className="sj-in"
                   style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: 0 }}
-                  placeholder="Enter 10-digit mobile number"
+                  placeholder={phone.placeholder}
                   value={form.phone}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -153,7 +164,7 @@ const BasicDetailsModal = ({
             </div>
 
             <div className="sj-fld">
-              <label className="sj-lb">Email (read only)</label>
+              <label className="sj-lb">{email.label}</label>
               <input
                 type="text"
                 className="sj-in"
@@ -165,7 +176,7 @@ const BasicDetailsModal = ({
 
             <div className="sj-fld sj-full">
               <label className="sj-lb">
-                Current location <span className="sj-req">*</span>
+                {location.label} {location.isRequired && <span className="sj-req">*</span>}
               </label>
               <MultiSelectLocationDropdown
                 options={locationOptions}
@@ -175,19 +186,19 @@ const BasicDetailsModal = ({
                   setErrors(prev => ({ ...prev, location: '' }));
                 }}
                 multiple={false}
-                placeholder="Select Current Location"
+                placeholder={location.placeholder}
                 className="sj-in"
               />
               {errors.location && <p className="sj-err">{errors.location}</p>}
             </div>
 
             <div className="sj-fld sj-full">
-              <label className="sj-lb">Brief about yourself</label>
+              <label className="sj-lb">{brief.label}</label>
               <textarea
                 rows={3}
                 className="sj-in"
                 style={{ minHeight: 90, paddingTop: 10 }}
-                placeholder="Write a short introduction recruiters will see first..."
+                placeholder={brief.placeholder}
                 value={form.brief}
                 maxLength={600}
                 onChange={(e) => setForm({ ...form, brief: e.target.value })}

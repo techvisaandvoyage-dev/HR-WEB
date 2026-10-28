@@ -41,7 +41,8 @@ const ExperienceModal = ({
   initialData,
   editIndex,
   onSave,
-  onDelete
+  onDelete,
+  cmsConfig
 }) => {
   const currentYear = new Date().getFullYear();
   const years = [];
@@ -68,7 +69,6 @@ const ExperienceModal = ({
     if (isOpen) {
       if (initialData) {
         setCompanyName(initialData.companyName || '');
-        setNoticePeriod(initialData.noticePeriod || '');
         const initialRoles = (initialData.roles && initialData.roles.length > 0)
           ? initialData.roles.map(r => ({
               jobTitle: r.jobTitle || '',
@@ -88,6 +88,8 @@ const ExperienceModal = ({
                 roleDescription: ''
               }
             ];
+        const isCurrent = initialRoles.some(r => r.currentCompany);
+        setNoticePeriod(isCurrent ? (initialData.noticePeriod || '') : '');
         setRoles(initialRoles);
         // Only keep the first role expanded by default, or all expanded if only 1
         const collapseState = {};
@@ -117,6 +119,18 @@ const ExperienceModal = ({
   if (!isOpen) return null;
 
   const isEdit = editIndex >= 0;
+  const fields = cmsConfig?.step3?.fields || {};
+  const field = (key, label, placeholder = '') => ({ label: fields[key]?.label || label, placeholder: fields[key]?.placeholder || placeholder, isRequired: fields[key]?.isRequired !== false });
+  const employmentTypes = Array.isArray(cmsConfig?.step3?.employmentTypeOptions) && cmsConfig.step3.employmentTypeOptions.length ? cmsConfig.step3.employmentTypeOptions : EMPLOYMENT_TYPES;
+  const noticePeriods = Array.isArray(cmsConfig?.step3?.noticePeriodOptions) && cmsConfig.step3.noticePeriodOptions.length ? cmsConfig.step3.noticePeriodOptions : NOTICE_PERIODS;
+  const company = field('companyName', 'Company name', 'Enter company name');
+  const notice = field('noticePeriod', 'Notice Period', 'Select notice period');
+  const jobTitle = field('jobTitle', 'Job title / Role', 'Enter job title');
+  const employmentType = field('employmentType', 'Employment type', 'Select employment type');
+  const joiningDate = field('joiningDate', 'Joining date');
+  const leavingDate = field('leavingDate', 'Leaving date');
+  const currentCompany = field('currentCompany', 'I currently work here');
+  const roleDescription = field('roleDescription', 'Roles & responsibilities', 'Briefly describe your roles & responsibilities');
 
   const toggleRoleCollapse = (idx) => {
     setCollapsedRoles(prev => ({
@@ -127,12 +141,21 @@ const ExperienceModal = ({
 
   const handleRoleChange = (idx, field, value) => {
     setRoles(prev => {
-      const updated = [...prev];
+      const updated = field === 'currentCompany' && value === true
+        ? prev.map((role, roleIndex) => roleIndex === idx ? role : {
+            ...role,
+            currentCompany: false,
+            leavingDate: role.leavingDate || new Date().toISOString().slice(0, 7)
+          })
+        : [...prev];
       const targetRole = { ...updated[idx], [field]: value };
       if (field === 'currentCompany' && value === true) {
         targetRole.leavingDate = '';
       }
       updated[idx] = targetRole;
+      if (!updated.some(r => r.currentCompany)) {
+        setNoticePeriod('');
+      }
       return updated;
     });
   };
@@ -219,18 +242,18 @@ const ExperienceModal = ({
     e.preventDefault();
     const newErrors = {};
 
-    if (!companyName.trim()) {
+    if (cmsConfig?.step3?.fields?.companyName?.isRequired !== false && !companyName.trim()) {
       newErrors.companyName = 'Company name is required';
     }
 
     let hasRoleError = false;
     roles.forEach((role, i) => {
-      if (!role.jobTitle.trim() || !role.employmentType || !role.joiningDate) {
+      if ((cmsConfig?.step3?.fields?.jobTitle?.isRequired !== false && !role.jobTitle.trim()) || (cmsConfig?.step3?.fields?.employmentType?.isRequired !== false && !role.employmentType) || (cmsConfig?.step3?.fields?.joiningDate?.isRequired !== false && !role.joiningDate)) {
         hasRoleError = true;
         // Auto-expand role with error
         setCollapsedRoles(prev => ({ ...prev, [i]: false }));
       }
-      if (!role.currentCompany && !role.leavingDate) {
+      if (cmsConfig?.step3?.fields?.leavingDate?.isRequired === true && !role.currentCompany && !role.leavingDate) {
         hasRoleError = true;
         setCollapsedRoles(prev => ({ ...prev, [i]: false }));
       }
@@ -249,9 +272,10 @@ const ExperienceModal = ({
       return;
     }
 
+    const isCurrent = roles.some(r => r.currentCompany);
     onSave({
       companyName,
-      noticePeriod,
+      noticePeriod: isCurrent ? noticePeriod : '',
       roles
     }, editIndex);
 
@@ -288,7 +312,7 @@ const ExperienceModal = ({
             {/* Company Name */}
             <div className="sj-fld sj-full">
               <label className="sj-lb">
-                Company name <span className="sj-req">*</span>
+                {company.label} {company.isRequired && <span className="sj-req">*</span>}
               </label>
               <CompanyAutocomplete
                 value={companyName}
@@ -296,26 +320,28 @@ const ExperienceModal = ({
                   setCompanyName(val);
                   setErrors(prev => ({ ...prev, companyName: '' }));
                 }}
-                placeholder="Enter company name"
+                placeholder={company.placeholder}
                 className="sj-in"
               />
               {errors.companyName && <p className="sj-err">{errors.companyName}</p>}
             </div>
 
-            {/* Notice Period */}
-            <div className="sj-fld sj-full">
-              <label className="sj-lb">Notice Period</label>
-              <select
-                className="sj-in"
-                value={noticePeriod}
-                onChange={(e) => setNoticePeriod(e.target.value)}
-              >
-                <option value="">Select notice period</option>
-                {NOTICE_PERIODS.map(np => (
-                  <option key={np} value={np}>{np}</option>
-                ))}
-              </select>
-            </div>
+            {/* Notice Period (Only for Current Company) */}
+            {roles.some(r => r.currentCompany) && (
+              <div className="sj-fld sj-full">
+                <label className="sj-lb">{notice.label}</label>
+                <select
+                  className="sj-in"
+                  value={noticePeriod}
+                  onChange={(e) => setNoticePeriod(e.target.value)}
+                >
+                  <option value="">{notice.placeholder}</option>
+                  {noticePeriods.map(item => { const np = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return (
+                    <option key={np} value={np}>{label}</option>
+                  ); })}
+                </select>
+              </div>
+            )}
 
             {/* Roles Accordion List */}
             <div className="sj-full flex flex-col gap-3">
@@ -364,12 +390,12 @@ const ExperienceModal = ({
                         {/* Job title / Role */}
                         <div className="sj-fld sj-full">
                           <label className="sj-lb">
-                            Job title / Role <span className="sj-req">*</span>
+                            {jobTitle.label} {jobTitle.isRequired && <span className="sj-req">*</span>}
                           </label>
                           <JobTitleAutocomplete
                             value={role.jobTitle}
                             onChange={(val) => handleRoleChange(idx, 'jobTitle', val)}
-                            placeholder="Enter job title"
+                            placeholder={jobTitle.placeholder}
                             className="sj-in"
                           />
                         </div>
@@ -377,16 +403,15 @@ const ExperienceModal = ({
                         {/* Employment type */}
                         <div className="sj-fld sj-full">
                           <label className="sj-lb">
-                            Employment type <span className="sj-req">*</span>
+                            {employmentType.label} {employmentType.isRequired && <span className="sj-req">*</span>}
                           </label>
                           <select
                             className="sj-in"
                             value={role.employmentType}
                             onChange={(e) => handleRoleChange(idx, 'employmentType', e.target.value)}
                           >
-                            {EMPLOYMENT_TYPES.map(t => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
+                            <option value="">{employmentType.placeholder}</option>
+                            {employmentTypes.map(item => { const t = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={t} value={t}>{label}</option>; })}
                           </select>
                         </div>
 
@@ -399,14 +424,14 @@ const ExperienceModal = ({
                               checked={role.currentCompany}
                               onChange={(e) => handleRoleChange(idx, 'currentCompany', e.target.checked)}
                             />
-                            <span>I currently work here</span>
+                            <span>{currentCompany.label}</span>
                           </label>
                         </div>
 
                         {/* Joining date */}
                         <div className="sj-fld">
                           <label className="sj-lb">
-                            Joining date <span className="sj-req">*</span>
+                            {joiningDate.label} {joiningDate.isRequired && <span className="sj-req">*</span>}
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             <select
@@ -434,7 +459,7 @@ const ExperienceModal = ({
 
                         {/* Leaving date */}
                         <div className="sj-fld">
-                          <label className="sj-lb">Leaving date</label>
+                          <label className="sj-lb">{leavingDate.label}</label>
                           {role.currentCompany ? (
                             <input
                               type="text"
@@ -472,12 +497,12 @@ const ExperienceModal = ({
 
                         {/* Roles & responsibilities */}
                         <div className="sj-fld sj-full">
-                          <label className="sj-lb">Roles &amp; responsibilities</label>
+                          <label className="sj-lb">{roleDescription.label}</label>
                           <textarea
                             rows={3}
                             className="sj-in"
                             style={{ minHeight: 88, paddingTop: 10 }}
-                            placeholder="Briefly describe your roles & responsibilities"
+                            placeholder={roleDescription.placeholder}
                             value={role.roleDescription}
                             maxLength={500}
                             onChange={(e) => handleRoleChange(idx, 'roleDescription', e.target.value)}

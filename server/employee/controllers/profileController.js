@@ -23,6 +23,7 @@ const getProfile = async (req, res) => {
         designation: employee.designation || '',
         industry: employee.industry || '',
         totalExperience: employee.totalExperience || '',
+        noticePeriod: employee.noticePeriod || employee.professionalDetails?.noticePeriod || '',
         location: employee.location || '',
         preferredLocation: employee.preferredLocation || '',
         isFresher: employee.isFresher,
@@ -80,11 +81,52 @@ const updateProfile = async (req, res) => {
     if (req.body.brief !== undefined) updateData.brief = req.body.brief;
     if (req.body.avatar !== undefined) updateData.avatar = req.body.avatar;
     if (req.body.designation !== undefined) updateData.designation = req.body.designation;
-    if (req.body.totalExperience !== undefined) updateData.totalExperience = req.body.totalExperience;
+    if (req.body.totalExperience !== undefined) {
+      updateData.totalExperience = req.body.totalExperience;
+    } else if (req.body.professionalDetails?.totalExperience !== undefined) {
+      updateData.totalExperience = req.body.professionalDetails.totalExperience;
+    }
+    if (req.body.noticePeriod !== undefined) {
+      updateData.noticePeriod = req.body.noticePeriod;
+    } else if (req.body.professionalDetails?.noticePeriod !== undefined) {
+      updateData.noticePeriod = req.body.professionalDetails.noticePeriod;
+    }
     if (req.body.isFresher !== undefined) updateData.isFresher = req.body.isFresher;
     if (req.body.qualifications !== undefined) updateData.qualifications = req.body.qualifications;
-    if (req.body.experience !== undefined) updateData.experience = req.body.experience;
-    if (req.body.professionalDetails !== undefined) updateData.professionalDetails = req.body.professionalDetails;
+    if (req.body.experience !== undefined) {
+      let exps = req.body.experience;
+      if (Array.isArray(exps)) {
+        exps = exps.map(exp => {
+          const isCurrent = Boolean(
+            exp.currentCompany ||
+            exp.currentJob ||
+            (Array.isArray(exp.roles) && exp.roles.some(r => r.currentCompany || r.currentJob || String(r.leavingDate || '').toLowerCase() === 'present'))
+          );
+          if (!isCurrent && exp.noticePeriod) {
+            return { ...exp, noticePeriod: '' };
+          }
+          return exp;
+        });
+        const currentExp = exps.find(exp => 
+          exp.currentCompany || 
+          exp.currentJob || 
+          (Array.isArray(exp.roles) && exp.roles.some(r => r.currentCompany || r.currentJob || String(r.leavingDate || '').toLowerCase() === 'present'))
+        );
+        if (currentExp?.noticePeriod) {
+          updateData.noticePeriod = currentExp.noticePeriod;
+        }
+      }
+      updateData.experience = exps;
+    }
+    if (req.body.professionalDetails !== undefined) {
+      updateData.professionalDetails = req.body.professionalDetails;
+      if (updateData.totalExperience && typeof updateData.professionalDetails === 'object') {
+        updateData.professionalDetails.totalExperience = updateData.totalExperience;
+      }
+      if (updateData.noticePeriod && typeof updateData.professionalDetails === 'object') {
+        updateData.professionalDetails.noticePeriod = updateData.noticePeriod;
+      }
+    }
 
     // Handle documents
     const resume = req.body.documents?.resume !== undefined ? req.body.documents.resume : req.body.resume;
@@ -124,6 +166,7 @@ const updateProfile = async (req, res) => {
         designation: updatedEmployee.designation,
         industry: updatedEmployee.industry,
         totalExperience: updatedEmployee.totalExperience,
+        noticePeriod: updatedEmployee.noticePeriod || updatedEmployee.professionalDetails?.noticePeriod || '',
         location: updatedEmployee.location,
         preferredLocation: updatedEmployee.preferredLocation,
         isFresher: updatedEmployee.isFresher,

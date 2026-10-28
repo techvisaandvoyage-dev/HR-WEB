@@ -62,7 +62,8 @@ const SkillsModal = ({
   isOpen,
   onClose,
   formData,
-  onSave
+  onSave,
+  cmsConfig
 }) => {
   const [form, setForm] = useState({
     designation: '',
@@ -125,7 +126,24 @@ const SkillsModal = ({
     }
   }, [isOpen, formData]);
 
-  if (!isOpen) return null;
+  const fields = cmsConfig?.step4?.fields || {};
+  const field = (key, label, placeholder = '') => ({ label: fields[key]?.label || label, placeholder: fields[key]?.placeholder || placeholder, isRequired: fields[key]?.isRequired !== false });
+  const functionsMap = cmsConfig?.step1?.functionsData;
+  const functionOptions = functionsMap && typeof functionsMap === 'object' && Object.keys(functionsMap).length
+    ? Object.keys(functionsMap) : FUNCTION_OPTIONS;
+  const experienceOptions = Array.isArray(cmsConfig?.step1?.experienceOptions) && cmsConfig.step1.experienceOptions.length ? cmsConfig.step1.experienceOptions : TOTAL_EXP_OPTIONS;
+  const locationOptions = Array.isArray(cmsConfig?.step1?.locationCities) && cmsConfig.step1.locationCities.length
+    ? cmsConfig.step1.locationCities.map(item => ({ value: typeof item === 'string' ? item : (item.value || item.label), label: typeof item === 'string' ? item : (item.label || item.value) })) : preferredLocationOptions;
+  const designation = field('designation', 'Designation / Role', 'Select or type designation');
+  const industry = field('industry', 'Function', 'Select Function');
+  const preferredLocation = field('preferredLocation', 'Preferred location', 'Select Preferred Locations');
+  const totalExperience = field('totalExperience', 'Total experience', 'Select Experience');
+  const linkedinUrl = field('linkedinUrl', 'LinkedIn profile URL', 'https://linkedin.com/in/username');
+  const salaryType = field('salaryType', 'Salary type', 'Select salary type');
+  const currency = field('currency', 'Currency', 'Select currency');
+  const currentSalary = field('currentSalary', 'Current annual CTC', 'e.g. 12,00,000');
+  const expectedSalary = field('expectedSalary', 'Expected annual CTC', 'e.g. 15,00,000');
+  const skills = field('skills', 'Key skills', 'Search or type a skill (e.g. React, Tally, Python)...');
 
   // Matching skills from dictionary
   const matchingSkills = useMemo(() => {
@@ -139,6 +157,10 @@ const SkillsModal = ({
       })
       .slice(0, 10);
   }, [skillInput, form.skills]);
+
+  // Hooks must run on every render, including while the modal is closed.
+  // Keep this guard after useMemo to preserve a stable hook order.
+  if (!isOpen) return null;
 
   const handleAddSkill = (skillToAdd) => {
     const trimmed = (skillToAdd || '').trim();
@@ -198,10 +220,10 @@ const SkillsModal = ({
     e.preventDefault();
     const newErrors = {};
 
-    if (!form.designation.trim()) {
+    if (cmsConfig?.step1?.fields?.designation?.isRequired !== false && !form.designation.trim()) {
       newErrors.designation = 'Designation / Role is required';
     }
-    if (form.skills.length === 0) {
+    if (cmsConfig?.step4?.fields?.skills?.isRequired === true && form.skills.length === 0) {
       newErrors.skills = 'Add at least one skill';
     }
 
@@ -255,7 +277,7 @@ const SkillsModal = ({
             {/* Designation / Role */}
             <div className="sj-fld">
               <label className="sj-lb">
-                Designation / Role <span className="sj-req">*</span>
+                {designation.label} {designation.isRequired && <span className="sj-req">*</span>}
               </label>
               <JobTitleAutocomplete
                 value={form.designation}
@@ -263,7 +285,7 @@ const SkillsModal = ({
                   setForm({ ...form, designation: val });
                   setErrors(prev => ({ ...prev, designation: '' }));
                 }}
-                placeholder="Select or type designation"
+                placeholder={designation.placeholder}
                 className="sj-in"
               />
               {errors.designation && <p className="sj-err">{errors.designation}</p>}
@@ -271,50 +293,50 @@ const SkillsModal = ({
 
             {/* Function */}
             <div className="sj-fld">
-              <label className="sj-lb">Function</label>
+              <label className="sj-lb">{industry.label}</label>
               <select
                 className="sj-in"
                 value={form.function}
                 onChange={(e) => setForm({ ...form, function: e.target.value })}
               >
-                <option value="">Select Function</option>
-                {FUNCTION_OPTIONS.map(fn => <option key={fn} value={fn}>{fn}</option>)}
+                <option value="">{industry.placeholder}</option>
+                {functionOptions.map(item => { const fn = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={fn} value={fn}>{label}</option>; })}
               </select>
             </div>
 
             {/* Preferred Location */}
             <div className="sj-fld">
-              <label className="sj-lb">Preferred location</label>
+              <label className="sj-lb">{preferredLocation.label}</label>
               <MultiSelectLocationDropdown
-                options={preferredLocationOptions}
+                options={locationOptions}
                 value={form.preferredLocation}
                 onChange={(val) => setForm({ ...form, preferredLocation: val })}
                 multiple={true}
-                placeholder="Select Preferred Locations"
+                placeholder={preferredLocation.placeholder}
                 className="sj-in"
               />
             </div>
 
             {/* Total Experience */}
             <div className="sj-fld">
-              <label className="sj-lb">Total experience</label>
+              <label className="sj-lb">{totalExperience.label}</label>
               <select
                 className="sj-in"
                 value={form.totalExperience}
                 onChange={(e) => setForm({ ...form, totalExperience: e.target.value })}
               >
-                <option value="">Select Experience</option>
-                {TOTAL_EXP_OPTIONS.map(te => <option key={te} value={te}>{te}</option>)}
+                <option value="">{totalExperience.placeholder}</option>
+                {experienceOptions.map(item => { const te = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={te} value={te}>{label}</option>; })}
               </select>
             </div>
 
             {/* LinkedIn Profile */}
             <div className="sj-fld sj-full">
-              <label className="sj-lb">LinkedIn profile URL</label>
+              <label className="sj-lb">{linkedinUrl.label}</label>
               <input
                 type="url"
                 className="sj-in"
-                placeholder="https://linkedin.com/in/username"
+                placeholder={linkedinUrl.placeholder}
                 value={form.linkedinUrl}
                 onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })}
               />
@@ -322,7 +344,7 @@ const SkillsModal = ({
 
             {/* Salary Type */}
             <div className="sj-fld">
-              <label className="sj-lb">Salary type</label>
+              <label className="sj-lb">{salaryType.label}</label>
               <select
                 className="sj-in"
                 value={form.salaryType}
@@ -335,7 +357,7 @@ const SkillsModal = ({
 
             {/* Currency */}
             <div className="sj-fld">
-              <label className="sj-lb">Currency</label>
+              <label className="sj-lb">{currency.label}</label>
               <select
                 className="sj-in"
                 value={form.currency}
@@ -347,11 +369,11 @@ const SkillsModal = ({
 
             {/* Current annual CTC */}
             <div className="sj-fld">
-              <label className="sj-lb">Current annual CTC</label>
+              <label className="sj-lb">{currentSalary.label}</label>
               <input
                 type="text"
                 className="sj-in"
-                placeholder="e.g. 12,00,000"
+                placeholder={currentSalary.placeholder}
                 value={form.currentSalary}
                 onChange={(e) => setForm({ ...form, currentSalary: e.target.value })}
               />
@@ -359,11 +381,11 @@ const SkillsModal = ({
 
             {/* Expected annual CTC */}
             <div className="sj-fld">
-              <label className="sj-lb">Expected annual CTC</label>
+              <label className="sj-lb">{expectedSalary.label}</label>
               <input
                 type="text"
                 className="sj-in"
-                placeholder="e.g. 15,00,000"
+                placeholder={expectedSalary.placeholder}
                 value={form.expectedSalary}
                 onChange={(e) => setForm({ ...form, expectedSalary: e.target.value })}
               />
@@ -372,7 +394,7 @@ const SkillsModal = ({
             {/* Key Skills */}
             <div className="sj-fld sj-full">
               <label className="sj-lb">
-                Key skills <span className="sj-req">*</span>
+                {skills.label} {skills.isRequired && <span className="sj-req">*</span>}
               </label>
 
               {/* Added Skills Pill Container */}
@@ -399,7 +421,7 @@ const SkillsModal = ({
                   <input
                     type="text"
                     className="sj-in w-full"
-                    placeholder="Search or type a skill (e.g. React, Tally, Python)..."
+                    placeholder={skills.placeholder}
                     value={skillInput}
                     onChange={(e) => {
                       setSkillInput(e.target.value);

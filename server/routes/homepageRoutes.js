@@ -148,6 +148,17 @@ router.put('/', async (req, res) => {
       { $set: updateData },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
+    // Notify already-open employee pages after an admin saves onboarding controls.
+    try {
+      const { getIO } = require('../socket');
+      getIO()?.emit('employee_onboarding_config_updated', {
+        employeeOnboarding: updated.employeeOnboarding || {},
+        updatedAt: updated.updatedAt
+      });
+    } catch (socketError) {
+      // Socket.IO can be unavailable in scripts/tests; saving CMS data still succeeds.
+      console.warn('Could not broadcast employee onboarding config update:', socketError.message);
+    }
     res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error updating homepage config:', error);
