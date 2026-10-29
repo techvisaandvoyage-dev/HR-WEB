@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { sendOtp, resendOtp, verifyOtp, adminUnlockUser } = require('../utils/email');
+const { sendOtp, resendOtp, verifyOtp, checkUserLockout, adminUnlockUser } = require('../utils/email');
 const SiteSettings = require('../models/SiteSettings');
 
 // Fallback baseline of authorized Administrator emails
@@ -70,10 +70,8 @@ exports.sendAdminOtp = async (req, res) => {
       });
     }
 
-    // Admin login has no OTP limits - clear any prior limits or lockout
-    if (typeof adminUnlockUser === 'function') {
-      await adminUnlockUser(cleanEmail).catch(() => {});
-    }
+    // Check if admin is currently locked out (after 3 wrong OTP attempts)
+    await checkUserLockout(cleanEmail, 'admin:login');
 
     const result = await sendOtp({
       email: cleanEmail,
@@ -123,10 +121,8 @@ exports.resendAdminOtp = async (req, res) => {
       });
     }
 
-    // Admin login has no OTP limits - clear any prior limits or lockout
-    if (typeof adminUnlockUser === 'function') {
-      await adminUnlockUser(cleanEmail).catch(() => {});
-    }
+    // Check if admin is currently locked out (after 3 wrong OTP attempts)
+    await checkUserLockout(cleanEmail, 'admin:login');
 
     const result = await resendOtp({
       email: cleanEmail,

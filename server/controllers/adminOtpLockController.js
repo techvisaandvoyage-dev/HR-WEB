@@ -10,7 +10,7 @@ const escapeRegex = (string = '') => {
 
 const getRoleField = (role, type) => {
   // type: 'FailedAttempts' | 'LockUntil'
-  if (role === 'employee' || role === 'employer' || role === 'consultant') {
+  if (role === 'employee' || role === 'employer' || role === 'consultant' || role === 'admin') {
     return `${role}${type}`;
   }
   return type.charAt(0).toLowerCase() + type.slice(1);
@@ -48,6 +48,7 @@ const getLockedUsers = async (req, res) => {
         { employeeLockUntil: { $gt: now } },
         { employerLockUntil: { $gt: now } },
         { consultantLockUntil: { $gt: now } },
+        { adminLockUntil: { $gt: now } },
         { lockUntil: { $gt: now } },
       ],
     };
@@ -58,6 +59,8 @@ const getLockedUsers = async (req, res) => {
       query.$or = [{ employerLockUntil: { $gt: now } }];
     } else if (roleFilter === 'consultant') {
       query.$or = [{ consultantLockUntil: { $gt: now } }];
+    } else if (roleFilter === 'admin') {
+      query.$or = [{ adminLockUntil: { $gt: now } }];
     }
 
     const trackers = await OtpTracker.find(query).sort({ updatedAt: -1, createdAt: -1 });
@@ -70,7 +73,7 @@ const getLockedUsers = async (req, res) => {
 
     for (const tracker of trackers) {
       const email = tracker.email;
-      const rolesToCheck = ['employee', 'employer', 'consultant'];
+      const rolesToCheck = ['employee', 'employer', 'consultant', 'admin'];
 
       let hasRoleLock = false;
 

@@ -330,7 +330,77 @@ export default function SupportWidget() {
   const fetchRequestDetails = useCallback(async (reqId, isSilent = false) => {
     if (!reqId) return;
 
-    
+    if (!isSilent) setLoadingDetails(true);
+    try {
+      const res = await fetch(`${API_URL}/api/support/requests/${reqId}/messages`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setRequestDetails(data.data);
+      }
+    } catch (_) {
+    } finally {
+      if (!isSilent) setLoadingDetails(false);
+    }
+  }, []);
+
+  const fetchUserRequests = useCallback(async () => {
+    setLoadingUserRequests(true);
+    try {
+      let storedIds = [];
+      try {
+        storedIds = JSON.parse(localStorage.getItem('sahijob_support_request_ids') || '[]');
+      } catch (_) {}
+
+      // Include active request ID or selected request ID if available
+      try {
+        const active = JSON.parse(localStorage.getItem('sahijob_active_support_request') || 'null');
+        if (active?.id && !storedIds.includes(active.id)) {
+          storedIds.unshift(active.id);
+        }
+      } catch (_) {}
+
+      if (activeRequest?.id && !storedIds.includes(activeRequest.id)) {
+        storedIds.unshift(activeRequest.id);
+      }
+      if (selectedRequestId && !storedIds.includes(selectedRequestId)) {
+        storedIds.unshift(selectedRequestId);
+      }
+
+      // Sync unique IDs back to localStorage
+      try {
+        if (storedIds.length > 0) {
+          localStorage.setItem('sahijob_support_request_ids', JSON.stringify([...new Set(storedIds)]));
+        }
+      } catch (_) {}
+
+      const activeToken = authData.isLoggedIn ? authData.token : null;
+      const headers = {};
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+
+      // Robust email extraction across all possible storage places
+      let emailParam = authData.email;
+      if (!emailParam) {
+        try {
+          const emp = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+          if (emp.email) emailParam = emp.email;
+        } catch (_) {}
+      }
+      if (!emailParam) {
+        try {
+          const prof = JSON.parse(localStorage.getItem('userProfile') || '{}');
+          if (prof.email) emailParam = prof.email;
+        } catch (_) {}
+      }
+      if (!emailParam) {
+        try {
+          const active = JSON.parse(localStorage.getItem('sahijob_active_support_request') || '{}');
+          if (active.email) emailParam = active.email;
+        } catch (_) {}
+      }
+      if (!emailParam) {
+        emailParam = contactForm.email || '';
       }
 
       // Robust phone extraction

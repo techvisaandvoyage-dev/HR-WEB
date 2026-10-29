@@ -74,6 +74,7 @@ const formatLockUntil = (date) => {
 
 const getRoleFromPurpose = (purpose = '') => {
   const p = String(purpose).toLowerCase();
+  if (p.includes('admin')) return 'admin';
   if (p.includes('employee')) return 'employee';
   if (p.includes('consultant')) return 'consultant';
   if (p.includes('employer')) return 'employer';
@@ -82,10 +83,15 @@ const getRoleFromPurpose = (purpose = '') => {
 
 const getRoleField = (role, type) => {
   // type: 'FailedAttempts' | 'LockUntil'
-  if (role === 'employee' || role === 'employer' || role === 'consultant') {
+  if (role === 'employee' || role === 'employer' || role === 'consultant' || role === 'admin') {
     return `${role}${type}`;
   }
   return type.charAt(0).toLowerCase() + type.slice(1);
+};
+
+const getMaxFailedAttempts = (role) => {
+  if (role === 'admin') return 3; // Exactly 3 wrong OTP attempts for Admin before 24h lockout
+  return MAX_FAILED_OTP_ATTEMPTS; // 5 for others
 };
 
 const checkUserLockout = async (email, purpose = '') => {
@@ -117,7 +123,7 @@ const checkUserLockout = async (email, purpose = '') => {
       if (dbRecord && dbRecord[lockUntilField]) {
         lockUntil = dbRecord[lockUntilField];
         lockStore.set(lockKey, {
-          failedAttempts: dbRecord[failedAttemptsField] || MAX_FAILED_OTP_ATTEMPTS,
+          failedAttempts: dbRecord[failedAttemptsField] || getMaxFailedAttempts(role),
           lockUntil: new Date(lockUntil).getTime(),
         });
       }
@@ -129,8 +135,9 @@ const checkUserLockout = async (email, purpose = '') => {
   if (lockUntil && new Date(lockUntil).getTime() > now) {
     const lockTimeStr = formatLockUntil(lockUntil);
     const action = String(purpose).toLowerCase().includes('login') ? 'login' : 'verification';
-    const extraHint = action === 'login' ? ' Continue with Google or login with password instead.' : '';
-    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.${extraHint}`);
+    const rolePrefix = role === 'admin' ? 'Admin ' : '';
+    const extraHint = action === 'login' && role !== 'admin' ? ' Continue with Google or login with password instead.' : '';
+    const err = new Error(`Too many failed attempts. ${rolePrefix}OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.${extraHint}`);
     err.status = 429;
     err.isLocked = true;
     err.lockUntil = lockUntil;
@@ -168,9 +175,10 @@ const recordFailedAttempt = async (email, purpose = '') => {
     } catch (_) {}
   }
 
+  const maxAttempts = getMaxFailedAttempts(role);
   failedAttempts += 1;
 
-  if (failedAttempts >= MAX_FAILED_OTP_ATTEMPTS) {
+  if (failedAttempts >= maxAttempts) {
     const lockUntil = new Date(now + OTP_LOCKOUT_MS);
     lockStore.set(lockKey, {
       failedAttempts,
@@ -191,8 +199,9 @@ const recordFailedAttempt = async (email, purpose = '') => {
 
     const lockTimeStr = formatLockUntil(lockUntil);
     const action = String(purpose).toLowerCase().includes('login') ? 'login' : 'verification';
-    const extraHint = action === 'login' ? ' Continue with Google or login with password instead.' : '';
-    const err = new Error(`Too many failed attempts. OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.${extraHint}`);
+    const rolePrefix = role === 'admin' ? 'Admin ' : '';
+    const extraHint = action === 'login' && role !== 'admin' ? ' Continue with Google or login with password instead.' : '';
+    const err = new Error(`Too many failed attempts. ${rolePrefix}OTP ${action} is locked for 24 hours. Try again after ${lockTimeStr}.${extraHint}`);
     err.status = 429;
     err.isLocked = true;
     err.lockUntil = lockUntil;
@@ -217,8 +226,8 @@ const recordFailedAttempt = async (email, purpose = '') => {
       }
     }
 
-    const remaining = MAX_FAILED_OTP_ATTEMPTS - failedAttempts;
-    const err = new Error(`Invalid OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
+    const remaining = maxAttempts - failedAttempts;
+    const err = new Error(`Invalid OTP. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before 24-hour lockout.`);
     err.status = 400;
     err.remainingAttempts = remaining;
     err.role = role;
@@ -251,7 +260,7 @@ const adminUnlockUser = async (email, role = '') => {
   const cleanEmail = normalizeEmail(email);
   if (!cleanEmail) return false;
 
-  const rolesToClear = role && role !== 'all' ? [role] : ['employee', 'employer', 'consultant', 'general'];
+  const rolesToClear = role && role !== 'all' ? [role] : ['employee', 'employer', 'consultant', 'admin', 'general'];
 
   // 1. Clear in-memory lockStore
   for (const r of rolesToClear) {
@@ -387,12 +396,9 @@ const saveOtp = (email, otp, expiryMinutes = OTP_EXPIRY_MINUTES, purpose = 'regi
 const consumeOtp = async (email, otp, purpose = 'registration', consume = true) => {
   const cleanEmail = normalizeEmail(email);
   const key = getStoreKey(cleanEmail, purpose);
-  const isAdmin = purpose && String(purpose).toLowerCase().includes('admin');
 
-  // 1. Check if user is locked out (24 hours after 5 failed attempts) - Skip for Admin
-  if (!isAdmin) {
-    await checkUserLockout(cleanEmail, purpose);
-  }
+  // 1. Check if user is locked out (24 hours after failed attempts)
+  await checkUserLockout(cleanEmail, purpose);
 
   const record = otpStore.get(key);
 
@@ -412,13 +418,7 @@ const consumeOtp = async (email, otp, purpose = 'registration', consume = true) 
 
   // 3. Check OTP match
   if (hashOtp(otp) !== record.otpHash) {
-    if (!isAdmin) {
-      await recordFailedAttempt(cleanEmail, purpose);
-    } else {
-      const err = new Error('Invalid OTP. Please check and try again.');
-      err.status = 400;
-      throw err;
-    }
+    await recordFailedAttempt(cleanEmail, purpose);
   }
 
   // If correct, reset failed attempts
@@ -460,10 +460,8 @@ const sendOtp = async ({ email, name, purpose = 'registration' }) => {
 
   const isAdmin = purpose && String(purpose).toLowerCase().includes('admin');
 
-  // 1. Check 24-hour lockout (after 5 failed attempts) before sending OTP - Skip for Admin
-  if (!isAdmin) {
-    await checkUserLockout(toEmail, purpose);
-  }
+  // 1. Check 24-hour lockout before sending OTP
+  await checkUserLockout(toEmail, purpose);
 
   const key = getStoreKey(toEmail, purpose);
   const remainingCooldown = getRemainingCooldown(key);
@@ -675,6 +673,7 @@ module.exports = {
   sendOtp,
   verifyOtp,
   resendOtp,
+  checkUserLockout,
   adminUnlockUser,
   getRemainingCooldown: (email, purpose) => getRemainingCooldown(getStoreKey(email, purpose)),
   OTP_COOLDOWN_SECONDS,

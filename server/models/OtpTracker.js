@@ -54,6 +54,14 @@ const OtpTrackerSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  adminFailedAttempts: {
+    type: Number,
+    default: 0,
+  },
+  adminLockUntil: {
+    type: Date,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
