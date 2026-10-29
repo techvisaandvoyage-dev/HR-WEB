@@ -359,12 +359,56 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           if (parsed.name) setAuthName(parsed.name);
           if (parsed.email) setAuthEmail(parsed.email);
           fetchUserProfile(storedToken);
+          if (jobId) {
+            checkApplicationStatus(storedToken, jobId);
+          }
         }
       } catch (e) {
         console.error(e);
       }
     }
-  }, []);
+  }, [jobId]);
+
+  // Check application status whenever token or jobId is available
+  useEffect(() => {
+    if (token && jobId) {
+      checkApplicationStatus(token, jobId);
+    }
+  }, [token, jobId]);
+
+  // Check if current candidate already applied to target job
+  const checkApplicationStatus = async (authToken, targetJobId = jobId) => {
+    if (!authToken || !targetJobId) return false;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employee/jobs/${targetJobId}/check-applied`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.hasApplied) {
+        setAlreadyApplied(true);
+        setStep(4);
+        try {
+          const jobIdentifier = targetJobId;
+          let appliedList = getEmployeeStoredValue('appliedJobs', []);
+          if (!appliedList.some(a => String(a.id) === String(jobIdentifier))) {
+            appliedList.unshift({
+              id: jobIdentifier,
+              status: 'Applied',
+              date: new Date().toLocaleDateString(),
+              jobDetails: job ? { ...job, id: jobIdentifier, _id: jobIdentifier } : null
+            });
+            setEmployeeStoredValue('appliedJobs', appliedList);
+          }
+          localStorage.removeItem('appliedJobs');
+        } catch (_) {}
+        return true;
+      }
+    } catch (err) {
+      console.warn('Check application status error:', err);
+    }
+    return false;
+  };
 
   const fetchUserProfile = async (authToken) => {
     try {
@@ -609,10 +653,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       setIsOtpStep(false);
 
       if (onAuthSuccess) onAuthSuccess(data);
- 
-      // Move to Step 2 (Questions & CV Upload)
-      setStep(2);
-      logJobVisitEvent(jobId, 'started_application');
+
+      const hasApplied = await checkApplicationStatus(authToken, jobId);
+      if (!hasApplied) {
+        // Move to Step 2 (Questions & CV Upload)
+        setStep(2);
+        logJobVisitEvent(jobId, 'started_application');
+      }
     } catch (err) {
       console.error('Verify OTP Error:', err);
       setAuthError('Server connection error. Please try again.');
@@ -675,9 +722,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
         if (onAuthSuccess) onAuthSuccess(data);
 
-        // Move to Step 2
-        setStep(2);
-        logJobVisitEvent(jobId, 'started_application');
+        // Check if candidate already applied for this job
+        const hasApplied = await checkApplicationStatus(authToken, jobId);
+        if (!hasApplied) {
+          // Move to Step 2
+          setStep(2);
+          logJobVisitEvent(jobId, 'started_application');
+        }
       } else {
         setAuthError(data.message || 'Invalid email or password');
       }
@@ -722,9 +773,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
         if (onAuthSuccess) onAuthSuccess(data);
 
-        // Move to Step 2
-        setStep(2);
-        logJobVisitEvent(jobId, 'started_application');
+        // Check if candidate already applied for this job
+        const hasApplied = await checkApplicationStatus(authToken, jobId);
+        if (!hasApplied) {
+          // Move to Step 2
+          setStep(2);
+          logJobVisitEvent(jobId, 'started_application');
+        }
       } else {
         setAuthError(data.message || 'Google login failed');
       }
@@ -738,9 +793,17 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   };
 
   // Continue with already logged-in account
-  const handleContinueAsLoggedIn = () => {
-    setStep(2);
-    logJobVisitEvent(jobId, 'started_application');
+  const handleContinueAsLoggedIn = async () => {
+    setAuthLoading(true);
+    try {
+      const hasApplied = await checkApplicationStatus(token, jobId);
+      if (!hasApplied) {
+        setStep(2);
+        logJobVisitEvent(jobId, 'started_application');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   // Logout/switch account
@@ -757,6 +820,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     setAuthMobile('');
     setResumeUrl('');
     setResumeName('');
+    setAlreadyApplied(false);
     setStep(1);
   };
 
@@ -2078,7 +2142,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         {step === 4 && (
           <div className="bg-white rounded-3xl p-8 sm:p-10 border border-gray-200/80 shadow-md text-center space-y-6">
             
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-4xl font-black shadow-inner">
+            <div className={`w-20 h-20 ${alreadyApplied ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'} rounded-full flex items-center justify-center mx-auto text-4xl font-black shadow-inner`}>
               ✓
             </div>
 
@@ -2087,9 +2151,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 {alreadyApplied ? (s5?.alreadyAppliedHeading || "Already Applied!") : (s5?.successHeading || "Application Submitted!")}
               </h2>
               <p className="text-sm text-gray-600 leading-relaxed">
-                {(s5?.successSubtitle || "Your application for {title} at {company} has been received successfully by the hiring team.")
-                  .replace('{title}', job?.title || 'this role')
-                  .replace('{company}', job?.company || 'the hiring company')}
+                {alreadyApplied
+                  ? (s5?.alreadyAppliedSubtitle || "You have already applied for {title} at {company}. The hiring team is reviewing your profile.")
+                      .replace('{title}', job?.title || 'this role')
+                      .replace('{company}', job?.company || 'the hiring company')
+                  : (s5?.successSubtitle || "Your application for {title} at {company} has been received successfully by the hiring team.")
+                      .replace('{title}', job?.title || 'this role')
+                      .replace('{company}', job?.company || 'the hiring company')}
               </p>
             </div>
 
@@ -2103,15 +2171,34 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               </p>
             </div>
 
-            <div className="pt-4 flex items-center justify-center max-w-md mx-auto">
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={() => navigate('/my-jobs')}
+                className="w-full sm:w-auto px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Track My Applications</span>
+              </button>
               <button
                 type="button"
                 onClick={() => navigate('/employee', { state: { showOnboardingPrompt: true, loggedIn: true } })}
-                className="w-full sm:w-auto px-8 py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
               >
-                <span>{s5?.exploreMoreJobsBtnText || "Explore More Jobs on SahiJob →"}</span>
+                <span>{s5?.exploreMoreJobsBtnText || "Explore More Jobs →"}</span>
               </button>
             </div>
+
+            {alreadyApplied && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleSwitchAccount}
+                  className="text-xs text-gray-500 hover:text-gray-700 font-semibold underline cursor-pointer"
+                >
+                  Sign in with a different candidate account
+                </button>
+              </div>
+            )}
 
           </div>
         )}

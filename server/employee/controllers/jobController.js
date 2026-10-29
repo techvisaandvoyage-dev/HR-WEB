@@ -198,3 +198,26 @@ exports.recordJobVisitAction = async (req, res) => {
   }
 };
 
+// @desc    Check if current employee already applied to a job
+// @route   GET /api/employee/jobs/:id/check-applied
+// @access  Private (Employee)
+exports.checkIfApplied = async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const employeeId = req.employee.id;
+
+    const existingApplication = await Application.findOne({ jobId, employeeId })
+      .select('_id status createdAt applicationNumber')
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      hasApplied: Boolean(existingApplication),
+      application: existingApplication || null
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
