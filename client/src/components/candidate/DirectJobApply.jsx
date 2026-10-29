@@ -249,6 +249,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const s2 = cmsConfig?.step2 || {};
   const s3 = cmsConfig?.step3?.candidateInfoHeading ? cmsConfig.step3 : (cmsConfig?.step4 || cmsConfig?.step3 || {});
   const s4 = cmsConfig?.step4?.successHeading ? cmsConfig.step4 : (cmsConfig?.step5 || cmsConfig?.step4 || {});
+  const s5 = cmsConfig?.step5 || (cmsConfig?.step4?.successHeading ? cmsConfig.step4 : (cmsConfig?.step4 || {}));
   const maxLimitKb = s2.maxFileSizeKb || cmsConfig?.step3?.maxFileSizeKb || 300;
 
   // Dynamic field configuration helper
@@ -2083,22 +2084,22 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
             <div className="space-y-2 max-w-md mx-auto">
               <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                {alreadyApplied ? (s5.alreadyAppliedHeading || "Already Applied!") : (s5.successHeading || "Application Submitted!")}
+                {alreadyApplied ? (s5?.alreadyAppliedHeading || "Already Applied!") : (s5?.successHeading || "Application Submitted!")}
               </h2>
               <p className="text-sm text-gray-600 leading-relaxed">
-                {(s5.successSubtitle || "Your application for {title} at {company} has been received successfully by the hiring team.")
-                  .replace('{title}', job.title)
-                  .replace('{company}', job.company)}
+                {(s5?.successSubtitle || "Your application for {title} at {company} has been received successfully by the hiring team.")
+                  .replace('{title}', job?.title || 'this role')
+                  .replace('{company}', job?.company || 'the hiring company')}
               </p>
             </div>
 
             {/* Special Highlighted Message */}
             <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-left space-y-2 shadow-xs max-w-lg mx-auto">
               <div className="flex items-center gap-2 font-bold text-emerald-900 text-sm">
-                <span>{s5.promoMessageTitle || "📢 Important Information:"}</span>
+                <span>{s5?.promoMessageTitle || "📢 Important Information:"}</span>
               </div>
               <p className="text-xs sm:text-sm font-medium text-emerald-800 leading-relaxed">
-                {s5.promoMessageText || "Aap sahijob.com ke candidate portal me login karke hazaron verified companies ki jobs explore aur apply kar sakte hain!"}
+                {s5?.promoMessageText || "Aap sahijob.com ke candidate portal me login karke hazaron verified companies ki jobs explore aur apply kar sakte hain!"}
               </p>
             </div>
 
@@ -2108,7 +2109,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 onClick={() => navigate('/employee', { state: { showOnboardingPrompt: true, loggedIn: true } })}
                 className="w-full sm:w-auto px-8 py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
               >
-                <span>{s5.exploreMoreJobsBtnText || "Explore More Jobs on SahiJob →"}</span>
+                <span>{s5?.exploreMoreJobsBtnText || "Explore More Jobs on SahiJob →"}</span>
               </button>
             </div>
 
