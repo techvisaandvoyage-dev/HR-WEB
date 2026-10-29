@@ -1293,7 +1293,8 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       <td className="py-3 px-3 text-center align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="relative inline-flex items-center">
                           <select 
-                            className={`appearance-none cursor-pointer outline-none transition-all pl-2.5 pr-4.5 py-0 h-6 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs leading-none ${getStatusBadgeStyles(item.status)}`}
+                            className={`appearance-none cursor-pointer outline-none transition-all pl-2.5 pr-5 py-0 !h-[22px] !min-h-0 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs !leading-none ${getStatusBadgeStyles(item.status)}`}
+                            style={{ height: '22px', minHeight: '22px', lineHeight: '20px' }}
                             value={item.status || 'New'}
                             onChange={(e) => {
                               const newStatus = e.target.value;

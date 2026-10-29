@@ -160,11 +160,12 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                         e.stopPropagation();
                         if (toggleJobStatus) toggleJobStatus(job.id || job._id);
                       }}
-                      className={`appearance-none text-[11px] font-bold rounded-full pl-4.5 pr-4 py-0 h-6 cursor-pointer outline-none border transition-colors leading-none ${
+                      className={`appearance-none text-[11px] font-bold rounded-full pl-4.5 pr-5 py-0 !h-[22px] !min-h-0 cursor-pointer outline-none border transition-colors !leading-none shadow-2xs ${
                         isClosed 
                           ? 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200' 
                           : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                       }`}
+                      style={{ height: '22px', minHeight: '22px', lineHeight: '20px' }}
                       aria-label="Job status"
                     >
                       <option value="Active">Active</option>

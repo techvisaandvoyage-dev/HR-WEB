@@ -750,7 +750,7 @@
 .sj-req { color: var(--red); margin-left: 2px; }
 .sj-hint { color: var(--mut); font-size: 12px; margin-top: 4px; text-align: right; }
 
-.sj-in, .in, select, textarea {
+.sj-in, .in, .sj-fld select, .sj-modal select, .sj-profile select, .sj-fld textarea, .sj-modal textarea, .sj-profile textarea {
   width: 100%;
   min-height: 48px;
   border: 1px solid #cfd7e4;
@@ -763,9 +763,9 @@
   font-size: 15px;
   color: var(--ink);
 }
-textarea { padding: 12px 14px; min-height: 92px; resize: vertical; }
-.sj-in:hover, select:hover, textarea:hover { border-color: #9fb0c8; }
-.sj-in:focus, select:focus, textarea:focus {
+.sj-fld textarea, .sj-modal textarea, .sj-profile textarea { padding: 12px 14px; min-height: 92px; resize: vertical; }
+.sj-in:hover, .sj-fld select:hover, .sj-modal select:hover, .sj-profile select:hover, .sj-fld textarea:hover, .sj-modal textarea:hover, .sj-profile textarea:hover { border-color: #9fb0c8; }
+.sj-in:focus, .sj-fld select:focus, .sj-modal select:focus, .sj-profile select:focus, .sj-fld textarea:focus, .sj-modal textarea:focus, .sj-profile textarea:focus {
   border-color: var(--p2) !important;
   box-shadow: 0 0 0 4px rgba(5, 150, 105, .16) !important;
 }
