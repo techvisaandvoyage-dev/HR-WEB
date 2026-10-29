@@ -924,58 +924,51 @@ const EmployeeProfile = () => {
 
                   <div id="eBody">
                     {formData.qualifications && formData.qualifications.length > 0 ? (
-                      <>
-                        <div className="tl edl sj-tl sj-edl">
-                          {formData.qualifications.map((edu, idx) => (
-                            <div key={idx} className={`r ${edu.isPrimary ? 'cur' : ''} sj-r ${edu.isPrimary ? 'sj-cur' : ''}`}>
-                              <div className="rt2 sj-rt2">
-                                <b>{edu.course || edu.educationType}</b>
-                                {edu.isPrimary && <span className="tag sj-tag">PRIMARY</span>}
-                                <button
-                                  type="button"
-                                  className="ib sj-ib ml-auto"
-                                  onClick={() => handleOpenEducationModal(idx)}
-                                  aria-label={`Edit ${edu.course || edu.educationType}`}
-                                >
-                                  <IconPen className="w-4 h-4" />
-                                </button>
-                              </div>
-                              <small>{edu.university || edu.board || 'Institution not specified'}</small>
-                              <small>
-                                {edu.educationType}
-                                {edu.courseType ? ` · ${edu.courseType}` : ''}
-                                {edu.startYear ? ` · ${edu.startYear} – ${edu.endYear}` : (edu.endYear ? ` · Passing: ${edu.endYear}` : '')}
-                                {formatEducationScore(edu) ? ` · ${formatEducationScore(edu)}` : ''}
-                              </small>
+                      <div className="tl edl sj-tl sj-edl">
+                        {formData.qualifications.map((edu, idx) => (
+                          <div key={idx} className={`r ${edu.isPrimary ? 'cur' : ''} sj-r ${edu.isPrimary ? 'sj-cur' : ''}`}>
+                            <div className="rt2 sj-rt2">
+                              <b>{edu.course || edu.educationType}</b>
+                              {edu.isPrimary && <span className="tag sj-tag">PRIMARY</span>}
+                              <button
+                                type="button"
+                                className="ib sj-ib ml-auto"
+                                onClick={() => handleOpenEducationModal(idx)}
+                                aria-label={`Edit ${edu.course || edu.educationType}`}
+                              >
+                                <IconPen className="w-4 h-4" />
+                              </button>
                             </div>
-                          ))}
-                        </div>
-
-                        <button
-                          type="button"
-                          className="add sj-add"
-                          onClick={() => handleOpenEducationModal(-1)}
-                        >
-                          <IconPlus className="w-4 h-4" />
-                          <span>{cmsConfig?.step2?.addBtnText || 'Add another education'}</span>
-                        </button>
-                      </>
+                            <small>{edu.university || edu.board || 'Institution not specified'}</small>
+                            <small>
+                              {edu.educationType}
+                              {edu.courseType ? ` · ${edu.courseType}` : ''}
+                              {edu.startYear ? ` · ${edu.startYear} – ${edu.endYear}` : (edu.endYear ? ` · Passing: ${edu.endYear}` : '')}
+                              {formatEducationScore(edu) ? ` · ${formatEducationScore(edu)}` : ''}
+                            </small>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div className="empty sj-empty">
                         <b>No education added yet</b>
                         <span>Add your highest qualification first.</span>
-                        <div className="mt-3">
-                          <button
-                            type="button"
-                            className="btn p sj-btn sj-btn-p"
-                            onClick={() => handleOpenEducationModal(-1)}
-                          >
-                            <IconPlus className="w-4 h-4" />
-                            <span>{cmsConfig?.step2?.addBtnText || 'Add education'}</span>
-                          </button>
-                        </div>
                       </div>
                     )}
+
+                    <button
+                      type="button"
+                      className="add sj-add"
+                      style={{ marginTop: (formData.qualifications && formData.qualifications.length > 0) ? '4px' : '14px' }}
+                      onClick={() => handleOpenEducationModal(-1)}
+                    >
+                      <IconPlus className="w-4 h-4" />
+                      <span>
+                        {(formData.qualifications && formData.qualifications.length > 0)
+                          ? (cmsConfig?.step2?.addAnotherBtnText || 'Add another education')
+                          : (cmsConfig?.step2?.addBtnText?.replace(/\s*\+\s*$/, '') || 'Add education')}
+                      </span>
+                    </button>
                   </div>
                 </section>
 
@@ -1080,7 +1073,11 @@ const EmployeeProfile = () => {
                           onClick={() => handleOpenExperienceModal(-1)}
                         >
                           <IconPlus className="w-4 h-4" />
-                          <span>{cmsConfig?.step3?.addBtnText || 'Add experience'}</span>
+                          <span>
+                            {(formData.experience && formData.experience.length > 0)
+                              ? (cmsConfig?.step3?.addAnotherBtnText || 'Add another experience')
+                              : (cmsConfig?.step3?.addBtnText?.replace(/\s*\+\s*$/, '') || 'Add experience')}
+                          </span>
                         </button>
                       </>
                     )}

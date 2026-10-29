@@ -110,5 +110,7 @@ server.listen(PORT, () => {
   // Idempotently seed default support problems
   const { seedSupportProblems } = require('./controllers/supportController');
   seedSupportProblems();
+  const { seedSupportQuickReplies } = require('./controllers/supportController');
+  seedSupportQuickReplies();
 });
 

@@ -770,7 +770,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           setShowMobileSuggestions(true);
                         }}
                         onFocus={() => setShowMobileSuggestions(true)}
-                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder:text-gray-400" 
+                        className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm font-medium text-gray-900 placeholder:text-gray-400 shadow-none ring-0" 
                       />
                       {(filters.keyword || mobileSearchTerm) && (
                         <button 
@@ -1664,7 +1664,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                 {profileModalConfig?.title || 'Complete Your Profile Details'}
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                {profileModalConfig?.subtitle || 'Apni education, experience aur personal details fill karein taaki recruiters aapko top matching jobs ke liye direct shortlist kar sakein!'}
+                {profileModalConfig?.subtitle || 'Fill in your education, experience, and personal details so recruiters can directly shortlist you for top matching jobs!'}
               </p>
             </div>
 
@@ -1672,7 +1672,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
               <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-left flex items-start gap-2.5">
                 <span className="text-base">{profileModalConfig?.benefitIcon || '⚡'}</span>
                 <p className="text-xs text-emerald-800 font-medium leading-relaxed">
-                  {profileModalConfig?.benefitText || 'Complete profile hone se candidates ko 5x jyada interview calls aur direct employer messages milte hain.'}
+                  {profileModalConfig?.benefitText || 'Candidates with a complete profile receive 5x more interview calls and direct employer messages.'}
                 </p>
               </div>
             )}

@@ -129,8 +129,28 @@ exports.createJob = async (req, res) => {
 // @access  Private
 exports.getEmployerJobs = async (req, res) => {
   try {
-    const jobs = await Job.find({ employerId: req.user.id }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: jobs });
+    const jobs = await Job.find({ employerId: req.user.id }).sort({ createdAt: -1 }).lean();
+
+    // Compute live valid applications count for each job to keep in sync with Applications tab
+    const jobIds = jobs.map(j => j._id);
+    const validApplications = await Application.find({ jobId: { $in: jobIds } })
+      .populate('employeeId', '_id')
+      .lean();
+
+    const countByJobId = {};
+    validApplications.forEach(app => {
+      if (app.employeeId && app.jobId) {
+        const jId = String(app.jobId);
+        countByJobId[jId] = (countByJobId[jId] || 0) + 1;
+      }
+    });
+
+    const enrichedJobs = jobs.map(job => ({
+      ...job,
+      applications: countByJobId[String(job._id)] ?? 0
+    }));
+
+    res.status(200).json({ success: true, data: enrichedJobs });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -227,12 +247,23 @@ exports.toggleJobStatus = async (req, res) => {
 // @access  Private
 exports.getApplicationsForEmployer = async (req, res) => {
   try {
-    const applications = await Application.find({ employerId: req.user.id })
+    const employerJobs = await Job.find({ employerId: req.user.id }).select('_id');
+    const jobIds = employerJobs.map(j => j._id);
+
+    const applications = await Application.find({
+      $or: [
+        { employerId: req.user.id },
+        { jobId: { $in: jobIds } }
+      ]
+    })
       .populate('employeeId', '-password') // Don't send password!
       .populate('jobId')
       .sort({ createdAt: -1 });
+
+    // Filter out orphaned records where candidate or job is null
+    const validApplications = applications.filter(app => app.employeeId && app.jobId);
       
-    res.status(200).json({ success: true, data: applications });
+    res.status(200).json({ success: true, data: validApplications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

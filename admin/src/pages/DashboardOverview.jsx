@@ -110,6 +110,51 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [jobStatusFilter, setJobStatusFilter] = useState('All');
   const [selectedJobDetail, setSelectedJobDetail] = useState(null);
   const [togglingJobId, setTogglingJobId] = useState(null);
+  const [copiedJobId, setCopiedJobId] = useState(null);
+  const [jobColFilters, setJobColFilters] = useState({
+    jobId: '',
+    title: '',
+    company: '',
+    location: '',
+    salary: '',
+    applications: 'All',
+    status: 'All',
+    postedOn: 'All'
+  });
+
+  const handleCopyJobId = (id) => {
+    navigator.clipboard?.writeText(String(id));
+    setCopiedJobId(String(id));
+    setTimeout(() => setCopiedJobId(null), 1800);
+  };
+
+  const activeJobFiltersCount = useMemo(() => {
+    let count = 0;
+    if (jobColFilters.jobId) count++;
+    if (jobColFilters.title) count++;
+    if (jobColFilters.company) count++;
+    if (jobColFilters.location) count++;
+    if (jobColFilters.salary) count++;
+    if (jobColFilters.applications !== 'All') count++;
+    if (jobColFilters.status !== 'All') count++;
+    if (jobColFilters.postedOn !== 'All') count++;
+    return count;
+  }, [jobColFilters]);
+
+  const handleClearAllJobFilters = () => {
+    setJobSearch('');
+    setJobStatusFilter('All');
+    setJobColFilters({
+      jobId: '',
+      title: '',
+      company: '',
+      location: '',
+      salary: '',
+      applications: 'All',
+      status: 'All',
+      postedOn: 'All'
+    });
+  };
 
   // Applications List & Management State
   const [applications, setApplications] = useState([]);
@@ -150,6 +195,25 @@ export default function DashboardOverview({ onNavigateTab }) {
       console.error('Error fetching employee detail:', err);
     } finally {
       setLoadingEmployeeDetail(false);
+    }
+  };
+
+  const handleOpenJobDetailsById = async (jobId) => {
+    if (!jobId) return;
+    const cleanId = String(jobId);
+    const matched = jobs.find(j => String(j._id || j.id) === cleanId);
+    if (matched) {
+      setSelectedJobDetail(matched);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/employee/jobs/${cleanId}`);
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        setSelectedJobDetail(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching job detail:', err);
     }
   };
 
@@ -569,19 +633,101 @@ export default function DashboardOverview({ onNavigateTab }) {
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
-      if (jobStatusFilter !== 'All' && (job.status || 'Active') !== jobStatusFilter) {
+      // Status filter (top status filter or column status filter)
+      const effectiveStatus = jobColFilters.status !== 'All' ? jobColFilters.status : jobStatusFilter;
+      if (effectiveStatus !== 'All' && (job.status || 'Active') !== effectiveStatus) {
         return false;
       }
+
+      // Global Search Bar
       if (jobSearch.trim()) {
         const query = jobSearch.toLowerCase();
         const title = (job.title || job.jobTitle || '').toLowerCase();
         const company = (job.company || job.employerId?.companyName || '').toLowerCase();
         const location = (job.location || '').toLowerCase();
-        return title.includes(query) || company.includes(query) || location.includes(query);
+        const jobIdStr = String(job._id || job.id || '').toLowerCase();
+        if (!title.includes(query) && !company.includes(query) && !location.includes(query) && !jobIdStr.includes(query)) {
+          return false;
+        }
       }
+
+      // 1. Column: Job ID Filter
+      if (jobColFilters.jobId.trim()) {
+        const idQuery = jobColFilters.jobId.trim().toLowerCase().replace(/^#/, '');
+        const fullId = String(job._id || job.id || '').toLowerCase();
+        const shortId = fullId.substring(18);
+        const customJobId = String(job.jobId || '').toLowerCase();
+        if (!fullId.includes(idQuery) && !shortId.includes(idQuery) && !customJobId.includes(idQuery)) {
+          return false;
+        }
+      }
+
+      // 2. Column: Title Filter
+      if (jobColFilters.title.trim()) {
+        const titleQuery = jobColFilters.title.trim().toLowerCase();
+        const title = (job.title || job.jobTitle || '').toLowerCase();
+        if (!title.includes(titleQuery)) {
+          return false;
+        }
+      }
+
+      // 3. Column: Employer / Company Filter
+      if (jobColFilters.company.trim()) {
+        const companyQuery = jobColFilters.company.trim().toLowerCase();
+        const company = (job.company || job.employerId?.companyName || '').toLowerCase();
+        const recruiter = (job.employerId?.fullName || '').toLowerCase();
+        if (!company.includes(companyQuery) && !recruiter.includes(companyQuery)) {
+          return false;
+        }
+      }
+
+      // 4. Column: Location & Type Filter
+      if (jobColFilters.location.trim()) {
+        const locQuery = jobColFilters.location.trim().toLowerCase();
+        const location = (job.location || '').toLowerCase();
+        const workLocation = (job.details?.workLocation || '').toLowerCase();
+        const jobType = (job.jobType || job.details?.employmentType || '').toLowerCase();
+        if (!location.includes(locQuery) && !workLocation.includes(locQuery) && !jobType.includes(locQuery)) {
+          return false;
+        }
+      }
+
+      // 5. Column: Salary Filter
+      if (jobColFilters.salary.trim()) {
+        const salaryQuery = jobColFilters.salary.trim().toLowerCase();
+        const salary = String(job.salary || '').toLowerCase();
+        const salaryMin = String(job.details?.salaryMin || '');
+        const salaryMax = String(job.details?.salaryMax || '');
+        if (!salary.includes(salaryQuery) && !salaryMin.includes(salaryQuery) && !salaryMax.includes(salaryQuery)) {
+          return false;
+        }
+      }
+
+      // 6. Column: Applications Filter
+      if (jobColFilters.applications !== 'All') {
+        const appCount = job.applicationsCount !== undefined ? job.applicationsCount : (job.applications || 0);
+        if (jobColFilters.applications === '0' && appCount !== 0) return false;
+        if (jobColFilters.applications === '1+' && appCount < 1) return false;
+        if (jobColFilters.applications === '5+' && appCount < 5) return false;
+        if (jobColFilters.applications === '10+' && appCount < 10) return false;
+      }
+
+      // 7. Column: Posted On Filter
+      if (jobColFilters.postedOn !== 'All') {
+        if (!job.createdAt) return false;
+        const created = new Date(job.createdAt);
+        const now = new Date();
+        const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+        if (jobColFilters.postedOn === 'today' && diffDays > 1) return false;
+        if (jobColFilters.postedOn === '7d' && diffDays > 7) return false;
+        if (jobColFilters.postedOn === '30d' && diffDays > 30) return false;
+        if (jobColFilters.postedOn === '90d' && diffDays > 90) return false;
+        if (jobColFilters.postedOn === 'thisYear' && created.getFullYear() !== now.getFullYear()) return false;
+      }
+
       return true;
     });
-  }, [jobs, jobStatusFilter, jobSearch]);
+  }, [jobs, jobStatusFilter, jobSearch, jobColFilters]);
 
   const totalJobApplications = useMemo(() => {
     return jobs.reduce((sum, j) => sum + (j.applicationsCount !== undefined ? j.applicationsCount : (j.applications || 0)), 0);
@@ -2924,9 +3070,10 @@ export default function DashboardOverview({ onNavigateTab }) {
                           <td className="px-5 py-4 max-w-[200px]">
                             {refJobTitle ? (
                               <button
-                                onClick={() => handleOpenEmployeeDrawer(emp)}
+                                type="button"
+                                onClick={() => handleOpenJobDetailsById(emp.firstTouchJob?._id || emp.firstTouchJob || emp.acquisition?.firstTouchJob)}
                                 className="text-left font-bold text-emerald-700 hover:text-emerald-900 hover:underline truncate block max-w-full cursor-pointer"
-                                title={refJobTitle}
+                                title={`Click to view job details: ${refJobTitle}`}
                               >
                                 {refJobTitle}
                               </button>
@@ -3591,7 +3738,10 @@ export default function DashboardOverview({ onNavigateTab }) {
                 <span className="font-semibold text-gray-500 text-[11px]">Status:</span>
                 <select
                   value={jobStatusFilter}
-                  onChange={(e) => setJobStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setJobStatusFilter(e.target.value);
+                    setJobColFilters(prev => ({ ...prev, status: e.target.value }));
+                  }}
                   className="bg-transparent font-bold text-gray-800 focus:outline-none cursor-pointer text-xs"
                 >
                   <option value="All">All ({jobs.length})</option>
@@ -3600,13 +3750,13 @@ export default function DashboardOverview({ onNavigateTab }) {
                 </select>
               </div>
 
-              {(jobSearch || jobStatusFilter !== 'All') && (
+              {(jobSearch || jobStatusFilter !== 'All' || activeJobFiltersCount > 0) && (
                 <button
-                  onClick={() => { setJobSearch(''); setJobStatusFilter('All'); }}
+                  onClick={handleClearAllJobFilters}
                   className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>Reset</span>
+                  <span>Reset All</span>
                 </button>
               )}
             </div>
@@ -3618,6 +3768,7 @@ export default function DashboardOverview({ onNavigateTab }) {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-200/80 text-gray-500 uppercase tracking-wider font-extrabold text-[11px]">
+                    <th className="py-3.5 px-4 w-[125px]">Job ID</th>
                     <th className="py-3.5 px-5">Job Opening</th>
                     <th className="py-3.5 px-5">Employer / Company</th>
                     <th className="py-3.5 px-5">Location & Type</th>
@@ -3627,18 +3778,137 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <th className="py-3.5 px-5">Posted On</th>
                     <th className="py-3.5 px-5 text-right">Actions</th>
                   </tr>
+
+                  {/* Row 2: Per-Column Dynamic Filter Controls */}
+                  <tr className="bg-gray-100/70 border-t border-b border-gray-200 text-gray-600 font-normal">
+                    {/* 0. Job ID Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        value={jobColFilters.jobId}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, jobId: e.target.value }))}
+                        placeholder="Filter ID..."
+                        className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs font-mono"
+                      />
+                    </th>
+
+                    {/* 1. Job Opening Title Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        value={jobColFilters.title}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Filter title / role..."
+                        className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                      />
+                    </th>
+
+                    {/* 2. Employer / Company Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        value={jobColFilters.company}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, company: e.target.value }))}
+                        placeholder="Filter company..."
+                        className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                      />
+                    </th>
+
+                    {/* 3. Location & Type Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        value={jobColFilters.location}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, location: e.target.value }))}
+                        placeholder="Filter location / type..."
+                        className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                      />
+                    </th>
+
+                    {/* 4. Salary Filter */}
+                    <th className="p-2">
+                      <input
+                        type="text"
+                        value={jobColFilters.salary}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, salary: e.target.value }))}
+                        placeholder="Filter salary..."
+                        className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                      />
+                    </th>
+
+                    {/* 5. Applications Filter */}
+                    <th className="p-2 text-center">
+                      <select
+                        value={jobColFilters.applications}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, applications: e.target.value }))}
+                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                      >
+                        <option value="All">All Apps</option>
+                        <option value="0">0 Apps</option>
+                        <option value="1+">1+ Apps</option>
+                        <option value="5+">5+ Apps</option>
+                        <option value="10+">10+ Apps</option>
+                      </select>
+                    </th>
+
+                    {/* 6. Status Filter */}
+                    <th className="p-2 text-center">
+                      <select
+                        value={jobColFilters.status}
+                        onChange={(e) => {
+                          setJobColFilters(prev => ({ ...prev, status: e.target.value }));
+                          setJobStatusFilter(e.target.value);
+                        }}
+                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                      >
+                        <option value="All">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Closed">Closed</option>
+                      </select>
+                    </th>
+
+                    {/* 7. Posted On Date Filter */}
+                    <th className="p-2">
+                      <select
+                        value={jobColFilters.postedOn}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, postedOn: e.target.value }))}
+                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                      >
+                        <option value="All">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="90d">Last 90 Days</option>
+                        <option value="thisYear">This Year</option>
+                      </select>
+                    </th>
+
+                    {/* 8. Reset Button */}
+                    <th className="p-2 text-right">
+                      {activeJobFiltersCount > 0 && (
+                        <button
+                          onClick={handleClearAllJobFilters}
+                          title="Reset all column filters"
+                          className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-colors border border-red-200 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </th>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {loadingJobs ? (
                     <tr>
-                      <td colSpan="8" className="py-12 text-center text-gray-400">
+                      <td colSpan="9" className="py-12 text-center text-gray-400">
                         <RefreshCw className="w-5 h-5 animate-spin mx-auto text-emerald-600 mb-2" />
                         <span>Loading job openings...</span>
                       </td>
                     </tr>
                   ) : filteredJobs.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="py-12 text-center text-gray-400">
+                      <td colSpan="9" className="py-12 text-center text-gray-400">
                         <Briefcase className="w-8 h-8 mx-auto text-gray-300 mb-2" />
                         <p className="font-bold text-gray-700">No job openings found</p>
                         <p className="text-xs text-gray-400 mt-0.5">Try adjusting your search query or filter.</p>
@@ -3655,13 +3925,28 @@ export default function DashboardOverview({ onNavigateTab }) {
                           key={job._id || job.id} 
                           className="hover:bg-gray-50/70 transition-colors"
                         >
+                          {/* 0. Job ID */}
+                          <td className="py-4 px-4 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyJobId(job._id || job.id)}
+                              title={`Click to copy full ID: ${job._id || job.id}`}
+                              className="font-mono font-black text-emerald-800 bg-emerald-50 hover:bg-emerald-100/90 px-2.5 py-1 rounded-lg border border-emerald-200/90 text-[11px] inline-flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                            >
+                              <span>#{String(job._id || job.id).substring(18)}</span>
+                              {copiedJobId === String(job._id || job.id) ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-emerald-500/70" />
+                              )}
+                            </button>
+                          </td>
+
+                          {/* 1. Job Opening */}
                           <td className="py-4 px-5">
                             <div className="font-bold text-gray-900 text-sm">
                               {job.title || job.jobTitle}
                             </div>
-                            <span className="font-mono text-[10px] text-gray-400 block mt-0.5">
-                              ID: #{String(job._id || job.id).substring(18)}
-                            </span>
                           </td>
 
                           <td className="py-4 px-5">
@@ -4133,11 +4418,6 @@ export default function DashboardOverview({ onNavigateTab }) {
                       {workLocation && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
                           {workLocation}
-                        </span>
-                      )}
-                      {selectedJobDetail.easyApply && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
-                          ⚡ Easy Apply
                         </span>
                       )}
                     </div>
@@ -4808,24 +5088,13 @@ export default function DashboardOverview({ onNavigateTab }) {
                       </div>
 
                       {isJobLink ? (
-                        <div className="grid grid-cols-2 gap-y-3.5 gap-x-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3.5 gap-x-4">
                           <div>
                             <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Source Type</span>
                             <span className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
                               <Link2 className="w-3.5 h-3.5 text-emerald-600" />
                               Job Link Referral
                             </span>
-                          </div>
-
-                          <div>
-                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">UTM / Campaign Source</span>
-                            {utmSource ? (
-                              <span className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-800 text-[11px] font-bold rounded-md border border-emerald-200/80 uppercase tracking-wider">
-                                {utmSource}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic text-xs">None (Organic Link)</span>
-                            )}
                           </div>
 
                           <div>
@@ -4842,26 +5111,39 @@ export default function DashboardOverview({ onNavigateTab }) {
                             </span>
                           </div>
 
-                          <div className="col-span-2">
-                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-1">Origin Job Link URL</span>
+                          <div className="col-span-2 sm:col-span-3 space-y-1.5">
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider">Origin Job Link URL</span>
                             {firstTouchJob?._id || acq.firstTouchJob ? (() => {
                               const clientOrigin = typeof window !== 'undefined'
                                 ? ((window.location.port === '5174' || window.location.port === '5175')
                                     ? `${window.location.protocol}//${window.location.hostname}:5173`
                                     : (window.location.origin.includes('5174') ? 'http://localhost:5173' : window.location.origin))
                                 : 'http://localhost:5173';
-                              const fullJobUrl = `${clientOrigin}/apply-job/${firstTouchJob?._id || acq.firstTouchJob}${utmSource ? `?utm_source=${utmSource}` : ''}`;
+                              const targetJobId = firstTouchJob?._id || acq.firstTouchJob;
+                              const fullJobUrl = `${clientOrigin}/apply-job/${targetJobId}${utmSource ? `?utm_source=${utmSource}` : ''}`;
                               return (
-                                <a
-                                  href={fullJobUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100/70 font-semibold text-xs inline-flex items-center justify-between w-full bg-emerald-50/90 px-3 py-2 rounded-xl border border-emerald-200/90 transition-all cursor-pointer group"
-                                  title="Click to open job page in candidate portal"
-                                >
-                                  <span className="truncate font-mono">{fullJobUrl}</span>
-                                  <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-2 text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                                </a>
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                  <a
+                                    href={fullJobUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100/70 font-semibold text-xs inline-flex items-center justify-between flex-1 bg-emerald-50/90 px-3 py-2.5 rounded-xl border border-emerald-200/90 transition-all cursor-pointer group min-w-0 shadow-2xs"
+                                    title="Click to open job page in candidate portal"
+                                  >
+                                    <span className="truncate font-mono">{fullJobUrl}</span>
+                                    <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-2 text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                  </a>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenJobDetailsById(targetJobId)}
+                                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+                                    title="Open Job Details popup modal"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                    <span>View Job Details</span>
+                                  </button>
+                                </div>
                               );
                             })() : (
                               <span className="text-gray-400 italic text-xs">No link URL recorded</span>
@@ -4891,17 +5173,30 @@ export default function DashboardOverview({ onNavigateTab }) {
                             <Briefcase className="w-4 h-4 text-emerald-600" />
                             Referred Job Details
                           </h4>
-                          {firstTouchJob?.status ? (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              firstTouchJob.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {firstTouchJob.status}
-                            </span>
-                          ) : jobSnapshot.title ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                              Snapshot (Job Closed/Archived)
-                            </span>
-                          ) : null}
+                          <div className="flex items-center gap-2">
+                            {(firstTouchJob?._id || acq.firstTouchJob) && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenJobDetailsById(firstTouchJob?._id || acq.firstTouchJob)}
+                                className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                title="Open full job details popup"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>View Job Details</span>
+                              </button>
+                            )}
+                            {firstTouchJob?.status ? (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                firstTouchJob.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {firstTouchJob.status}
+                              </span>
+                            ) : jobSnapshot.title ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                Snapshot (Job Closed/Archived)
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
 
                         {firstTouchJob ? (

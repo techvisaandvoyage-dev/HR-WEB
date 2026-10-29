@@ -1,5 +1,6 @@
 const SupportProblem = require('../models/SupportProblem');
 const SupportRequest = require('../models/SupportRequest');
+const SupportQuickReply = require('../models/SupportQuickReply');
 const { getIO } = require('../socket');
 
 // Helper to escape regex special characters
@@ -672,5 +673,161 @@ exports.getRequestMessages = async (req, res) => {
     return res.status(200).json({ success: true, data: request });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to fetch messages.' });
+  }
+};
+
+/* ========================================================
+ * Quick Reply Management Helpers & Controllers
+ * ======================================================== */
+
+/**
+ * Normalizes all quick replies contiguous order: 0, 1, 2, 3...
+ */
+const normalizeQuickReplyOrders = async () => {
+  try {
+    const list = await SupportQuickReply.find().sort({ order: 1, updatedAt: -1, createdAt: 1 });
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].order !== i) {
+        await SupportQuickReply.updateOne({ _id: list[i]._id }, { $set: { order: i } });
+      }
+    }
+  } catch (err) {
+    console.error('normalizeQuickReplyOrders error:', err);
+  }
+};
+
+/**
+ * @desc    Get all quick reply follow-up options
+ * @route   GET /api/admin/support/quick-replies
+ * @access  Admin
+ */
+exports.getAllQuickReplies = async (req, res) => {
+  try {
+    await normalizeQuickReplyOrders();
+    let list = await SupportQuickReply.find().sort({ order: 1, createdAt: 1 }).lean();
+    if (!list || list.length === 0) {
+      const { seedSupportQuickReplies } = require('./supportController');
+      await seedSupportQuickReplies();
+      list = await SupportQuickReply.find().sort({ order: 1, createdAt: 1 }).lean();
+    }
+    return res.status(200).json({ success: true, data: list });
+  } catch (error) {
+    console.error('getAllQuickReplies error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch quick replies.' });
+  }
+};
+
+/**
+ * @desc    Create a new quick reply option
+ * @route   POST /api/admin/support/quick-replies
+ * @access  Admin
+ */
+exports.createQuickReply = async (req, res) => {
+  try {
+    const { title, order, isActive } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Quick reply text is required.' });
+    }
+    const count = await SupportQuickReply.countDocuments();
+    const resolvedOrder = Number.isInteger(Number(order)) ? Number(order) : count;
+    const created = await SupportQuickReply.create({
+      title: title.trim(),
+      order: resolvedOrder,
+      isActive: isActive !== false,
+    });
+    await normalizeQuickReplyOrders();
+    return res.status(201).json({ success: true, message: 'Quick reply created successfully.', data: created });
+  } catch (error) {
+    console.error('createQuickReply error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to create quick reply.' });
+  }
+};
+
+/**
+ * @desc    Update an existing quick reply option
+ * @route   PUT /api/admin/support/quick-replies/:id
+ * @access  Admin
+ */
+exports.updateQuickReply = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, order, isActive } = req.body;
+    const existing = await SupportQuickReply.findById(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Quick reply not found.' });
+    }
+    if (title && title.trim()) existing.title = title.trim();
+    if (order !== undefined && Number.isInteger(Number(order))) existing.order = Number(order);
+    if (isActive !== undefined) existing.isActive = Boolean(isActive);
+    await existing.save();
+    await normalizeQuickReplyOrders();
+    return res.status(200).json({ success: true, message: 'Quick reply updated successfully.', data: existing });
+  } catch (error) {
+    console.error('updateQuickReply error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update quick reply.' });
+  }
+};
+
+/**
+ * @desc    Toggle quick reply active status
+ * @route   PATCH /api/admin/support/quick-replies/:id/toggle
+ * @access  Admin
+ */
+exports.toggleQuickReplyActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reply = await SupportQuickReply.findById(id);
+    if (!reply) return res.status(404).json({ success: false, message: 'Quick reply not found.' });
+    reply.isActive = !reply.isActive;
+    await reply.save();
+    return res.status(200).json({ success: true, message: `Quick reply ${reply.isActive ? 'activated' : 'deactivated'}.`, data: reply });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to toggle status.' });
+  }
+};
+
+/**
+ * @desc    Reorder quick reply (move up or down)
+ * @route   PATCH /api/admin/support/quick-replies/:id/move
+ * @access  Admin
+ */
+exports.moveQuickReply = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { direction } = req.body;
+    await normalizeQuickReplyOrders();
+    const current = await SupportQuickReply.findById(id);
+    if (!current) return res.status(404).json({ success: false, message: 'Quick reply not found.' });
+    const currentOrder = current.order;
+    const targetOrder = direction === 'up' ? currentOrder - 1 : currentOrder + 1;
+    const swapTarget = await SupportQuickReply.findOne({ order: targetOrder });
+    if (!swapTarget) {
+      return res.status(400).json({ success: false, message: 'Cannot move further in that direction.' });
+    }
+    current.order = targetOrder;
+    swapTarget.order = currentOrder;
+    await current.save();
+    await swapTarget.save();
+    await normalizeQuickReplyOrders();
+    return res.status(200).json({ success: true, message: 'Order updated successfully.' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to reorder quick reply.' });
+  }
+};
+
+/**
+ * @desc    Delete a quick reply option
+ * @route   DELETE /api/admin/support/quick-replies/:id
+ * @access  Admin
+ */
+exports.deleteQuickReply = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await SupportQuickReply.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ success: false, message: 'Quick reply not found.' });
+    await normalizeQuickReplyOrders();
+    return res.status(200).json({ success: true, message: 'Quick reply deleted successfully.' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to delete quick reply.' });
   }
 };

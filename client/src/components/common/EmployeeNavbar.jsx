@@ -218,7 +218,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
-              className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
+              className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm text-gray-900 placeholder-gray-500 shadow-none ring-0"
             />
             {showSuggestions && searchTerm && (
               <div className="absolute top-[200%] left-0 w-[120%] bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[100] max-h-64 overflow-y-auto">
@@ -247,7 +247,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
               value={searchLocation}
               onChange={(val) => handleSetSearchLocation(typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || ''))}
               placeholder="City, state" 
-              className="w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
+              className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm text-gray-900 placeholder-gray-500 shadow-none ring-0"
             />
           </div>
         </div>

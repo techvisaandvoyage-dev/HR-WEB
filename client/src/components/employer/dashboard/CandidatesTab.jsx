@@ -314,24 +314,27 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
   // Unique options for each dropdown filter
   const uniqueJobs = useMemo(() => {
-    const list = flattenedApplications.map(a => a.jobTitle).filter(Boolean);
+    const list = [
+      ...(jobs || []).map(j => j.title || j.jobTitle),
+      ...flattenedApplications.map(a => a.jobTitle)
+    ].filter(Boolean);
     return ['All', ...new Set(list)];
-  }, [flattenedApplications]);
+  }, [jobs, flattenedApplications]);
 
   const uniqueWorkExps = useMemo(() => {
     const list = flattenedApplications.map(a => getWorkExp(a.candidate)).filter(Boolean);
     return ['All', ...new Set(list)];
-  }, [flattenedApplications]);
+  }, [jobs, flattenedApplications]);
 
   const uniqueFunctions = useMemo(() => {
     const list = flattenedApplications.map(a => getFunction(a.candidate)).filter(Boolean);
     return ['All', ...new Set(list)];
-  }, [flattenedApplications]);
+  }, [jobs, flattenedApplications]);
 
   const uniqueQualifications = useMemo(() => {
     const list = flattenedApplications.map(a => getHighestQualification(a.candidate)).filter(Boolean);
     return ['All', ...new Set(list)];
-  }, [flattenedApplications]);
+  }, [jobs, flattenedApplications]);
 
   // Filter and sort applications based on all column filters
   const filteredApplications = useMemo(() => {

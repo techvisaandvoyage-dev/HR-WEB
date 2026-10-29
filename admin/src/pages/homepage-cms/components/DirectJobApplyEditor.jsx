@@ -91,8 +91,10 @@ export const DEFAULT_DIRECT_JOB_APPLY_CONFIG = {
     successHeading: 'Application Submitted!',
     alreadyAppliedHeading: 'Already Applied!',
     successSubtitle: 'Your application for {title} at {company} has been received successfully by the hiring team.',
+    alreadyAppliedSubtitle: 'You have already applied for {title} at {company}. The hiring team is reviewing your profile.',
     promoMessageTitle: '📢 Important Information:',
-    promoMessageText: 'Aap sahijob.com ke candidate portal me login karke hazaron verified companies ki jobs explore aur apply kar sakte hain!',
+    promoMessageText: 'You can log in to your SahiJob candidate portal anytime to explore and apply for thousands of verified companies!',
+    trackApplicationsBtnText: 'Track My Applications',
     exploreMoreJobsBtnText: 'Explore More Jobs on SahiJob →'
   }
 };
@@ -101,6 +103,7 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
   const [activeTab, setActiveTab] = useState('step1'); // 'general', 'step1', 'step2', 'step3', 'step4'
   const [previewStep, setPreviewStep] = useState(1);
   const [previewAuthTab, setPreviewAuthTab] = useState('login'); // 'login' | 'register'
+  const [previewStep4Mode, setPreviewStep4Mode] = useState('success'); // 'success' | 'alreadyApplied'
   const [config, setConfig] = useState(DEFAULT_DIRECT_JOB_APPLY_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1004,7 +1007,7 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
               <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                 <div>
                   <h3 className="text-base font-bold text-gray-900">Step 4: Success & Portal Invitation</h3>
-                  <p className="text-xs text-gray-500">Confirmation messages, promo text, and CTA redirect button</p>
+                  <p className="text-xs text-gray-500">Confirmation messages, already applied alerts, and action buttons</p>
                 </div>
                 <button
                   type="button"
@@ -1037,14 +1040,25 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Success Subtitle (use {"{title}"} and {"{company}"})</label>
-                  <textarea
-                    rows={2}
-                    value={config.step4?.successSubtitle || ''}
-                    onChange={(e) => handleUpdate('step4', 'successSubtitle', e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Success Subtitle (use {"{title}"} and {"{company}"})</label>
+                    <textarea
+                      rows={2}
+                      value={config.step4?.successSubtitle || ''}
+                      onChange={(e) => handleUpdate('step4', 'successSubtitle', e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Already Applied Subtitle (use {"{title}"} and {"{company}"})</label>
+                    <textarea
+                      rows={2}
+                      value={config.step4?.alreadyAppliedSubtitle || ''}
+                      onChange={(e) => handleUpdate('step4', 'alreadyAppliedSubtitle', e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/90 space-y-3">
@@ -1072,14 +1086,25 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Explore More Jobs CTA Button</label>
-                  <input
-                    type="text"
-                    value={config.step4?.exploreMoreJobsBtnText || ''}
-                    onChange={(e) => handleUpdate('step4', 'exploreMoreJobsBtnText', e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Track Applications Button Label</label>
+                    <input
+                      type="text"
+                      value={config.step4?.trackApplicationsBtnText || ''}
+                      onChange={(e) => handleUpdate('step4', 'trackApplicationsBtnText', e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Explore More Jobs CTA Button</label>
+                    <input
+                      type="text"
+                      value={config.step4?.exploreMoreJobsBtnText || ''}
+                      onChange={(e) => handleUpdate('step4', 'exploreMoreJobsBtnText', e.target.value)}
+                      className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-600 outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1127,8 +1152,9 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                 </div>
               </div>
 
-              {/* Preview Stepper (3 Steps) */}
-              <div className="grid grid-cols-3 gap-1 text-center border-b border-gray-100 pb-2">
+              {/* Preview Stepper (Only visible on Steps 1, 2, 3 - Hidden on Step 4) */}
+              {previewStep < 4 && (
+                <div className="grid grid-cols-3 gap-1 text-center border-b border-gray-100 pb-2">
                 {[
                   { n: 1, title: config.stepper?.step1Title || 'Account' },
                   { n: 2, title: config.stepper?.step2Title || 'Details' },
@@ -1148,6 +1174,7 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                   </div>
                 ))}
               </div>
+              )}
 
               {/* STEP 1 PREVIEW */}
               {previewStep === 1 && (
@@ -1327,21 +1354,83 @@ export default function DirectJobApplyEditor({ onSaveSuccess }) {
                 </div>
               )}
 
-              {/* STEP 4 PREVIEW (SUCCESS & PROMO) */}
+              {/* STEP 4 PREVIEW (SUCCESS & ALREADY APPLIED CONFIRMATION) */}
               {previewStep === 4 && (
                 <div className="text-center space-y-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm mx-auto">✓</div>
-                  <div>
-                    <h5 className="text-xs font-bold text-gray-900">{config.step4?.successHeading}</h5>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Application submitted successfully.</p>
+                  
+                  {/* Mode Toggle inside Preview */}
+                  <div className="flex items-center justify-center p-0.5 bg-gray-100 rounded-lg max-w-[210px] mx-auto text-[9px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewStep4Mode('success')}
+                      className={`flex-1 py-1 px-1.5 rounded-md transition-all cursor-pointer ${
+                        previewStep4Mode === 'success' ? 'bg-white text-emerald-800 shadow-xs' : 'text-gray-500'
+                      }`}
+                    >
+                      ✓ Submitted
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewStep4Mode('alreadyApplied')}
+                      className={`flex-1 py-1 px-1.5 rounded-md transition-all cursor-pointer ${
+                        previewStep4Mode === 'alreadyApplied' ? 'bg-white text-amber-800 shadow-xs' : 'text-gray-500'
+                      }`}
+                    >
+                      Already Applied
+                    </button>
                   </div>
+
+                  <div className={`w-10 h-10 rounded-full ${
+                    previewStep4Mode === 'alreadyApplied' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                  } flex items-center justify-center font-black text-base mx-auto shadow-inner`}>
+                    ✓
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <h5 className="text-xs font-black text-gray-900 tracking-tight">
+                      {previewStep4Mode === 'alreadyApplied'
+                        ? (config.step4?.alreadyAppliedHeading || 'Already Applied!')
+                        : (config.step4?.successHeading || 'Application Submitted!')}
+                    </h5>
+                    <p className="text-[9px] text-gray-600 leading-tight max-w-[240px] mx-auto">
+                      {previewStep4Mode === 'alreadyApplied'
+                        ? (config.step4?.alreadyAppliedSubtitle || 'You have already applied for {title} at {company}. The hiring team is reviewing your profile.')
+                            .replace('{title}', 'Senior Financial Analyst')
+                            .replace('{company}', 'Amazone')
+                        : (config.step4?.successSubtitle || 'Your application for {title} at {company} has been received successfully by the hiring team.')
+                            .replace('{title}', 'Senior Financial Analyst')
+                            .replace('{company}', 'Amazone')}
+                    </p>
+                  </div>
+
+                  {/* Highlighted Promo Banner */}
                   <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-left space-y-1">
-                    <div className="text-[10px] font-bold text-emerald-950">{config.step4?.promoMessageTitle}</div>
-                    <p className="text-[9px] text-emerald-800 font-medium leading-relaxed">{config.step4?.promoMessageText}</p>
+                    <div className="text-[9px] font-bold text-emerald-950 flex items-center gap-1">
+                      <span>{config.step4?.promoMessageTitle || '📢 Important Information:'}</span>
+                    </div>
+                    <p className="text-[8px] text-emerald-800 font-medium leading-relaxed">
+                      {config.step4?.promoMessageText || 'You can log in to your SahiJob candidate portal anytime to explore and apply for thousands of verified companies!'}
+                    </p>
                   </div>
-                  <div className="w-full py-2 bg-emerald-600 text-white font-bold text-[10px] rounded-xl text-center shadow-xs">
-                    {config.step4?.exploreMoreJobsBtnText}
+
+                  {/* Action Buttons */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="py-1.5 px-2 bg-slate-100 text-slate-800 font-bold text-[9px] rounded-lg text-center truncate border border-slate-200 shadow-2xs">
+                        {config.step4?.trackApplicationsBtnText || 'Track My Applications'}
+                      </div>
+                      <div className="py-1.5 px-2 bg-emerald-600 text-white font-bold text-[9px] rounded-lg text-center truncate shadow-2xs">
+                        {config.step4?.exploreMoreJobsBtnText || 'Explore More Jobs →'}
+                      </div>
+                    </div>
+                    
+                    {previewStep4Mode === 'alreadyApplied' && (
+                      <p className="text-[8px] text-gray-400 underline pt-0.5">
+                        Sign in with a different candidate account
+                      </p>
+                    )}
                   </div>
+
                 </div>
               )}
 

@@ -36,7 +36,7 @@ import { socket } from '../utils/socket';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function SupportTab() {
-  const [activeSubTab, setActiveSubTab] = useState('requests'); // 'requests' | 'otp-locks' | 'problems'
+  const [activeSubTab, setActiveSubTab] = useState('requests'); // 'requests' | 'otp-locks' | 'problems' | 'quick-replies'
 
   // Metric counts
   const [counts, setCounts] = useState({ total: 0, pending: 0, resolved: 0 });
@@ -84,6 +84,24 @@ export default function SupportTab() {
 
   // Delete problem confirmation
   const [problemToDelete, setProblemToDelete] = useState(null);
+
+  // Quick Replies state (Send a quick update to support)
+  const [quickReplies, setQuickReplies] = useState([]);
+  const [loadingQuickReplies, setLoadingQuickReplies] = useState(false);
+  const [quickRepliesError, setQuickRepliesError] = useState('');
+  const [quickReplySearch, setQuickReplySearch] = useState('');
+
+  // Quick Reply modal state
+  const [isQuickReplyModalOpen, setIsQuickReplyModalOpen] = useState(false);
+  const [editingQuickReply, setEditingQuickReply] = useState(null);
+  const [quickReplyFormTitle, setQuickReplyFormTitle] = useState('');
+  const [quickReplyFormOrder, setQuickReplyFormOrder] = useState(0);
+  const [quickReplyFormActive, setQuickReplyFormActive] = useState(true);
+  const [quickReplyFormError, setQuickReplyFormError] = useState('');
+  const [isSavingQuickReply, setIsSavingQuickReply] = useState(false);
+
+  // Delete quick reply confirmation
+  const [quickReplyToDelete, setQuickReplyToDelete] = useState(null);
 
   // Reply Modal State
   const [replyRequest, setReplyRequest] = useState(null);
@@ -342,6 +360,25 @@ export default function SupportTab() {
     }
   }, []);
 
+  // Fetch quick replies list
+  const fetchQuickReplies = useCallback(async () => {
+    setLoadingQuickReplies(true);
+    setQuickRepliesError('');
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/quick-replies`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setQuickReplies(json.data);
+      } else {
+        setQuickRepliesError(json.message || 'Failed to load quick replies');
+      }
+    } catch (err) {
+      setQuickRepliesError('Network error while fetching quick replies');
+    } finally {
+      setLoadingQuickReplies(false);
+    }
+  }, []);
+
   // Fetch data on tab change or filter change
   useEffect(() => {
     if (activeSubTab === 'requests') {
@@ -350,8 +387,15 @@ export default function SupportTab() {
       fetchProblems();
     } else if (activeSubTab === 'otp-locks') {
       fetchActiveLockedEmails();
+    } else if (activeSubTab === 'quick-replies') {
+      fetchQuickReplies();
     }
-  }, [activeSubTab, fetchRequests, fetchProblems, fetchActiveLockedEmails]);
+  }, [activeSubTab, fetchRequests, fetchProblems, fetchActiveLockedEmails, fetchQuickReplies]);
+
+  // Initial fetch for quickReplies count so tab badge shows accurate count
+  useEffect(() => {
+    fetchQuickReplies();
+  }, [fetchQuickReplies]);
 
   // Handle manual unlock directly from a Support Request row
   const handleUnlockFromRequest = async (reqItem) => {
@@ -614,6 +658,130 @@ export default function SupportTab() {
     }
   };
 
+  // -------------------------------------------------------------
+  // QUICK REPLIES HANDLERS (CMS for user quick updates in chat)
+  // -------------------------------------------------------------
+  const handleOpenAddQuickReply = () => {
+    setEditingQuickReply(null);
+    setQuickReplyFormTitle('');
+    setQuickReplyFormOrder(quickReplies.length);
+    setQuickReplyFormActive(true);
+    setQuickReplyFormError('');
+    setIsQuickReplyModalOpen(true);
+  };
+
+  const handleOpenEditQuickReply = (qr) => {
+    setEditingQuickReply(qr);
+    setQuickReplyFormTitle(qr.title);
+    setQuickReplyFormOrder(qr.order !== undefined ? qr.order : 0);
+    setQuickReplyFormActive(Boolean(qr.isActive));
+    setQuickReplyFormError('');
+    setIsQuickReplyModalOpen(true);
+  };
+
+  const handleDuplicateQuickReply = (qr) => {
+    setEditingQuickReply(null);
+    setQuickReplyFormTitle(`${qr.title} (Copy)`);
+    setQuickReplyFormOrder((qr.order || 0) + 1);
+    setQuickReplyFormActive(true);
+    setQuickReplyFormError('');
+    setIsQuickReplyModalOpen(true);
+  };
+
+  const handleMoveQuickReply = async (qrId, direction) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/quick-replies/${qrId}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        fetchQuickReplies();
+      } else {
+        alert(json.message || 'Failed to move quick reply');
+      }
+    } catch (err) {
+      alert('Error moving quick reply');
+    }
+  };
+
+  const handleToggleQuickReply = async (qr) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/quick-replies/${qr._id}/toggle`, {
+        method: 'PATCH',
+      });
+      const json = await res.json();
+      if (json.success) {
+        setQuickReplies((prev) =>
+          prev.map((item) => (item._id === qr._id ? { ...item, isActive: !item.isActive } : item))
+        );
+      } else {
+        alert(json.message || 'Failed to toggle quick reply status');
+      }
+    } catch (err) {
+      alert('Error toggling quick reply status');
+    }
+  };
+
+  const handleSaveQuickReply = async (e) => {
+    e.preventDefault();
+    if (!quickReplyFormTitle.trim()) {
+      setQuickReplyFormError('Quick reply text is required');
+      return;
+    }
+
+    setIsSavingQuickReply(true);
+    setQuickReplyFormError('');
+
+    try {
+      const url = editingQuickReply
+        ? `${API_URL}/api/admin/support/quick-replies/${editingQuickReply._id}`
+        : `${API_URL}/api/admin/support/quick-replies`;
+      const method = editingQuickReply ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: quickReplyFormTitle.trim(),
+          order: Number(quickReplyFormOrder) || 0,
+          isActive: quickReplyFormActive,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setIsQuickReplyModalOpen(false);
+        fetchQuickReplies();
+      } else {
+        setQuickReplyFormError(json.message || 'Failed to save quick reply');
+      }
+    } catch (err) {
+      setQuickReplyFormError('Network error saving quick reply');
+    } finally {
+      setIsSavingQuickReply(false);
+    }
+  };
+
+  const handleDeleteQuickReply = async () => {
+    if (!quickReplyToDelete) return;
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/quick-replies/${quickReplyToDelete._id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        setQuickReplies((prev) => prev.filter((item) => item._id !== quickReplyToDelete._id));
+        setQuickReplyToDelete(null);
+      } else {
+        alert(json.message || 'Failed to delete quick reply');
+      }
+    } catch (err) {
+      alert('Error deleting quick reply');
+    }
+  };
+
   // Render User Type badge
   const renderUserTypeBadge = (type) => {
     switch (type) {
@@ -737,6 +905,22 @@ export default function SupportTab() {
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>Manage Problems</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('quick-replies')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
+              activeSubTab === 'quick-replies'
+                ? 'bg-white text-green-800 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <LifeBuoy className="w-4 h-4 text-emerald-600" />
+            <span>Quick Updates</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-emerald-600 text-white">
+              {quickReplies.length}
+            </span>
           </button>
         </div>
       </div>
@@ -1452,6 +1636,236 @@ export default function SupportTab() {
       )}
 
       {/* =========================================================
+       * TAB 4: USER QUICK UPDATES RESPONSES (CMS)
+       * ========================================================= */}
+      {activeSubTab === 'quick-replies' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">User Quick Update Responses</h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Manage the predefined response buttons that users see in the support chat widget under &quot;Send a quick update to support&quot;.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleOpenAddQuickReply}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-sm shadow-sm transition-colors cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Quick Reply</span>
+            </button>
+          </div>
+
+          {/* Metrics Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 rounded-2xl border border-gray-200 bg-white">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-600">Total Quick Replies</span>
+                <span className="text-base font-extrabold text-gray-900">{quickReplies.length}</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Total configured responses</p>
+            </div>
+            <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-800">Active in Chat Widget</span>
+                <span className="text-base font-extrabold text-emerald-900">
+                  {quickReplies.filter((q) => q.isActive).length}
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-600/70 mt-1">Currently shown to users in chat</p>
+            </div>
+            <div className="p-4 rounded-2xl border border-gray-200 bg-white">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-500">Inactive / Hidden</span>
+                <span className="text-base font-extrabold text-gray-600">
+                  {quickReplies.filter((q) => !q.isActive).length}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Hidden from user chat view</p>
+            </div>
+          </div>
+
+          {/* Search & Info Bar */}
+          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-xs text-gray-500 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Users tap these buttons to send an instant response to support without typing manually.</span>
+            </div>
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={quickReplySearch}
+                onChange={(e) => setQuickReplySearch(e.target.value)}
+                placeholder="Search quick reply text..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
+              />
+              {quickReplySearch && (
+                <button
+                  type="button"
+                  onClick={() => setQuickReplySearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Replies List Card */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            {loadingQuickReplies ? (
+              <div className="py-16 text-center space-y-3">
+                <div className="w-8 h-8 border-3 border-green-700 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="text-sm font-bold text-gray-500">Loading quick replies...</p>
+              </div>
+            ) : quickRepliesError ? (
+              <div className="py-16 text-center space-y-3">
+                <AlertCircle className="w-10 h-10 text-red-500 mx-auto" />
+                <p className="text-sm font-bold text-red-600">{quickRepliesError}</p>
+                <button
+                  type="button"
+                  onClick={fetchQuickReplies}
+                  className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (() => {
+              const displayList = quickReplies
+                .filter((qr) =>
+                  quickReplySearch.trim()
+                    ? qr.title.toLowerCase().includes(quickReplySearch.toLowerCase())
+                    : true
+                )
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+              return displayList.length === 0 ? (
+                <div className="py-16 text-center space-y-3">
+                  <LifeBuoy className="w-10 h-10 text-gray-300 mx-auto" />
+                  <h4 className="text-base font-bold text-gray-800">No quick replies found</h4>
+                  <p className="text-xs text-gray-500">
+                    {quickReplySearch
+                      ? `No quick replies matching "${quickReplySearch}"`
+                      : 'Get started by creating your first quick reply.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-extrabold uppercase tracking-wider text-gray-500">
+                        <th className="py-3.5 px-4 w-28">Order</th>
+                        <th className="py-3.5 px-4">Response Text (User Quick Reply)</th>
+                        <th className="py-3.5 px-4 w-32">Status</th>
+                        <th className="py-3.5 px-4 w-28 text-center">Toggle</th>
+                        <th className="py-3.5 px-4 w-36 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-xs">
+                      {displayList.map((qr, idx) => (
+                        <tr key={qr._id} className="hover:bg-gray-50/80 transition-colors group">
+                          <td className="py-3 px-4 font-bold text-gray-700">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-6 h-6 rounded-lg bg-gray-100 text-gray-700 font-extrabold text-[11px] flex items-center justify-center">
+                                #{qr.order ?? idx}
+                              </span>
+                              <div className="flex flex-col">
+                                <button
+                                  type="button"
+                                  disabled={idx === 0}
+                                  onClick={() => handleMoveQuickReply(qr._id, 'up')}
+                                  title="Move Up"
+                                  className="p-0.5 text-gray-400 hover:text-gray-800 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                  <ChevronUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={idx === displayList.length - 1}
+                                  onClick={() => handleMoveQuickReply(qr._id, 'down')}
+                                  title="Move Down"
+                                  className="p-0.5 text-gray-400 hover:text-gray-800 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                              <span className="font-semibold text-gray-900">{qr.title}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {qr.isActive ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                                <CheckCircle2 className="w-3 h-3" /> Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                Inactive
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleQuickReply(qr)}
+                              title={qr.isActive ? 'Deactivate' : 'Activate'}
+                              className="cursor-pointer text-gray-500 hover:text-gray-800 transition-transform active:scale-95"
+                            >
+                              {qr.isActive ? (
+                                <ToggleRight className="w-6 h-6 text-green-600 inline-block" />
+                              ) : (
+                                <ToggleLeft className="w-6 h-6 text-gray-400 inline-block" />
+                              )}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateQuickReply(qr)}
+                                title="Duplicate"
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditQuickReply(qr)}
+                                title="Edit Quick Reply"
+                                className="p-1.5 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setQuickReplyToDelete(qr)}
+                                title="Delete Quick Reply"
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
        * MODAL: ADD / EDIT PROBLEM (WITH VISUAL ROLE SELECTOR)
        * ========================================================= */}
       {isProblemModalOpen && (
@@ -1625,6 +2039,156 @@ export default function SupportTab() {
               <button
                 type="button"
                 onClick={handleDeleteProblem}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs shadow-sm transition-colors cursor-pointer"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+       * MODAL: ADD / EDIT QUICK REPLY RESPONSE
+       * ========================================================= */}
+      {isQuickReplyModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-emerald-800 to-green-700 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center border border-white/20">
+                  <LifeBuoy className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base leading-tight">
+                    {editingQuickReply ? 'Edit Quick Reply Response' : 'Add Quick Reply Response'}
+                  </h3>
+                  <p className="text-emerald-100 text-xs font-medium">
+                    Configure user follow-up options for the support chat widget
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickReplyModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickReply} className="p-6 space-y-4">
+              {quickReplyFormError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{quickReplyFormError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Quick Reply Text <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={quickReplyFormTitle}
+                  onChange={(e) => setQuickReplyFormTitle(e.target.value)}
+                  placeholder="e.g. Yes, my issue is resolved. Thank you!"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 font-medium"
+                  required
+                  autoFocus
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  This button text will be presented to the user under &quot;Send a quick update to support&quot;.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Display Order
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={quickReplyFormOrder}
+                  onChange={(e) => setQuickReplyFormOrder(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 font-semibold"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Lower numbers appear first. Setting an existing order automatically shifts subsequent options down.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  type="checkbox"
+                  id="quickreply-active-chk"
+                  checked={quickReplyFormActive}
+                  onChange={(e) => setQuickReplyFormActive(e.target.checked)}
+                  className="w-4 h-4 text-green-700 rounded border-gray-300 focus:ring-green-600 cursor-pointer"
+                />
+                <label htmlFor="quickreply-active-chk" className="text-xs font-bold text-gray-800 cursor-pointer">
+                  Active (visible in floating widget for users)
+                </label>
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickReplyModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingQuickReply}
+                  className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs shadow-md transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSavingQuickReply ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>{editingQuickReply ? 'Update Quick Reply' : 'Create Quick Reply'}</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+       * MODAL: CONFIRM DELETE QUICK REPLY
+       * ========================================================= */}
+      {quickReplyToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-extrabold text-gray-900">Delete Quick Reply?</h3>
+              <p className="text-xs text-gray-500">
+                Are you sure you want to delete <strong className="text-gray-800">&quot;{quickReplyToDelete.title}&quot;</strong>? This option will no longer appear in the support chat widget.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setQuickReplyToDelete(null)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteQuickReply}
                 className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs shadow-sm transition-colors cursor-pointer"
               >
                 Yes, Delete

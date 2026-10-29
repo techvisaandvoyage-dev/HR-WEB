@@ -37,11 +37,6 @@ const getFirstName = (n) => {
 export default function SupportWidget() {
   const location = useLocation();
 
-  // Hide widget completely on admin routes
-  if (location.pathname.startsWith('/admin')) {
-    return null;
-  }
-
   // ---------------------------------------------------------------------------
   // AUTH STATE (Read-Only)
   // ---------------------------------------------------------------------------
@@ -62,6 +57,7 @@ export default function SupportWidget() {
         const fullName = profile.name || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Candidate';
         const email = profile.email || '';
         const phone = (profile.mobile || profile.phone || '').toString().replace(/\D/g, '').slice(-10);
+        const code = profile.countryCode || '+91';
 
         return {
           isLoggedIn: true,
@@ -70,6 +66,7 @@ export default function SupportWidget() {
           name: fullName,
           email,
           phone,
+          countryCode: code,
           token: candToken,
           isEmployer: false,
         };
@@ -77,14 +74,26 @@ export default function SupportWidget() {
 
       // 2. Employer or Consultant
       if (isValid(empToken)) {
-        const isConsultantRoute = window.location.pathname.startsWith('/consultant');
+        let empInfo = {};
+        try {
+          const stored = localStorage.getItem('employerInfo');
+          if (stored) empInfo = JSON.parse(stored);
+        } catch (_) {}
+
+        const isConsultantRoute = Boolean(empInfo.isConsultant || window.location.pathname.startsWith('/consultant'));
+        const fullName = empInfo.fullName || empInfo.companyName || (isConsultantRoute ? 'Consultant' : 'Employer');
+        const email = empInfo.email || '';
+        const phone = (empInfo.mobile || empInfo.phone || '').toString().replace(/\D/g, '').slice(-10);
+        const code = empInfo.countryCode || '+91';
+
         return {
           isLoggedIn: true,
           role: isConsultantRoute ? 'consultant' : 'employer',
           backendRole: isConsultantRoute ? 'consultant' : 'employer',
-          name: '',
-          email: '',
-          phone: '',
+          name: fullName,
+          email,
+          phone,
+          countryCode: code,
           token: empToken,
           isEmployer: true,
         };
@@ -133,14 +142,18 @@ export default function SupportWidget() {
         const json = await res.json();
         if (json.success && json.data) {
           const emp = json.data;
+          try {
+            localStorage.setItem('employerInfo', JSON.stringify(emp));
+          } catch (_) {}
           const isConsultant = Boolean(emp.isConsultant || window.location.pathname.startsWith('/consultant'));
           setAuthData({
             isLoggedIn: true,
             role: isConsultant ? 'consultant' : 'employer',
             backendRole: isConsultant ? 'consultant' : 'employer',
-            name: emp.fullName || emp.companyName || 'Employer',
+            name: emp.fullName || emp.companyName || (isConsultant ? 'Consultant' : 'Employer'),
             email: emp.email || '',
             phone: (emp.mobile || '').toString().replace(/\D/g, '').slice(-10),
+            countryCode: emp.countryCode || '+91',
             token: current.token,
             isEmployer: true,
           });
@@ -165,11 +178,39 @@ export default function SupportWidget() {
   const [countryCode, setCountryCode] = useState('+91');
   const [contactErrors, setContactErrors] = useState({});
 
+  // Logged-in user missing/editable phone state
+  const [loggedInPhoneInput, setLoggedInPhoneInput] = useState('');
+  const [loggedInPhoneError, setLoggedInPhoneError] = useState('');
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+
+  useEffect(() => {
+    if (authData.phone) {
+      setLoggedInPhoneInput(authData.phone);
+    }
+    if (authData.countryCode) {
+      setCountryCode(authData.countryCode);
+    }
+  }, [authData.phone, authData.countryCode]);
+
   // Problems list & selection
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [problemFetchError, setProblemFetchError] = useState('');
   const [selectedProblemId, setSelectedProblemId] = useState('');
+  const [customProblemText, setCustomProblemText] = useState('');
+
+  // Multi-request state for Updates & chat
+  const [userRequests, setUserRequests] = useState([]);
+  const [loadingUserRequests, setLoadingUserRequests] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sahijob_active_support_request');
+      return saved ? JSON.parse(saved)?.id : null;
+    } catch (_) {
+      return null;
+    }
+  });
 
   // Active / Submitted request tracking state
   const [activeRequest, setActiveRequest] = useState(() => {
@@ -180,6 +221,7 @@ export default function SupportWidget() {
       return null;
     }
   });
+  const [quickRepliesList, setQuickRepliesList] = useState(DEFAULT_QUICK_REPLIES);
   const [requestDetails, setRequestDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [sendingFollowUp, setSendingFollowUp] = useState(false);
@@ -191,6 +233,153 @@ export default function SupportWidget() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const messagesEndRef = useRef(null);
+
+  // ---------------------------------------------------------------------------
+  // API CALLS (Existing endpoints reused exactly)
+  // ---------------------------------------------------------------------------
+  const fetchProblems = useCallback(async () => {
+    setLoadingProblems(true);
+    setProblemFetchError('');
+    try {
+      const res = await fetch(`${API_URL}/api/support/problems`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setProblems(data.data);
+      } else {
+        setProblemFetchError(data.message || 'Unable to load support options');
+      }
+    } catch (_) {
+      setProblemFetchError('Unable to connect to support service. Please try again.');
+    } finally {
+      setLoadingProblems(false);
+    }
+  }, []);
+
+  const fetchQuickReplies = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/support/quick-replies`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setQuickRepliesList(data.data);
+      }
+    } catch (_) {}
+  }, []);
+
+  const fetchRequestDetails = useCallback(async (reqId, isSilent = false) => {
+    if (!reqId) return;
+    if (!isSilent) setLoadingDetails(true);
+    try {
+      const res = await fetch(`${API_URL}/api/support/requests/${reqId}/messages`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setRequestDetails(data.data);
+      }
+    } catch (_) {
+    } finally {
+      if (!isSilent) setLoadingDetails(false);
+    }
+  }, []);
+
+  const fetchUserRequests = useCallback(async () => {
+    setLoadingUserRequests(true);
+    try {
+      let storedIds = [];
+      try {
+        storedIds = JSON.parse(localStorage.getItem('sahijob_support_request_ids') || '[]');
+      } catch (_) {}
+
+      // Include active request ID or selected request ID if available
+      try {
+        const active = JSON.parse(localStorage.getItem('sahijob_active_support_request') || 'null');
+        if (active?.id && !storedIds.includes(active.id)) {
+          storedIds.unshift(active.id);
+        }
+      } catch (_) {}
+
+      if (activeRequest?.id && !storedIds.includes(activeRequest.id)) {
+        storedIds.unshift(activeRequest.id);
+      }
+      if (selectedRequestId && !storedIds.includes(selectedRequestId)) {
+        storedIds.unshift(selectedRequestId);
+      }
+
+      // Sync unique IDs back to localStorage
+      try {
+        if (storedIds.length > 0) {
+          localStorage.setItem('sahijob_support_request_ids', JSON.stringify([...new Set(storedIds)]));
+        }
+      } catch (_) {}
+
+      const activeToken = authData.isLoggedIn ? authData.token : null;
+      const headers = {};
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+
+      // Robust email extraction across all possible storage places
+      let emailParam = authData.email;
+      if (!emailParam) {
+        try {
+          const emp = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+          if (emp.email) emailParam = emp.email;
+        } catch (_) {}
+      }
+      if (!emailParam) {
+        try {
+          const prof = JSON.parse(localStorage.getItem('userProfile') || '{}');
+          if (prof.email) emailParam = prof.email;
+        } catch (_) {}
+      }
+      if (!emailParam) {
+        try {
+          const active = JSON.parse(localStorage.getItem('sahijob_active_support_request') || '{}');
+          if (active.email) emailParam = active.email;
+        } catch (_) {}
+      }
+      if (!emailParam) {
+        emailParam = contactForm.email || '';
+      }
+
+      // Robust phone extraction
+      let phoneParam = authData.phone || loggedInPhoneInput || '';
+      if (!phoneParam) {
+        try {
+          const emp = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+          if (emp.mobile || emp.phone) phoneParam = (emp.mobile || emp.phone).toString();
+        } catch (_) {}
+      }
+      if (!phoneParam) {
+        try {
+          const prof = JSON.parse(localStorage.getItem('userProfile') || '{}');
+          if (prof.mobile || prof.phone) phoneParam = (prof.mobile || prof.phone).toString();
+        } catch (_) {}
+      }
+
+      const queryParts = [];
+      if (emailParam) queryParts.push(`email=${encodeURIComponent(emailParam.trim().toLowerCase())}`);
+      if (phoneParam) queryParts.push(`phone=${encodeURIComponent(phoneParam.replace(/\D/g, '').slice(-10))}`);
+      if (storedIds.length > 0) queryParts.push(`ids=${encodeURIComponent(storedIds.join(','))}`);
+
+      const res = await fetch(`${API_URL}/api/support/my-requests?${queryParts.join('&')}`, { headers });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setUserRequests(json.data);
+
+        // Update storedIds with all IDs returned by server
+        const fetchedIds = json.data.map((r) => r._id).filter(Boolean);
+        const merged = [...new Set([...storedIds, ...fetchedIds])];
+        if (merged.length > 0) {
+          try {
+            localStorage.setItem('sahijob_support_request_ids', JSON.stringify(merged));
+          } catch (_) {}
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching user requests:', err);
+    } finally {
+      setLoadingUserRequests(false);
+    }
+  }, [authData.isLoggedIn, authData.token, authData.email, authData.phone, contactForm.email, loggedInPhoneInput, activeRequest?.id, selectedRequestId]);
 
   // ---------------------------------------------------------------------------
   // SYNC AUTH ON EVENT / PERIODICALLY WHEN OPEN
@@ -214,15 +403,23 @@ export default function SupportWidget() {
     };
   }, [isOpen, syncAuthState]);
 
-  // When widget opens: refresh problems & details
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchQuickReplies();
+  }, [fetchQuickReplies]);
+
+  // When widget opens: refresh problems, quick replies, requests list & details
   useEffect(() => {
     if (isOpen) {
       fetchProblems();
-      if (activeRequest?.id) {
-        fetchRequestDetails(activeRequest.id);
+      fetchQuickReplies();
+      fetchUserRequests();
+      const targetId = selectedRequestId || activeRequest?.id;
+      if (targetId) {
+        fetchRequestDetails(targetId);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, activeTab, fetchProblems, fetchQuickReplies, fetchUserRequests, fetchRequestDetails, selectedRequestId, activeRequest?.id]);
 
   // Close panel on Escape key
   useEffect(() => {
@@ -246,8 +443,9 @@ export default function SupportWidget() {
   // SOCKET.IO REAL-TIME SUPPORT CHAT INTEGRATION
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (!activeRequest?.id) return;
-    const reqId = activeRequest.id.toString();
+    const currentId = selectedRequestId || activeRequest?.id;
+    if (!currentId) return;
+    const reqId = currentId.toString();
 
     if (!socket.connected) {
       socket.connect();
@@ -273,6 +471,7 @@ export default function SupportWidget() {
             hasUnreadAdminReply: payload.hasUnreadAdminReply ?? true,
           };
         });
+        fetchUserRequests();
       }
     };
 
@@ -280,6 +479,7 @@ export default function SupportWidget() {
       const payloadId = (payload?.requestId || payload?._id || '').toString();
       if (payloadId === reqId) {
         setRequestDetails((prev) => (prev ? { ...prev, status: payload.status } : null));
+        fetchUserRequests();
       }
     };
 
@@ -300,55 +500,21 @@ export default function SupportWidget() {
       socket.off('support_status_change', handleStatusChange);
       socket.off('support_request_deleted', handleDeleted);
     };
-  }, [activeRequest?.id]);
+  }, [selectedRequestId, activeRequest?.id, fetchUserRequests]);
 
   // Periodic silent polling backup (every 3s) while widget is open & on updates tab
   useEffect(() => {
-    if (!isOpen || activeTab !== 'upd' || !activeRequest?.id) return;
+    const targetId = selectedRequestId || activeRequest?.id;
+    if (!isOpen || activeTab !== 'upd' || !targetId) return;
     const timer = setInterval(() => {
-      fetchRequestDetails(activeRequest.id, true);
+      fetchRequestDetails(targetId, true);
     }, 3000);
     return () => clearInterval(timer);
-  }, [isOpen, activeTab, activeRequest?.id]);
-
-  // ---------------------------------------------------------------------------
-  // API CALLS (Existing endpoints reused exactly)
-  // ---------------------------------------------------------------------------
-  const fetchProblems = async () => {
-    setLoadingProblems(true);
-    setProblemFetchError('');
-    try {
-      const res = await fetch(`${API_URL}/api/support/problems`);
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setProblems(data.data);
-      } else {
-        setProblemFetchError(data.message || 'Unable to load support options');
-      }
-    } catch (_) {
-      setProblemFetchError('Unable to connect to support service. Please try again.');
-    } finally {
-      setLoadingProblems(false);
-    }
-  };
-
-  const fetchRequestDetails = async (reqId, isSilent = false) => {
-    if (!reqId) return;
-    if (!isSilent) setLoadingDetails(true);
-    try {
-      const res = await fetch(`${API_URL}/api/support/requests/${reqId}/messages`);
-      const data = await res.json();
-      if (data.success && data.data) {
-        setRequestDetails(data.data);
-      }
-    } catch (_) {
-    } finally {
-      if (!isSilent) setLoadingDetails(false);
-    }
-  };
+  }, [isOpen, activeTab, selectedRequestId, activeRequest?.id, fetchRequestDetails]);
 
   const handleSendFollowUpOption = async (optionText) => {
-    if (!activeRequest?.id || sendingFollowUp) return;
+    const currentReqId = selectedRequestId || activeRequest?.id;
+    if (!currentReqId || sendingFollowUp) return;
     setSendingFollowUp(true);
     setFollowUpSuccessMsg('');
 
@@ -364,7 +530,7 @@ export default function SupportWidget() {
     } : prev));
 
     try {
-      const res = await fetch(`${API_URL}/api/support/requests/${activeRequest.id}/followup`, {
+      const res = await fetch(`${API_URL}/api/support/requests/${currentReqId}/followup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ optionText }),
@@ -419,9 +585,94 @@ export default function SupportWidget() {
     setSubmitError('');
   };
 
+  const handleSaveLoggedInPhone = async (e) => {
+    if (e) e.preventDefault();
+    const cleanDigits = (loggedInPhoneInput || '').replace(/\D/g, '');
+
+    if (countryCode === '+91') {
+      if (!/^[6-9]\d{9}$/.test(cleanDigits)) {
+        setLoggedInPhoneError('Please enter a valid 10-digit mobile number');
+        return;
+      }
+    } else {
+      if (!/^\d{7,15}$/.test(cleanDigits)) {
+        setLoggedInPhoneError('Please enter a valid mobile number');
+        return;
+      }
+    }
+
+    setLoggedInPhoneError('');
+    setIsSavingPhone(true);
+
+    try {
+      const activeToken = authData.token;
+      const headers = { 'Content-Type': 'application/json' };
+      if (activeToken) {
+        headers['Authorization'] = `Bearer ${activeToken}`;
+      }
+
+      const res = await fetch(`${API_URL}/api/support/update-phone`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          phone: cleanDigits,
+          countryCode,
+          email: authData.email,
+          targetRole: authData.backendRole,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAuthData((prev) => ({
+          ...prev,
+          phone: cleanDigits,
+          countryCode,
+        }));
+        setIsEditingPhone(false);
+
+        // Update localStorage across all 3 verticals
+        // 1. Employee / Candidate
+        try {
+          const stored = localStorage.getItem('userProfile');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            parsed.mobile = cleanDigits;
+            parsed.phone = cleanDigits;
+            parsed.countryCode = countryCode;
+            localStorage.setItem('userProfile', JSON.stringify(parsed));
+          }
+        } catch (_) {}
+
+        // 2 & 3. Employer & Consultant
+        try {
+          const storedEmp = localStorage.getItem('employerInfo');
+          if (storedEmp) {
+            const parsedEmp = JSON.parse(storedEmp);
+            parsedEmp.mobile = cleanDigits;
+            parsedEmp.phone = cleanDigits;
+            parsedEmp.countryCode = countryCode;
+            localStorage.setItem('employerInfo', JSON.stringify(parsedEmp));
+          }
+        } catch (_) {}
+      } else {
+        setLoggedInPhoneError(data.message || 'Failed to save mobile number.');
+      }
+    } catch (_) {
+      setLoggedInPhoneError('Network error while saving phone number. Please try again.');
+    } finally {
+      setIsSavingPhone(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!selectedProblemId || isSubmitting) return;
+    if ((!selectedProblemId && !customProblemText.trim()) || isSubmitting) {
+      if (!selectedProblemId && !customProblemText.trim()) {
+        setSubmitError('Please select a problem from the list or type your issue.');
+      }
+      return;
+    }
 
     // For guest users, verify contact details are filled
     if (!authData.isLoggedIn) {
@@ -429,6 +680,20 @@ export default function SupportWidget() {
         setGuestStep(1);
         return;
       }
+    } else {
+      // For logged-in users, verify they have a valid phone number
+      const currentPhone = (loggedInPhoneInput.trim() || authData.phone || '').replace(/\D/g, '');
+      const isInvalid = countryCode === '+91'
+        ? !/^[6-9]\d{9}$/.test(currentPhone)
+        : !/^\d{7,15}$/.test(currentPhone);
+
+      if (isInvalid) {
+        setIsEditingPhone(true);
+        setLoggedInPhoneError(countryCode === '+91' ? 'Please enter a valid 10-digit mobile number' : 'Please enter a valid mobile number');
+        setSubmitError('');
+        return;
+      }
+      setLoggedInPhoneError('');
     }
 
     setIsSubmitting(true);
@@ -450,24 +715,25 @@ export default function SupportWidget() {
         : contactForm.email.trim().toLowerCase();
 
       const rawPhone = authData.isLoggedIn
-        ? (authData.phone || '')
+        ? (loggedInPhoneInput.trim() || authData.phone || '')
         : contactForm.phone.trim();
 
       const fullPhone = rawPhone
-        ? (authData.isLoggedIn
-            ? (rawPhone.startsWith('+') ? rawPhone : `+91 ${rawPhone}`)
-            : `${countryCode} ${rawPhone}`)
+        ? (rawPhone.startsWith('+') ? rawPhone : `${countryCode} ${rawPhone.replace(/\D/g, '')}`)
         : '';
+
       const targetRole = authData.isLoggedIn
         ? authData.backendRole
         : (guestRole === 'candidate' ? 'employee' : guestRole);
 
       const bodyPayload = {
-        problemId: selectedProblemId,
+        problemId: selectedProblemId || null,
+        customProblemText: customProblemText.trim(),
         targetRole,
         name: activeName,
         email: activeEmail,
         phone: fullPhone,
+        countryCode,
       };
 
       const res = await fetch(`${API_URL}/api/support/requests`, {
@@ -478,6 +744,40 @@ export default function SupportWidget() {
 
       const data = await res.json();
       if (res.ok && data.success) {
+        // Automatically update local state and storage for all 3 verticals
+        if (authData.isLoggedIn && rawPhone) {
+          const cleanDigits = rawPhone.replace(/\D/g, '');
+          setAuthData(prev => ({
+            ...prev,
+            phone: cleanDigits
+          }));
+          setIsEditingPhone(false);
+
+          // 1. Candidate / Employee
+          try {
+            const stored = localStorage.getItem('userProfile');
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              parsed.mobile = cleanDigits;
+              parsed.phone = cleanDigits;
+              parsed.countryCode = countryCode;
+              localStorage.setItem('userProfile', JSON.stringify(parsed));
+            }
+          } catch (_) {}
+
+          // 2 & 3. Employer & Consultant
+          try {
+            const storedEmp = localStorage.getItem('employerInfo');
+            if (storedEmp) {
+              const parsedEmp = JSON.parse(storedEmp);
+              parsedEmp.mobile = cleanDigits;
+              parsedEmp.phone = cleanDigits;
+              parsedEmp.countryCode = countryCode;
+              localStorage.setItem('employerInfo', JSON.stringify(parsedEmp));
+            }
+          } catch (_) {}
+        }
+
         const reqInfo = {
           id: data.data._id,
           problemText: data.data.problemText,
@@ -485,8 +785,18 @@ export default function SupportWidget() {
           submittedAt: Date.now(),
         };
         localStorage.setItem('sahijob_active_support_request', JSON.stringify(reqInfo));
+        try {
+          const storedList = JSON.parse(localStorage.getItem('sahijob_support_request_ids') || '[]');
+          if (!storedList.includes(data.data._id)) {
+            storedList.unshift(data.data._id);
+            localStorage.setItem('sahijob_support_request_ids', JSON.stringify(storedList));
+          }
+        } catch (_) {}
+
         setActiveRequest(reqInfo);
+        setSelectedRequestId(data.data._id);
         fetchRequestDetails(reqInfo.id);
+        fetchUserRequests();
 
         setSubmitSuccess(true);
       } else {
@@ -502,8 +812,11 @@ export default function SupportWidget() {
   // Reset to create a new request
   const handleStartNewRequest = () => {
     setSelectedProblemId('');
+    setCustomProblemText('');
     setSubmitSuccess(false);
     setSubmitError('');
+    setIsEditingPhone(false);
+    setLoggedInPhoneError('');
     setActiveTab('new');
     if (!authData.isLoggedIn) {
       setGuestStep(1);
@@ -517,6 +830,7 @@ export default function SupportWidget() {
     } catch (_) {}
     setActiveRequest(null);
     setRequestDetails(null);
+    setSelectedRequestId(null);
     handleStartNewRequest();
   };
 
@@ -533,10 +847,14 @@ export default function SupportWidget() {
 
   // Unread badge indicator for Updates & Chat tab
   const hasUnread = Boolean(
-    activeRequest &&
-    activeTab !== 'upd' &&
-    (requestDetails?.hasUnreadAdminReply || requestDetails?.status !== 'resolved')
+    userRequests.some((r) => r.hasUnreadAdminReply) ||
+    (requestDetails?.hasUnreadAdminReply && activeTab !== 'upd')
   );
+
+  // Hide widget completely on admin routes
+  if (location.pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <>
@@ -624,7 +942,10 @@ export default function SupportWidget() {
             aria-selected={activeTab === 'upd'}
             onClick={() => {
               setActiveTab('upd');
-              if (activeRequest?.id) fetchRequestDetails(activeRequest.id);
+              fetchUserRequests();
+              if (selectedRequestId) {
+                fetchRequestDetails(selectedRequestId);
+              }
             }}
           >
             Updates &amp; chat
@@ -636,20 +957,43 @@ export default function SupportWidget() {
         <div className="sj-body" id="sjBody">
           {/* TAB 1: UPDATES & CHAT */}
           {activeTab === 'upd' ? (
-            !activeRequest ? (
-              <div className="sj-empty">
-                <b>No active requests</b>
-                When you submit a request, its status and replies will show here.
-              </div>
-            ) : (
+            selectedRequestId && (requestDetails || activeRequest) ? (
+              /* DETAIL / CHAT VIEW FOR SELECTED REQUEST */
               <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRequestId(null);
+                      fetchUserRequests();
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--g800)',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: '4px 0',
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                    <span>All requests ({userRequests.length || 1})</span>
+                  </button>
+                </div>
+
                 {/* Request Status Banner */}
                 <div className="sj-status">
                   <span className={`sj-badge ${requestDetails?.status === 'resolved' ? 'done' : ''}`}>
                     {requestDetails?.status === 'resolved' ? 'Resolved' : 'In progress'}
                   </span>
                   <small>Request status</small>
-                  <b>{requestDetails?.problemText || activeRequest.problemText}</b>
+                  <b>{requestDetails?.problemText || activeRequest?.problemText}</b>
                 </div>
 
                 {/* Follow-up success notification */}
@@ -690,7 +1034,10 @@ export default function SupportWidget() {
                 {requestDetails?.status !== 'resolved' && (
                   <div className="sj-quick">
                     <p>Send a quick update to support</p>
-                    {(requestDetails?.allowedFollowUps || DEFAULT_QUICK_REPLIES).map((opt, i) => (
+                    {((requestDetails?.allowedFollowUps && requestDetails.allowedFollowUps.length > 0)
+                      ? requestDetails.allowedFollowUps
+                      : quickRepliesList
+                    ).map((opt, i) => (
                       <button
                         key={i}
                         type="button"
@@ -703,6 +1050,105 @@ export default function SupportWidget() {
                   </div>
                 )}
               </>
+            ) : (
+              /* LIST VIEW OF ALL USER'S REQUESTS */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <b style={{ fontSize: '14px', color: 'var(--ink)' }}>Your Support Requests</b>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink3)' }}>
+                    {userRequests.length} total
+                  </span>
+                </div>
+
+                {loadingUserRequests && userRequests.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', fontSize: '12px', color: 'var(--ink3)' }}>
+                    Loading your requests...
+                  </div>
+                ) : userRequests.length === 0 ? (
+                  <div className="sj-empty" style={{ padding: '30px 10px' }}>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 8px' }}>
+                      <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5Z" />
+                    </svg>
+                    <b>No support requests found</b>
+                    <p style={{ fontSize: '12px', color: 'var(--ink3)', marginTop: '4px' }}>
+                      You haven't submitted any requests yet. Start a new request below.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {userRequests.map((req) => {
+                      const isResolved = req.status === 'resolved';
+                      const createdStr = req.createdAt
+                        ? new Date(req.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) +
+                          ' • ' +
+                          new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : '';
+
+                      return (
+                        <div
+                          key={req._id}
+                          className="sj-req-card"
+                          onClick={() => {
+                            setSelectedRequestId(req._id);
+                            fetchRequestDetails(req._id);
+                          }}
+                          style={{
+                            padding: '12px 14px',
+                            borderRadius: '12px',
+                            border: '1.5px solid var(--line)',
+                            background: '#ffffff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <span
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                fontSize: '10.5px',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                background: isResolved ? '#dcfce7' : '#fef3c7',
+                                color: isResolved ? '#166534' : '#92400e',
+                                border: `1px solid ${isResolved ? '#bbf7d0' : '#fde68a'}`,
+                              }}
+                            >
+                              {isResolved ? 'Resolved' : 'In progress'}
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#64748b' }}>{createdStr}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '13px', color: '#16211a', lineHeight: '1.3' }}>
+                              {req.problemText}
+                            </span>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                              <path d="m9 18 6-6-6-6" />
+                            </svg>
+                          </div>
+
+                          {req.description && (
+                            <div style={{ fontSize: '11.5px', color: '#64748b', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              "{req.description}"
+                            </div>
+                          )}
+
+                          {req.hasUnreadAdminReply && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+                              New reply from support
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )
           ) : submitSuccess ? (
             /* SUCCESS STATE AFTER SUBMISSION */
@@ -819,20 +1265,129 @@ export default function SupportWidget() {
                 )}
               </div>
             </form>
+          ) : authData.isLoggedIn && (!authData.phone || isEditingPhone) ? (
+            /* =========================================================
+             * B) LOGGED-IN STEP: ENTER PHONE NUMBER FIRST (ONLY PHONE SHOWN)
+             * ========================================================= */
+            <form onSubmit={handleSaveLoggedInPhone} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* User summary chip */}
+              <div className="sj-chip">
+                <div className="sj-av">{getInitials(authData.name)}</div>
+                <div className="grow">
+                  <b>Hi, {getFirstName(authData.name)}</b>
+                  <span>{authData.email || 'Logged in user'}</span>
+                </div>
+                {isEditingPhone && authData.phone && (
+                  <button
+                    type="button"
+                    className="sj-link"
+                    style={{ color: '#64748b', fontSize: '11px', fontWeight: 600 }}
+                    onClick={() => {
+                      setIsEditingPhone(false);
+                      setLoggedInPhoneError('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {/* Title & description */}
+              <div className="sj-title" style={{ marginTop: '2px' }}>
+                <div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 800 }}>Enter your mobile number</h3>
+                  <p style={{ fontSize: '12px', color: 'var(--ink3)', marginTop: '2px' }}>
+                    Please provide your contact number so our support team can assist you over call.
+                  </p>
+                </div>
+              </div>
+
+              {/* Mobile Input with Country Code */}
+              <div className="sj-field">
+                <label htmlFor="fLoggedInPhoneOnly" style={{ fontWeight: 700, fontSize: '12px', color: 'var(--ink)' }}>
+                  Contact mobile number <i style={{ color: 'var(--err)', fontStyle: 'normal' }}>*</i>
+                </label>
+                <div className="sj-phone">
+                  <div className="sj-cc-wrap" title="Select country code">
+                    <span className="sj-cc-flag">{currentCountry.flag}</span>
+                    <span className="sj-cc-code">{countryCode}</span>
+                    <svg className="sj-cc-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                    <select
+                      id="fLoggedInPhoneOnlyCC"
+                      className="sj-cc-select-overlay"
+                      value={countryCode}
+                      onChange={(e) => {
+                        setCountryCode(e.target.value);
+                        if (loggedInPhoneError) setLoggedInPhoneError('');
+                      }}
+                      aria-label="Select Country Code"
+                    >
+                      {COUNTRY_CODES.map((c, i) => (
+                        <option key={`${c.country}-${c.code}-${i}`} value={c.code}>
+                          {c.flag} {c.code} &mdash; {c.name.split(' (')[0]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    id="fLoggedInPhoneOnly"
+                    type="tel"
+                    autoFocus
+                    inputMode="numeric"
+                    maxLength={countryCode === '+91' ? 10 : 15}
+                    className={`sj-input ${loggedInPhoneError ? 'bad' : ''}`}
+                    autoComplete="tel-national"
+                    placeholder={countryCode === '+91' ? 'Enter 10-digit mobile number' : 'Enter mobile number'}
+                    value={loggedInPhoneInput}
+                    onChange={(e) => {
+                      const maxLen = countryCode === '+91' ? 10 : 15;
+                      const clean = e.target.value.replace(/\D/g, '').slice(0, maxLen);
+                      setLoggedInPhoneInput(clean);
+                      if (loggedInPhoneError) setLoggedInPhoneError('');
+                    }}
+                  />
+                </div>
+                {loggedInPhoneError ? (
+                  <div className="sj-err" style={{ marginTop: '4px' }}>{loggedInPhoneError}</div>
+                ) : (
+                  <div className="sj-hint" style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                    {countryCode === '+91'
+                      ? 'This 10-digit number will be linked to your profile.'
+                      : 'This number will be linked to your profile.'}
+                  </div>
+                )}
+              </div>
+            </form>
           ) : (
             /* =========================================================
-             * B) STEP 2 (GUEST) OR DIRECT ISSUE VIEW (LOGGED-IN USER)
+             * C) STEP 2 (GUEST) OR DIRECT ISSUE VIEW (LOGGED-IN WITH PHONE)
              * ========================================================= */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* User summary card */}
               {authData.isLoggedIn ? (
-                /* Logged-In User Card: Avatar, Name, Email, Role badge */
+                /* Logged-In User Card: Avatar, Name, Email, Phone and Change button */
                 <div className="sj-chip">
                   <div className="sj-av">{getInitials(authData.name)}</div>
                   <div className="grow">
                     <b>Hi, {getFirstName(authData.name)}</b>
-                    <span>{authData.email || 'Logged in user'}</span>
+                    <span>
+                      {authData.email || 'Logged in user'}
+                      {authData.phone ? ` · ${countryCode} ${authData.phone}` : ''}
+                    </span>
                   </div>
+                  <button
+                    type="button"
+                    className="sj-link"
+                    style={{ color: 'var(--g800)', fontSize: '11px', fontWeight: 700 }}
+                    onClick={() => {
+                      setIsEditingPhone(true);
+                      setLoggedInPhoneError('');
+                    }}
+                  >
+                    Change No.
+                  </button>
                 </div>
               ) : (
                 /* Guest summary chip with Back & Edit buttons */
@@ -951,6 +1506,66 @@ export default function SupportWidget() {
                   })}
                 </ul>
               )}
+
+              {/* Type your problem custom text field */}
+              <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label
+                  htmlFor="fCustomProblem"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    color: 'var(--ink)',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--g600)' }}>
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                    Type your problem <i style={{ color: 'var(--ink3)', fontWeight: 400, fontStyle: 'normal' }}>(describe your issue)</i>
+                  </span>
+                  {customProblemText && (
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
+                      {customProblemText.length}/500
+                    </span>
+                  )}
+                </label>
+                <textarea
+                  id="fCustomProblem"
+                  rows={3}
+                  maxLength={500}
+                  className="sj-input"
+                  style={{
+                    resize: 'vertical',
+                    minHeight: '74px',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    lineHeight: '1.45',
+                    borderRadius: '12px',
+                    border: '1.5px solid var(--line)',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box',
+                  }}
+                  placeholder={
+                    selectedProblemId
+                      ? 'Write additional details about your problem here (optional)...'
+                      : 'Describe what problem you are facing in your own words...'
+                  }
+                  value={customProblemText}
+                  onChange={(e) => {
+                    setCustomProblemText(e.target.value);
+                    if (submitError) setSubmitError('');
+                  }}
+                />
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  {selectedProblemId
+                    ? 'Optional: You can provide specific details or error messages.'
+                    : 'You can type your problem directly if it is not listed above.'}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -958,14 +1573,38 @@ export default function SupportWidget() {
         {/* Panel Footer (Sticky Bottom) */}
         <footer className="sj-foot" id="sjFoot">
           {activeTab === 'upd' ? (
-            <button
-              type="button"
-              className="sj-btn sj-btn-secondary"
-              id="startNew"
-              onClick={handleClearAndNewRequest}
-            >
-              Start a new request
-            </button>
+            selectedRequestId ? (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="sj-btn sj-btn-secondary"
+                  onClick={() => {
+                    setSelectedRequestId(null);
+                    fetchUserRequests();
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  ← All requests
+                </button>
+                <button
+                  type="button"
+                  className="sj-btn"
+                  onClick={handleClearAndNewRequest}
+                  style={{ flex: 1 }}
+                >
+                  + New request
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="sj-btn"
+                id="startNew"
+                onClick={handleStartNewRequest}
+              >
+                + Start a new request
+              </button>
+            )
           ) : submitSuccess ? (
             <button
               type="button"
@@ -974,7 +1613,11 @@ export default function SupportWidget() {
               onClick={() => {
                 setSubmitSuccess(false);
                 setActiveTab('upd');
-                if (activeRequest?.id) fetchRequestDetails(activeRequest.id);
+                fetchUserRequests();
+                if (activeRequest?.id) {
+                  setSelectedRequestId(activeRequest.id);
+                  fetchRequestDetails(activeRequest.id);
+                }
               }}
             >
               View updates
@@ -991,19 +1634,38 @@ export default function SupportWidget() {
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </button>
+          ) : authData.isLoggedIn && (!authData.phone || isEditingPhone) ? (
+            <button
+              type="button"
+              className="sj-btn"
+              id="savePhoneContinue"
+              disabled={isSavingPhone}
+              onClick={handleSaveLoggedInPhone}
+            >
+              {isSavingPhone ? (
+                'Saving…'
+              ) : (
+                <>
+                  <span>Save &amp; Continue</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
+                </>
+              )}
+            </button>
           ) : (
             <button
               type="button"
               className="sj-btn"
               id="sjSend"
-              disabled={!selectedProblemId || isSubmitting}
+              disabled={(!selectedProblemId && !customProblemText.trim()) || isSubmitting}
               onClick={handleSubmit}
             >
               {isSubmitting
                 ? 'Sending…'
-                : selectedProblemId
+                : (selectedProblemId || customProblemText.trim())
                 ? 'Submit request'
-                : 'Select an issue above'}
+                : 'Select or type an issue above'}
             </button>
           )}
         </footer>

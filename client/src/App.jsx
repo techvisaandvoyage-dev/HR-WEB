@@ -727,7 +727,7 @@ function App() {
                 }}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder={homepageConfig?.searchBar?.jobPlaceholder || 'Job title...'} 
-                className="w-full bg-transparent border-none outline-none px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium"
+                className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium shadow-none ring-0"
               />
               {showSuggestions && searchJobTitle && (
                 <div className="absolute top-[110%] left-0 w-[120%] bg-white rounded-2xl shadow-xl border border-palette-100 py-2 z-[100] max-h-64 overflow-y-auto text-left">
@@ -761,7 +761,7 @@ function App() {
                 value={searchLocation}
                 onChange={setSearchLocation}
                 placeholder={homepageConfig?.searchBar?.locationPlaceholder || 'City, state, or country...'}
-                className="w-full bg-transparent border-none outline-none px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium"
+                className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent px-3 md:px-4 text-palette-900 placeholder-palette-900/40 text-base md:text-lg font-medium shadow-none ring-0"
               />
             </div>
             

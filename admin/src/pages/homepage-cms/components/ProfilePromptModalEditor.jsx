@@ -25,11 +25,11 @@ export const DEFAULT_PROFILE_MODAL_CONFIG = {
   isEnabled: true,
   modalIcon: '📝',
   title: 'Complete Your Profile Details',
-  subtitle: 'Apni education, experience aur personal details fill karein taaki recruiters aapko top matching jobs ke liye direct shortlist kar sakein!',
+  subtitle: 'Fill in your education, experience, and personal details so recruiters can directly shortlist you for top matching jobs!',
   showBenefitBanner: true,
   benefitIcon: '⚡',
-  benefitText: 'Complete profile hone se candidates ko 5x jyada interview calls aur direct employer messages milte hain.',
-  benefitHighlightText: '5x jyada interview calls',
+  benefitText: 'Candidates with a complete profile receive 5x more interview calls and direct employer messages.',
+  benefitHighlightText: '5x more interview calls',
   primaryButtonText: 'Fill Details Now →',
   primaryButtonLink: '/employee/onboarding',
   secondaryButtonText: 'Explore Jobs First',
@@ -203,14 +203,19 @@ export default function ProfilePromptModalEditor({ onSaveSuccess }) {
 
               <button
                 type="button"
+                role="switch"
+                aria-checked={config.isEnabled}
                 onClick={() => handleChange('isEnabled', !config.isEnabled)}
-                className="cursor-pointer transition-transform active:scale-95 text-emerald-600"
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                  config.isEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+                }`}
               >
-                {config.isEnabled ? (
-                  <ToggleRight className="w-9 h-9 fill-emerald-600 text-white" />
-                ) : (
-                  <ToggleLeft className="w-9 h-9 text-gray-300" />
-                )}
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    config.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
               </button>
             </div>
 
@@ -287,14 +292,19 @@ export default function ProfilePromptModalEditor({ onSaveSuccess }) {
                 </div>
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={config.showCloseButton}
                   onClick={() => handleChange('showCloseButton', !config.showCloseButton)}
-                  className="cursor-pointer text-emerald-600"
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                    config.showCloseButton ? 'bg-emerald-600' : 'bg-gray-300'
+                  }`}
                 >
-                  {config.showCloseButton ? (
-                    <ToggleRight className="w-8 h-8 fill-emerald-600 text-white" />
-                  ) : (
-                    <ToggleLeft className="w-8 h-8 text-gray-300" />
-                  )}
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      config.showCloseButton ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
                 </button>
               </div>
             </div>
@@ -308,14 +318,19 @@ export default function ProfilePromptModalEditor({ onSaveSuccess }) {
                 </h3>
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={config.showBenefitBanner}
                   onClick={() => handleChange('showBenefitBanner', !config.showBenefitBanner)}
-                  className="cursor-pointer text-emerald-600"
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                    config.showBenefitBanner ? 'bg-emerald-600' : 'bg-gray-300'
+                  }`}
                 >
-                  {config.showBenefitBanner ? (
-                    <ToggleRight className="w-8 h-8 fill-emerald-600 text-white" />
-                  ) : (
-                    <ToggleLeft className="w-8 h-8 text-gray-300" />
-                  )}
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      config.showBenefitBanner ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
                 </button>
               </div>
 
@@ -455,7 +470,7 @@ export default function ProfilePromptModalEditor({ onSaveSuccess }) {
                       {config.title || 'Complete Your Profile Details'}
                     </h3>
                     <p className="text-[11px] text-gray-600 leading-relaxed">
-                      {config.subtitle || 'Apni education, experience aur personal details fill karein taaki recruiters aapko top matching jobs ke liye direct shortlist kar sakein!'}
+                      {config.subtitle || 'Fill in your education, experience, and personal details so recruiters can directly shortlist you for top matching jobs!'}
                     </p>
                   </div>
 

@@ -10,11 +10,17 @@ const SupportRequestSchema = new mongoose.Schema({
   problemId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SupportProblem',
-    required: true,
+    required: false,
+    default: null,
   },
   problemText: {
     type: String,
     required: true,
+    trim: true,
+  },
+  description: {
+    type: String,
+    default: '',
     trim: true,
   },
   userType: {

@@ -218,12 +218,15 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [cvError, setCvError] = useState('');
   const [showCvModal, setShowCvModal] = useState(false);
+  const [showJobDetailsModal, setShowJobDetailsModal] = useState(false);
   const fileInputRef = useRef(null);
 
   // Submission state (Step 4 & 5)
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [alreadyApplied, setAlreadyApplied] = useState(false);
+  // Account / Profile Visibility preference: 'private' (permanent default) | 'public'
+  const [profileVisibility, setProfileVisibility] = useState('private');
 
   // Dynamic CMS Configuration from Admin
   const [cmsConfig, setCmsConfig] = useState(null);
@@ -327,47 +330,93 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const loginEmailConfig = getFieldConfig('loginEmail', 'Email ID', 'Tell us your Email ID', true);
   const loginPasswordConfig = getFieldConfig('loginPassword', 'Password', 'Your password', true);
 
-  // Check initial user login from localStorage
+  // Check initial user login from localStorage and restore session on page refresh
   useEffect(() => {
-    // Clean up generic keys that might conflict
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-
-    // If current browser session is an employer/consultant, do NOT treat them as candidate/employee!
-    // Employer and employee accounts are strictly separate.
-    if (localStorage.getItem('employerToken')) {
-      setUser(null);
-      setToken('');
-      return;
-    }
-
-    // ONLY check specific employeeToken and employeeUser
-    const storedToken = localStorage.getItem('employeeToken');
-    const storedUserStr = localStorage.getItem('employeeUser');
+    // Check specific employeeToken, or fallback to token
+    const storedToken = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+    const storedUserStr = localStorage.getItem('employeeUser') || localStorage.getItem('userProfile');
     
-    if (storedToken && storedUserStr) {
-      try {
-        const parsed = JSON.parse(storedUserStr);
-        if (parsed && (parsed.role === 'employee' || parsed.email)) {
-          setToken(storedToken);
-          setUser(parsed);
-          if (parsed.resume) {
-            setResumeUrl(parsed.resume);
-            setResumeName(parsed.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
-          }
-          if (parsed.mobile) setAuthMobile(parsed.mobile);
-          if (parsed.name) setAuthName(parsed.name);
-          if (parsed.email) setAuthEmail(parsed.email);
-          fetchUserProfile(storedToken);
-          if (jobId) {
-            checkApplicationStatus(storedToken, jobId);
-          }
+    if (storedToken) {
+      setToken(storedToken);
+
+      let parsed = null;
+      if (storedUserStr) {
+        try {
+          parsed = JSON.parse(storedUserStr);
+        } catch (_) {}
+      }
+
+      if (parsed) {
+        setUser(parsed);
+        if (parsed.resume) {
+          setResumeUrl(parsed.resume);
+          setResumeName(parsed.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
         }
-      } catch (e) {
-        console.error(e);
+        if (parsed.mobile || parsed.phone) setAuthMobile(parsed.mobile || parsed.phone);
+        if (parsed.name || parsed.firstName) setAuthName(parsed.name || `${parsed.firstName || ''} ${parsed.lastName || ''}`.trim());
+        if (parsed.email) setAuthEmail(parsed.email);
+      }
+
+      // Fetch profile silently to get latest resume / phone / profile info
+      fetchUserProfile(storedToken);
+
+      // Restore session step, screening answers, and visibility for this job
+      if (jobId) {
+        checkApplicationStatus(storedToken, jobId).then((hasApplied) => {
+          if (!hasApplied) {
+            try {
+              const savedStep = sessionStorage.getItem(`apply_step_${jobId}`);
+              if (savedStep && ['2', '3'].includes(savedStep)) {
+                setStep(Number(savedStep));
+              } else {
+                // If candidate is already logged in, automatically go to Step 2
+                setStep(2);
+              }
+
+              const savedAnswers = sessionStorage.getItem(`apply_answers_${jobId}`);
+              if (savedAnswers) {
+                setScreeningAnswers(JSON.parse(savedAnswers));
+              }
+
+              const savedVisibility = sessionStorage.getItem(`apply_visibility_${jobId}`);
+              if (savedVisibility) {
+                setProfileVisibility(savedVisibility);
+              }
+            } catch (_) {
+              setStep(2);
+            }
+          }
+        });
       }
     }
   }, [jobId]);
+
+  // Save application step to sessionStorage on changes
+  useEffect(() => {
+    if (jobId && step >= 2 && step <= 3) {
+      try {
+        sessionStorage.setItem(`apply_step_${jobId}`, String(step));
+      } catch (_) {}
+    }
+  }, [step, jobId]);
+
+  // Save screening answers to sessionStorage on changes
+  useEffect(() => {
+    if (jobId && Object.keys(screeningAnswers).length > 0) {
+      try {
+        sessionStorage.setItem(`apply_answers_${jobId}`, JSON.stringify(screeningAnswers));
+      } catch (_) {}
+    }
+  }, [screeningAnswers, jobId]);
+
+  // Save profile visibility to sessionStorage on changes
+  useEffect(() => {
+    if (jobId && profileVisibility) {
+      try {
+        sessionStorage.setItem(`apply_visibility_${jobId}`, profileVisibility);
+      } catch (_) {}
+    }
+  }, [profileVisibility, jobId]);
 
   // Check application status whenever token or jobId is available
   useEffect(() => {
@@ -416,25 +465,28 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       const res = await fetch(`${apiUrl}/api/employee/profile`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
-      const data = await res.json();
-      if (res.ok && data && data.success !== false) {
-        setUser(prev => ({ ...prev, ...data }));
-        if (data.resume) {
-          setResumeUrl(data.resume);
-          setResumeName(data.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          setUser(prev => ({ ...(prev || {}), ...data }));
+          if (data.resume) {
+            setResumeUrl(data.resume);
+            setResumeName(data.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
+          }
+          if (data.phone) setAuthMobile(data.phone);
+          if (data.email) setAuthEmail(data.email);
+          if (data.firstName) setAuthName(`${data.firstName} ${data.lastName || ''}`.trim());
         }
-        if (data.phone) setAuthMobile(data.phone);
-        if (data.email) setAuthEmail(data.email);
-        if (data.firstName) setAuthName(`${data.firstName} ${data.lastName || ''}`.trim());
-      } else {
-        // Not a valid employee token! Clear state so clean candidate login form is shown
+      } else if (res.status === 401) {
+        // Only if definitively 401 Unauthorized do we logout
         setUser(null);
         setToken('');
         localStorage.removeItem('employeeToken');
         localStorage.removeItem('employeeUser');
+        setStep(1);
       }
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      console.warn('Silent profile fetch error:', err);
     }
   };
 
@@ -808,9 +860,15 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
   // Logout/switch account
   const handleSwitchAccount = () => {
+    try {
+      sessionStorage.removeItem(`apply_step_${jobId}`);
+      sessionStorage.removeItem(`apply_answers_${jobId}`);
+      sessionStorage.removeItem(`apply_visibility_${jobId}`);
+    } catch (_) {}
     localStorage.removeItem('token');
     localStorage.removeItem('employeeToken');
     localStorage.removeItem('employeeUser');
+    localStorage.removeItem('userProfile');
     setUser(null);
     setToken('');
     setAuthEmail('');
@@ -925,6 +983,17 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     }
   };
 
+  // Remove / delete attached resume
+  const handleRemoveResume = (e) => {
+    if (e) e.stopPropagation();
+    setResumeUrl('');
+    setResumeName('');
+    setCvError('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // Step 3: Final Submit Application
   const handleSubmitFinalApplication = async () => {
     setSubmitting(true);
@@ -948,6 +1017,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           resume: resumeUrl,
           mobile: authMobile || user?.mobile || user?.phone,
           name: authName || user?.name,
+          profileVisibility,
           utmSource: getStoredAttribution()?.utmSource || undefined
         })
       });
@@ -1041,12 +1111,84 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     );
   }
 
+  // Extract full job details for display
+  const title = job?.title || 'Untitled Position';
+  const companyName = job?.company || job?.employerId?.companyName || 'Company';
+  const companyLogo = job?.companyLogo || job?.employerId?.companyLogo || '';
+  const companyInitial = job?.companyInitial || companyName.charAt(0)?.toUpperCase() || 'J';
+  const location = job?.location || job?.details?.workLocation || 'Not specified';
+  const status = job?.status || 'Active';
+  const isActive = status === 'Active';
+
+  const details = job?.details || {};
+  const jobCategory = details.jobCategory || details.category || job?.role || 'General';
+  const industry = details.industry || job?.employerId?.industry || 'General';
+  const salary = job?.salary || 'Not specified';
+  const salaryType = details.salaryType || job?.salaryType || '';
+  const jobType = details.employmentType || job?.jobType || 'Full-time';
+  const experience = details.experience || 'Not specified';
+  const workLocation = details.workLocation || job?.workLocation || 'Not specified';
+  const openings = details.openings || '1';
+  const qualification = details.qualification || 'Any Graduate';
+  const stream = details.stream || '';
+  const educationText = stream ? `${qualification} (${stream})` : qualification;
+  const applicationsCount = job?.applicationsCount !== undefined ? job?.applicationsCount : (job?.applications || 0);
+  const viewsCount = job?.views || job?.viewedBy?.length || 0;
+  const recruiterActions = job?.recruiterActions || 0;
+  const postedDate = job?.createdAt 
+    ? new Date(job.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) 
+    : 'N/A';
+
+  const aboutRoleContent = details.aboutRole || job?.aboutRole || details.about || job?.about;
+  const responsibilitiesContent = details.responsibilities || job?.responsibilities;
+  const separateDescription = job?.description && job?.description !== aboutRoleContent ? job?.description : null;
+
+  const rawSkills = details.skillsRequired || job?.skills;
+  let skillsList = [];
+  if (Array.isArray(rawSkills)) {
+    skillsList = rawSkills.map(s => (typeof s === 'string' ? s : s?.name || '')).map(s => s.replace(/[;,]+$/, '').trim()).filter(Boolean);
+  } else if (typeof rawSkills === 'string') {
+    skillsList = rawSkills.split(/[,;\n•]+/).map(s => s.replace(/[;,]+$/, '').trim()).filter(Boolean);
+  }
+
+  const extraQualifications = (job?.qualifications || [])
+    .filter(q => q && q.name && !skillsList.includes(q.name.replace(/[;,]+$/, '').trim()));
+
+  const screeningQuestions = job?.screeningQuestions || [];
+  const employer = job?.employerId || {};
+
+  const renderRichText = (content) => {
+    if (!content) return null;
+    if (typeof content !== 'string') return <div>{String(content)}</div>;
+    
+    const hasHtml = /<[a-z][\s\S]*>/i.test(content);
+    const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim();
+    if (!textOnly && !hasHtml) return null;
+
+    if (!hasHtml) {
+      return <div className="text-gray-700 leading-relaxed whitespace-pre-line text-xs font-normal">{content}</div>;
+    }
+
+    const sanitized = content
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '')
+      .replace(/on\w+='[^']*'/gi, '');
+
+    return (
+      <div 
+        className="text-gray-700 leading-relaxed text-xs font-normal space-y-2 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-2 [&>li]:mb-1 [&>strong]:font-bold [&>strong]:text-gray-900 [&>b]:font-bold [&>b]:text-gray-900 [&_a]:text-emerald-600 [&_a]:underline"
+        dangerouslySetInnerHTML={{ __html: sanitized }}
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans pb-16">
       
       {/* Top Navigation Bar */}
       <header className="bg-white border-b border-gray-200/80 sticky top-0 z-40 shadow-xs">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-green-700 to-emerald-500 flex items-center justify-center text-white font-black text-lg shadow-sm">
               S
@@ -1107,92 +1249,51 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       )}
 
       {/* Main Container */}
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-16">
         
-        {/* Job Header Card */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-extrabold text-2xl shrink-0 overflow-hidden shadow-xs">
-              {job.companyLogo ? (
-                <img src={job.companyLogo} alt={job.company} className="w-full h-full object-cover" />
+        {/* Mobile Header Banner */}
+        <div className="lg:hidden bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs mb-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-extrabold text-xl shrink-0 overflow-hidden shadow-xs">
+              {companyLogo ? (
+                <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
               ) : (
-                job.companyInitial || job.company?.charAt(0)?.toUpperCase() || 'J'
+                companyInitial
               )}
             </div>
             <div className="min-w-0">
-              <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">{general.applyingForLabel || 'Applying For'}</span>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate leading-tight mt-0.5">
-                {job.title}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 font-medium mt-1">
-                <span className="font-semibold text-gray-700">{job.company}</span>
+              <span className="text-[10px] font-bold text-[#29953f] uppercase tracking-wider block">{general.applyingForLabel || 'Applying For'}</span>
+              <h2 className="text-base font-bold text-gray-900 truncate">{title}</h2>
+              <div className="flex items-center gap-2 text-xs text-gray-500 font-medium truncate">
+                <span>{companyName}</span>
                 <span>•</span>
-                <span>{job.location}</span>
-                {job.salary && (
+                <span>{location}</span>
+                {salary && (
                   <>
                     <span>•</span>
-                    <span className="text-emerald-700 font-bold">{job.salary}</span>
+                    <span className="text-emerald-700 font-bold">{salary}</span>
                   </>
                 )}
               </div>
             </div>
           </div>
-
-          <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
-            <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg border border-purple-200">
-              {job.details?.employmentType || 'Full-Time'}
-            </span>
-          </div>
+          <a
+            href="#job-details-column"
+            className="shrink-0 px-3 py-1.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200"
+          >
+            Job Details ↓
+          </a>
         </div>
 
-        {/* Multi-Step Progress Tracker */}
-        {step < 4 && (
-          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs">
-            <div className="grid grid-cols-3 gap-2 text-center relative">
-              
-              {/* Step 1 */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step > 1 ? 'bg-green-600 text-white' : step === 1 ? 'bg-[#29953f] text-white ring-4 ring-green-100' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {step > 1 ? '✓' : '1'}
-                </div>
-                <span className={`text-[11px] font-bold ${step === 1 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {stepper.step1Title || 'Account'}
-                </span>
-              </div>
+        {/* 2-Column Responsive Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT COLUMN: Apply Flow (Independent scroll on desktop) */}
+          <div className="lg:col-span-6 xl:col-span-5 space-y-6 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto split-scroll-col pr-1 pb-6">
 
-              {/* Step 2 */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step > 2 ? 'bg-green-600 text-white' : step === 2 ? 'bg-[#29953f] text-white ring-4 ring-green-100' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  {step > 2 ? '✓' : '2'}
-                </div>
-                <span className={`text-[11px] font-bold ${step === 2 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {stepper.step2Title ? stepper.step2Title.replace(/\s*\*/g, '') : 'Details'}
-                </span>
-              </div>
-
-              {/* Step 3 */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  step === 3 ? 'bg-[#29953f] text-white ring-4 ring-green-100' : 'bg-gray-100 text-gray-400'
-                }`}>
-                  3
-                </div>
-                <span className={`text-[11px] font-bold ${step === 3 ? 'text-green-700' : 'text-gray-500'}`}>
-                  {stepper.step4Title || stepper.step3Title || 'Review'}
-                </span>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* STEP 1: AUTHENTICATION (LOGIN OR REGISTER)                                 */}
-        {/* ========================================================================= */}
+            {/* ========================================================================= */}
+            {/* STEP 1: AUTHENTICATION (LOGIN OR REGISTER)                                 */}
+            {/* ========================================================================= */}
         {step === 1 && (
           <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-6">
             
@@ -1900,8 +2001,102 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               </div>
             )}
 
+            {/* SECTION: Account Visibility Setting */}
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span>Account Visibility</span>
+                </h3>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                  profileVisibility === 'private'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                }`}>
+                  {profileVisibility === 'private' ? '🔒 Private (Default)' : '🌐 Visible to all'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Option 1: Private (Permanent Default) */}
+                <button
+                  type="button"
+                  onClick={() => setProfileVisibility('private')}
+                  className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start gap-3 ${
+                    profileVisibility === 'private'
+                      ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-600'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
+                    profileVisibility === 'private'
+                      ? 'border-emerald-600 bg-emerald-600'
+                      : 'border-gray-300 bg-white'
+                  }`}>
+                    {profileVisibility === 'private' && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-gray-900">Private</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                        Default
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-snug">
+                      Only the employer of this job can see your profile &amp; CV.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 2: Visible to all */}
+                <button
+                  type="button"
+                  onClick={() => setProfileVisibility('public')}
+                  className={`p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-start gap-3 ${
+                    profileVisibility === 'public'
+                      ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-600'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 transition-colors ${
+                    profileVisibility === 'public'
+                      ? 'border-emerald-600 bg-emerald-600'
+                      : 'border-gray-300 bg-white'
+                  }`}>
+                    {profileVisibility === 'public' && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-gray-900">Visible to all</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-snug">
+                      All verified recruiters on SahiJob can discover your profile.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Info line */}
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2 text-xs text-slate-600">
+                <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-[11px] font-medium leading-relaxed">
+                  {profileVisibility === 'private'
+                    ? '🔒 Default Private: Your account details & resume remain strictly private and accessible only to this job recruiter.'
+                    : '🌐 Visible to all: Your candidate profile will be visible to all verified employers for matching openings.'}
+                </span>
+              </div>
+            </div>
+
             {/* SECTION 2: CV / Resume Upload */}
-            <div id="cv_upload_section" className="space-y-4 pt-2">
+            <div id="cv_upload_section" className="space-y-3 pt-2">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
                   <span>📄 CV / Resume Upload</span>
@@ -1912,101 +2107,131 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 </span>
               </div>
 
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={handleCvFileChange}
+                className="hidden"
+              />
+
               {/* Current Resume Preview if already available */}
-              {resumeUrl && (
-                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
-                      PDF
+              {resumeUrl ? (
+                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs shrink-0 border border-emerald-200 shadow-xs">
+                        PDF
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate" title={resumeName || 'My_Resume.pdf'}>
+                          {resumeName || 'My_Resume.pdf'}
+                        </p>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold mt-0.5">
+                          ✓ Attached &amp; Ready
+                        </span>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-900 truncate">
-                        {resumeName || 'My_Resume.pdf'}
-                      </p>
-                      <span className="text-[11px] text-emerald-700 font-semibold">{s2.attachedBadgeText || s3.attachedBadgeText || '✓ Attached & Ready'}</span>
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveResume}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                      title="Remove resume"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  {/* Action buttons row */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-emerald-100/90">
                     <button
                       type="button"
                       onClick={() => setShowCvModal(true)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-emerald-700 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs whitespace-nowrap cursor-pointer hover:shadow-sm"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs cursor-pointer"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
                       <span>{s2.viewFileBtnText || s3.viewFileBtnText || 'View File'}</span>
                     </button>
+
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs whitespace-nowrap cursor-pointer hover:shadow-sm"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs cursor-pointer"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                       <span>{s2.replaceBtnText || s3.replaceBtnText || 'Replace'}</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveResume}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 bg-white rounded-xl border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all shadow-xs cursor-pointer"
+                      title="Remove attached resume"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Remove</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Upload Drag & Drop Area (Shown when no resume is attached) */
+                <div className="space-y-2">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all group ${
+                      cvError
+                        ? 'border-red-400 bg-red-50/25 ring-2 ring-red-100'
+                        : 'border-gray-300 hover:border-[#29953f] bg-slate-50/60 hover:bg-green-50/30'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 bg-white rounded-2xl shadow-xs border flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform ${
+                      cvError ? 'border-red-300 text-red-500' : 'border-gray-200 text-emerald-600'
+                    }`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+
+                    <h4 className={`text-sm font-bold ${cvError ? 'text-red-900' : 'text-gray-800'}`}>
+                      {uploadingResume ? "Uploading Resume..." : (s2.uploadBoxTitle || s3.uploadBoxTitle || "Click or Drag to Upload Resume")}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {s2.uploadBoxSubtitle || s3.uploadBoxSubtitle || `Supports PDF, DOC, DOCX up to ${maxLimitKb}KB`}
+                    </p>
+
+                    {uploadingResume && (
+                      <div className="mt-4 max-w-xs mx-auto space-y-1.5">
+                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-[#29953f] h-2 transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-700">{uploadProgress}% uploaded</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Upload Drag & Drop Area */}
-              <div className="space-y-2">
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all group ${
-                    cvError
-                      ? 'border-red-400 bg-red-50/25 ring-2 ring-red-100'
-                      : 'border-gray-300 hover:border-[#29953f] bg-slate-50/60 hover:bg-green-50/30'
-                  }`}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={handleCvFileChange}
-                    className="hidden"
-                  />
-
-                  <div className={`w-12 h-12 bg-white rounded-2xl shadow-xs border flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform ${
-                    cvError ? 'border-red-300 text-red-500' : 'border-gray-200 text-emerald-600'
-                  }`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
-
-                  <h4 className={`text-sm font-bold ${cvError ? 'text-red-900' : 'text-gray-800'}`}>
-                    {uploadingResume ? "Uploading Resume..." : (resumeUrl ? "Click or Drag to Upload Different Resume" : (s2.uploadBoxTitle || s3.uploadBoxTitle || "Click or Drag to Upload Resume"))}
-                  </h4>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {s2.uploadBoxSubtitle || s3.uploadBoxSubtitle || `Supports PDF, DOC, DOCX up to ${maxLimitKb}KB`}
-                  </p>
-
-                  {uploadingResume && (
-                    <div className="mt-4 max-w-xs mx-auto space-y-1.5">
-                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-[#29953f] h-2 transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-[10px] font-bold text-emerald-700">{uploadProgress}% uploaded</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Inline Error Message Underneath Upload Box */}
-                {cvError && (
-                  <p className="text-xs font-bold text-red-600 flex items-center gap-1.5 pt-1 animate-in fade-in duration-200">
-                    <span className="font-extrabold text-red-500">⚠️</span>
-                    <span>{cvError}</span>
-                  </p>
-                )}
-              </div>
+              {/* Inline Error Message Underneath Upload Box */}
+              {cvError && (
+                <p className="text-xs font-bold text-red-600 flex items-center gap-1.5 pt-1 animate-in fade-in duration-200">
+                  <span className="font-extrabold text-red-500">⚠️</span>
+                  <span>{cvError}</span>
+                </p>
+              )}
             </div>
 
             {/* Step 2 Bottom Actions */}
@@ -2050,40 +2275,81 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             )}
 
             {/* Candidate Details Card (Auto-filled) */}
-            <div className="p-5 rounded-2xl border border-gray-100 bg-slate-50/70 space-y-3">
-              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                {s4.candidateInfoHeading || 'Candidate Information'}
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-xs text-gray-400 block">Full Name</span>
-                  <span className="font-bold text-gray-900">
-                    {authName || user?.name || user?.firstName || 'Candidate'}
+            <div className="p-5 rounded-2xl border border-gray-200/90 bg-slate-50/80 shadow-xs space-y-3.5">
+              <div className="flex items-center justify-between border-b border-gray-200/70 pb-2.5">
+                <h3 className="text-xs font-extrabold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>{s4.candidateInfoHeading || 'Candidate Information'}</span>
+                </h3>
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  Verified Profile
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {/* Row 1: Name and Mobile */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-white p-3 rounded-xl border border-gray-200/80 shadow-2xs min-w-0">
+                    <span className="text-[11px] font-semibold text-gray-400 block">Full Name</span>
+                    <span className="font-bold text-gray-900 text-sm truncate block mt-0.5">
+                      {authName || user?.name || user?.firstName || 'Candidate'}
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-gray-200/80 shadow-2xs min-w-0">
+                    <span className="text-[11px] font-semibold text-gray-400 block">Mobile Number</span>
+                    <span className="font-bold text-gray-900 text-sm truncate block mt-0.5">
+                      {authMobile || user?.mobile || user?.phone || 'Not provided'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Row 2: Email Address (Full width with break-all, never bleeds outside!) */}
+                <div className="bg-white p-3 rounded-xl border border-gray-200/80 shadow-2xs min-w-0">
+                  <span className="text-[11px] font-semibold text-gray-400 block">Email Address</span>
+                  <span className="font-bold text-gray-900 text-sm break-all block mt-0.5">
+                    {authEmail || user?.email}
                   </span>
                 </div>
-                <div>
-                  <span className="text-xs text-gray-400 block">Email Address</span>
-                  <span className="font-bold text-gray-900">{authEmail || user?.email}</span>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 block">Mobile Number</span>
-                  <span className="font-bold text-gray-900">{authMobile || user?.mobile || user?.phone || 'Not provided'}</span>
-                </div>
-                <div>
-                  <span className="text-xs text-gray-400 block">Attached Resume</span>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-bold text-emerald-700 truncate max-w-[200px]">
-                      📄 {resumeName || 'Resume.pdf'}
-                    </span>
+
+                {/* Row 3: Attached Resume & Account Visibility */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-white p-3 rounded-xl border border-gray-200/80 shadow-2xs min-w-0 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-semibold text-gray-400 block">Attached Resume</span>
+                      <span className="font-bold text-emerald-800 text-xs truncate block mt-1" title={resumeName || 'Resume.pdf'}>
+                        📄 {resumeName || 'Resume.pdf'}
+                      </span>
+                    </div>
                     {resumeUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setShowCvModal(true)}
-                        className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
-                      >
-                        Preview
-                      </button>
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowCvModal(true)}
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <span>Preview Resume</span>
+                        </button>
+                      </div>
                     )}
+                  </div>
+
+                  <div className="bg-white p-3 rounded-xl border border-gray-200/80 shadow-2xs min-w-0 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-semibold text-gray-400 block">Account Visibility</span>
+                      <span className="font-bold text-gray-900 text-xs block mt-1">
+                        {profileVisibility === 'private' ? '🔒 Private' : '🌐 Visible to all'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-medium pt-2 leading-tight block">
+                      {profileVisibility === 'private'
+                        ? 'Applied job only'
+                        : 'All employers'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -2203,6 +2469,244 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           </div>
         )}
 
+          </div>
+
+          {/* RIGHT COLUMN: Permanent Full Job Details Card (Independent scroll on desktop) */}
+          <div id="job-details-column" className="lg:col-span-6 xl:col-span-7 space-y-6 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto split-scroll-col pr-1 pb-6">
+            
+            {/* 1. Job Header Card */}
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-extrabold text-2xl shrink-0 overflow-hidden shadow-xs">
+                  {companyLogo ? (
+                    <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
+                  ) : (
+                    companyInitial
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-gray-600 mb-0.5">{companyName}</div>
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">
+                    {title}
+                  </h1>
+                  
+                  {/* Badges Row */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
+                    {experience && (
+                      <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 font-medium border border-gray-200/60">
+                        {experience}
+                      </span>
+                    )}
+                    {workLocation && (
+                      <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80">
+                        {workLocation}
+                      </span>
+                    )}
+                    {openings && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200/80">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>{openings} Openings</span>
+                      </span>
+                    )}
+                    {salary && salary !== 'Not specified' && (
+                      <span className="px-3 py-1 rounded-lg bg-gray-50 text-gray-900 font-extrabold border border-gray-200/80">
+                        {salary}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Skills Section */}
+            {(skillsList.length > 0 || extraQualifications.length > 0) && (
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <span>Skills</span>
+                  <span className="text-xs font-normal text-gray-500">
+                    (Matching for {job.role || title})
+                  </span>
+                </h3>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {skillsList.map((skill, idx) => (
+                    <span 
+                      key={idx} 
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#137333] border border-emerald-200/80 shadow-2xs"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                  {extraQualifications.map((q, idx) => (
+                    <span 
+                      key={`extra-${idx}`} 
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200/80 shadow-2xs"
+                    >
+                      {q.name.replace(/[;,]+$/, '').trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. Key Job Overview Specs Grid */}
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+              <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
+                <span>Job Overview & Details</span>
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Role / Category</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{jobCategory}</span>
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Industry</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{industry}</span>
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Salary</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{salary}</span>
+                  {salaryType && <span className="text-[10px] text-gray-500 block">{salaryType} pay</span>}
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Job Type</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{jobType}</span>
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Experience</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{experience}</span>
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Work Mode</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{workLocation}</span>
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Openings</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{openings} Position(s)</span>
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Education</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{educationText}</span>
+                </div>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Posted Date</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words">{postedDate}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Role Overview / About the Role */}
+            {aboutRoleContent && (
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">About the Role</h4>
+                </div>
+                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                  {renderRichText(aboutRoleContent)}
+                </div>
+              </div>
+            )}
+
+            {/* 6. Key Responsibilities */}
+            {responsibilitiesContent && (
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
+                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">Responsibilities</h4>
+                </div>
+                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                  {renderRichText(responsibilitiesContent)}
+                </div>
+              </div>
+            )}
+
+            {/* 6. Additional Description (if separate) */}
+            {separateDescription && (
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-3.5 bg-blue-500 rounded-full"></span>
+                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">Job Description</h4>
+                </div>
+                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                  {renderRichText(separateDescription)}
+                </div>
+              </div>
+            )}
+
+            {/* 7. Dedicated Company Details Frame */}
+            <div className="bg-gray-50/80 rounded-2xl border border-gray-200 p-6 space-y-4">
+              <div className="flex items-center gap-2 border-b border-gray-200/80 pb-3">
+                <svg className="w-5 h-5 text-green-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <h3 className="text-base font-bold text-gray-900">Company Details</h3>
+              </div>
+
+              <div className="space-y-3 text-sm text-gray-800">
+                <div>
+                  <p><strong>Company Name:</strong> {employer.companyName || companyName}</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 flex-wrap">
+                    <strong>Hiring Type:</strong>{' '}
+                    {employer.isConsultant === true ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        Consultant
+                      </span>
+                    ) : (
+                      'Company / Business'
+                    )}
+                  </p>
+                </div>
+                {employer.employees && (
+                  <div>
+                    <p><strong>Company Size:</strong> {employer.employees.toLowerCase().includes('employee') ? employer.employees : `${employer.employees} Employees`}</p>
+                  </div>
+                )}
+                {(employer.industry || jobCategory) && (
+                  <div>
+                    <p><strong>Industry:</strong> {employer.industry || jobCategory}</p>
+                  </div>
+                )}
+                {(employer.location || location) && (
+                  <div>
+                    <p><strong>Location:</strong> {employer.location || location}</p>
+                  </div>
+                )}
+                {employer.website && (
+                  <div>
+                    <p className="flex items-center gap-1.5">
+                      <strong>Website:</strong>
+                      <a 
+                        href={employer.website.startsWith('http') ? employer.website : `https://${employer.website}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                      >
+                        {employer.website}
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </p>
+                  </div>
+                )}
+                {employer.aboutCompany && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="font-semibold text-gray-900 mb-1">About Company:</p>
+                    <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">{employer.aboutCompany}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
       </main>
 
       {/* CV Preview Modal Popup */}
@@ -2263,6 +2767,373 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           </div>
         </div>
       )}
+
+      {/* Full Job Details Modal Popup */}
+      {showJobDetailsModal && job && (() => {
+        const title = job.title || 'Untitled Position';
+        const companyName = job.company || job.employerId?.companyName || 'Company';
+        const location = job.location || job.details?.workLocation || 'Not specified';
+        const status = job.status || 'Active';
+        const isActive = status === 'Active';
+
+        const details = job.details || {};
+        const jobCategory = details.jobCategory || details.category || job.role || 'General';
+        const industry = details.industry || job.employerId?.industry || 'General';
+        const salary = job.salary || 'Not specified';
+        const salaryType = details.salaryType || job.salaryType || '';
+        const jobType = details.employmentType || job.jobType || 'Full-time';
+        const experience = details.experience || 'Any';
+        const workLocation = details.workLocation || job.workLocation || 'Not specified';
+        const openings = details.openings || '1';
+        const qualification = details.qualification || 'Any Graduate';
+        const stream = details.stream || '';
+        const educationText = stream ? `${qualification} (${stream})` : qualification;
+        const applicationsCount = job.applicationsCount !== undefined 
+          ? job.applicationsCount 
+          : (job.applications || 0);
+        const viewsCount = job.views || job.viewedBy?.length || 0;
+        const postedDate = job.createdAt 
+          ? new Date(job.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) 
+          : 'N/A';
+
+        const aboutRoleContent = details.aboutRole || job.aboutRole || details.about || job.about;
+        const responsibilitiesContent = details.responsibilities || job.responsibilities;
+        const separateDescription = job.description && job.description !== aboutRoleContent ? job.description : null;
+
+        const rawSkills = details.skillsRequired || job.skills;
+        let skillsList = [];
+        if (Array.isArray(rawSkills)) {
+          skillsList = rawSkills.map(s => (typeof s === 'string' ? s : s?.name || '')).map(s => s.replace(/[;,]+$/, '').trim()).filter(Boolean);
+        } else if (typeof rawSkills === 'string') {
+          skillsList = rawSkills.split(/[,;\n•]+/).map(s => s.replace(/[;,]+$/, '').trim()).filter(Boolean);
+        }
+
+        const extraQualifications = (job.qualifications || [])
+          .filter(q => q && q.name && !skillsList.includes(q.name.replace(/[;,]+$/, '').trim()));
+
+        const screeningQuestions = job.screeningQuestions || [];
+
+        const renderRichText = (content) => {
+          if (!content) return null;
+          if (typeof content !== 'string') return <div>{String(content)}</div>;
+          
+          const hasHtml = /<[a-z][\s\S]*>/i.test(content);
+          const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim();
+          if (!textOnly && !hasHtml) return null;
+
+          if (!hasHtml) {
+            return <div className="text-gray-700 leading-relaxed whitespace-pre-line text-xs font-normal">{content}</div>;
+          }
+
+          const sanitized = content
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+            .replace(/on\w+="[^"]*"/gi, '')
+            .replace(/on\w+='[^']*'/gi, '');
+
+          return (
+            <div 
+              className="text-gray-700 leading-relaxed text-xs font-normal space-y-2 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-2 [&>li]:mb-1 [&>strong]:font-bold [&>strong]:text-gray-900 [&>b]:font-bold [&>b]:text-gray-900 [&_a]:text-emerald-600 [&_a]:underline"
+              dangerouslySetInnerHTML={{ __html: sanitized }}
+            />
+          );
+        };
+
+        return (
+          <div 
+            className="fixed inset-0 z-[250] flex items-center justify-center p-3 sm:p-5 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => setShowJobDetailsModal(false)}
+          >
+            <div 
+              className="bg-white rounded-3xl max-w-5xl xl:max-w-6xl w-full max-h-[92vh] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden border border-gray-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              
+              {/* Modal Header */}
+              <div className="p-5 sm:p-6 border-b border-gray-100 flex items-start justify-between bg-white shrink-0 gap-4">
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0 border border-emerald-100/80 shadow-2xs">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h3 className="font-extrabold text-gray-900 text-base sm:text-xl leading-tight break-words">
+                        {title}
+                      </h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        isActive 
+                          ? 'bg-emerald-100 text-emerald-800' 
+                          : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {status}
+                      </span>
+                      {workLocation && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                          {workLocation}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 font-medium flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-gray-700">{companyName}</span>
+                      <span>•</span>
+                      <span>{location}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowJobDetailsModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 text-xs divide-y divide-gray-100">
+                
+                {/* 1. Key Overview Grid */}
+                <div>
+                  <h4 className="font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-3">
+                    Job Overview & Details
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {/* Role / Job Category */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Role / Category</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {jobCategory}
+                      </span>
+                    </div>
+
+                    {/* Industry */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Industry</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {industry}
+                      </span>
+                    </div>
+
+                    {/* Salary */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Salary</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {salary}
+                      </span>
+                      {salaryType && (
+                        <span className="text-[10px] text-gray-500 font-medium block mt-0.5">
+                          {salaryType} pay
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Job Type */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Job Type</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {jobType}
+                      </span>
+                    </div>
+
+                    {/* Experience */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Experience</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {experience}
+                      </span>
+                    </div>
+
+                    {/* Work Mode */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Work Mode</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {workLocation}
+                      </span>
+                    </div>
+
+                    {/* Openings */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Openings</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {openings} Position(s)
+                      </span>
+                    </div>
+
+                    {/* Education */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Education</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {educationText}
+                      </span>
+                    </div>
+
+                    {/* Location */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Location</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {location}
+                      </span>
+                    </div>
+
+                    {/* Applications */}
+                    <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100/80">
+                      <span className="text-blue-500 font-bold block text-[10px] uppercase mb-1">Applications</span>
+                      <span className="font-bold text-blue-700 text-xs block break-words leading-snug">
+                        {applicationsCount} candidate(s)
+                      </span>
+                    </div>
+
+                    {/* Views */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Views</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {viewsCount} view(s)
+                      </span>
+                    </div>
+
+                    {/* Posted Date */}
+                    <div className="p-3.5 bg-gray-50/90 rounded-2xl border border-gray-100/80">
+                      <span className="text-gray-400 font-bold block text-[10px] uppercase mb-1">Posted Date</span>
+                      <span className="font-bold text-gray-900 text-xs block break-words leading-snug">
+                        {postedDate}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. About the Role / Role Overview */}
+                <div className="pt-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                    <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                      Role Overview / About Role
+                    </h4>
+                  </div>
+                  {aboutRoleContent && renderRichText(aboutRoleContent) ? (
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      {renderRichText(aboutRoleContent)}
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-gray-50/60 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs">
+                      No specific role summary provided by employer.
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Key Responsibilities */}
+                <div className="pt-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
+                    <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                      Responsibilities
+                    </h4>
+                  </div>
+                  {responsibilitiesContent && renderRichText(responsibilitiesContent) ? (
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      {renderRichText(responsibilitiesContent)}
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-gray-50/60 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs">
+                      No responsibilities specified.
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Additional Job Description (if separate from aboutRole) */}
+                {separateDescription && renderRichText(separateDescription) && (
+                  <div className="pt-5 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-3.5 bg-blue-500 rounded-full"></span>
+                      <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                        Job Description
+                      </h4>
+                    </div>
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      {renderRichText(separateDescription)}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Skills Required */}
+                <div className="pt-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-3.5 bg-purple-500 rounded-full"></span>
+                    <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                      Skills & Qualifications
+                    </h4>
+                  </div>
+                  {(skillsList.length > 0 || extraQualifications.length > 0) ? (
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                      <div className="flex flex-wrap gap-2">
+                        {skillsList.map((skill, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-emerald-800 text-xs font-semibold rounded-xl border border-emerald-200 shadow-2xs"
+                          >
+                            <svg className="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>{skill}</span>
+                          </span>
+                        ))}
+                        {extraQualifications.map((q, idx) => (
+                          <span
+                            key={`qual-${idx}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-800 text-xs font-semibold rounded-xl border border-indigo-200 shadow-2xs"
+                          >
+                            <svg className="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                            </svg>
+                            <span>{q.name.replace(/[;,]+$/, '').trim()}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 bg-gray-50/60 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs">
+                      No specific skills listed.
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 sm:p-5 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between shrink-0 gap-3">
+                <div className="text-xs text-gray-500 font-medium hidden sm:block">
+                  Review full position requirements before submitting your application.
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowJobDetailsModal(false)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowJobDetailsModal(false);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="px-5 py-2 bg-[#29953f] hover:bg-[#237f36] text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Apply for this Job</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

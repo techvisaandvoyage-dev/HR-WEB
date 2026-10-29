@@ -137,7 +137,7 @@ const LocationAutocomplete = ({
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className={className}
+          className={`${className || ''} outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent shadow-none ring-0`}
           autoComplete="off"
         />
         

@@ -228,6 +228,14 @@
   display: block;
 }
 
+/* request cards in updates list */
+.sj-req-card:hover {
+  border-color: var(--g600) !important;
+  background: #f8fafc !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
+}
+
 /* body */
 .sj-body {
   flex: 1;
