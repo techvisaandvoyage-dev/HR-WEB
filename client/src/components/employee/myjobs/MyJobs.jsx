@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
@@ -7,8 +7,25 @@ import { formatJobLocation } from '../../../data/preferredLocations';
 
 const MyJobs = ({ jobs = [] }) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState('saved');
+  const getInitialTab = () => {
+    const queryTab = new URLSearchParams(location.search).get('tab');
+    if (queryTab === 'applied' || queryTab === 'saved') return queryTab;
+    if (location.state?.tab === 'applied' || location.state?.tab === 'saved') return location.state.tab;
+    return 'saved';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  useEffect(() => {
+    const queryTab = new URLSearchParams(location.search).get('tab');
+    const stateTab = location.state?.tab;
+    const targetTab = queryTab || stateTab;
+    if (targetTab && (targetTab === 'applied' || targetTab === 'saved')) {
+      setActiveTab(targetTab);
+    }
+  }, [location.search, location.state]);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [statusUpdateJobId, setStatusUpdateJobId] = useState(null);
   

@@ -2174,7 +2174,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
               <button
                 type="button"
-                onClick={() => navigate('/my-jobs')}
+                onClick={() => navigate('/my-jobs?tab=applied', { state: { tab: 'applied' } })}
                 className="w-full sm:w-auto px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Track My Applications</span>
