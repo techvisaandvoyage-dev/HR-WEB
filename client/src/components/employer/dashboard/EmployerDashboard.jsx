@@ -47,6 +47,9 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         const data = await res.json();
         if (data.success && data.data) {
           setEmployerProfile(data.data);
+          try {
+            localStorage.setItem('employerInfo', JSON.stringify(data.data));
+          } catch (_) {}
         }
       } catch (err) {
         console.error("Error fetching employer profile:", err);

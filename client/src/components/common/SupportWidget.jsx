@@ -43,14 +43,51 @@ export default function SupportWidget() {
   const readCurrentAuth = useCallback(() => {
     try {
       const empToken = localStorage.getItem('employerToken');
-      const candToken = localStorage.getItem('employeeToken');
+      const candToken = localStorage.getItem('employeeToken') || localStorage.getItem('token');
       const isValid = (t) => t && t !== 'null' && t !== 'undefined' && t !== 'false' && String(t).trim().length > 10;
 
-      // 1. Candidate / Employee
+      const path = window.location.pathname;
+      const isEmployerRoute = path.startsWith('/employer');
+      const isConsultantRoute = path.startsWith('/consultant');
+      const userRole = localStorage.getItem('userRole');
+
+      // Decide if Employer or Consultant context should take priority
+      const isEmployerContext = (isEmployerRoute || isConsultantRoute || userRole === 'employer' || userRole === 'consultant')
+        ? isValid(empToken)
+        : (isValid(empToken) && !isValid(candToken));
+
+      // 1. Employer or Consultant
+      if (isEmployerContext && isValid(empToken)) {
+        let empInfo = {};
+        try {
+          const stored = localStorage.getItem('employerInfo') || localStorage.getItem('employerProfile') || localStorage.getItem('employerUser');
+          if (stored) empInfo = JSON.parse(stored);
+        } catch (_) {}
+
+        const isConsultant = Boolean(empInfo.isConsultant || isConsultantRoute || userRole === 'consultant');
+        const fullName = empInfo.fullName || empInfo.companyName || empInfo.name || (isConsultant ? 'Consultant' : 'Employer');
+        const email = empInfo.email || '';
+        const phone = (empInfo.mobile || empInfo.phone || '').toString().replace(/\D/g, '').slice(-10);
+        const code = empInfo.countryCode || '+91';
+
+        return {
+          isLoggedIn: true,
+          role: isConsultant ? 'consultant' : 'employer',
+          backendRole: isConsultant ? 'consultant' : 'employer',
+          name: fullName,
+          email,
+          phone,
+          countryCode: code,
+          token: empToken,
+          isEmployer: true,
+        };
+      }
+
+      // 2. Candidate / Employee
       if (isValid(candToken)) {
         let profile = {};
         try {
-          const stored = localStorage.getItem('userProfile');
+          const stored = localStorage.getItem('userProfile') || localStorage.getItem('employeeUser');
           if (stored) profile = JSON.parse(stored);
         } catch (_) {}
 
@@ -72,24 +109,24 @@ export default function SupportWidget() {
         };
       }
 
-      // 2. Employer or Consultant
+      // 3. Fallback Employer if only empToken is valid
       if (isValid(empToken)) {
         let empInfo = {};
         try {
-          const stored = localStorage.getItem('employerInfo');
+          const stored = localStorage.getItem('employerInfo') || localStorage.getItem('employerProfile');
           if (stored) empInfo = JSON.parse(stored);
         } catch (_) {}
 
-        const isConsultantRoute = Boolean(empInfo.isConsultant || window.location.pathname.startsWith('/consultant'));
-        const fullName = empInfo.fullName || empInfo.companyName || (isConsultantRoute ? 'Consultant' : 'Employer');
+        const isConsultant = Boolean(empInfo.isConsultant || isConsultantRoute || userRole === 'consultant');
+        const fullName = empInfo.fullName || empInfo.companyName || empInfo.name || (isConsultant ? 'Consultant' : 'Employer');
         const email = empInfo.email || '';
         const phone = (empInfo.mobile || empInfo.phone || '').toString().replace(/\D/g, '').slice(-10);
         const code = empInfo.countryCode || '+91';
 
         return {
           isLoggedIn: true,
-          role: isConsultantRoute ? 'consultant' : 'employer',
-          backendRole: isConsultantRoute ? 'consultant' : 'employer',
+          role: isConsultant ? 'consultant' : 'employer',
+          backendRole: isConsultant ? 'consultant' : 'employer',
           name: fullName,
           email,
           phone,
@@ -99,7 +136,7 @@ export default function SupportWidget() {
         };
       }
 
-      // 3. Guest
+      // 4. Guest / Logged Out
       return {
         isLoggedIn: false,
         role: 'candidate',
@@ -126,7 +163,7 @@ export default function SupportWidget() {
 
   const [authData, setAuthData] = useState(() => readCurrentAuth());
 
-  // Fetch employer details if employer token is present
+  // Fetch employer or candidate details if token is present
   const syncAuthState = useCallback(async () => {
     const current = readCurrentAuth();
     if (!current.isLoggedIn) {
@@ -150,12 +187,37 @@ export default function SupportWidget() {
             isLoggedIn: true,
             role: isConsultant ? 'consultant' : 'employer',
             backendRole: isConsultant ? 'consultant' : 'employer',
-            name: emp.fullName || emp.companyName || (isConsultant ? 'Consultant' : 'Employer'),
+            name: emp.fullName || emp.companyName || emp.name || (isConsultant ? 'Consultant' : 'Employer'),
             email: emp.email || '',
-            phone: (emp.mobile || '').toString().replace(/\D/g, '').slice(-10),
+            phone: (emp.mobile || emp.phone || '').toString().replace(/\D/g, '').slice(-10),
             countryCode: emp.countryCode || '+91',
             token: current.token,
             isEmployer: true,
+          });
+          return;
+        }
+      } catch (_) {}
+    } else if (!current.isEmployer && current.token) {
+      try {
+        const res = await fetch(`${API_URL}/api/employee/profile`, {
+          headers: { Authorization: `Bearer ${current.token}` },
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          const cand = json.data;
+          try {
+            localStorage.setItem('userProfile', JSON.stringify(cand));
+          } catch (_) {}
+          setAuthData({
+            isLoggedIn: true,
+            role: 'candidate',
+            backendRole: 'employee',
+            name: cand.name || `${cand.firstName || ''} ${cand.lastName || ''}`.trim() || 'Candidate',
+            email: cand.email || '',
+            phone: (cand.mobile || cand.phone || '').toString().replace(/\D/g, '').slice(-10),
+            countryCode: cand.countryCode || '+91',
+            token: current.token,
+            isEmployer: false,
           });
           return;
         }
@@ -267,77 +329,8 @@ export default function SupportWidget() {
 
   const fetchRequestDetails = useCallback(async (reqId, isSilent = false) => {
     if (!reqId) return;
-    if (!isSilent) setLoadingDetails(true);
-    try {
-      const res = await fetch(`${API_URL}/api/support/requests/${reqId}/messages`);
-      const data = await res.json();
-      if (data.success && data.data) {
-        setRequestDetails(data.data);
-      }
-    } catch (_) {
-    } finally {
-      if (!isSilent) setLoadingDetails(false);
-    }
-  }, []);
 
-  const fetchUserRequests = useCallback(async () => {
-    setLoadingUserRequests(true);
-    try {
-      let storedIds = [];
-      try {
-        storedIds = JSON.parse(localStorage.getItem('sahijob_support_request_ids') || '[]');
-      } catch (_) {}
-
-      // Include active request ID or selected request ID if available
-      try {
-        const active = JSON.parse(localStorage.getItem('sahijob_active_support_request') || 'null');
-        if (active?.id && !storedIds.includes(active.id)) {
-          storedIds.unshift(active.id);
-        }
-      } catch (_) {}
-
-      if (activeRequest?.id && !storedIds.includes(activeRequest.id)) {
-        storedIds.unshift(activeRequest.id);
-      }
-      if (selectedRequestId && !storedIds.includes(selectedRequestId)) {
-        storedIds.unshift(selectedRequestId);
-      }
-
-      // Sync unique IDs back to localStorage
-      try {
-        if (storedIds.length > 0) {
-          localStorage.setItem('sahijob_support_request_ids', JSON.stringify([...new Set(storedIds)]));
-        }
-      } catch (_) {}
-
-      const activeToken = authData.isLoggedIn ? authData.token : null;
-      const headers = {};
-      if (activeToken) {
-        headers['Authorization'] = `Bearer ${activeToken}`;
-      }
-
-      // Robust email extraction across all possible storage places
-      let emailParam = authData.email;
-      if (!emailParam) {
-        try {
-          const emp = JSON.parse(localStorage.getItem('employerInfo') || '{}');
-          if (emp.email) emailParam = emp.email;
-        } catch (_) {}
-      }
-      if (!emailParam) {
-        try {
-          const prof = JSON.parse(localStorage.getItem('userProfile') || '{}');
-          if (prof.email) emailParam = prof.email;
-        } catch (_) {}
-      }
-      if (!emailParam) {
-        try {
-          const active = JSON.parse(localStorage.getItem('sahijob_active_support_request') || '{}');
-          if (active.email) emailParam = active.email;
-        } catch (_) {}
-      }
-      if (!emailParam) {
-        emailParam = contactForm.email || '';
+    
       }
 
       // Robust phone extraction
@@ -1274,8 +1267,15 @@ export default function SupportWidget() {
               <div className="sj-chip">
                 <div className="sj-av">{getInitials(authData.name)}</div>
                 <div className="grow">
-                  <b>Hi, {getFirstName(authData.name)}</b>
-                  <span>{authData.email || 'Logged in user'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <b style={{ fontSize: '13.5px' }}>{authData.name || 'User'}</b>
+                    <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '999px', background: '#ecfdf3', color: '#166534', border: '1px solid #bbf7d0', textTransform: 'capitalize' }}>
+                      {ROLE_LABELS[authData.role] || authData.role}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11.5px', color: '#64748b', wordBreak: 'break-all' }}>
+                    {authData.email || 'Logged in user'}
+                  </span>
                 </div>
                 {isEditingPhone && authData.phone && (
                   <button
@@ -1371,10 +1371,15 @@ export default function SupportWidget() {
                 <div className="sj-chip">
                   <div className="sj-av">{getInitials(authData.name)}</div>
                   <div className="grow">
-                    <b>Hi, {getFirstName(authData.name)}</b>
-                    <span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <b style={{ fontSize: '13.5px' }}>{authData.name || 'User'}</b>
+                      <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '999px', background: '#ecfdf3', color: '#166534', border: '1px solid #bbf7d0', textTransform: 'capitalize' }}>
+                        {ROLE_LABELS[authData.role] || authData.role}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '11.5px', color: '#64748b', wordBreak: 'break-all' }}>
                       {authData.email || 'Logged in user'}
-                      {authData.phone ? ` · ${countryCode} ${authData.phone}` : ''}
+                      {authData.phone ? ` • ${countryCode} ${authData.phone}` : ''}
                     </span>
                   </div>
                   <button
