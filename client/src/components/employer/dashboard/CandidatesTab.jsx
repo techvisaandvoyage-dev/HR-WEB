@@ -1046,37 +1046,33 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               <tr className="bg-gray-50/95 border-b border-gray-200">
                 
                 {/* 0. Application ID Filter */}
-                <th className="p-2">
-                  <div className="relative">
-                    <input 
-                      type="text"
-                      value={colFilters.appId}
-                      onChange={(e) => handleFilterChange('appId', e.target.value)}
-                      placeholder="🔍 500101..."
-                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 font-mono"
-                    />
-                  </div>
+                <th className="p-1.5">
+                  <input 
+                    type="text"
+                    value={colFilters.appId}
+                    onChange={(e) => handleFilterChange('appId', e.target.value)}
+                    placeholder="ID: 500101..."
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 font-mono shadow-2xs"
+                  />
                 </th>
 
                 {/* 1. Candidate Filter */}
-                <th className="p-2">
-                  <div className="relative">
-                    <input 
-                      type="text"
-                      value={colFilters.candidate}
-                      onChange={(e) => handleFilterChange('candidate', e.target.value)}
-                      placeholder="🔍 Name / Email..."
-                      className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400"
-                    />
-                  </div>
+                <th className="p-1.5">
+                  <input 
+                    type="text"
+                    value={colFilters.candidate}
+                    onChange={(e) => handleFilterChange('candidate', e.target.value)}
+                    placeholder="Name / Email..."
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 shadow-2xs"
+                  />
                 </th>
 
                 {/* 2. Job Applied Filter */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <select
                     value={colFilters.job}
                     onChange={(e) => handleFilterChange('job', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
                   >
                     {uniqueJobs.map(j => (
                       <option key={j} value={j}>{j === 'All' ? 'All Jobs' : j}</option>
@@ -1085,11 +1081,11 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </th>
 
                 {/* 3. Primary Qualification Filter (Education) */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <select
                     value={colFilters.qualification}
                     onChange={(e) => handleFilterChange('qualification', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
                   >
                     {uniqueQualifications.map(q => (
                       <option key={q} value={q}>{q === 'All' ? 'All Quals' : q}</option>
@@ -1098,11 +1094,11 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </th>
 
                 {/* 4. Function Filter */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <select
                     value={colFilters.functionArea}
                     onChange={(e) => handleFilterChange('functionArea', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[130px] truncate"
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
                   >
                     {uniqueFunctions.map(f => (
                       <option key={f} value={f}>{f === 'All' ? 'All Functions' : f}</option>
@@ -1111,11 +1107,11 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </th>
 
                 {/* 5. Work Exp Filter */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <select
                     value={colFilters.workExp}
                     onChange={(e) => handleFilterChange('workExp', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
                   >
                     {uniqueWorkExps.map(exp => (
                       <option key={exp} value={exp}>{exp === 'All' ? 'All Exp' : exp}</option>
@@ -1124,32 +1120,32 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </th>
 
                 {/* 6. Current Designation Filter */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <input 
                     type="text"
                     value={colFilters.designation}
                     onChange={(e) => handleFilterChange('designation', e.target.value)}
-                    placeholder="🔍 Filter role..."
-                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400"
+                    placeholder="Filter role..."
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 shadow-2xs"
                   />
                 </th>
 
                 {/* 7. Current Company Filter */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <input 
                     type="text"
                     value={colFilters.company}
                     onChange={(e) => handleFilterChange('company', e.target.value)}
-                    placeholder="🔍 Filter company..."
-                    className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400"
+                    placeholder="Filter company..."
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 shadow-2xs"
                   />
                 </th>
 
                 {/* 8. Applied Date Sort Toggle */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <button
                     onClick={() => handleFilterChange('sortDate', colFilters.sortDate === 'desc' ? 'asc' : 'desc')}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg text-xs font-bold text-gray-700 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    className="w-full h-7 px-2 bg-white border border-gray-200 hover:bg-gray-100 rounded-md text-[11px] font-bold text-gray-700 flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
                     title="Toggle Date Sort Order"
                   >
                     <span>{colFilters.sortDate === 'desc' ? '⬇ Newest' : '⬆ Oldest'}</span>
@@ -1157,11 +1153,11 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </th>
 
                 {/* 9. Status Filter */}
-                <th className="p-2">
+                <th className="p-1.5">
                   <select
                     value={colFilters.status}
                     onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
                   >
                     <option value="All">All Status</option>
                     {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
@@ -1169,16 +1165,16 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </th>
 
                 {/* 10. Actions Filter Reset */}
-                <th className="p-2 text-right">
+                <th className="p-1.5 text-right">
                   {hasActiveFilters ? (
                     <button 
                       onClick={resetAllFilters}
-                      className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-colors cursor-pointer border border-red-200 whitespace-nowrap"
+                      className="h-7 px-2.5 bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-bold rounded-md transition-colors cursor-pointer border border-red-200 whitespace-nowrap shadow-2xs"
                     >
                       Clear
                     </button>
                   ) : (
-                    <span className="text-[10px] text-gray-400 font-normal px-2">Filters Ready</span>
+                    <span className="text-[10px] text-gray-400 font-normal px-2 block text-center">Ready</span>
                   )}
                 </th>
 
@@ -1294,37 +1290,42 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </td>
 
                       {/* 9. Status (Dropdown) */}
-                      <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <select 
-                          className={`appearance-none cursor-pointer outline-none transition-all px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(item.status)}`}
-                          value={item.status || 'New'}
-                          onChange={(e) => {
-                            const newStatus = e.target.value;
-                            if (updateCandidateStatus) {
-                              updateCandidateStatus(item.appId, newStatus);
-                            }
-                            item.status = newStatus;
-                            if (cand.history) {
-                              cand.history = cand.history.map(h => h.appId === item.appId ? { ...h, status: newStatus } : h);
-                            }
-                          }}
-                        >
-                          {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                        </select>
+                      <td className="py-3 px-3 text-center align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative inline-flex items-center">
+                          <select 
+                            className={`appearance-none cursor-pointer outline-none transition-all pl-2.5 pr-4.5 py-0 h-6 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs leading-none ${getStatusBadgeStyles(item.status)}`}
+                            value={item.status || 'New'}
+                            onChange={(e) => {
+                              const newStatus = e.target.value;
+                              if (updateCandidateStatus) {
+                                updateCandidateStatus(item.appId, newStatus);
+                              }
+                              item.status = newStatus;
+                              if (cand.history) {
+                                cand.history = cand.history.map(h => h.appId === item.appId ? { ...h, status: newStatus } : h);
+                              }
+                            }}
+                          >
+                            {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
+                          </select>
+                          <svg className="w-2.5 h-2.5 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </td>
 
                       {/* 10. Actions */}
-                      <td className="py-3.5 px-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-3 text-right align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           
                           {/* Screening Q&A icon */}
                           {item.screeningAnswers && item.screeningAnswers.length > 0 && (
                             <button 
                               onClick={() => setPreviewScreeningQA({ candidateName: cand.name, jobTitle: item.jobTitle, answers: item.screeningAnswers })}
-                              className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer border border-emerald-200"
+                              className="w-7 h-7 inline-flex items-center justify-center text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors cursor-pointer border border-emerald-200 shadow-2xs"
                               title={`View ${item.screeningAnswers.length} Screening Answers`}
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                             </button>
@@ -1333,10 +1334,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                           {/* View Profile Drawer */}
                           <button 
                             onClick={() => handleOpenCandidate(cand, item)}
-                            className="p-1.5 text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                            className="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg border border-gray-200/90 bg-white transition-colors cursor-pointer shadow-2xs"
                             title="View Full Profile Details"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
@@ -1352,10 +1353,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                                 setPreviewResume(cand);
                               }
                             }}
-                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                            className="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-gray-200/90 bg-white transition-colors cursor-pointer shadow-2xs"
                             title="Preview Resume"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                           </button>
@@ -1370,10 +1371,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                                 } 
                               });
                             }}
-                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                            className="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg border border-gray-200/90 bg-white transition-colors cursor-pointer shadow-2xs"
                             title="Chat / Message"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                             </svg>
                           </button>

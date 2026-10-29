@@ -520,37 +520,37 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [] }) => {
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-xs text-gray-400 border-b border-gray-100">
-                  <th className="px-6 py-4 font-semibold pb-4">Candidate</th>
-                  <th className="px-6 py-4 font-semibold pb-4">Role & Exp</th>
-                  <th className="px-6 py-4 font-semibold pb-4">Function</th>
-                  <th className="px-6 py-4 font-semibold pb-4">Phone</th>
-                  <th className="px-6 py-4 font-semibold pb-4">Location</th>
-                  <th className="px-6 py-4 font-semibold pb-4">Account Created</th>
-                  <th className="px-6 py-4 font-semibold pb-4 text-right">Actions</th>
+                <tr className="text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50/75 border-b border-gray-200">
+                  <th className="px-5 py-3.5 min-w-[220px] whitespace-nowrap">Candidate</th>
+                  <th className="px-5 py-3.5 min-w-[190px] whitespace-nowrap">Role & Exp</th>
+                  <th className="px-5 py-3.5 min-w-[150px] whitespace-nowrap">Function</th>
+                  <th className="px-5 py-3.5 min-w-[140px] whitespace-nowrap">Phone</th>
+                  <th className="px-5 py-3.5 min-w-[130px] whitespace-nowrap">Location</th>
+                  <th className="px-5 py-3.5 min-w-[130px] whitespace-nowrap">Account Created</th>
+                  <th className="px-5 py-3.5 w-[90px] text-center whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {filteredEmployees.map((emp) => {
                   const isPrivate = Boolean(emp.isPrivate || (emp.isProfilePrivate && !emp.appliedToYou));
 
                   return (
-                    <tr key={emp._id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4">
+                    <tr key={emp._id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-5 py-3.5 align-middle whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#29953f] flex items-center justify-center text-white font-bold text-xs shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-[#29953f] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs">
                             {emp.name ? emp.name.charAt(0).toUpperCase() : '?'}
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <h4 className="font-bold text-gray-900 text-sm">{emp.name}</h4>
+                              <h4 className="font-bold text-gray-900 text-sm leading-tight truncate">{emp.name}</h4>
                               {isPrivate && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
                                   🔒 Private
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="text-xs text-gray-500 mt-0.5 truncate">
                               {isPrivate ? (
                                 <span className="text-gray-400 italic">Confidential profile</span>
                               ) : (
@@ -560,54 +560,56 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [] }) => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3.5 align-middle whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Confidential</span>
                         ) : (
                           <div className="flex flex-col">
-                            <span className="font-bold text-gray-800 text-sm">{emp.designation || 'Not specified'}</span>
+                            <span className="font-bold text-gray-800 text-sm leading-tight">{emp.designation || 'Not specified'}</span>
                             <span className="text-xs text-gray-500 mt-0.5">{emp.totalExperience ? `${emp.totalExperience} Exp.` : 'N/A Exp.'}</span>
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                      <td className="px-5 py-3.5 align-middle text-sm text-gray-700 font-medium whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Private</span>
                         ) : (
                           emp.industry || 'Not specified'
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                      <td className="px-5 py-3.5 align-middle text-sm text-gray-700 font-medium whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Hidden</span>
                         ) : (
-                          formatPhoneWithCountryCode(emp.mobile, emp.countryCode) || 'N/A'
+                          <span className="font-mono text-xs">{formatPhoneWithCountryCode(emp.mobile, emp.countryCode) || 'N/A'}</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 font-medium">
+                      <td className="px-5 py-3.5 align-middle text-sm text-gray-700 font-medium whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Hidden</span>
                         ) : (
                           emp.location || 'N/A'
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 font-medium">
+                      <td className="px-5 py-3.5 align-middle text-sm text-gray-500 font-medium whitespace-nowrap">
                         {new Date(emp.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-5 py-3.5 align-middle text-center whitespace-nowrap">
                         <button 
                           onClick={() => setSelectedEmployee(emp)}
-                          className={`p-2 rounded-lg transition-colors inline-flex ${
-                            isPrivate ? 'text-amber-600 hover:bg-amber-50' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                          className={`w-8 h-8 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs ${
+                            isPrivate 
+                              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' 
+                              : 'border-gray-200 bg-white text-gray-500 hover:text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50'
                           }`} 
                           title={isPrivate ? "Confidential Profile" : "View Profile"}
                         >
                           {isPrivate ? (
-                            <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                           ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                           )}
                         </button>
                       </td>

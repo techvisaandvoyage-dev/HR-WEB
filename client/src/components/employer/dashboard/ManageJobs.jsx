@@ -153,24 +153,29 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
 
                 {/* 2. Status (Mobile moves to top right, Desktop 4th col) */}
                 <div className="min-[1000px]:order-4 min-[1000px]:col-auto col-span-1 justify-self-end min-[1000px]:justify-self-start">
-                  <div className="relative inline-block">
+                  <div className="relative inline-flex items-center">
                     <select
                       value={isClosed ? 'Closed' : 'Active'}
                       onChange={(e) => {
                         e.stopPropagation();
                         if (toggleJobStatus) toggleJobStatus(job.id || job._id);
                       }}
-                      className={`appearance-none text-[13px] font-semibold rounded-full pl-6 pr-3.5 py-1 cursor-pointer outline-none border-0 transition-colors ${
-                        isClosed ? 'bg-[#f2f4f7] text-[#667085]' : 'bg-[#ecfdf3] text-[#15803d]'
+                      className={`appearance-none text-[11px] font-bold rounded-full pl-4.5 pr-4 py-0 h-6 cursor-pointer outline-none border transition-colors leading-none ${
+                        isClosed 
+                          ? 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200' 
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                       }`}
                       aria-label="Job status"
                     >
                       <option value="Active">Active</option>
                       <option value="Closed">Closed</option>
                     </select>
-                    <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none ${isClosed ? 'bg-[#98a2b3]' : 'bg-[#16a34a]'}`} />
+                    <span className={`absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none ${isClosed ? 'bg-gray-400' : 'bg-emerald-500'}`} />
+                    <svg className="w-2.5 h-2.5 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                    </svg>
                   </div>
-                  <small className="block text-[#98a2b3] text-[12px] mt-0.5 pl-0.5 whitespace-nowrap">
+                  <small className="block text-[#98a2b3] text-[11px] mt-0.5 pl-0.5 whitespace-nowrap">
                     {isClosed ? 'Closed' : 'Posted'} {postedDate}
                   </small>
                 </div>
