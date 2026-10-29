@@ -183,7 +183,7 @@ export default function SupportWidget() {
             localStorage.setItem('employerInfo', JSON.stringify(emp));
           } catch (_) {}
           const isConsultant = Boolean(emp.isConsultant || window.location.pathname.startsWith('/consultant'));
-          setAuthData({
+          const nextAuth = {
             isLoggedIn: true,
             role: isConsultant ? 'consultant' : 'employer',
             backendRole: isConsultant ? 'consultant' : 'employer',
@@ -193,6 +193,20 @@ export default function SupportWidget() {
             countryCode: emp.countryCode || '+91',
             token: current.token,
             isEmployer: true,
+          };
+          setAuthData((prev) => {
+            if (
+              prev.isLoggedIn === nextAuth.isLoggedIn &&
+              prev.role === nextAuth.role &&
+              prev.name === nextAuth.name &&
+              prev.email === nextAuth.email &&
+              prev.phone === nextAuth.phone &&
+              prev.countryCode === nextAuth.countryCode &&
+              prev.token === nextAuth.token
+            ) {
+              return prev;
+            }
+            return nextAuth;
           });
           return;
         }
@@ -208,7 +222,7 @@ export default function SupportWidget() {
           try {
             localStorage.setItem('userProfile', JSON.stringify(cand));
           } catch (_) {}
-          setAuthData({
+          const nextAuth = {
             isLoggedIn: true,
             role: 'candidate',
             backendRole: 'employee',
@@ -218,6 +232,20 @@ export default function SupportWidget() {
             countryCode: cand.countryCode || '+91',
             token: current.token,
             isEmployer: false,
+          };
+          setAuthData((prev) => {
+            if (
+              prev.isLoggedIn === nextAuth.isLoggedIn &&
+              prev.role === nextAuth.role &&
+              prev.name === nextAuth.name &&
+              prev.email === nextAuth.email &&
+              prev.phone === nextAuth.phone &&
+              prev.countryCode === nextAuth.countryCode &&
+              prev.token === nextAuth.token
+            ) {
+              return prev;
+            }
+            return nextAuth;
           });
           return;
         }
@@ -295,6 +323,9 @@ export default function SupportWidget() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const messagesEndRef = useRef(null);
+  const bodyRef = useRef(null);
+  const prevMsgCountRef = useRef(0);
+  const prevSelectedReqIdRef = useRef(null);
 
   // ---------------------------------------------------------------------------
   // API CALLS (Existing endpoints reused exactly)
@@ -335,7 +366,23 @@ export default function SupportWidget() {
       const res = await fetch(`${API_URL}/api/support/requests/${reqId}/messages`);
       const data = await res.json();
       if (data.success && data.data) {
-        setRequestDetails(data.data);
+        setRequestDetails((prev) => {
+          if (!prev) return data.data;
+          const prevMsgs = prev.messages || [];
+          const newMsgs = data.data.messages || [];
+          const statusChanged = prev.status !== data.data.status;
+          const countChanged = prevMsgs.length !== newMsgs.length;
+          const followUpsChanged = JSON.stringify(prev.allowedFollowUps || []) !== JSON.stringify(data.data.allowedFollowUps || []);
+          if (!statusChanged && !countChanged && !followUpsChanged) {
+            if (prevMsgs.length === 0 && newMsgs.length === 0) return prev;
+            const lastPrev = prevMsgs[prevMsgs.length - 1];
+            const lastNew = newMsgs[newMsgs.length - 1];
+            if (lastPrev?._id === lastNew?._id && lastPrev?.text === lastNew?.text) {
+              return prev;
+            }
+          }
+          return data.data;
+        });
       }
     } catch (_) {
     } finally {
@@ -426,7 +473,10 @@ export default function SupportWidget() {
       const res = await fetch(`${API_URL}/api/support/my-requests?${queryParts.join('&')}`, { headers });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        setUserRequests(json.data);
+        setUserRequests((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(json.data)) return prev;
+          return json.data;
+        });
 
         // Update storedIds with all IDs returned by server
         const fetchedIds = json.data.map((r) => r._id).filter(Boolean);
@@ -452,17 +502,8 @@ export default function SupportWidget() {
     const handleStorageChange = () => syncAuthState();
     window.addEventListener('storage', handleStorageChange);
 
-    // Periodically re-check auth state while widget is open (detects login/logout on the same page)
-    let interval = null;
-    if (isOpen) {
-      interval = setInterval(() => {
-        syncAuthState();
-      }, 1000);
-    }
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      if (interval) clearInterval(interval);
     };
   }, [isOpen, syncAuthState]);
 
@@ -495,12 +536,33 @@ export default function SupportWidget() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Scroll messages to bottom when updated
+  // Scroll messages ONLY when a genuine new message is added (never repeatedly on background polling)
   useEffect(() => {
-    if (activeTab === 'upd' && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (activeTab !== 'upd') return;
+
+    const currentMsgCount = requestDetails?.messages?.length || 0;
+    const isDifferentTicket = selectedRequestId !== prevSelectedReqIdRef.current;
+    prevSelectedReqIdRef.current = selectedRequestId;
+
+    // When opening or switching to a ticket, ensure view starts at top so status & initial messages are visible
+    if (isDifferentTicket) {
+      prevMsgCountRef.current = currentMsgCount;
+      if (bodyRef.current) {
+        bodyRef.current.scrollTop = 0;
+      }
+      return;
     }
-  }, [requestDetails?.messages, activeTab]);
+
+    // Only scroll down when a genuine NEW message is added
+    if (currentMsgCount > prevMsgCountRef.current) {
+      prevMsgCountRef.current = currentMsgCount;
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    } else {
+      prevMsgCountRef.current = currentMsgCount;
+    }
+  }, [requestDetails?.messages?.length, activeTab, selectedRequestId]);
 
   // ---------------------------------------------------------------------------
   // SOCKET.IO REAL-TIME SUPPORT CHAT INTEGRATION
@@ -1017,7 +1079,7 @@ export default function SupportWidget() {
         </div>
 
         {/* Panel Body */}
-        <div className="sj-body" id="sjBody">
+        <div className="sj-body" id="sjBody" ref={bodyRef}>
           {/* TAB 1: UPDATES & CHAT */}
           {activeTab === 'upd' ? (
             selectedRequestId && (requestDetails || activeRequest) ? (
@@ -1570,6 +1632,7 @@ export default function SupportWidget() {
                           aria-checked={isSelected}
                           onClick={() => {
                             setSelectedProblemId(p._id);
+                            setCustomProblemText('');
                             setSubmitError('');
                           }}
                         >
@@ -1624,14 +1687,19 @@ export default function SupportWidget() {
                     fontFamily: 'inherit',
                     boxSizing: 'border-box',
                   }}
-                  placeholder={
-                    selectedProblemId
-                      ? 'Write additional details about your problem here (optional)...'
-                      : 'Describe what problem you are facing in your own words...'
-                  }
+                  placeholder="Describe what problem you are facing in your own words..."
                   value={customProblemText}
+                  onFocus={() => {
+                    if (selectedProblemId) {
+                      setSelectedProblemId('');
+                    }
+                  }}
                   onChange={(e) => {
-                    setCustomProblemText(e.target.value);
+                    const val = e.target.value;
+                    setCustomProblemText(val);
+                    if (selectedProblemId) {
+                      setSelectedProblemId('');
+                    }
                     if (submitError) setSubmitError('');
                   }}
                 />
