@@ -2838,7 +2838,12 @@ const EmployeeOnboarding = () => {
             <CustomDropdown
               options={(() => {
                 if (Array.isArray(cmsConfig?.step4?.skillsOptions) && cmsConfig.step4.skillsOptions.length > 0) {
-                  return cmsConfig.step4.skillsOptions.map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt));
+                  return cmsConfig.step4.skillsOptions
+                    .map(opt => {
+                      const str = (typeof opt === 'string' ? opt : (opt?.value || opt?.label || '')).trim();
+                      return str ? { value: str, label: str } : null;
+                    })
+                    .filter(Boolean);
                 }
                 return allSkillsOptions;
               })()}
@@ -2865,7 +2870,15 @@ const EmployeeOnboarding = () => {
               </p>
             )}
             {(() => {
-              const suggested = getSuggestedSkills(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []);
+              const currentList = p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : [];
+              const dynamicSuggested = getSuggestedSkills(currentList);
+              const defaultPool = (Array.isArray(cmsConfig?.step4?.skillsOptions) && cmsConfig.step4.skillsOptions.length > 0)
+                ? cmsConfig.step4.skillsOptions.map(s => (typeof s === 'string' ? s : (s?.label || s?.value || '')).trim()).filter(Boolean)
+                : [];
+              const suggested = dynamicSuggested.length > 0 
+                ? dynamicSuggested 
+                : defaultPool.filter(s => !currentList.some(c => c.toLowerCase() === s.toLowerCase())).slice(0, 8);
+
               if (suggested.length === 0) return null;
               return (
                 <div className="mt-5">

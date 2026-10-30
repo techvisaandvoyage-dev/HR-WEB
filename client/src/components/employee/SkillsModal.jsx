@@ -3,6 +3,7 @@ import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { preferredLocationOptions } from '../../data/preferredLocations';
 import { getSuggestedSkills, allSkillsOptions } from '../../utils/skillsData';
+import { socket } from '../../utils/socket';
 import { IconPen, IconClose, IconPlus } from './ProfileIcons';
 
 const CURRENCY_OPTIONS = [
@@ -83,6 +84,38 @@ const SkillsModal = ({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [errors, setErrors] = useState({});
   const skillWrapperRef = useRef(null);
+  const [internalCmsConfig, setInternalCmsConfig] = useState(null);
+
+  // Fetch CMS config if not provided from parent
+  useEffect(() => {
+    if (isOpen && !cmsConfig && !internalCmsConfig) {
+      const fetchCms = async () => {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
+          const data = await res.json();
+          if (data?.success && data?.data?.employeeOnboarding) {
+            setInternalCmsConfig(data.data.employeeOnboarding);
+          } else if (data?.employeeOnboarding) {
+            setInternalCmsConfig(data.employeeOnboarding);
+          }
+        } catch (err) {
+          console.error("Failed to fetch CMS config in SkillsModal:", err);
+        }
+      };
+      fetchCms();
+    }
+  }, [isOpen, cmsConfig, internalCmsConfig]);
+
+  // Keep CMS config updated in real-time when admin changes skills options
+  useEffect(() => {
+    const handleCmsUpdate = ({ employeeOnboarding }) => {
+      if (employeeOnboarding && typeof employeeOnboarding === 'object') {
+        setInternalCmsConfig(employeeOnboarding);
+      }
+    };
+    socket.on('employee_onboarding_config_updated', handleCmsUpdate);
+    return () => socket.off('employee_onboarding_config_updated', handleCmsUpdate);
+  }, []);
 
   // Click outside listener to close skill dropdown
   useEffect(() => {
@@ -126,14 +159,15 @@ const SkillsModal = ({
     }
   }, [isOpen, formData]);
 
-  const fields = cmsConfig?.step4?.fields || {};
+  const activeCms = cmsConfig || internalCmsConfig;
+  const fields = activeCms?.step4?.fields || {};
   const field = (key, label, placeholder = '') => ({ label: fields[key]?.label || label, placeholder: fields[key]?.placeholder || placeholder, isRequired: fields[key]?.isRequired !== false });
-  const functionsMap = cmsConfig?.step1?.functionsData;
+  const functionsMap = activeCms?.step1?.functionsData;
   const functionOptions = functionsMap && typeof functionsMap === 'object' && Object.keys(functionsMap).length
     ? Object.keys(functionsMap) : FUNCTION_OPTIONS;
-  const experienceOptions = Array.isArray(cmsConfig?.step1?.experienceOptions) && cmsConfig.step1.experienceOptions.length ? cmsConfig.step1.experienceOptions : TOTAL_EXP_OPTIONS;
-  const locationOptions = Array.isArray(cmsConfig?.step1?.locationCities) && cmsConfig.step1.locationCities.length
-    ? cmsConfig.step1.locationCities.map(item => ({ value: typeof item === 'string' ? item : (item.value || item.label), label: typeof item === 'string' ? item : (item.label || item.value) })) : preferredLocationOptions;
+  const experienceOptions = Array.isArray(activeCms?.step1?.experienceOptions) && activeCms.step1.experienceOptions.length ? activeCms.step1.experienceOptions : TOTAL_EXP_OPTIONS;
+  const locationOptions = Array.isArray(activeCms?.step1?.locationCities) && activeCms.step1.locationCities.length
+    ? activeCms.step1.locationCities.map(item => ({ value: typeof item === 'string' ? item : (item.value || item.label), label: typeof item === 'string' ? item : (item.label || item.value) })) : preferredLocationOptions;
   const designation = field('designation', 'Designation / Role', 'Select or type designation');
   const industry = field('industry', 'Function', 'Select Function');
   const preferredLocation = field('preferredLocation', 'Preferred location', 'Select Preferred Locations');
@@ -145,36 +179,99 @@ const SkillsModal = ({
   const expectedSalary = field('expectedSalary', 'Expected annual CTC', 'e.g. 15,00,000');
   const skills = field('skills', 'Key skills', 'Search or type a skill (e.g. React, Tally, Python)...');
 
-  // Matching skills from dictionary
+  // Dynamic skills options configured by admin (fallback to allSkillsOptions if not configured)
+  const allAvailableSkills = useMemo(() => {
+    if (Array.isArray(activeCms?.step4?.skillsOptions) && activeCms.step4.skillsOptions.length > 0) {
+      return activeCms.step4.skillsOptions.map(opt => {
+        const val = (typeof opt === 'string' ? opt : (opt?.value || opt?.label || '')).trim();
+        const lbl = (typeof opt === 'string' ? opt : (opt?.label || opt?.value || '')).trim();
+        return { value: val, label: lbl };
+      }).filter(item => item.value);
+    }
+    return (allSkillsOptions || []).map(opt => ({
+      value: (typeof opt === 'string' ? opt : (opt?.value || opt?.label || '')).trim(),
+      label: (typeof opt === 'string' ? opt : (opt?.label || opt?.value || '')).trim()
+    })).filter(item => item.value);
+  }, [activeCms?.step4?.skillsOptions]);
+
+  // Matching skills from CMS configured list / dictionary
   const matchingSkills = useMemo(() => {
     const q = (skillInput || '').trim().toLowerCase();
     if (!q) return [];
-    return (allSkillsOptions || [])
-      .filter(item => {
-        const itemLower = String(item.label || item.value || '').toLowerCase();
-        const alreadyAdded = form.skills.some(s => String(s || '').toLowerCase() === itemLower);
-        return !alreadyAdded && itemLower.includes(q);
-      })
-      .slice(0, 10);
-  }, [skillInput, form.skills]);
+    
+    const lowerAdded = new Set(form.skills.map(s => String(s || '').toLowerCase()));
+    
+    const matched = allAvailableSkills.filter(item => {
+      const itemLower = String(item.label || item.value || '').toLowerCase();
+      if (lowerAdded.has(itemLower)) return false;
+      return itemLower.includes(q);
+    });
+
+    // Smart sort: exact match first, then starts-with, then alphabetical
+    matched.sort((a, b) => {
+      const aLower = String(a.label || a.value || '').toLowerCase();
+      const bLower = String(b.label || b.value || '').toLowerCase();
+      const aExact = aLower === q;
+      const bExact = bLower === q;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+
+      const aStarts = aLower.startsWith(q);
+      const bStarts = bLower.startsWith(q);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+
+      return aLower.localeCompare(bLower);
+    });
+
+    return matched.slice(0, 15);
+  }, [skillInput, form.skills, allAvailableSkills]);
+
+  // Suggested skills: based on current selection or top configured skills
+  const defaultSkillsPool = useMemo(() => {
+    if (Array.isArray(activeCms?.step4?.skillsOptions) && activeCms.step4.skillsOptions.length > 0) {
+      return activeCms.step4.skillsOptions
+        .map(s => (typeof s === 'string' ? s : (s?.label || s?.value || '')).trim())
+        .filter(Boolean);
+    }
+    return DEFAULT_SUGGESTED_SKILLS;
+  }, [activeCms?.step4?.skillsOptions]);
+
+  const dynamicSuggestions = useMemo(() => {
+    return form.skills.length > 0 ? getSuggestedSkills(form.skills) : [];
+  }, [form.skills]);
+
+  const availableSuggestions = useMemo(() => {
+    const basePool = dynamicSuggestions.length > 0 ? dynamicSuggestions : defaultSkillsPool;
+    const lowerAdded = new Set(form.skills.map(s => String(s || '').toLowerCase()));
+    return basePool.filter(s => !lowerAdded.has(String(s || '').toLowerCase())).slice(0, 8);
+  }, [dynamicSuggestions, defaultSkillsPool, form.skills]);
 
   // Hooks must run on every render, including while the modal is closed.
   // Keep this guard after useMemo to preserve a stable hook order.
   if (!isOpen) return null;
 
   const handleAddSkill = (skillToAdd) => {
-    const trimmed = (skillToAdd || '').trim();
-    if (!trimmed) return;
-    if (form.skills.some(s => String(s || '').toLowerCase() === trimmed.toLowerCase())) {
-      setSkillInput('');
-      setShowSkillDropdown(false);
-      setHighlightedIndex(-1);
-      return;
-    }
-    setForm(prev => ({
-      ...prev,
-      skills: [...prev.skills, trimmed]
-    }));
+    const raw = (skillToAdd || '').trim();
+    if (!raw) return;
+
+    // Support single or comma-separated bulk skills
+    const itemsToAdd = raw.includes(',')
+      ? raw.split(',').map(s => s.trim()).filter(Boolean)
+      : [raw];
+
+    if (itemsToAdd.length === 0) return;
+
+    setForm(prev => {
+      const lowerExisting = new Set(prev.skills.map(s => String(s || '').toLowerCase()));
+      const uniqueNew = itemsToAdd.filter(item => !lowerExisting.has(item.toLowerCase()));
+      if (uniqueNew.length === 0) return prev;
+      return {
+        ...prev,
+        skills: [...prev.skills, ...uniqueNew]
+      };
+    });
+
     setSkillInput('');
     setShowSkillDropdown(false);
     setHighlightedIndex(-1);
@@ -240,12 +337,7 @@ const SkillsModal = ({
     onClose();
   };
 
-  // Filter suggested skills safely
-  const dynamicSuggestions = form.skills.length > 0 ? getSuggestedSkills(form.skills) : [];
-  const basePool = dynamicSuggestions.length > 0 ? dynamicSuggestions : DEFAULT_SUGGESTED_SKILLS;
-  const availableSuggestions = basePool.filter(
-    s => !form.skills.some(existing => String(existing || '').toLowerCase() === String(s || '').toLowerCase())
-  ).slice(0, 8);
+// Suggested skills already computed in hook above
 
   return (
     <div className="sj-modal-backdrop" onClick={onClose}>
@@ -436,37 +528,64 @@ const SkillsModal = ({
                   />
 
                   {/* Dropdown Menu */}
-                  {showSkillDropdown && matchingSkills.length > 0 && (
+                  {showSkillDropdown && (
                     <div 
                       className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto py-1.5"
                       style={{ boxShadow: '0 12px 30px rgba(0,0,0,0.15)' }}
                     >
-                      <div className="px-3.5 py-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
-                        <span>Suggested Skills ({matchingSkills.length})</span>
-                        <span className="text-[10px] text-gray-400 font-normal">Use ↑↓ and Enter</span>
-                      </div>
-                      {matchingSkills.map((item, idx) => {
-                        const skillName = item.label || item.value;
-                        const isHighlighted = highlightedIndex === idx;
-                        return (
-                          <button
-                            key={item.value || idx}
-                            type="button"
-                            className={`w-full text-left px-3.5 py-2.5 text-sm flex items-center justify-between transition-colors cursor-pointer ${
-                              isHighlighted 
-                                ? 'bg-emerald-50 text-emerald-800 font-semibold' 
-                                : 'text-gray-800 hover:bg-gray-50'
-                            }`}
-                            onMouseEnter={() => setHighlightedIndex(idx)}
-                            onClick={() => handleAddSkill(skillName)}
-                          >
-                            <span className="truncate">{skillName}</span>
-                            <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex-shrink-0 flex items-center gap-1">
-                              <IconPlus className="w-3 h-3" /> Add
-                            </span>
-                          </button>
-                        );
-                      })}
+                      {matchingSkills.length > 0 ? (
+                        <>
+                          <div className="px-3.5 py-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
+                            <span>Suggested Skills ({matchingSkills.length})</span>
+                            <span className="text-[10px] text-gray-400 font-normal">Use ↑↓ and Enter</span>
+                          </div>
+                          {matchingSkills.map((item, idx) => {
+                            const skillName = item.label || item.value;
+                            const isHighlighted = highlightedIndex === idx;
+                            return (
+                              <button
+                                key={item.value || idx}
+                                type="button"
+                                className={`w-full text-left px-3.5 py-2.5 text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                                  isHighlighted 
+                                    ? 'bg-emerald-50 text-emerald-800 font-semibold' 
+                                    : 'text-gray-800 hover:bg-gray-50'
+                                }`}
+                                onMouseEnter={() => setHighlightedIndex(idx)}
+                                onClick={() => handleAddSkill(skillName)}
+                              >
+                                <span className="truncate">{skillName}</span>
+                                <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex-shrink-0 flex items-center gap-1">
+                                  <IconPlus className="w-3 h-3" /> Add
+                                </span>
+                              </button>
+                            );
+                          })}
+                          {skillInput.trim() && !matchingSkills.some(m => (m.label || m.value || '').toLowerCase() === skillInput.trim().toLowerCase()) && (
+                            <button
+                              type="button"
+                              className="w-full text-left px-3.5 py-2 text-xs border-t border-gray-100 text-emerald-700 hover:bg-emerald-50 font-semibold flex items-center justify-between transition-colors cursor-pointer"
+                              onClick={() => handleAddSkill(skillInput)}
+                            >
+                              <span>Add custom skill <strong>"{skillInput.trim()}"</strong></span>
+                              <span className="text-[11px] bg-emerald-100/80 px-2 py-0.5 rounded-full font-bold">Press Enter</span>
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        skillInput.trim() && (
+                          <div className="px-3.5 py-3 text-sm text-gray-600 flex items-center justify-between">
+                            <span className="text-xs text-gray-500">No matching skill found</span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddSkill(skillInput)}
+                              className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <IconPlus className="w-3 h-3" /> Add "{skillInput.trim()}"
+                            </button>
+                          </div>
+                        )
+                      )}
                     </div>
                   )}
                 </div>

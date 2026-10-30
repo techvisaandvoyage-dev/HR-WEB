@@ -2064,6 +2064,30 @@ export default function EmployeesTab() {
     }));
   };
 
+  const handleSaveSkillsModal = async () => {
+    let latestConfig = onboardingConfig;
+    const raw = (newSkillOption || '').trim();
+    if (raw) {
+      const itemsToAdd = raw.split(',').map(s => s.trim()).filter(Boolean);
+      const currentList = latestConfig.step4?.skillsOptions || DEFAULT_SKILLS_OPTIONS;
+      const lowerExisting = new Set(currentList.map(s => s.toLowerCase()));
+      const uniqueNew = itemsToAdd.filter(item => !lowerExisting.has(item.toLowerCase()));
+      if (uniqueNew.length > 0) {
+        latestConfig = {
+          ...latestConfig,
+          step4: {
+            ...latestConfig.step4,
+            skillsOptions: [...currentList, ...uniqueNew]
+          }
+        };
+        setOnboardingConfig(latestConfig);
+      }
+      setNewSkillOption('');
+    }
+    await handleSave(latestConfig);
+    setIsSkillsModalOpen(false);
+  };
+
   const handleSkillDragStart = (e, index) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
@@ -6124,10 +6148,7 @@ export default function EmployeesTab() {
 
                             <button
                               type="button"
-                              onClick={async () => {
-                                await handleSave();
-                                setIsSkillsModalOpen(false);
-                              }}
+                              onClick={handleSaveSkillsModal}
                               disabled={saving}
                               className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
                             >
@@ -6318,10 +6339,7 @@ export default function EmployeesTab() {
                             </button>
                             <button
                               type="button"
-                              onClick={async () => {
-                                await handleSave();
-                                setIsSkillsModalOpen(false);
-                              }}
+                              onClick={handleSaveSkillsModal}
                               disabled={saving}
                               className="inline-flex items-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
                             >
