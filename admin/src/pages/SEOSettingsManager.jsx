@@ -10,7 +10,6 @@ import {
   Moon, 
   Sun, 
   Sparkles, 
-  Layers, 
   Upload, 
   Image as ImageIcon, 
   Trash2,
@@ -182,7 +181,7 @@ export default function SEOSettingsManager() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('Google Search, Favicon & Sitelinks saved successfully!');
+        showToast('Google Search & Favicon settings saved successfully!');
       } else {
         showError(data.message || 'Failed to save settings.');
       }
@@ -209,20 +208,6 @@ export default function SEOSettingsManager() {
     } finally {
       setRebuildingSitemap(false);
     }
-  };
-
-  // Sitelink update helper
-  const updateSitelink = (key, field, val) => {
-    setSeo(prev => ({
-      ...prev,
-      sitelinks: {
-        ...prev.sitelinks,
-        [key]: {
-          ...prev.sitelinks[key],
-          [field]: val
-        }
-      }
-    }));
   };
 
   return (
@@ -355,73 +340,6 @@ export default function SEOSettingsManager() {
             <span className="font-semibold">{seo.siteName || 'SahiJob'}: </span>
             {seo.metaDescription || 'Connect with 10,000+ employers. Apply to thousands of job opportunities across top companies, industries and locations in India.'}
           </p>
-
-          {/* ============================================================= */}
-          {/* Google Sitelinks (Matching Naukri screenshot exactly)         */}
-          {/* ============================================================= */}
-          <div className={`pt-4 border-t ${previewTheme === 'dark' ? 'border-[#3c4043]' : 'border-gray-200'} space-y-4`}>
-            
-            {/* 1. Candidate Login / Register */}
-            <div className="group cursor-pointer">
-              <div className="flex items-center justify-between">
-                <span className={`text-[15px] sm:text-[16px] font-medium group-hover:underline ${
-                  previewTheme === 'dark' ? 'text-[#c58af9]' : 'text-[#1a0dab]'
-                }`}>
-                  {seo.sitelinks?.candidateLogin?.title || 'Login or Register'}
-                </span>
-                <span className={`text-sm ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#70757a]'}`}>›</span>
-              </div>
-              <p className={`text-[12px] sm:text-[13px] mt-0.5 ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'}`}>
-                {seo.sitelinks?.candidateLogin?.description || 'Login Now & Get access to Jobs not posted publicly anywhere ...'}
-              </p>
-            </div>
-
-            {/* 2. Search Jobs */}
-            <div className={`pt-3 border-t ${previewTheme === 'dark' ? 'border-[#303134]' : 'border-gray-100'} group cursor-pointer`}>
-              <div className="flex items-center justify-between">
-                <span className={`text-[15px] sm:text-[16px] font-medium group-hover:underline ${
-                  previewTheme === 'dark' ? 'text-[#c58af9]' : 'text-[#1a0dab]'
-                }`}>
-                  {seo.sitelinks?.searchJobs?.title || 'Search Jobs'}
-                </span>
-                <span className={`text-sm ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#70757a]'}`}>›</span>
-              </div>
-              <p className={`text-[12px] sm:text-[13px] mt-0.5 ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'}`}>
-                {seo.sitelinks?.searchJobs?.description || 'Search thousands of Jobs across top companies in India ...'}
-              </p>
-            </div>
-
-            {/* 3. Employer Login */}
-            <div className={`pt-3 border-t ${previewTheme === 'dark' ? 'border-[#303134]' : 'border-gray-100'} group cursor-pointer`}>
-              <div className="flex items-center justify-between">
-                <span className={`text-[15px] sm:text-[16px] font-medium group-hover:underline ${
-                  previewTheme === 'dark' ? 'text-[#c58af9]' : 'text-[#1a0dab]'
-                }`}>
-                  {seo.sitelinks?.employerLogin?.title || 'Employer Hiring Portal'}
-                </span>
-                <span className={`text-sm ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#70757a]'}`}>›</span>
-              </div>
-              <p className={`text-[12px] sm:text-[13px] mt-0.5 ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'}`}>
-                {seo.sitelinks?.employerLogin?.description || 'Post jobs, search candidate resumes and hire top talent fast ...'}
-              </p>
-            </div>
-
-            {/* 4. Consultant Login */}
-            <div className={`pt-3 border-t ${previewTheme === 'dark' ? 'border-[#303134]' : 'border-gray-100'} group cursor-pointer`}>
-              <div className="flex items-center justify-between">
-                <span className={`text-[15px] sm:text-[16px] font-medium group-hover:underline ${
-                  previewTheme === 'dark' ? 'text-[#c58af9]' : 'text-[#1a0dab]'
-                }`}>
-                  {seo.sitelinks?.consultantLogin?.title || 'Consultant Login'}
-                </span>
-                <span className={`text-sm ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#70757a]'}`}>›</span>
-              </div>
-              <p className={`text-[12px] sm:text-[13px] mt-0.5 ${previewTheme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'}`}>
-                {seo.sitelinks?.consultantLogin?.description || 'Recruitment partner and consultant login to manage multiple clients ...'}
-              </p>
-            </div>
-
-          </div>
 
         </div>
       </div>
@@ -594,186 +512,7 @@ export default function SEOSettingsManager() {
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* CARD 4: THE 4 CORE GOOGLE SITELINKS                                       */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl border border-gray-200/90 p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">The 4 Google Sitelinks (Naukri Style)</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Customize the title and snippet for Candidate Login, Search Jobs, Employer Login, and Consultant Login.
-            </p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-          
-          {/* Sitelink 1: Candidate Login or Register */}
-          <div className="p-5 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-purple-800 bg-purple-100 px-2.5 py-0.5 rounded-full">
-                Sitelink 1: Candidate Login / Register
-              </span>
-              <span className="text-[11px] text-gray-400 font-medium">Opens Candidate Modal</span>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Title</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.candidateLogin?.title}
-                onChange={(e) => updateSitelink('candidateLogin', 'title', e.target.value)}
-                placeholder="Login or Register"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-purple-600 outline-none font-semibold"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Description Snippet</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.candidateLogin?.description}
-                onChange={(e) => updateSitelink('candidateLogin', 'description', e.target.value)}
-                placeholder="Login Now & Get access to Jobs not posted publicly anywhere ..."
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-purple-600 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">URL Path</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.candidateLogin?.url}
-                onChange={(e) => updateSitelink('candidateLogin', 'url', e.target.value)}
-                placeholder="https://sahijob.com/?auth=candidate"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-purple-600 outline-none text-gray-500 font-mono"
-              />
-            </div>
-          </div>
-
-          {/* Sitelink 2: Search Jobs */}
-          <div className="p-5 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2.5 py-0.5 rounded-full">
-                Sitelink 2: Search Jobs
-              </span>
-              <span className="text-[11px] text-gray-400 font-medium">Job Listings</span>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Title</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.searchJobs?.title}
-                onChange={(e) => updateSitelink('searchJobs', 'title', e.target.value)}
-                placeholder="Search Jobs"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-blue-600 outline-none font-semibold"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Description Snippet</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.searchJobs?.description}
-                onChange={(e) => updateSitelink('searchJobs', 'description', e.target.value)}
-                placeholder="Search thousands of Jobs across top companies in India ..."
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-blue-600 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">URL Path</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.searchJobs?.url}
-                onChange={(e) => updateSitelink('searchJobs', 'url', e.target.value)}
-                placeholder="https://sahijob.com/?search=all"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-blue-600 outline-none text-gray-500 font-mono"
-              />
-            </div>
-          </div>
-
-          {/* Sitelink 3: Employer Login */}
-          <div className="p-5 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                Sitelink 3: Employer Login / Hire
-              </span>
-              <span className="text-[11px] text-gray-400 font-medium">Opens Employer Modal</span>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Title</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.employerLogin?.title}
-                onChange={(e) => updateSitelink('employerLogin', 'title', e.target.value)}
-                placeholder="Employer Hiring Portal"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-emerald-600 outline-none font-semibold"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Description Snippet</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.employerLogin?.description}
-                onChange={(e) => updateSitelink('employerLogin', 'description', e.target.value)}
-                placeholder="Post jobs, search candidate resumes and hire top talent fast ..."
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-emerald-600 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">URL Path</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.employerLogin?.url}
-                onChange={(e) => updateSitelink('employerLogin', 'url', e.target.value)}
-                placeholder="https://sahijob.com/?auth=employer"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-emerald-600 outline-none text-gray-500 font-mono"
-              />
-            </div>
-          </div>
-
-          {/* Sitelink 4: Consultant Login */}
-          <div className="p-5 bg-gray-50/70 border border-gray-200 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
-                Sitelink 4: Consultant Login
-              </span>
-              <span className="text-[11px] text-gray-400 font-medium">Opens Consultant Modal</span>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Title</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.consultantLogin?.title}
-                onChange={(e) => updateSitelink('consultantLogin', 'title', e.target.value)}
-                placeholder="Consultant Login"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-amber-600 outline-none font-semibold"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">Description Snippet</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.consultantLogin?.description}
-                onChange={(e) => updateSitelink('consultantLogin', 'description', e.target.value)}
-                placeholder="Recruitment partner and consultant login to manage multiple clients ..."
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-amber-600 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-gray-700 mb-1">URL Path</label>
-              <input
-                type="text"
-                value={seo.sitelinks?.consultantLogin?.url}
-                onChange={(e) => updateSitelink('consultantLogin', 'url', e.target.value)}
-                placeholder="https://sahijob.com/?auth=consultant"
-                className="w-full px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:border-amber-600 outline-none text-gray-500 font-mono"
-              />
-            </div>
-          </div>
-
-        </div>
-      </div>
 
 
       {/* Bottom Save Bar */}

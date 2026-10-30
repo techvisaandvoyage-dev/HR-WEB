@@ -566,7 +566,7 @@ function App() {
         title={seoConfig?.metaTitle || 'sahijob.com - Find Your Dream Job in India | Top Recruitment Portal'}
         description={seoConfig?.metaDescription || 'Search and apply for top jobs in IT, Sales, Marketing, and Engineering across India on sahijob.com. Connect with verified employers and get hired.'}
         canonicalUrl={seoConfig?.canonicalUrl ? `${seoConfig.canonicalUrl}${location.pathname}` : ''}
-        favicon={seoConfig?.favicon || '/favicon.svg'}
+        favicon={seoConfig?.favicon || '/favicon.png'}
         googleSiteVerification={seoConfig?.googleSiteVerification}
         schema={[
           {
