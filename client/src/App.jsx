@@ -501,7 +501,8 @@ function App() {
 
   const openEmployerRegister = (initialData = null) => {
     setIsEmployerLoginOpen(false);
-    const consultantFlag = initialData?.isConsultant !== undefined ? initialData.isConsultant : isConsultantMode;
+    const consultantFlag = Boolean(initialData?.isConsultant !== undefined ? initialData.isConsultant : isConsultantMode);
+    setIsConsultantMode(consultantFlag);
     setEmployerRegisterInitialData(initialData ? { ...initialData, isConsultant: consultantFlag } : (consultantFlag ? { isConsultant: true } : null));
     setIsEmployerRegisterOpen(true);
   };
@@ -539,9 +540,12 @@ function App() {
     // Stay on the direct job apply page and do NOT redirect to onboarding
   };
 
-  const handleEmployerLoginSuccess = () => {
+  const handleEmployerLoginSuccess = (data = null) => {
     setIsLoggedIn(true);
     setUserRole('employer');
+    if (data?.isConsultant !== undefined) {
+      setIsConsultantMode(Boolean(data.isConsultant));
+    }
     setIsEmployerLoginOpen(false);
     setIsEmployerRegisterOpen(false);
     // Clear any registration draft on successful login/registration
@@ -1005,6 +1009,7 @@ function App() {
         onClose={() => { setIsEmployerLoginOpen(false); setIsConsultantMode(false); }} 
         onRegisterClick={openEmployerRegister}
         onLoginSuccess={handleEmployerLoginSuccess}
+        onSwitchMode={openEmployerLogin}
       />
       <EmployerRegisterModal 
         isOpen={isEmployerRegisterOpen}

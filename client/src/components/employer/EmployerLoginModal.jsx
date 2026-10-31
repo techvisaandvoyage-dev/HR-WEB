@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
 
-const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterClick, onLoginSuccess }) => {
+const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterClick, onLoginSuccess, onSwitchMode }) => {
   const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'otp' | 'forgot'
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -171,13 +171,16 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
     setError('');
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      onClose(); // Close modal immediately so the login form does not reappear
       const idToken = await result.user.getIdToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${apiUrl}/api/employer/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken, isConsultant: Boolean(isConsultant) })
+        body: JSON.stringify({ 
+          id_token: idToken, 
+          isConsultant: Boolean(isConsultant),
+          hiringFor: isConsultant ? 'consultant' : 'employer'
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -189,15 +192,22 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
         if (data.isNewUser) {
           // New user -> open Company Details form
           if (onRegisterClick) {
-            onRegisterClick({ step: 2, fullName: data.fullName, email: data.email, isGoogleAuth: true, isConsultant });
+            onRegisterClick({ 
+              step: 2, 
+              fullName: data.fullName, 
+              email: data.email, 
+              isGoogleAuth: true, 
+              isConsultant: Boolean(data.isConsultant !== undefined ? data.isConsultant : isConsultant) 
+            });
           }
         } else {
+          onClose?.();
           onLoginSuccess?.(data);
         }
       } else {
         const errorMsg = data.message || 'Google login failed';
         setError(errorMsg);
-        setErrors({ general: errorMsg, email: errorMsg });
+        setErrors({ general: errorMsg });
       }
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
@@ -839,27 +849,31 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-full hover:bg-gray-50 transition-all font-semibold text-gray-700 shadow-xs mb-5 disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-300 rounded-full hover:bg-gray-50 transition-all font-semibold text-gray-700 shadow-xs mb-5 disabled:opacity-60 cursor-pointer"
               >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                {cmsConfig?.googleBtnText || 'Continue with Google'}
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-palette-400 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                )}
+                {loading ? 'Connecting with Google...' : (cmsConfig?.googleBtnText || 'Continue with Google')}
               </button>
 
               <div className="flex items-center gap-4 mb-5">
@@ -870,12 +884,40 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
                 <div className="h-px bg-gray-200 flex-1"></div>
               </div>
 
-              {errors.general && !errors.email && (
-                <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-semibold rounded-lg border border-red-200 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              {(errors.general || error) && (
+                <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm font-semibold rounded-lg border border-red-200 flex items-start gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0 mt-0.5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  {errors.general}
+                  <div className="flex-1">
+                    <div>{errors.general || error}</div>
+                    {onSwitchMode && isConsultant && (errors.general || error).toLowerCase().includes('employer login') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError('');
+                          setErrors({});
+                          onSwitchMode({ isConsultant: false });
+                        }}
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-palette-900 underline hover:text-palette-700 cursor-pointer"
+                      >
+                        Switch to Employer Login →
+                      </button>
+                    )}
+                    {onSwitchMode && !isConsultant && (errors.general || error).toLowerCase().includes('consultant login') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError('');
+                          setErrors({});
+                          onSwitchMode({ isConsultant: true });
+                        }}
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-palette-900 underline hover:text-palette-700 cursor-pointer"
+                      >
+                        Switch to Consultant Login →
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

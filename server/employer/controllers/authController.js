@@ -824,8 +824,7 @@ exports.googleAuth = async (req, res) => {
         (employer.mobile && employer.mobile.trim() !== '') ||
         (employer.companyName && employer.companyName.trim() !== '') ||
         (employer.industry && employer.industry.trim() !== '') ||
-        (employer.location && employer.location.trim() !== '') ||
-        employer.employerId
+        (employer.location && employer.location.trim() !== '')
       );
 
       if (isRegisteredAccount) {
@@ -851,6 +850,7 @@ exports.googleAuth = async (req, res) => {
         isNewUser = true;
         if (req.body.isConsultant !== undefined) {
           employer.isConsultant = isTargetConsultant;
+          employer.hiringFor = isTargetConsultant ? 'consultant' : (hiringFor && hiringFor !== 'consultant' ? hiringFor : 'employer');
         }
       }
 
