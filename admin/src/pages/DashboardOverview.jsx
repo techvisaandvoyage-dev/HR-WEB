@@ -1177,7 +1177,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     lastUpdate: 'All'
   });
 
-  const [empSort, setEmpSort] = useState({ column: 'lastUpdate', direction: 'desc' });
+  const [empSort, setEmpSort] = useState({ column: 'registeredDate', direction: 'desc' });
 
   // Helpers for extracting candidate detailed attributes
   const getPrimaryQualification = (emp) => {
@@ -1309,6 +1309,13 @@ export default function DashboardOverview({ onNavigateTab }) {
     return new Date(d).toLocaleDateString();
   };
 
+  const getRegisteredDate = (emp) => {
+    if (!emp) return 'N/A';
+    const d = emp.createdAt || emp.registrationDate || emp.created_at;
+    if (!d) return 'N/A';
+    return new Date(d).toLocaleDateString();
+  };
+
   // Dynamic filter options generated from candidate data
   const candidateFilterOptions = useMemo(() => {
     const quals = new Set();
@@ -1417,7 +1424,10 @@ export default function DashboardOverview({ onNavigateTab }) {
       const desig = getCurrentDesignation(emp);
       const comp = getCurrentCompany(emp);
       const apps = emp.applicationsCount || 0;
+      const regDate = emp.createdAt || emp.registrationDate;
       const updateDate = emp.updatedAt || emp.lastLogin || emp.createdAt;
+      const regDateStr = regDate ? new Date(regDate).toLocaleDateString().toLowerCase() : '';
+      const updateDateStr = updateDate ? new Date(updateDate).toLocaleDateString().toLowerCase() : '';
       const src = emp.sourceType || emp.acquisition?.sourceType || 'direct';
       const refJob = emp.firstTouchJob?.title || emp.acquisition?.jobSnapshot?.title || '';
       const refEmployer = emp.firstTouchEmployer?.companyName || emp.acquisition?.jobSnapshot?.companyName || '';
@@ -1436,7 +1446,9 @@ export default function DashboardOverview({ onNavigateTab }) {
           func.toLowerCase().includes(q) || 
           exp.toLowerCase().includes(q) || 
           desig.toLowerCase().includes(q) || 
-          comp.toLowerCase().includes(q);
+          comp.toLowerCase().includes(q) ||
+          regDateStr.includes(q) ||
+          updateDateStr.includes(q);
         if (!matchGlobal) return false;
       }
 
@@ -1585,6 +1597,11 @@ export default function DashboardOverview({ onNavigateTab }) {
         case 'jobsApplied':
           valA = a.applicationsCount || 0;
           valB = b.applicationsCount || 0;
+          return empSort.direction === 'asc' ? valA - valB : valB - valA;
+        case 'registeredDate':
+        case 'registeredOn':
+          valA = new Date(a.createdAt || a.registrationDate || 0).getTime();
+          valB = new Date(b.createdAt || b.registrationDate || 0).getTime();
           return empSort.direction === 'asc' ? valA - valB : valB - valA;
         case 'lastUpdate':
         default:
@@ -2802,10 +2819,10 @@ export default function DashboardOverview({ onNavigateTab }) {
                         {empSort.column === 'jobsApplied' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
                       </div>
                     </th>
-                    <th onClick={() => handleSort('lastUpdate')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                    <th onClick={() => handleSort('registeredDate')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
                       <div className="flex items-center gap-1.5">
-                        <span>Last Profile Update</span>
-                        {empSort.column === 'lastUpdate' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                        <span>Registered Date</span>
+                        {(empSort.column === 'registeredDate' || empSort.column === 'lastUpdate') ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-right">Actions</th>
@@ -3129,9 +3146,16 @@ export default function DashboardOverview({ onNavigateTab }) {
                             </span>
                           </td>
 
-                          {/* Last Profile Update */}
-                          <td className="px-5 py-4 text-gray-500 text-[11px]">
-                            {getLastProfileUpdate(emp)}
+                          {/* Registered Date & Last Profile Update */}
+                          <td className="px-5 py-4">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-bold text-gray-900 text-xs">
+                                {getRegisteredDate(emp)}
+                              </span>
+                              <span className="text-gray-400 text-[10px]">
+                                Updated: {getLastProfileUpdate(emp)}
+                              </span>
+                            </div>
                           </td>
 
                           {/* Actions */}
