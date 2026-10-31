@@ -30,7 +30,7 @@ const EmployerUserMenu = ({ employerProfile }) => {
   };
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative z-50" ref={menuRef}>
       {/* Avatar Button */}
       <button
         type="button"
