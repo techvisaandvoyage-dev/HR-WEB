@@ -357,37 +357,10 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         if (parsed.email) setAuthEmail(parsed.email);
       }
 
-      // Fetch profile silently to get latest resume / phone / profile info
-      fetchUserProfile(storedToken);
-
-      // Restore session step, screening answers, and visibility for this job
-      if (jobId) {
-        checkApplicationStatus(storedToken, jobId).then((hasApplied) => {
-          if (!hasApplied) {
-            try {
-              const savedStep = sessionStorage.getItem(`apply_step_${jobId}`);
-              if (savedStep && ['2', '3'].includes(savedStep)) {
-                setStep(Number(savedStep));
-              } else {
-                // If candidate is already logged in, automatically go to Step 2
-                setStep(2);
-              }
-
-              const savedAnswers = sessionStorage.getItem(`apply_answers_${jobId}`);
-              if (savedAnswers) {
-                setScreeningAnswers(JSON.parse(savedAnswers));
-              }
-
-              const savedVisibility = sessionStorage.getItem(`apply_visibility_${jobId}`);
-              if (savedVisibility) {
-                setProfileVisibility(savedVisibility);
-              }
-            } catch (_) {
-              setStep(2);
-            }
-          }
-        });
-      }
+      // Validate token with server BEFORE advancing past Step 1.
+      // fetchUserProfileAndAdvance will setStep(1) on 401 (invalid/expired token),
+      // or advance to Step 2 only when the server confirms the token is valid.
+      fetchUserProfileAndAdvance(storedToken, jobId);
     }
   }, [jobId]);
 
@@ -487,6 +460,67 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       }
     } catch (err) {
       console.warn('Silent profile fetch error:', err);
+    }
+  };
+
+  // Validates token against server and advances to Step 2 only on confirmed valid session.
+  // On 401/network error when token is stale, stays on Step 1 (auth screen).
+  const fetchUserProfileAndAdvance = async (authToken, targetJobId) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employee/profile`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          setUser(prev => ({ ...(prev || {}), ...data }));
+          if (data.resume) {
+            setResumeUrl(data.resume);
+            setResumeName(data.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
+          }
+          if (data.phone) setAuthMobile(data.phone);
+          if (data.email) setAuthEmail(data.email);
+          if (data.firstName) setAuthName(`${data.firstName} ${data.lastName || ''}`.trim());
+        }
+        // Token is valid — now check application status and advance step
+        if (targetJobId) {
+          const hasApplied = await checkApplicationStatus(authToken, targetJobId);
+          if (!hasApplied) {
+            try {
+              const savedStep = sessionStorage.getItem(`apply_step_${targetJobId}`);
+              if (savedStep && ['2', '3'].includes(savedStep)) {
+                setStep(Number(savedStep));
+              } else {
+                setStep(2);
+              }
+              const savedAnswers = sessionStorage.getItem(`apply_answers_${targetJobId}`);
+              if (savedAnswers) {
+                setScreeningAnswers(JSON.parse(savedAnswers));
+              }
+              const savedVisibility = sessionStorage.getItem(`apply_visibility_${targetJobId}`);
+              if (savedVisibility) {
+                setProfileVisibility(savedVisibility);
+              }
+            } catch (_) {
+              setStep(2);
+            }
+          }
+        } else {
+          setStep(2);
+        }
+      } else {
+        // Token invalid or expired — clear it and show login (Step 1)
+        setUser(null);
+        setToken('');
+        localStorage.removeItem('employeeToken');
+        localStorage.removeItem('employeeUser');
+        setStep(1);
+      }
+    } catch (err) {
+      // Network error — keep user on Step 1 to avoid showing protected steps
+      console.warn('Profile validation error, staying on Step 1:', err);
+      setStep(1);
     }
   };
 
