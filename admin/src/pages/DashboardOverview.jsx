@@ -951,7 +951,8 @@ export default function DashboardOverview({ onNavigateTab }) {
     industry: 'All',
     location: 'All',
     jobPosted: 'All',
-    joinedOn: 'All'
+    joinedOn: 'All',
+    lastUpdate: 'All'
   });
 
   const [emprSort, setEmprSort] = useState({ column: 'joinedOn', direction: 'desc' });
@@ -993,7 +994,8 @@ export default function DashboardOverview({ onNavigateTab }) {
       industry: 'All',
       location: 'All',
       jobPosted: 'All',
-      joinedOn: 'All'
+      joinedOn: 'All',
+      lastUpdate: 'All'
     });
   };
 
@@ -1011,6 +1013,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (emprColFilters.location !== 'All') count++;
     if (emprColFilters.jobPosted !== 'All') count++;
     if (emprColFilters.joinedOn !== 'All') count++;
+    if (emprColFilters.lastUpdate !== 'All') count++;
     return count;
   }, [employerSearch, employerTypeFilter, employerIndustryFilter, emprColFilters]);
 
@@ -1103,7 +1106,7 @@ export default function DashboardOverview({ onNavigateTab }) {
           if (emprColFilters.jobPosted === '10+' && posted < 10) return false;
         }
 
-        // Column Filter 8: Joined On Date
+        // Column Filter 8: Registered Date
         if (emprColFilters.joinedOn !== 'All') {
           if (!empr.createdAt) return false;
           const created = new Date(empr.createdAt);
@@ -1114,6 +1117,19 @@ export default function DashboardOverview({ onNavigateTab }) {
           if (emprColFilters.joinedOn === '30d' && diffDays > 30) return false;
           if (emprColFilters.joinedOn === '90d' && diffDays > 90) return false;
           if (emprColFilters.joinedOn === 'thisYear' && created.getFullYear() !== now.getFullYear()) return false;
+        }
+
+        // Column Filter 8b: Last Profile Update
+        if (emprColFilters.lastUpdate && emprColFilters.lastUpdate !== 'All') {
+          const upd = empr.updatedAt || empr.createdAt;
+          if (!upd) return false;
+          const updateDate = new Date(upd);
+          const now = new Date();
+          const diffDays = (now - updateDate) / (1000 * 60 * 60 * 24);
+          if (emprColFilters.lastUpdate === 'today' && diffDays > 1) return false;
+          if (emprColFilters.lastUpdate === '7d' && diffDays > 7) return false;
+          if (emprColFilters.lastUpdate === '30d' && diffDays > 30) return false;
+          if (emprColFilters.lastUpdate === '90d' && diffDays > 90) return false;
         }
 
         return true;
@@ -1143,7 +1159,13 @@ export default function DashboardOverview({ onNavigateTab }) {
             const jB = b.totalJobs !== undefined ? b.totalJobs : (b.jobs?.length || b.activeJobs || 0);
             return (jA - jB) * dir;
           }
+          case 'lastUpdate': {
+            const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+            const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+            return (dateA - dateB) * dir;
+          }
           case 'joinedOn':
+          case 'registeredDate':
           default: {
             const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -1174,6 +1196,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     designation: 'All',
     company: 'All',
     jobsApplied: 'All',
+    registeredDate: 'All',
     lastUpdate: 'All'
   });
 
@@ -1385,6 +1408,7 @@ export default function DashboardOverview({ onNavigateTab }) {
       designation: 'All',
       company: 'All',
       jobsApplied: 'All',
+      registeredDate: 'All',
       lastUpdate: 'All'
     });
   };
@@ -1405,6 +1429,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (empFilters.designation !== 'All') count++;
     if (empFilters.company !== 'All') count++;
     if (empFilters.jobsApplied !== 'All') count++;
+    if (empFilters.registeredDate !== 'All') count++;
     if (empFilters.lastUpdate !== 'All') count++;
     return count;
   }, [employeeSearch, empFilters]);
@@ -1530,6 +1555,18 @@ export default function DashboardOverview({ onNavigateTab }) {
         if (empFilters.jobsApplied === '0' && apps !== 0) return false;
         if (empFilters.jobsApplied === '1-2' && (apps < 1 || apps > 2)) return false;
         if (empFilters.jobsApplied === '3+' && apps < 3) return false;
+      }
+
+      // 14b. Registered Date filter
+      if (empFilters.registeredDate && empFilters.registeredDate !== 'All') {
+        const regDate = emp.createdAt || emp.registrationDate;
+        if (regDate) {
+          const regTime = new Date(regDate).getTime();
+          const now = Date.now();
+          if (empFilters.registeredDate === 'today' && now - regTime > 24 * 60 * 60 * 1000) return false;
+          if (empFilters.registeredDate === 'week' && now - regTime > 7 * 24 * 60 * 60 * 1000) return false;
+          if (empFilters.registeredDate === 'month' && now - regTime > 30 * 24 * 60 * 60 * 1000) return false;
+        }
       }
 
       // 15. Last Profile Update filter
@@ -2822,7 +2859,13 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <th onClick={() => handleSort('registeredDate')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
                       <div className="flex items-center gap-1.5">
                         <span>Registered Date</span>
-                        {(empSort.column === 'registeredDate' || empSort.column === 'lastUpdate') ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                        {empSort.column === 'registeredDate' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
+                    <th onClick={() => handleSort('lastUpdate')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none">
+                      <div className="flex items-center gap-1.5">
+                        <span>Last Profile Update</span>
+                        {empSort.column === 'lastUpdate' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-right">Actions</th>
@@ -2989,6 +3032,20 @@ export default function DashboardOverview({ onNavigateTab }) {
                       </select>
                     </th>
 
+                    {/* Registered Date Filter */}
+                    <th className="p-2">
+                      <select
+                        value={empFilters.registeredDate || 'All'}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, registeredDate: e.target.value }))}
+                        className="w-full px-2 py-1.5 text-xs font-normal text-gray-800 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[110px]"
+                      >
+                        <option value="All">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                      </select>
+                    </th>
+
                     {/* Last Profile Update Filter */}
                     <th className="p-2">
                       <select
@@ -3022,14 +3079,14 @@ export default function DashboardOverview({ onNavigateTab }) {
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {loadingEmployees ? (
                     <tr>
-                      <td colSpan="14" className="py-16 text-center text-gray-400">
+                      <td colSpan="15" className="py-16 text-center text-gray-400">
                         <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                         Loading candidate records...
                       </td>
                     </tr>
                   ) : filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="14" className="py-16 text-center text-gray-400">
+                      <td colSpan="15" className="py-16 text-center text-gray-400">
                         No candidate records found matching your filters.
                       </td>
                     </tr>
@@ -3146,16 +3203,18 @@ export default function DashboardOverview({ onNavigateTab }) {
                             </span>
                           </td>
 
-                          {/* Registered Date & Last Profile Update */}
+                          {/* Registered Date */}
                           <td className="px-5 py-4">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-bold text-gray-900 text-xs">
-                                {getRegisteredDate(emp)}
-                              </span>
-                              <span className="text-gray-400 text-[10px]">
-                                Updated: {getLastProfileUpdate(emp)}
-                              </span>
-                            </div>
+                            <span className="font-bold text-gray-900 text-xs">
+                              {getRegisteredDate(emp)}
+                            </span>
+                          </td>
+
+                          {/* Last Profile Update */}
+                          <td className="px-5 py-4">
+                            <span className="font-bold text-gray-900 text-xs">
+                              {getLastProfileUpdate(emp)}
+                            </span>
                           </td>
 
                           {/* Actions */}
@@ -3408,8 +3467,22 @@ export default function DashboardOverview({ onNavigateTab }) {
                           className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
                         >
                           <div className="flex items-center gap-1.5">
-                            <span>Joined On</span>
+                            <span>Registered Date</span>
                             {emprSort.column === 'joinedOn' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('lastUpdate')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Last Profile Update</span>
+                            {emprSort.column === 'lastUpdate' ? (
                               emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                             ) : (
                               <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
@@ -3520,7 +3593,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </select>
                         </th>
 
-                        {/* 7. Joined On Date Filter */}
+                        {/* 7. Registered Date Filter */}
                         <th className="p-2">
                           <select
                             value={emprColFilters.joinedOn}
@@ -3533,6 +3606,21 @@ export default function DashboardOverview({ onNavigateTab }) {
                             <option value="30d">Last 30 Days</option>
                             <option value="90d">Last 90 Days</option>
                             <option value="thisYear">This Year</option>
+                          </select>
+                        </th>
+
+                        {/* 7b. Last Profile Update Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.lastUpdate || 'All'}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, lastUpdate: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="All">All Dates</option>
+                            <option value="today">Today</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
                           </select>
                         </th>
 
@@ -3554,14 +3642,14 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                       {loadingEmployers ? (
                         <tr>
-                          <td colSpan="10" className="py-16 text-center text-gray-400">
+                          <td colSpan="11" className="py-16 text-center text-gray-400">
                             <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                             Loading employer records...
                           </td>
                         </tr>
                       ) : filteredAndSortedEmployers.length === 0 ? (
                         <tr>
-                          <td colSpan="10" className="py-16 text-center text-gray-400">
+                          <td colSpan="11" className="py-16 text-center text-gray-400">
                             No employer records found matching your filters.
                           </td>
                         </tr>
@@ -3642,8 +3730,16 @@ export default function DashboardOverview({ onNavigateTab }) {
                                 </span>
                               </td>
 
-                              <td className="px-5 py-4 text-gray-400 text-[11px]">
-                                {empr.createdAt ? new Date(empr.createdAt).toLocaleDateString() : 'N/A'}
+                              <td className="px-5 py-4">
+                                <span className="font-bold text-gray-900 text-xs">
+                                  {empr.createdAt ? new Date(empr.createdAt).toLocaleDateString() : 'N/A'}
+                                </span>
+                              </td>
+
+                              <td className="px-5 py-4">
+                                <span className="font-bold text-gray-900 text-xs">
+                                  {empr.updatedAt ? new Date(empr.updatedAt).toLocaleDateString() : (empr.createdAt ? new Date(empr.createdAt).toLocaleDateString() : 'N/A')}
+                                </span>
                               </td>
 
                               <td className="px-5 py-4 text-right">
