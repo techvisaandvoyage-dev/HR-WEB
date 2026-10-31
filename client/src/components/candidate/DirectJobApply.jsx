@@ -1237,6 +1237,28 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-50 text-green-700 border border-green-200">
               {general.verifiedJobBadgeText || 'Verified Job'}
             </span>
+            {user && (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('employeeToken');
+                  localStorage.removeItem('employeeUser');
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('userProfile');
+                  setUser(null);
+                  setToken('');
+                  setStep(1);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors"
+                title="Sign out of your candidate account"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Sign Out
+              </button>
+            )}
           </div>
         </div>
       </header>
