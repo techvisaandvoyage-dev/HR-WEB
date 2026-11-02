@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomMonthPicker from '../common/CustomMonthPicker';
 import CustomDropdown from '../common/CustomDropdown';
@@ -7,7 +7,9 @@ import { currentLocationOptions, preferredLocationOptions } from '../../data/pre
 import { allSkillsOptions, getSuggestedSkills } from '../../utils/skillsData';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
-import { compressFileIfNeeded } from '../../utils/fileCompressor';
+import { compressFileIfNeeded, formatFileSize, calculateSavedPercent } from '../../utils/fileCompressor';
+import FileCompressorModal from '../common/FileCompressorModal';
+import DocumentPreviewModal from '../common/DocumentPreviewModal';
 import VideoPlayer from '../common/VideoPlayer';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
@@ -609,9 +611,17 @@ const EmployeeOnboarding = () => {
   const [videoMode, setVideoMode] = useState('upload');
   const [videoLink, setVideoLink] = useState('');
   const [docError, setDocError] = useState({ resume: '', coverLetter: '', introVideo: '' });
+  const [isCompressorModalOpen, setIsCompressorModalOpen] = useState(false);
+  const [compressorTargetField, setCompressorTargetField] = useState('resume');
+  const [isCompressingDoc, setIsCompressingDoc] = useState(false);
+  const [compressingType, setCompressingType] = useState(null);
+  const [compressionBadge, setCompressionBadge] = useState({ resume: null, coverLetter: null });
+  const [previewDocData, setPreviewDocData] = useState(null);
   const [cmsConfig, setCmsConfig] = useState(null);
   const [phoneError, setPhoneError] = useState('');
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const resumeFileRef = useRef(null);
+  const coverLetterFileRef = useRef(null);
 
   const scrollToFirstError = (targetId) => {
     setTimeout(() => {
@@ -2913,7 +2923,26 @@ const EmployeeOnboarding = () => {
 
   const Step5Documents = () => {
     const docs = formData.documents || {};
-    const setDoc = (field, val) => setFormData(prev => ({ ...prev, documents: { ...(prev.documents || {}), [field]: val } }));
+    const docsMeta = formData.documentsMeta || {};
+    const setDoc = (field, val, meta = null) => {
+      setFormData(prev => {
+        const updatedDocs = { ...(prev.documents || {}), [field]: val };
+        const updatedMeta = { ...(prev.documentsMeta || {}) };
+        if (!val) {
+          delete updatedMeta[field];
+        } else if (meta) {
+          updatedMeta[field] = meta;
+        }
+        const updated = {
+          ...prev,
+          documents: updatedDocs,
+          documentsMeta: updatedMeta
+        };
+        localStorage.setItem('userProfile', JSON.stringify(updated));
+        saveToBackend(updated);
+        return updated;
+      });
+    };
 
     const handleVisibilityChange = (visibility) => {
       setFormData(prev => {
@@ -2928,8 +2957,8 @@ const EmployeeOnboarding = () => {
       });
     };
 
-    const handleFileUpload = async (e, type) => {
-      let file = e.target.files[0];
+    const handleFileUpload = async (e, type, directFile = null) => {
+      let file = directFile || e?.target?.files?.[0];
       if (!file) return;
 
       setDocError(prev => ({...prev, [type]: ''}));
@@ -2959,14 +2988,22 @@ const EmployeeOnboarding = () => {
             video.preload = 'metadata';
             const url = URL.createObjectURL(file);
             video.src = url;
-            video.onloadedmetadata = () => {
-              URL.revokeObjectURL(url);
-              resolve(video.duration || 0);
+
+            let resolved = false;
+            const done = (dur) => {
+              if (!resolved) {
+                resolved = true;
+                URL.revokeObjectURL(url);
+                resolve(dur || 0);
+              }
             };
-            video.onerror = () => {
-              URL.revokeObjectURL(url);
-              resolve(0);
+
+            video.onloadedmetadata = () => done(video.duration);
+            video.ondurationchange = () => {
+              if (video.duration && !resolved) done(video.duration);
             };
+            video.onerror = () => done(0);
+            setTimeout(() => done(0), 4000);
           });
 
           const MAX_VIDEO_DURATION = 180; // 3 minutes in seconds
@@ -2978,7 +3015,7 @@ const EmployeeOnboarding = () => {
               ...prev,
               introVideo: `Video length (${durationText}) exceeds the 3-minute limit. Please upload a video under 3 minutes.`
             }));
-            e.target.value = '';
+            if (e?.target) e.target.value = '';
             setIsUploading(false);
             setUploadingType(null);
             return;
@@ -2986,55 +3023,148 @@ const EmployeeOnboarding = () => {
         } catch (err) {
           console.warn('Could not read video duration metadata:', err);
         }
-      } else {
-        const MAX_DOC_SIZE = 300 * 1024; // 300KB
-        // Automatically attempt progressive compression on oversized document/image
-        if (file.size > MAX_DOC_SIZE) {
-          try {
-            file = await compressFileIfNeeded(file, MAX_DOC_SIZE);
-          } catch (cErr) {
-            console.warn("Auto compression error/skipped:", cErr);
-          }
-        }
-        if (file.size > MAX_DOC_SIZE) {
-          const fileSizeKB = (file.size / 1024).toFixed(1);
-          setDocError(prev => ({
-            ...prev,
-            [type]: `File size (${fileSizeKB}KB) exceeds the 300KB limit. Please upload a smaller document.`
-          }));
-          e.target.value = '';
-          setIsUploading(false);
-          setUploadingType(null);
-          return;
-        }
-      }
+        } else {
+          const MAX_DOC_SIZE = 300 * 1024; // 300KB
+          const originalFileSize = file.originalSize || file.size;
+          let wasCompressed = file.wasCompressed || false;
+          let compSavings = file.savedPercent || 0;
 
-      try {
-        if (type === 'introVideo') {
-          // Attempt Mux Video direct upload first
-          const muxResult = await uploadVideoToMux(file, (p) => setVideoUploadProgress(p));
-          if (muxResult.isMux && muxResult.streamUrl) {
-            setDoc('introVideo', muxResult.streamUrl);
-            if (showStep5Errors) setShowStep5Errors(false);
+          // Automatically attempt progressive compression on oversized document/image
+          if (file.size > MAX_DOC_SIZE) {
+            setIsCompressingDoc(true);
+            setCompressingType(type);
+            try {
+              const compressed = await compressFileIfNeeded(file, MAX_DOC_SIZE);
+              if (compressed && compressed.size < originalFileSize) {
+                file = compressed;
+                wasCompressed = true;
+                compSavings = calculateSavedPercent(originalFileSize, compressed.size);
+                setCompressionBadge(prev => ({
+                  ...prev,
+                  [type]: {
+                    original: formatFileSize(originalFileSize),
+                    compressed: formatFileSize(compressed.size),
+                    size: formatFileSize(compressed.size),
+                    saved: compSavings,
+                    wasCompressed: true
+                  }
+                }));
+              }
+            } catch (cErr) {
+              console.warn("Auto compression error/skipped:", cErr);
+            } finally {
+              setIsCompressingDoc(false);
+              setCompressingType(null);
+            }
+          } else if (file.wasCompressed) {
+            wasCompressed = true;
+            compSavings = file.savedPercent || calculateSavedPercent(originalFileSize, file.size);
+            setCompressionBadge(prev => ({
+              ...prev,
+              [type]: {
+                original: formatFileSize(originalFileSize),
+                compressed: formatFileSize(file.size),
+                size: formatFileSize(file.size),
+                saved: compSavings,
+                wasCompressed: true
+              }
+            }));
+          } else {
+            // Document already within size limit (no compression needed)
+            setCompressionBadge(prev => ({
+              ...prev,
+              [type]: {
+                original: formatFileSize(originalFileSize),
+                compressed: formatFileSize(file.size),
+                size: formatFileSize(file.size),
+                saved: 0,
+                wasCompressed: false
+              }
+            }));
+          }
+
+          if (file.size > MAX_DOC_SIZE) {
+            const fileSizeKB = (file.size / 1024).toFixed(1);
+            setDocError(prev => ({
+              ...prev,
+              [type]: `File size (${fileSizeKB}KB) exceeds the 300KB limit even after compression. Please upload a smaller document.`
+            }));
+            if (e?.target) e.target.value = '';
+            setIsUploading(false);
+            setUploadingType(null);
             return;
           }
-          // Fallback to Firebase Storage if Mux is not configured
-          const downloadURL = await uploadFileToStorage(file, 'intro-videos', (p) => setVideoUploadProgress(p));
-          setDoc('introVideo', downloadURL);
-          if (showStep5Errors) setShowStep5Errors(false);
-        } else {
-          const downloadURL = await uploadFileToStorage(file, 'resumes');
-          setDoc(type, downloadURL);
-          if (showStep5Errors) setShowStep5Errors(false);
+
+          try {
+            const downloadURL = await uploadFileToStorage(file, 'resumes');
+            const meta = {
+              name: file.name,
+              size: formatFileSize(file.size),
+              rawSize: file.size,
+              wasCompressed: wasCompressed || originalFileSize > file.size,
+              originalSize: formatFileSize(originalFileSize),
+              compressedSize: formatFileSize(file.size),
+              savedPercent: compSavings || calculateSavedPercent(originalFileSize, file.size)
+            };
+            setDoc(type, downloadURL, meta);
+            if (showStep5Errors) setShowStep5Errors(false);
+          } catch (error) {
+            console.error("Upload error:", error);
+            setDocError(prev => ({...prev, [type]: 'Failed to upload file. Please try again.'}));
+          } finally {
+            setIsUploading(false);
+            setUploadingType(null);
+            if (e?.target) e.target.value = '';
+          }
+          return;
         }
-      } catch (error) {
-        console.error("Upload error:", error);
-        setDocError(prev => ({...prev, [type]: 'Failed to upload file. Please try again.'}));
-      } finally {
-        setIsUploading(false);
-        setUploadingType(null);
-      }
-    };
+
+        try {
+          if (type === 'introVideo') {
+            // Attempt Mux Video direct upload first
+            const muxResult = await uploadVideoToMux(file, (p) => setVideoUploadProgress(p));
+            if (muxResult.isMux && muxResult.streamUrl) {
+              setDoc('introVideo', muxResult.streamUrl);
+              if (showStep5Errors) setShowStep5Errors(false);
+              return;
+            }
+            // Fallback to Firebase Storage if Mux is not configured
+            const downloadURL = await uploadFileToStorage(file, 'intro-videos', (p) => setVideoUploadProgress(p));
+            setDoc('introVideo', downloadURL);
+            if (showStep5Errors) setShowStep5Errors(false);
+          }
+        } catch (error) {
+          console.error("Upload error:", error);
+          setDocError(prev => ({...prev, [type]: 'Failed to upload file. Please try again.'}));
+        } finally {
+          setIsUploading(false);
+          setUploadingType(null);
+          if (e?.target) e.target.value = '';
+        }
+      };
+
+      const openCompressorModal = (type) => {
+        setCompressorTargetField(type);
+        setIsCompressorModalOpen(true);
+      };
+
+      const handleApplyCompressedFromModal = (compressedFile, type) => {
+        if (compressedFile) {
+          handleFileUpload(null, type, compressedFile);
+        }
+      };
+
+      const handleOpenPreview = (type) => {
+        const url = docs[type];
+        if (!url) return;
+        const meta = docsMeta[type];
+        const name = meta?.name || (type === 'resume' ? 'Resume Document' : 'Cover Letter Document');
+        setPreviewDocData({
+          url,
+          name,
+          meta
+        });
+      };
 
     const handleAttachVideoLink = (e) => {
       e.preventDefault();
@@ -3090,16 +3220,46 @@ const EmployeeOnboarding = () => {
               <label className="block text-sm font-bold text-gray-900">
                 {fResume.label || 'Upload Resume'} {fResume.isRequired && <span className="text-red-500">*</span>}
               </label>
-              <div>
+
+              {!docs.resume && (
+                <>
+                  <div>
+                    <input 
+                      ref={resumeFileRef}
+                      type="file" 
+                      disabled={isUploading} 
+                      accept=".pdf,.doc,.docx" 
+                      className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all"
+                      onChange={e => handleFileUpload(e, 'resume')} 
+                    />
+                  </div>
+                  <p className="text-xs text-gray-700 font-medium">
+                    {fResume.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
+                  </p>
+                </>
+              )}
+
+              {docs.resume && (
                 <input 
+                  ref={resumeFileRef}
                   type="file" 
                   disabled={isUploading} 
                   accept=".pdf,.doc,.docx" 
-                  className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all" 
+                  className="hidden"
                   onChange={e => handleFileUpload(e, 'resume')} 
                 />
-              </div>
-              <p className="text-xs text-gray-700 font-medium">{fResume.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}</p>
+              )}
+
+              {isCompressingDoc && compressingType === 'resume' && (
+                <div className="flex items-center gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-semibold text-blue-800 animate-pulse">
+                  <svg className="animate-spin w-4 h-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                  <span>⚡ Compressing & optimizing {fResume.label || 'Resume'} to fit under 300KB...</span>
+                </div>
+              )}
+
               {isUploading && uploadingType === 'resume' && (
                 <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse">
                   <span className="relative flex h-3 w-3">
@@ -3119,55 +3279,135 @@ const EmployeeOnboarding = () => {
                 </p>
               )}
               {docs.resume && (
-                <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-xs space-y-3">
+                  {/* File info row */}
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs shrink-0 border border-emerald-200 shadow-xs">
+                        {(docsMeta?.resume?.name || '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'DOC'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-gray-900 truncate" title={docsMeta?.resume?.name || getFileName(docs.resume)}>
+                          {docsMeta?.resume?.name || getFileName(docs.resume)}
+                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold whitespace-nowrap">
+                            ✓ Attached &amp; Ready
+                          </span>
+                          {(() => {
+                            const meta = docsMeta?.resume;
+                            const badge = compressionBadge.resume;
+                            const isComp = meta?.wasCompressed || badge?.wasCompressed || (meta?.savedPercent && meta.savedPercent > 0) || (badge?.saved && badge.saved > 0);
+                            const sizeStr = meta?.compressedSize || badge?.compressed || meta?.size || badge?.size || (meta?.rawSize ? formatFileSize(meta.rawSize) : null);
+                            const savedStr = meta?.savedPercent || badge?.saved;
+
+                            return (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300 whitespace-nowrap">
+                                ⚡ {sizeStr || '300 KB'} {isComp && savedStr ? `(${savedStr}% saved)` : ''}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDoc('resume', null)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                      title="Remove resume"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                    </div>
-                    <div className="min-w-0 truncate">
-                      <a 
-                        href={docs.resume.startsWith('http') ? docs.resume : '#'} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
-                      >
-                        {getFileName(docs.resume)}
-                      </a>
-                      <p className="text-[11px] text-gray-500 font-medium">Uploaded Document</p>
-                    </div>
+                    </button>
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setDoc('resume', null)} 
-                    className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0"
-                    title="Remove Resume"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+
+                  {/* Action buttons */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-100/90">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPreview('resume')}
+                      className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-emerald-800 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span>View File</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => resumeFileRef.current?.click()}
+                      className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Replace</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDoc('resume', null)}
+                      className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-red-600 bg-white rounded-xl border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Remove</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
             {/* Cover Letter Upload Card */}
             <div id="field-coverLetter" className={`p-5 border ${showStep5Errors && fCoverLetter.isRequired && !docs.coverLetter ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-2xl bg-white shadow-2xs space-y-3 transition-all`}>
-              <label className="flex items-center justify-between text-sm font-bold text-gray-900">
+              <label className="flex items-center text-sm font-bold text-gray-900">
                 <span>{fCoverLetter.label || 'Upload Cover Letter'}</span>
                 {fCoverLetter.isRequired && <span className="text-red-500 font-bold ml-1">*</span>}
               </label>
-              <div>
+
+              {!docs.coverLetter && (
+                <>
+                  <div>
+                    <input 
+                      ref={coverLetterFileRef}
+                      type="file" 
+                      disabled={isUploading} 
+                      accept=".pdf,.doc,.docx" 
+                      className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all"
+                      onChange={e => handleFileUpload(e, 'coverLetter')} 
+                    />
+                  </div>
+                  <p className="text-xs text-gray-700 font-medium">
+                    {fCoverLetter.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
+                  </p>
+                </>
+              )}
+
+              {docs.coverLetter && (
                 <input 
+                  ref={coverLetterFileRef}
                   type="file" 
                   disabled={isUploading} 
                   accept=".pdf,.doc,.docx" 
-                  className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all" 
+                  className="hidden"
                   onChange={e => handleFileUpload(e, 'coverLetter')} 
                 />
-              </div>
-              <p className="text-xs text-gray-700 font-medium">{fCoverLetter.placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}</p>
+              )}
+
+              {isCompressingDoc && compressingType === 'coverLetter' && (
+                <div className="flex items-center gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-semibold text-blue-800 animate-pulse">
+                  <svg className="animate-spin w-4 h-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                  <span>⚡ Compressing & optimizing {fCoverLetter.label || 'Cover Letter'} to fit under 300KB...</span>
+                </div>
+              )}
+
               {isUploading && uploadingType === 'coverLetter' && (
                 <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse">
                   <span className="relative flex h-3 w-3">
@@ -3187,35 +3427,85 @@ const EmployeeOnboarding = () => {
                 </p>
               )}
               {docs.coverLetter && (
-                <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200">
-                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-xs space-y-3">
+                  {/* File info row */}
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs shrink-0 border border-emerald-200 shadow-xs">
+                        {(docsMeta?.coverLetter?.name || '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'DOC'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-gray-900 truncate" title={docsMeta?.coverLetter?.name || getFileName(docs.coverLetter)}>
+                          {docsMeta?.coverLetter?.name || getFileName(docs.coverLetter)}
+                        </p>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold whitespace-nowrap">
+                            ✓ Attached &amp; Ready
+                          </span>
+                          {(() => {
+                            const meta = docsMeta?.coverLetter;
+                            const badge = compressionBadge.coverLetter;
+                            const isComp = meta?.wasCompressed || badge?.wasCompressed || (meta?.savedPercent && meta.savedPercent > 0) || (badge?.saved && badge.saved > 0);
+                            const sizeStr = meta?.compressedSize || badge?.compressed || meta?.size || badge?.size || (meta?.rawSize ? formatFileSize(meta.rawSize) : null);
+                            const savedStr = meta?.savedPercent || badge?.saved;
+
+                            return (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300 whitespace-nowrap">
+                                ⚡ {sizeStr || '< 300 KB'} {isComp && savedStr ? `(${savedStr}% saved)` : ''}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDoc('coverLetter', null)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                      title="Remove cover letter"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                    </div>
-                    <div className="min-w-0 truncate">
-                      <a 
-                        href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-600 hover:underline truncate block"
-                      >
-                        {getFileName(docs.coverLetter)}
-                      </a>
-                      <p className="text-[11px] text-gray-500 font-medium">Uploaded Document</p>
-                    </div>
+                    </button>
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setDoc('coverLetter', null)} 
-                    className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0"
-                    title="Remove Cover Letter"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+
+                  {/* Action buttons */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-100/90">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenPreview('coverLetter')}
+                      className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-emerald-800 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span>View File</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => coverLetterFileRef.current?.click()}
+                      className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Replace</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDoc('coverLetter', null)}
+                      className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-red-600 bg-white rounded-xl border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Remove</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -3318,6 +3608,26 @@ const EmployeeOnboarding = () => {
               </div>
             )}
 
+            {docError.introVideo && (
+              <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs shadow-xs">
+                <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div className="flex-1">
+                  <span className="font-bold block text-red-800">Cannot upload video:</span>
+                  <p className="mt-0.5 leading-relaxed">{docError.introVideo}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDocError(prev => ({ ...prev, introVideo: '' }))}
+                  className="text-red-400 hover:text-red-700 p-0.5 rounded transition-colors cursor-pointer"
+                  title="Dismiss"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            )}
+
             {docs.introVideo && (
               <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs space-y-4 mt-4">
                 <div className="flex items-center justify-between">
@@ -3389,10 +3699,7 @@ const EmployeeOnboarding = () => {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-bold text-gray-900">Share to everyone</p>
-                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">All Employees List</span>
-                        </div>
+                        <p className="text-xs font-bold text-gray-900">Share to everyone</p>
                         <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
                           All employers can view your introductory video in the all employee list.
                         </p>
@@ -3419,10 +3726,7 @@ const EmployeeOnboarding = () => {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-bold text-gray-900">Share to applied jobs</p>
-                          <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">Applied Only</span>
-                        </div>
+                        <p className="text-xs font-bold text-gray-900">Share to applied jobs</p>
                         <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
                           Only employers of jobs you specifically apply to can watch your video.
                         </p>
@@ -3434,6 +3738,21 @@ const EmployeeOnboarding = () => {
             )}
           </div>
         </div>
+
+        <FileCompressorModal
+          isOpen={isCompressorModalOpen}
+          onClose={() => setIsCompressorModalOpen(false)}
+          targetField={compressorTargetField}
+          onApplyCompressedFile={handleApplyCompressedFromModal}
+        />
+
+        <DocumentPreviewModal
+          isOpen={!!previewDocData}
+          onClose={() => setPreviewDocData(null)}
+          docUrl={previewDocData?.url}
+          docName={previewDocData?.name}
+          docMeta={previewDocData?.meta}
+        />
       </div>
     );
   };

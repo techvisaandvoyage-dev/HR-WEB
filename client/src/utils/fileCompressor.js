@@ -1,103 +1,68 @@
-/**
- * Client-side File Compressor Utility
- * Automatically attempts progressive compression on oversized document/image files to fit under 300KB.
- */
+import { optimizeUploadFile, formatBytes, FINAL_UPLOAD_TARGET_BYTES } from './optimizeUploadFile';
 
-export const compressFileIfNeeded = async (file, maxBytes = 300 * 1024) => {
-  if (!file || file.size <= maxBytes) {
+/**
+ * Helper to format byte sizes into human readable strings (e.g. 240 KB, 1.4 MB)
+ * Uses the exact Visavo.in format helper.
+ */
+export const formatFileSize = formatBytes;
+
+/**
+ * Calculates reduction percentage between original and compressed size
+ */
+export const calculateSavedPercent = (orig, comp) => {
+  if (!orig || !comp || comp >= orig) return 0;
+  return Math.round(((orig - comp) / orig) * 100);
+};
+
+/**
+ * Client-side file compressor using Visavo.in's optimizeUploadFile engine.
+ * Automatically targets under 300KB for direct uploads.
+ * 
+ * Supports:
+ * - PDF documents (stream packing, metadata stripping, aggressive canvas rasterization)
+ * - Image files (browser-image-compression with progressive size reduction)
+ * 
+ * @param {File} file - The uploaded file
+ * @param {number} maxBytes - Target maximum bytes (default 300KB)
+ * @returns {Promise<File>} - Optimized file under 300KB
+ */
+export const compressFileIfNeeded = async (file, maxBytes = FINAL_UPLOAD_TARGET_BYTES) => {
+  if (!file) return file;
+
+  // Already under 300KB
+  if (file.size <= maxBytes) {
+    file.originalSize = file.size;
+    file.compressedSize = file.size;
+    file.wasCompressed = false;
+    file.savedPercent = 0;
     return file;
   }
 
-  const isImage = (file.type && file.type.startsWith('image/')) || /\.(jpe?g|png|webp|bmp|gif|tif|tiff)$/i.test(file.name || '');
-
-  // If image or image-based document, compress progressively using Canvas
-  if (isImage) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = async () => {
-          const originalWidth = img.naturalWidth || img.width;
-          const originalHeight = img.naturalHeight || img.height;
-
-          // Progressive tiers: maxDimension and quality combinations
-          const tiers = [
-            { maxDim: 1400, quality: 0.82 },
-            { maxDim: 1200, quality: 0.72 },
-            { maxDim: 1000, quality: 0.62 },
-            { maxDim: 850,  quality: 0.50 },
-            { maxDim: 700,  quality: 0.40 },
-            { maxDim: 550,  quality: 0.30 }
-          ];
-
-          let bestBlob = null;
-
-          for (const tier of tiers) {
-            let width = originalWidth;
-            let height = originalHeight;
-
-            if (width > tier.maxDim || height > tier.maxDim) {
-              if (width > height) {
-                height = Math.round((height * tier.maxDim) / width);
-                width = tier.maxDim;
-              } else {
-                width = Math.round((width * tier.maxDim) / height);
-                height = tier.maxDim;
-              }
-            }
-
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.max(width, 1);
-            canvas.height = Math.max(height, 1);
-            const ctx = canvas.getContext('2d');
-            
-            // White background for transparent PNG conversion to JPEG
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            const blob = await new Promise((res) => {
-              canvas.toBlob((b) => res(b), 'image/jpeg', tier.quality);
-            });
-
-            if (blob) {
-              if (!bestBlob || blob.size < bestBlob.size) {
-                bestBlob = blob;
-              }
-
-              if (blob.size <= maxBytes) {
-                const newFileName = file.name.replace(/\.[^.]+$/, '.jpg');
-                const compressedFile = new File([blob], newFileName, {
-                  type: 'image/jpeg',
-                  lastModified: Date.now()
-                });
-                resolve(compressedFile);
-                return;
-              }
-            }
-          }
-
-          // If all tiers checked and bestBlob is smaller than original, return bestBlob
-          if (bestBlob && bestBlob.size < file.size) {
-            const newFileName = file.name.replace(/\.[^.]+$/, '.jpg');
-            const compressedFile = new File([bestBlob], newFileName, {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(compressedFile);
-            return;
-          }
-
-          resolve(file);
-        };
-        img.onerror = () => resolve(file);
-        img.src = e.target.result;
-      };
-      reader.onerror = () => resolve(file);
-      reader.readAsDataURL(file);
-    });
+  try {
+    const res = await optimizeUploadFile(file, { targetBytes: maxBytes });
+    if (res && res.file) {
+      const optimized = res.file;
+      optimized.originalSize = res.originalSize || file.size;
+      optimized.compressedSize = res.compressedSize || optimized.size;
+      optimized.wasCompressed = res.wasCompressed || (optimized.size < file.size);
+      optimized.savedPercent = calculateSavedPercent(file.size, optimized.size);
+      return optimized;
+    }
+  } catch (err) {
+    console.error("Auto compression using Visavo optimizer failed:", err);
   }
 
-  // Non-image files (e.g. standard PDF/DOCX) return original file
+  // Fallback if optimization errored or wasn't applicable
+  file.originalSize = file.size;
+  file.compressedSize = file.size;
+  file.wasCompressed = false;
+  file.savedPercent = 0;
   return file;
 };
+
+/**
+ * Alias for manual or direct calls
+ */
+export const compressFile = compressFileIfNeeded;
+
+export { optimizeUploadFile };

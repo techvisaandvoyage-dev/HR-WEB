@@ -12,9 +12,13 @@
   "dependencies": {
     "@mux/mux-player-react": "^3.13.3",
     "@mux/upchunk": "^3.5.0",
+    "browser-image-compression": "^2.0.2",
     "country-state-city": "^3.2.1",
     "dompurify": "^3.4.17",
     "firebase": "^12.18.0",
+    "jszip": "^3.10.2",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.5.438",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-image-crop": "^11.1.2",

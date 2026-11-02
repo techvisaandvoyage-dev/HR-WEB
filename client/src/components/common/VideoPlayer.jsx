@@ -6,13 +6,14 @@ import MuxPlayer from '@mux/mux-player-react';
  */
 export const extractMuxPlaybackId = (url) => {
   if (!url) return null;
+  const cleanUrl = String(url).trim();
   // Match https://stream.mux.com/{PLAYBACK_ID}.m3u8 or https://stream.mux.com/{PLAYBACK_ID}
-  const match = url.match(/stream\.mux\.com\/([a-zA-Z0-9_-]+)/);
+  const match = cleanUrl.match(/stream\.mux\.com\/([a-zA-Z0-9_-]+)/);
   if (match) return match[1].replace('.m3u8', '');
   
-  // If raw playbackId is stored directly (alphanumeric string)
-  if (!url.startsWith('http') && /^[a-zA-Z0-9_-]{10,40}$/.test(url)) {
-    return url;
+  // If raw playbackId is stored directly (alphanumeric string, typically 20-50 chars)
+  if (!cleanUrl.startsWith('http') && /^[a-zA-Z0-9_-]{10,100}$/.test(cleanUrl)) {
+    return cleanUrl;
   }
   return null;
 };

@@ -29,7 +29,9 @@ import {
 
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { uploadVideoToMux } from '../../utils/muxUpload';
-import { compressFileIfNeeded } from '../../utils/fileCompressor';
+import { compressFileIfNeeded, formatFileSize, calculateSavedPercent } from '../../utils/fileCompressor';
+import FileCompressorModal from '../common/FileCompressorModal';
+import DocumentPreviewModal from '../common/DocumentPreviewModal';
 import { socket } from '../../utils/socket';
 import {
   sortQualifications,
@@ -127,6 +129,8 @@ const EmployeeProfile = () => {
   const location = useLocation();
   const isProgrammaticScrollRef = useRef(false);
   const scrollTimeoutRef = useRef(null);
+  const resumeFileRef = useRef(null);
+  const coverLetterFileRef = useRef(null);
 
   // Active navigation tab
   const [activeTab, setActiveTab] = useState(() => {
@@ -159,6 +163,11 @@ const EmployeeProfile = () => {
   const [videoProfileMode, setVideoProfileMode] = useState('upload');
   const [videoProfileLink, setVideoProfileLink] = useState('');
   const [docError, setDocError] = useState({ resume: '', coverLetter: '', introVideo: '' });
+  const [isCompressorModalOpen, setIsCompressorModalOpen] = useState(false);
+  const [compressorTargetField, setCompressorTargetField] = useState('resume');
+  const [isCompressingDoc, setIsCompressingDoc] = useState(false);
+  const [compressionBadge, setCompressionBadge] = useState({ resume: null, coverLetter: null });
+  const [previewDocData, setPreviewDocData] = useState(null);
 
   // Main Form Data State
   const [formData, setFormData] = useState({
@@ -455,9 +464,18 @@ const EmployeeProfile = () => {
     const updatedDocs = { ...docs, [field]: val };
     const updatedMeta = { ...docsMeta };
     if (val && file) {
+      const origSize = file.originalSize || file.size;
+      const compSize = file.size;
+      const wasCompressed = file.wasCompressed || origSize > compSize;
+      const savedPct = file.savedPercent || calculateSavedPercent(origSize, compSize);
       updatedMeta[field] = {
         name: file.name,
-        size: `${Math.round(file.size / 1024)} KB`
+        size: formatFileSize(compSize),
+        rawSize: compSize,
+        wasCompressed,
+        originalSize: formatFileSize(origSize),
+        compressedSize: formatFileSize(compSize),
+        savedPercent: savedPct
       };
     } else if (!val) {
       delete updatedMeta[field];
@@ -466,6 +484,18 @@ const EmployeeProfile = () => {
       ...formData,
       documents: updatedDocs,
       documentsMeta: updatedMeta
+    });
+  };
+
+  const handleOpenPreview = (type) => {
+    const url = docs[type];
+    if (!url) return;
+    const meta = docsMeta[type];
+    const name = meta?.name || (type === 'resume' ? 'Resume Document' : 'Cover Letter Document');
+    setPreviewDocData({
+      url,
+      name,
+      meta
     });
   };
 
@@ -528,8 +558,8 @@ const EmployeeProfile = () => {
     showToast('Video link attached');
   };
 
-  const handleFileUpload = async (e, type) => {
-    const file = e.target.files[0];
+  const handleFileUpload = async (e, type, directFile = null) => {
+    const file = directFile || e?.target?.files?.[0];
     if (!file) return;
 
     setDocError(prev => ({ ...prev, [type]: '' }));
@@ -541,10 +571,59 @@ const EmployeeProfile = () => {
       if (type === 'introVideo') {
         const MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200MB
         if (file.size > MAX_VIDEO_SIZE) {
+          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
           setDocError(prev => ({
             ...prev,
-            introVideo: 'Video exceeds 200MB limit. Please choose a smaller video.'
+            introVideo: `Video file size (${fileSizeMB}MB) exceeds the 200MB limit. Please choose a smaller video.`
           }));
+          showToast(`Video size exceeds 200MB limit`, 'error');
+          if (e?.target) e.target.value = '';
+          setIsUploading(false);
+          setUploadingType(null);
+          return;
+        }
+
+        // Check video duration (Max 3 minutes / 180 seconds)
+        const duration = await new Promise((resolve) => {
+          try {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            const url = URL.createObjectURL(file);
+            video.src = url;
+
+            let resolved = false;
+            const done = (dur) => {
+              if (!resolved) {
+                resolved = true;
+                URL.revokeObjectURL(url);
+                resolve(dur || 0);
+              }
+            };
+
+            video.onloadedmetadata = () => done(video.duration);
+            video.ondurationchange = () => {
+              if (video.duration && !resolved) done(video.duration);
+            };
+            video.onerror = () => done(0);
+            setTimeout(() => done(0), 4000);
+          } catch {
+            resolve(0);
+          }
+        });
+
+        const MAX_VIDEO_DURATION = 180; // 3 minutes in seconds
+        if (duration > MAX_VIDEO_DURATION) {
+          const mins = Math.floor(duration / 60);
+          const secs = Math.round(duration % 60);
+          const durationText = `${mins} min${mins > 1 ? 's' : ''}${secs > 0 ? ` ${secs} sec` : ''}`;
+          setDocError(prev => ({
+            ...prev,
+            introVideo: `Video length (${durationText}) exceeds the 3-minute limit. Please upload a video under 3 minutes.`
+          }));
+          showToast(`Video duration (${durationText}) exceeds 3-minute limit`, 'error');
+          if (e?.target) e.target.value = '';
+          setIsUploading(false);
+          setUploadingType(null);
           return;
         }
 
@@ -559,12 +638,43 @@ const EmployeeProfile = () => {
         showToast('Video uploaded successfully');
       } else {
         // Resume or Cover letter: max 300KB
-        const compressed = await compressFileIfNeeded(file);
+        setIsCompressingDoc(true);
+        const originalFileSize = file.size;
+        let compressed = file;
+        try {
+          compressed = await compressFileIfNeeded(file);
+          if (compressed && compressed.size < originalFileSize) {
+            setCompressionBadge(prev => ({
+              ...prev,
+              [type]: {
+                original: formatFileSize(originalFileSize),
+                compressed: formatFileSize(compressed.size),
+                size: formatFileSize(compressed.size),
+                saved: calculateSavedPercent(originalFileSize, compressed.size),
+                wasCompressed: true
+              }
+            }));
+          } else {
+            setCompressionBadge(prev => ({
+              ...prev,
+              [type]: {
+                original: formatFileSize(originalFileSize),
+                compressed: formatFileSize(compressed.size),
+                size: formatFileSize(compressed.size),
+                saved: 0,
+                wasCompressed: false
+              }
+            }));
+          }
+        } finally {
+          setIsCompressingDoc(false);
+        }
+
         const MAX_DOC_SIZE = 300 * 1024;
         if (compressed.size > MAX_DOC_SIZE) {
           setDocError(prev => ({
             ...prev,
-            [type]: `File size exceeds 300KB limit (${Math.round(compressed.size / 1024)}KB).`
+            [type]: `File size exceeds 300KB limit (${Math.round(compressed.size / 1024)}KB) even after compression. Please upload a smaller document.`
           }));
           return;
         }
@@ -582,7 +692,7 @@ const EmployeeProfile = () => {
     } finally {
       setIsUploading(false);
       setUploadingType(null);
-      e.target.value = '';
+      if (e?.target) e.target.value = '';
     }
   };
 
@@ -1199,12 +1309,51 @@ const EmployeeProfile = () => {
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {/* Resume Upload */}
-                          <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-xs">
-                            <label className="block text-sm font-bold text-gray-900 mb-2">
+                          <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-xs space-y-3">
+                            <label className="block text-sm font-bold text-gray-900">
                               {getStepField('step5', 'resume', 'Resume (PDF/DOCX)', 'Supported Formats: doc, docx, pdf, upto 300KB', true).label}
                               {getStepField('step5', 'resume', '', '', true).isRequired && <span className="text-red-500 ml-0.5">*</span>}
                             </label>
-                            <input key={docs.resume ? 'res-has' : 'res-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'resume')} />
+
+                            {!docs.resume && (
+                              <>
+                                <div>
+                                  <input 
+                                    ref={resumeFileRef}
+                                    type="file" 
+                                    disabled={isUploading} 
+                                    accept=".pdf,.doc,.docx" 
+                                    className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all"
+                                    onChange={e => handleFileUpload(e, 'resume')} 
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-500 font-medium">
+                                  {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
+                                </p>
+                              </>
+                            )}
+
+                            {docs.resume && (
+                              <input 
+                                ref={resumeFileRef}
+                                type="file" 
+                                disabled={isUploading} 
+                                accept=".pdf,.doc,.docx" 
+                                className="hidden"
+                                onChange={e => handleFileUpload(e, 'resume')} 
+                              />
+                            )}
+
+                            {isCompressingDoc && (
+                              <div className="flex items-center gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs font-semibold text-blue-800 animate-pulse">
+                                <svg className="animate-spin w-4 h-4 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span>⚡ Compressing & optimizing to fit under 300KB...</span>
+                              </div>
+                            )}
+
                             {isUploading && uploadingType === 'resume' && (
                               <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse mt-2">
                                 <span className="relative flex h-3 w-3">
@@ -1215,54 +1364,128 @@ const EmployeeProfile = () => {
                               </div>
                             )}
                             {docError.resume && <p className="text-xs text-red-500 mt-2 font-medium">{docError.resume}</p>}
-                            <p className="text-xs text-gray-500 mt-2 font-medium">
-                              {getStepField('step5', 'resume', 'Upload Resume', 'Supported Formats: doc, docx, pdf, upto 300KB', true).placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
-                            </p>
                             {docs.resume && (
-                              <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-200">
-                                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-xs space-y-3">
+                                {/* File info row */}
+                                <div className="flex items-center justify-between gap-2.5">
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs shrink-0 border border-emerald-200 shadow-xs">
+                                      {(docsMeta?.resume?.name || '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'DOC'}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-bold text-gray-900 truncate" title={docsMeta?.resume?.name || getFileName(docs.resume)}>
+                                        {docsMeta?.resume?.name || getFileName(docs.resume)}
+                                      </p>
+                                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold whitespace-nowrap">
+                                          ✓ Attached &amp; Ready
+                                        </span>
+                                        {(() => {
+                                          const meta = docsMeta?.resume;
+                                          const badge = compressionBadge.resume;
+                                          const isComp = meta?.wasCompressed || badge?.wasCompressed || (meta?.savedPercent && meta.savedPercent > 0) || (badge?.saved && badge.saved > 0);
+                                          const sizeStr = meta?.compressedSize || badge?.compressed || meta?.size || badge?.size || (meta?.rawSize ? formatFileSize(meta.rawSize) : null);
+                                          const savedStr = meta?.savedPercent || badge?.saved;
+
+                                          return (
+                                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300 whitespace-nowrap">
+                                              ⚡ {sizeStr || '300 KB'} {isComp && savedStr ? `(${savedStr}% saved)` : ''}
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDoc('resume', '')}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                                    title="Remove resume"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
-                                  </div>
-                                  <div className="min-w-0 truncate">
-                                    <a 
-                                      href={docs.resume.startsWith('http') ? docs.resume : '#'} 
-                                      target="_blank" 
-                                      rel="noreferrer" 
-                                      className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-700 hover:underline truncate block"
-                                    >
-                                      {docsMeta?.resume?.name || getFileName(docs.resume, 'Uploaded Document (Click to view)')}
-                                    </a>
-                                    <p className="text-[11px] text-gray-500 font-medium">
-                                      {docsMeta?.resume?.size ? `${docsMeta.resume.size} • ` : ''}Uploaded Document
-                                    </p>
-                                  </div>
+                                  </button>
                                 </div>
-                                <button 
-                                  type="button" 
-                                  onClick={() => setDoc('resume', '')} 
-                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0 cursor-pointer" 
-                                  title="Remove Resume"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
+
+                                {/* Action buttons */}
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-100/90">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPreview('resume')}
+                                    className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-emerald-800 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <span>View File</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => resumeFileRef.current?.click()}
+                                    className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <span>Replace</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setDoc('resume', '')}
+                                    className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-red-600 bg-white rounded-xl border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span>Remove</span>
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
 
                           {/* Cover Letter Upload */}
-                          <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-xs">
-                            <label className="flex items-center justify-between text-sm font-bold text-gray-900 mb-2">
+                          <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-xs space-y-3">
+                            <label className="flex items-center text-sm font-bold text-gray-900">
                               <span>{getStepField('step5', 'coverLetter', 'Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').label}</span>
                               {getStepField('step5', 'coverLetter', '', '', false).isRequired && (
                                 <span className="text-red-500 font-bold ml-0.5">*</span>
                               )}
                             </label>
-                            <input key={docs.coverLetter ? 'cl-has' : 'cl-empty'} type="file" disabled={isUploading} accept=".pdf,.doc,.docx" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50" onChange={e => handleFileUpload(e, 'coverLetter')} />
+
+                            {!docs.coverLetter && (
+                              <>
+                                <div>
+                                  <input 
+                                    ref={coverLetterFileRef}
+                                    type="file" 
+                                    disabled={isUploading} 
+                                    accept=".pdf,.doc,.docx" 
+                                    className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer disabled:opacity-50 transition-all"
+                                    onChange={e => handleFileUpload(e, 'coverLetter')} 
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-500 font-medium">
+                                  {getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
+                                </p>
+                              </>
+                            )}
+
+                            {docs.coverLetter && (
+                              <input 
+                                ref={coverLetterFileRef}
+                                type="file" 
+                                disabled={isUploading} 
+                                accept=".pdf,.doc,.docx" 
+                                className="hidden"
+                                onChange={e => handleFileUpload(e, 'coverLetter')} 
+                              />
+                            )}
+
                             {isUploading && uploadingType === 'coverLetter' && (
                               <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 animate-pulse mt-2">
                                 <span className="relative flex h-3 w-3">
@@ -1273,41 +1496,86 @@ const EmployeeProfile = () => {
                               </div>
                             )}
                             {docError.coverLetter && <p className="text-xs text-red-500 mt-2 font-medium">{docError.coverLetter}</p>}
-                            <p className="text-xs text-gray-500 mt-2 font-medium">
-                              {getStepField('step5', 'coverLetter', 'Upload Cover Letter', 'Supported Formats: doc, docx, pdf, upto 300KB').placeholder || 'Supported Formats: doc, docx, pdf, upto 300KB'}
-                            </p>
                             {docs.coverLetter && (
-                              <div className="flex items-center justify-between mt-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-200">
-                                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 border border-emerald-100">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-xs space-y-3">
+                                {/* File info row */}
+                                <div className="flex items-center justify-between gap-2.5">
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xs shrink-0 border border-emerald-200 shadow-xs">
+                                      {(docsMeta?.coverLetter?.name || '').toLowerCase().endsWith('.pdf') ? 'PDF' : 'DOC'}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-bold text-gray-900 truncate" title={docsMeta?.coverLetter?.name || getFileName(docs.coverLetter)}>
+                                        {docsMeta?.coverLetter?.name || getFileName(docs.coverLetter)}
+                                      </p>
+                                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-bold whitespace-nowrap">
+                                          ✓ Attached &amp; Ready
+                                        </span>
+                                        {(() => {
+                                          const meta = docsMeta?.coverLetter;
+                                          const badge = compressionBadge.coverLetter;
+                                          const isComp = meta?.wasCompressed || badge?.wasCompressed || (meta?.savedPercent && meta.savedPercent > 0) || (badge?.saved && badge.saved > 0);
+                                          const sizeStr = meta?.compressedSize || badge?.compressed || meta?.size || badge?.size || (meta?.rawSize ? formatFileSize(meta.rawSize) : null);
+                                          const savedStr = meta?.savedPercent || badge?.saved;
+
+                                          return (
+                                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300 whitespace-nowrap">
+                                              ⚡ {sizeStr || '< 300 KB'} {isComp && savedStr ? `(${savedStr}% saved)` : ''}
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDoc('coverLetter', '')}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                                    title="Remove cover letter"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
-                                  </div>
-                                  <div className="min-w-0 truncate">
-                                    <a 
-                                      href={docs.coverLetter.startsWith('http') ? docs.coverLetter : '#'} 
-                                      target="_blank" 
-                                      rel="noreferrer" 
-                                      className="text-xs sm:text-sm font-bold text-gray-900 hover:text-emerald-700 hover:underline truncate block"
-                                    >
-                                      {docsMeta?.coverLetter?.name || getFileName(docs.coverLetter, 'Cover Letter Document')}
-                                    </a>
-                                    <p className="text-[11px] text-gray-500 font-medium">
-                                      {docsMeta?.coverLetter?.size ? `${docsMeta.coverLetter.size} • ` : ''}Uploaded Document
-                                    </p>
-                                  </div>
+                                  </button>
                                 </div>
-                                <button 
-                                  type="button" 
-                                  onClick={() => setDoc('coverLetter', '')} 
-                                  className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0 cursor-pointer" 
-                                  title="Remove Cover Letter"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
+
+                                {/* Action buttons */}
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-100/90">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPreview('coverLetter')}
+                                    className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-emerald-800 bg-white rounded-xl border border-emerald-300 hover:bg-emerald-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <span>View File</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => coverLetterFileRef.current?.click()}
+                                    className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <span>Replace</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setDoc('coverLetter', '')}
+                                    className="inline-flex items-center justify-center gap-1 px-1.5 py-2 text-xs font-bold text-red-600 bg-white rounded-xl border border-red-200 hover:bg-red-50 hover:border-red-300 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span>Remove</span>
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1502,10 +1770,7 @@ const EmployeeProfile = () => {
                                         )}
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <p className="text-xs font-bold text-gray-900">Share to everyone</p>
-                                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">All Employees List</span>
-                                        </div>
+                                        <p className="text-xs font-bold text-gray-900">Share to everyone</p>
                                         <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
                                           All employers can view your introductory video in the all employee list.
                                         </p>
@@ -1532,10 +1797,7 @@ const EmployeeProfile = () => {
                                         )}
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <p className="text-xs font-bold text-gray-900">Share to applied jobs</p>
-                                          <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">Applied Only</span>
-                                        </div>
+                                        <p className="text-xs font-bold text-gray-900">Share to applied jobs</p>
                                         <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
                                           Only employers of jobs you specifically apply to can watch your video.
                                         </p>
@@ -1558,6 +1820,23 @@ const EmployeeProfile = () => {
       </main>
 
       {/* Modals */}
+      <FileCompressorModal
+        isOpen={isCompressorModalOpen}
+        onClose={() => setIsCompressorModalOpen(false)}
+        targetField={compressorTargetField}
+        onApplyCompressedFile={(compressedFile, type) => {
+          handleFileUpload(null, type, compressedFile);
+        }}
+      />
+
+      <DocumentPreviewModal
+        isOpen={!!previewDocData}
+        onClose={() => setPreviewDocData(null)}
+        docUrl={previewDocData?.url}
+        docName={previewDocData?.name}
+        docMeta={previewDocData?.meta}
+      />
+
       <BasicDetailsModal
         isOpen={isBasicModalOpen}
         onClose={() => setIsBasicModalOpen(false)}

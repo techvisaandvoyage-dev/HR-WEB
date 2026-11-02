@@ -52,6 +52,11 @@ import {
   Activity,
   Table
 } from 'lucide-react';
+import { 
+  exportCandidateProfileAsPdf, 
+  exportCandidateProfileAsDoc 
+} from '../utils/candidateProfileExporter';
+import AdminVideoPlayer from '../components/AdminVideoPlayer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -102,6 +107,8 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [detailEmployee, setDetailEmployee] = useState(null);
   const [loadingEmployeeDetail, setLoadingEmployeeDetail] = useState(false);
+  const [previewResumeInDrawer, setPreviewResumeInDrawer] = useState(true);
+  const [previewCoverLetterInDrawer, setPreviewCoverLetterInDrawer] = useState(false);
 
   // Jobs List & Management State
   const [jobs, setJobs] = useState([]);
@@ -5135,12 +5142,36 @@ export default function DashboardOverview({ onNavigateTab }) {
                 </div>
               </div>
 
-              <button
-                onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
-                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* 1-Click Fast Profile Download (SahiJob Recruiter Style) */}
+                <div className="flex items-center gap-1 bg-emerald-50/90 p-1 rounded-xl border border-emerald-200/80 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => exportCandidateProfileAsPdf(detailEmployee || selectedEmployee, employers)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    title="Instant SahiJob Vector PDF download / print"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportCandidateProfileAsDoc(detailEmployee || selectedEmployee, employers)}
+                    className="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-gray-700 hover:text-gray-900 font-bold text-xs rounded-lg border border-gray-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                    title="Instant Microsoft Word (.doc) formatted download"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>DOC</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
+                  className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Drawer Body Scroll */}
@@ -5574,34 +5605,6 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <span className="font-bold text-gray-900 text-xs">{selectedEmployee.preferredLocation || selectedEmployee.location || 'N/A'}</span>
                   </div>
 
-                  {(selectedEmployee.gender || selectedEmployee.personalDetails?.gender) && (
-                    <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Gender</span>
-                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.gender || selectedEmployee.personalDetails?.gender}</span>
-                    </div>
-                  )}
-
-                  {(selectedEmployee.dob || selectedEmployee.personalDetails?.dob) && (
-                    <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Date of Birth</span>
-                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.dob || selectedEmployee.personalDetails?.dob}</span>
-                    </div>
-                  )}
-
-                  {(selectedEmployee.maritalStatus || selectedEmployee.personalDetails?.maritalStatus) && (
-                    <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Marital Status</span>
-                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.maritalStatus || selectedEmployee.personalDetails?.maritalStatus}</span>
-                    </div>
-                  )}
-
-                  {(selectedEmployee.category || selectedEmployee.personalDetails?.category) && (
-                    <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Category</span>
-                      <span className="font-bold text-gray-900 text-xs">{selectedEmployee.category || selectedEmployee.personalDetails?.category}</span>
-                    </div>
-                  )}
-
                   <div>
                     <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Registered On</span>
                     <span className="font-bold text-gray-900 text-xs">
@@ -5816,17 +5819,16 @@ export default function DashboardOverview({ onNavigateTab }) {
                 </div>
               </div>
 
-              {/* 6. KEY SKILLS & LANGUAGES */}
+              {/* 6. KEY SKILLS */}
               <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-2xs space-y-4">
                 <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
-                  Key Skills & Languages
+                  Key Skills
                 </h4>
 
                 {/* Skills tags */}
                 <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Key Skills</span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1.5 pt-1">
                     {(() => {
                       const rawSkills = selectedEmployee.professionalDetails?.skills || selectedEmployee.skills;
                       const skillsArray = typeof rawSkills === 'string' 
@@ -5847,20 +5849,6 @@ export default function DashboardOverview({ onNavigateTab }) {
                     })()}
                   </div>
                 </div>
-
-                {/* Languages if available */}
-                {selectedEmployee.languages && Array.isArray(selectedEmployee.languages) && selectedEmployee.languages.length > 0 && (
-                  <div className="pt-2 border-t border-gray-100">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Languages Known</span>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEmployee.languages.map((lang, idx) => (
-                        <span key={idx} className="px-2.5 py-1 bg-gray-100 text-gray-700 font-bold rounded-lg text-xs">
-                          {typeof lang === 'string' ? lang : lang.language || lang.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* 7. DOCUMENTS & RESUME */}
@@ -5871,29 +5859,81 @@ export default function DashboardOverview({ onNavigateTab }) {
                 </h4>
 
                 <div className="space-y-3">
-                  {/* Resume Card */}
+                  {/* Resume Card with Live Embedded Preview */}
                   {(selectedEmployee.resume || selectedEmployee.resumeUrl || selectedEmployee.documents?.resume) ? (
-                    <div className="flex items-center justify-between p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                          <FileText className="w-5 h-5" />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-900">Resume / CV Document</p>
+                            <p className="text-[10px] text-gray-500">Official candidate attachment (Preview available below)</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-bold text-gray-900">Resume / CV Document</p>
-                          <p className="text-[10px] text-gray-500">Official candidate attachment</p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewResumeInDrawer(prev => !prev)}
+                            className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-2xs cursor-pointer ${
+                              previewResumeInDrawer
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                            }`}
+                          >
+                            <Eye className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>{previewResumeInDrawer ? 'Hide Preview' : 'Show Preview'}</span>
+                          </button>
+                          <a
+                            href={selectedEmployee.resume || selectedEmployee.resumeUrl || selectedEmployee.documents?.resume}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                          >
+                            <span>Open File</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={selectedEmployee.resume || selectedEmployee.resumeUrl || selectedEmployee.documents?.resume}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
-                        >
-                          <span>Open Resume</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
+
+                      {/* Embedded Live Resume Preview (Pre-rendered so scrolling down reveals it) */}
+                      {previewResumeInDrawer && (() => {
+                        const fileUrl = selectedEmployee.resume || selectedEmployee.resumeUrl || selectedEmployee.documents?.resume;
+                        const isDocx = fileUrl && (fileUrl.toLowerCase().includes('.doc') || fileUrl.toLowerCase().includes('.docx'));
+                        const previewSrc = isDocx 
+                          ? `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`
+                          : `${fileUrl}#toolbar=0`;
+
+                        return (
+                          <div className="rounded-2xl border border-emerald-200 bg-white p-3 shadow-2xs space-y-2">
+                            <div className="flex items-center justify-between px-1">
+                              <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                                Resume Document Preview
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] font-bold text-emerald-700 hover:underline inline-flex items-center gap-1"
+                                >
+                                  <span>Fullscreen</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+                            <div className="w-full h-[460px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 relative shadow-inner">
+                              <iframe
+                                src={previewSrc}
+                                title="Candidate Resume Document Preview"
+                                className="w-full h-full border-0"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <div className="p-3.5 bg-gray-50 rounded-xl text-center text-gray-400 text-xs italic border border-gray-100">
@@ -5901,31 +5941,112 @@ export default function DashboardOverview({ onNavigateTab }) {
                     </div>
                   )}
 
-                  {/* Intro Video */}
-                  {(selectedEmployee.introVideo || selectedEmployee.documents?.introVideo) && (
-                    <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                            <Video className="w-4 h-4" />
+                  {/* Cover Letter Card with Live Embedded Preview */}
+                  {(selectedEmployee.coverLetter || selectedEmployee.coverLetterUrl || selectedEmployee.documents?.coverLetter) && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3.5 bg-blue-50/60 rounded-xl border border-blue-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-gray-900">Introductory Video</p>
-                            <p className="text-[10px] text-gray-500">Candidate video introduction</p>
+                            <p className="text-xs font-bold text-gray-900">Cover Letter Document</p>
+                            <p className="text-[10px] text-gray-500">Official candidate cover letter attachment</p>
                           </div>
                         </div>
-                        <a
-                          href={selectedEmployee.introVideo || selectedEmployee.documents?.introVideo}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1 shadow-2xs"
-                        >
-                          Watch Video
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewCoverLetterInDrawer(prev => !prev)}
+                            className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-2xs cursor-pointer ${
+                              previewCoverLetterInDrawer
+                                ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                            }`}
+                          >
+                            <Eye className="w-3.5 h-3.5 text-blue-700" />
+                            <span>{previewCoverLetterInDrawer ? 'Hide Preview' : 'Show Preview'}</span>
+                          </button>
+                          <a
+                            href={selectedEmployee.coverLetter || selectedEmployee.coverLetterUrl || selectedEmployee.documents?.coverLetter}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                          >
+                            <span>Open File</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
                       </div>
+
+                      {/* Embedded Live Cover Letter Preview */}
+                      {previewCoverLetterInDrawer && (() => {
+                        const fileUrl = selectedEmployee.coverLetter || selectedEmployee.coverLetterUrl || selectedEmployee.documents?.coverLetter;
+                        const isDocx = fileUrl && (fileUrl.toLowerCase().includes('.doc') || fileUrl.toLowerCase().includes('.docx'));
+                        const previewSrc = isDocx 
+                          ? `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`
+                          : `${fileUrl}#toolbar=0`;
+
+                        return (
+                          <div className="rounded-2xl border border-blue-200 bg-white p-3 shadow-2xs space-y-2">
+                            <div className="flex items-center justify-between px-1">
+                              <span className="text-[11px] font-bold text-blue-800 flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                Cover Letter Document Preview
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] font-bold text-blue-700 hover:underline inline-flex items-center gap-1"
+                                >
+                                  <span>Fullscreen</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+                            <div className="w-full h-[460px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 relative shadow-inner">
+                              <iframe
+                                src={previewSrc}
+                                title="Candidate Cover Letter Document Preview"
+                                className="w-full h-full border-0"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
+
+                  {/* Intro Video (Direct In-Drawer Video Player Preview) */}
+                  {(selectedEmployee.introVideo || selectedEmployee.documents?.introVideo) && (() => {
+                    const videoSrc = selectedEmployee.introVideo || selectedEmployee.documents?.introVideo;
+
+                    return (
+                      <div className="p-4 bg-gray-50/70 rounded-2xl border border-gray-200/80 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                              <Video className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-900">Introductory Video</p>
+                              <p className="text-[10px] text-gray-500">Direct candidate video presentation</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            Live Preview
+                          </span>
+                        </div>
+
+                        {/* Direct Video Player with native play controls */}
+                        <div className="w-full rounded-xl overflow-hidden border border-gray-300 bg-black shadow-inner">
+                          <AdminVideoPlayer url={videoSrc} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -5970,9 +6091,29 @@ export default function DashboardOverview({ onNavigateTab }) {
 
             {/* Drawer Footer */}
             <div className="p-4 border-t border-gray-100 bg-white flex items-center justify-between shrink-0">
-              <span className="text-[11px] text-gray-400 font-medium">
-                ID: <span className="font-mono">{selectedEmployee._id || selectedEmployee.id}</span>
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-gray-400 font-medium">
+                  ID: <span className="font-mono">{selectedEmployee._id || selectedEmployee.id}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => exportCandidateProfileAsPdf(detailEmployee || selectedEmployee, employers)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                  title="Download / Print Profile as PDF"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Profile (PDF)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportCandidateProfileAsDoc(detailEmployee || selectedEmployee, employers)}
+                  className="px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-xl border border-gray-200 transition-all inline-flex items-center gap-1 cursor-pointer active:scale-95"
+                  title="Download Profile as Word (.doc)"
+                >
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
+                  <span>DOC</span>
+                </button>
+              </div>
               <button
                 onClick={() => { setSelectedEmployee(null); setDetailEmployee(null); }}
                 className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"

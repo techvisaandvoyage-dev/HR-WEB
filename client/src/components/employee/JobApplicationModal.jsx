@@ -7,6 +7,7 @@ import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS, DEFAULT_COURSE_TYPE_OPTIONS, DEFAULT_MEDIUM_OPTIONS, DEFAULT_EMPLOYMENT_TYPE_OPTIONS, DEFAULT_NOTICE_PERIOD_OPTIONS, DEFAULT_GRADING_SYSTEMS, normalizeGradingSystems, sortQualifications, sortExperience } from './EmployeeOnboarding';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
+import { compressFileIfNeeded, formatFileSize } from '../../utils/fileCompressor';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 import { getJobLocationBadges } from '../../data/preferredLocations';
 
@@ -773,15 +774,27 @@ const p = formData.professionalDetails || {};
 
   const FastStep2Resume = () => {
     const handleFileChange = async (e) => {
-      const file = e.target.files && e.target.files[0];
+      let file = e.target.files && e.target.files[0];
       if (!file) return;
-      
-      if (file.size > 300 * 1024) {
-        setResumeUploadError(`File size (${(file.size / 1024).toFixed(1)}KB) exceeds 300KB limit.`);
-        return;
-      }
+
       setResumeUploadError('');
       setUploadingResume(true);
+      
+      if (file.size > 300 * 1024) {
+        try {
+          const comp = await compressFileIfNeeded(file, 300 * 1024);
+          if (comp) file = comp;
+        } catch (cErr) {
+          console.warn('Auto compression failed in modal:', cErr);
+        }
+      }
+
+      if (file.size > 300 * 1024) {
+        setResumeUploadError(`File size (${(file.size / 1024).toFixed(1)}KB) exceeds 300KB limit.`);
+        setUploadingResume(false);
+        return;
+      }
+
       try {
         const downloadURL = await uploadFileToStorage(file, 'resumes');
         setFastFormData(prev => ({ ...prev, resume: downloadURL }));

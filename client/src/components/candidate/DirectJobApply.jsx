@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../../firebase';
 import { uploadFileToStorage } from '../../utils/firebaseStorage';
+import { compressFileIfNeeded } from '../../utils/fileCompressor';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 import { captureJobAttribution, getStoredAttribution, clearStoredAttribution, logJobVisitEvent } from '../../utils/attribution';
 import SEOHead from '../common/SEOHead';
@@ -978,14 +979,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
   // Handle CV Upload (Firebase or fallback)
   const handleCvFileChange = async (e) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate size from CMS (default 300KB)
-    if (file.size > maxLimitKb * 1024) {
-      setCvError(`File size exceeds ${maxLimitKb}KB limit. Please upload a smaller file (Max ${maxLimitKb}KB).`);
-      return;
-    }
 
     const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
@@ -996,6 +991,23 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     setCvError('');
     setUploadingResume(true);
     setUploadProgress(10);
+
+    // Auto compress if oversized
+    if (file.size > maxLimitKb * 1024) {
+      try {
+        const compressed = await compressFileIfNeeded(file, maxLimitKb * 1024);
+        if (compressed) file = compressed;
+      } catch (cErr) {
+        console.warn('Auto compression error in direct apply:', cErr);
+      }
+    }
+
+    // Validate size from CMS (default 300KB)
+    if (file.size > maxLimitKb * 1024) {
+      setCvError('File size exceeds limit. Please upload a smaller file.');
+      setUploadingResume(false);
+      return;
+    }
 
     try {
       const downloadURL = await uploadFileToStorage(file, 'resumes', (progress) => {
