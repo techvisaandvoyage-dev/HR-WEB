@@ -156,6 +156,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
   // Registration OTP State
   const [isOtpStep, setIsOtpStep] = useState(false);
+  const [loginMode, setLoginMode] = useState('password'); // 'password' | 'otp'
+  const [isLoginOtpSent, setIsLoginOtpSent] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '']);
   const [resendTimer, setResendTimer] = useState(0);
   const [otpSuccessMessage, setOtpSuccessMessage] = useState('');
@@ -173,37 +175,88 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     };
   }, [resendTimer]);
 
+  const getOtpInputEl = (idx) => {
+    return document.getElementById(`apply-otp-${idx}`) || document.getElementById(`apply-login-otp-${idx}`);
+  };
+
   const handleOtpChange = (index, value) => {
-    // Handle paste of full 4-digit code
-    if (value.length > 1) {
-      const pasteData = value.replace(/\D/g, '').slice(0, 4).split('');
+    const digits = value.replace(/\D/g, '');
+
+    // Handle full paste or multi-character typing
+    if (digits.length > 1) {
+      if (digits.length >= 3) {
+        // Multi-digit code paste (e.g. 4 digits)
+        const pasteData = digits.slice(0, 4).split('');
+        const newOtp = [...otp];
+        pasteData.forEach((char, idx) => {
+          if (idx < 4) newOtp[idx] = char;
+        });
+        setOtp(newOtp);
+        if (authError) setAuthError('');
+        const nextIdx = Math.min(pasteData.length, 3);
+        const nextEl = getOtpInputEl(nextIdx);
+        if (nextEl) {
+          nextEl.focus();
+          nextEl.select?.();
+        }
+        return;
+      }
+
+      // User typed into an already filled input box -> take the newly entered digit
+      const val = digits.slice(-1);
       const newOtp = [...otp];
-      pasteData.forEach((char, idx) => {
-        if (index + idx < 4) newOtp[index + idx] = char;
-      });
+      newOtp[index] = val;
       setOtp(newOtp);
-      const nextIdx = Math.min(index + pasteData.length, 3);
-      document.getElementById(`apply-otp-${nextIdx}`)?.focus();
+      if (authError) setAuthError('');
+
+      if (val && index < 3) {
+        const nextEl = getOtpInputEl(index + 1);
+        if (nextEl) {
+          nextEl.focus();
+          nextEl.select?.();
+        }
+      }
       return;
     }
 
-    const val = value.replace(/\D/g, '');
+    const val = digits;
     const newOtp = [...otp];
     newOtp[index] = val;
     setOtp(newOtp);
 
-    // Clear error
     if (authError) setAuthError('');
 
-    // Auto move to next input
+    // Auto advance to next box
     if (val && index < 3) {
-      document.getElementById(`apply-otp-${index + 1}`)?.focus();
+      const nextEl = getOtpInputEl(index + 1);
+      if (nextEl) {
+        nextEl.focus();
+        nextEl.select?.();
+      }
     }
   };
 
   const handleOtpKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      document.getElementById(`apply-otp-${index - 1}`)?.focus();
+    if (e.key === 'Backspace') {
+      if (!otp[index] && index > 0) {
+        const prevEl = getOtpInputEl(index - 1);
+        if (prevEl) {
+          prevEl.focus();
+          prevEl.select?.();
+        }
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      const prevEl = getOtpInputEl(index - 1);
+      if (prevEl) {
+        prevEl.focus();
+        prevEl.select?.();
+      }
+    } else if (e.key === 'ArrowRight' && index < 3) {
+      const nextEl = getOtpInputEl(index + 1);
+      if (nextEl) {
+        nextEl.focus();
+        nextEl.select?.();
+      }
     }
   };
 
@@ -827,6 +880,136 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     }
   };
 
+  // Handle Send Login OTP
+  const handleSendLoginOtp = async (e) => {
+    if (e) e.preventDefault();
+    setAuthError('');
+    setOtpSuccessMessage('');
+    if (!authEmail.trim()) {
+      setAuthFieldErrors({ email: 'Please enter your registered email address.' });
+      return;
+    }
+    const cleanEmail = authEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setAuthFieldErrors({ email: 'Please enter a valid email address.' });
+      return;
+    }
+    setAuthFieldErrors({});
+    setAuthLoading(true);
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/login/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setIsLoginOtpSent(true);
+        setOtp(['', '', '', '']);
+        setResendTimer(data.cooldownSeconds || 30);
+        setOtpSuccessMessage(data.message || 'OTP sent successfully to your registered email');
+      } else {
+        setAuthError(data.message || 'Failed to send OTP. Please check your email.');
+      }
+    } catch (err) {
+      console.error(err);
+      setAuthError('Server error, please try again later');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle Resend Login OTP
+  const handleResendLoginOtp = async () => {
+    if (resendTimer > 0 || authLoading) return;
+    setAuthError('');
+    setOtpSuccessMessage('');
+    setAuthLoading(true);
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/login/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail.trim().toLowerCase() })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setResendTimer(data.cooldownSeconds || 30);
+        setOtpSuccessMessage(data.message || 'A new OTP has been sent to your email.');
+      } else {
+        setAuthError(data.message || 'Failed to resend OTP. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      setAuthError('Failed to resend OTP. Please check your connection.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle Verify Login OTP
+  const handleVerifyLoginOtp = async (e) => {
+    if (e) e.preventDefault();
+    const enteredOtp = otp.join('');
+    if (enteredOtp.length !== 4) {
+      setAuthError('Please enter the complete 4-digit verification code.');
+      return;
+    }
+
+    setAuthError('');
+    setAuthLoading(true);
+
+    try {
+      const storedAttribution = getStoredAttribution();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/auth/login/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: authEmail.trim().toLowerCase(),
+          otp: enteredOtp,
+          attribution: storedAttribution
+        })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        clearStoredAttribution();
+        const authToken = data.token;
+        setToken(authToken);
+        setUser(data);
+        localStorage.setItem('employeeToken', authToken);
+        localStorage.setItem('employeeUser', JSON.stringify(data));
+        localStorage.setItem('userRole', 'employee');
+
+        if (data.profile?.resume) {
+          setResumeUrl(data.profile.resume);
+          setResumeName(data.profile.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
+        }
+        if (data.mobile) setAuthMobile(data.mobile);
+        if (data.name) setAuthName(data.name);
+
+        if (onAuthSuccess) onAuthSuccess(data);
+
+        // Check if candidate already applied for this job
+        const hasApplied = await checkApplicationStatus(authToken, jobId);
+        if (!hasApplied) {
+          setStep(2);
+          logJobVisitEvent(jobId, 'started_application');
+        }
+      } else {
+        setAuthError(data.message || 'Invalid or expired OTP. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      setAuthError('Server connection error. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   // Handle Google Login / Registration
   const handleGoogleLogin = async () => {
     setAuthLoading(true);
@@ -1230,10 +1413,10 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans pb-16">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col bg-[#f8fafc] text-slate-800 font-sans">
       
       {/* Top Navigation Bar */}
-      <header className="bg-white border-b border-gray-200/80 sticky top-0 z-40 shadow-xs">
+      <header className="bg-white border-b border-gray-200/80 z-40 shadow-xs shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-green-700 to-emerald-500 flex items-center justify-center text-white font-black text-lg shadow-sm">
@@ -1317,7 +1500,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       )}
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 flex-1 w-full lg:overflow-hidden min-h-0 flex flex-col">
         
         {/* Mobile Header Banner */}
         <div className="lg:hidden bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs mb-6 flex items-center justify-between gap-4">
@@ -1354,10 +1537,10 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         </div>
 
         {/* 2-Column Responsive Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start lg:items-stretch lg:flex-1 lg:min-h-0">
           
           {/* LEFT COLUMN: Apply Flow (Independent scroll on desktop) */}
-          <div className="lg:col-span-6 xl:col-span-5 space-y-6 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto split-scroll-col pr-1 pb-6">
+          <div className="lg:col-span-6 xl:col-span-5 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-2 pb-8">
 
             {/* ========================================================================= */}
             {/* STEP 1: AUTHENTICATION (LOGIN OR REGISTER)                                 */}
@@ -1439,8 +1622,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                         id={`apply-otp-${index}`}
                         type="text"
                         inputMode="numeric"
-                        maxLength="1"
+                        maxLength="2"
                         value={digit}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                         autoFocus={index === 0}
@@ -1511,7 +1695,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 <div className="flex bg-gray-100 p-1 rounded-full mb-6 max-w-sm mx-auto">
                   <button
                     type="button"
-                    onClick={() => { setAuthTab('login'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); }}
+                    onClick={() => { setAuthTab('login'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); setLoginMode('password'); setIsLoginOtpSent(false); }}
                     className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                       authTab === 'login' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
                     }`}
@@ -1520,7 +1704,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setAuthTab('register'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); }}
+                    onClick={() => { setAuthTab('register'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); setLoginMode('password'); setIsLoginOtpSent(false); }}
                     className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                       authTab === 'register' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
                     }`}
@@ -1856,92 +2040,267 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </form>
                 )}
 
-                {/* Login Form */}
+                {/* Login Form (Password & OTP Modes) */}
                 {authTab === 'login' && (
-                  <form onSubmit={handleLogin} noValidate className="space-y-4 max-w-md mx-auto">
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-gray-900">
-                        {loginEmailConfig.label} <span className="text-red-500 font-bold ml-0.5">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        placeholder={loginEmailConfig.placeholder}
-                        value={authEmail}
-                        onChange={(e) => {
-                          setAuthEmail(e.target.value);
-                          if (authFieldErrors.email) setAuthFieldErrors(prev => ({ ...prev, email: '' }));
-                        }}
-                        className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
-                          authFieldErrors.email
-                            ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
-                            : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
-                        }`}
-                      />
-                      {authFieldErrors.email && (
-                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <span>{authFieldErrors.email}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-bold text-gray-900">
-                        {loginPasswordConfig.label} <span className="text-red-500 font-bold ml-0.5">*</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          placeholder={loginPasswordConfig.placeholder}
-                          value={authPassword}
-                          onChange={(e) => {
-                            setAuthPassword(e.target.value);
-                            if (authFieldErrors.password) setAuthFieldErrors(prev => ({ ...prev, password: '' }));
-                          }}
-                          className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all pr-12 placeholder-gray-400 text-sm ${
-                            authFieldErrors.password
-                              ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
-                              : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
-                          }`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                        >
-                          {showPassword ? (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                  <div className="max-w-md mx-auto">
+                    
+                    {/* Mode 1: Password Login */}
+                    {loginMode === 'password' && (
+                      <form onSubmit={handleLogin} noValidate className="space-y-4 animate-in fade-in duration-200">
+                        <div className="space-y-1.5">
+                          <label className="block text-sm font-bold text-gray-900">
+                            {loginEmailConfig.label} <span className="text-red-500 font-bold ml-0.5">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            placeholder={loginEmailConfig.placeholder}
+                            value={authEmail}
+                            onChange={(e) => {
+                              setAuthEmail(e.target.value);
+                              if (authFieldErrors.email) setAuthFieldErrors(prev => ({ ...prev, email: '' }));
+                            }}
+                            className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
+                              authFieldErrors.email
+                                ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                                : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                            }`}
+                          />
+                          {authFieldErrors.email && (
+                            <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <span>{authFieldErrors.email}</span>
+                            </div>
                           )}
-                        </button>
-                      </div>
-                      {authFieldErrors.password && (
-                        <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <span>{authFieldErrors.password}</span>
                         </div>
-                      )}
-                    </div>
 
-                    <div className="pt-2">
-                      <button
-                        type="submit"
-                        disabled={authLoading}
-                        className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {authLoading ? (
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          s1.loginSubmitBtnText || "Login & Proceed →"
-                        )}
-                      </button>
-                    </div>
-                  </form>
+                        <div className="space-y-1.5">
+                          <label className="block text-sm font-bold text-gray-900">
+                            {loginPasswordConfig.label} <span className="text-red-500 font-bold ml-0.5">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              placeholder={loginPasswordConfig.placeholder}
+                              value={authPassword}
+                              onChange={(e) => {
+                                setAuthPassword(e.target.value);
+                                if (authFieldErrors.password) setAuthFieldErrors(prev => ({ ...prev, password: '' }));
+                              }}
+                              className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all pr-12 placeholder-gray-400 text-sm ${
+                                authFieldErrors.password
+                                  ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                                  : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                            >
+                              {showPassword ? (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                              )}
+                            </button>
+                          </div>
+                          {authFieldErrors.password && (
+                            <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2 animate-in fade-in duration-200">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <span>{authFieldErrors.password}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={authLoading}
+                            className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {authLoading ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              s1.loginSubmitBtnText || "Login & Proceed →"
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Switch to OTP Login Link */}
+                        <div className="pt-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLoginMode('otp');
+                              setIsLoginOtpSent(false);
+                              setAuthError('');
+                              setAuthFieldErrors({});
+                              setOtp(['', '', '', '']);
+                            }}
+                            className="text-[#29953f] hover:text-green-800 text-xs font-bold transition-colors py-1.5 px-4 rounded-full hover:bg-green-50 inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            <span>Login with OTP instead</span>
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Mode 2: OTP Login (Step A: Enter Email & Send OTP) */}
+                    {loginMode === 'otp' && !isLoginOtpSent && (
+                      <form onSubmit={handleSendLoginOtp} noValidate className="space-y-4 animate-in fade-in duration-200">
+                        <div className="space-y-1.5">
+                          <label className="block text-sm font-bold text-gray-900">
+                            Registered Email ID <span className="text-red-500 font-bold ml-0.5">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            placeholder="Enter your registered email address"
+                            value={authEmail}
+                            onChange={(e) => {
+                              setAuthEmail(e.target.value);
+                              if (authFieldErrors.email) setAuthFieldErrors(prev => ({ ...prev, email: '' }));
+                            }}
+                            className={`w-full px-5 py-3.5 rounded-full border outline-none transition-all placeholder-gray-400 text-sm ${
+                              authFieldErrors.email
+                                ? 'border-red-600 focus:border-red-600 focus:ring-1 focus:ring-red-600 bg-red-50/30'
+                                : 'border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600'
+                            }`}
+                          />
+                          {authFieldErrors.email && (
+                            <div className="flex items-center gap-1.5 mt-1 text-red-600 text-xs font-semibold pl-2">
+                              <svg className="h-4 w-4 shrink-0 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <span>{authFieldErrors.email}</span>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-400 pl-2">We will send a 4-digit verification code to this email</p>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            type="submit"
+                            disabled={authLoading}
+                            className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {authLoading ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              "Send OTP →"
+                            )}
+                          </button>
+                        </div>
+
+                        <div className="pt-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLoginMode('password');
+                              setAuthError('');
+                              setAuthFieldErrors({});
+                            }}
+                            className="text-gray-500 hover:text-gray-800 text-xs font-semibold transition-colors py-1.5 px-4 rounded-full hover:bg-gray-100 inline-block cursor-pointer"
+                          >
+                            ← Login with Password instead
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Mode 2: OTP Login (Step B: Enter 4-digit Code & Verify) */}
+                    {loginMode === 'otp' && isLoginOtpSent && (
+                      <form onSubmit={handleVerifyLoginOtp} noValidate className="space-y-5 animate-in fade-in duration-200">
+                        <div className="text-center space-y-1">
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            Verification code sent to <span className="font-bold text-gray-900">{authEmail}</span>
+                          </p>
+                        </div>
+
+                        {/* 4-digit OTP Boxes */}
+                        <div className="flex justify-center gap-3 sm:gap-4">
+                          {otp.map((digit, index) => (
+                            <input
+                              key={index}
+                              id={`apply-login-otp-${index}`}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength="2"
+                              value={digit}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => handleOtpChange(index, e.target.value)}
+                              onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                              autoFocus={index === 0}
+                              className="w-14 h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
+                            />
+                          ))}
+                        </div>
+
+                        <div className="pt-1">
+                          <button
+                            type="submit"
+                            disabled={authLoading}
+                            className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {authLoading ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              "Verify OTP & Proceed →"
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Resend OTP */}
+                        <div className="flex items-center justify-between text-xs pt-1 px-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsLoginOtpSent(false);
+                              setOtp(['', '', '', '']);
+                              setAuthError('');
+                            }}
+                            className="text-gray-500 hover:text-gray-800 font-semibold cursor-pointer"
+                          >
+                            ← Change Email
+                          </button>
+                          {resendTimer > 0 ? (
+                            <span className="text-gray-400 font-semibold">Resend code in {resendTimer}s</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleResendLoginOtp}
+                              disabled={authLoading}
+                              className="text-[#29953f] hover:underline font-bold cursor-pointer"
+                            >
+                              Resend OTP
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="pt-3 text-center border-t border-gray-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLoginMode('password');
+                              setIsLoginOtpSent(false);
+                              setOtp(['', '', '', '']);
+                              setAuthError('');
+                            }}
+                            className="text-gray-500 hover:text-gray-800 text-xs font-semibold py-1 px-4 rounded-full hover:bg-gray-100 inline-block cursor-pointer"
+                          >
+                            ← Login with Password instead
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                  </div>
                 )}
 
               </div>
@@ -2540,7 +2899,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           </div>
 
           {/* RIGHT COLUMN: Permanent Full Job Details Card (Independent scroll on desktop) */}
-          <div id="job-details-column" className="lg:col-span-6 xl:col-span-7 space-y-6 lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto split-scroll-col pr-1 pb-6">
+          <div id="job-details-column" className="lg:col-span-6 xl:col-span-7 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-2 pb-8">
             
             {/* 1. Job Header Card */}
             <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs">

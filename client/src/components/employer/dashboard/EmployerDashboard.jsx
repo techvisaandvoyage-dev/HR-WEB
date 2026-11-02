@@ -199,7 +199,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Permanent Sticky Top Bar Header */}
-        <header className="bg-white border-b border-[#eaecf0] px-6 lg:px-10 py-5 flex items-center justify-between shrink-0 relative z-40">
+        <header className="bg-white border-b border-[#eaecf0] px-6 lg:px-10 py-5 flex items-center justify-between shrink-0 relative z-10">
           <div className="flex items-center gap-3">
             {/* Mobile menu burger */}
             <button
@@ -241,7 +241,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         </header>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-6 lg:px-10 py-8 relative z-0">
+        <div className="flex-1 overflow-y-auto px-6 lg:px-10 py-8">
           <div className="max-w-[1180px] w-full">
             <Routes>
               <Route index element={<DashboardOverview portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />

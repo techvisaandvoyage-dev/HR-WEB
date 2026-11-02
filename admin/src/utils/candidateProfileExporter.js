@@ -122,10 +122,18 @@ export const generateIndeedProfileHtml = (candidate, employers = [], isForWord =
   const landedAt = acq.landedAt ? new Date(acq.landedAt).toLocaleString() : '';
   const registeredAt = (acq.registeredAt || candidate.createdAt) ? new Date(acq.registeredAt || candidate.createdAt).toLocaleString() : '';
 
+  // Avatar / Profile photo
+  const avatarUrl = candidate.avatar || candidate.profilePhoto || candidate.profilePicture || candidate.photo || candidate.personalDetails?.profilePhoto || '';
+
   // Resume and media
   const resumeUrl = candidate.resume || candidate.resumeUrl || candidate.documents?.resume || '';
   const coverLetterUrl = candidate.coverLetter || candidate.coverLetterUrl || candidate.documents?.coverLetter || '';
-  const introVideoUrl = candidate.introVideo || candidate.documents?.introVideo || '';
+  const rawIntroVideo = candidate.introVideo || candidate.documents?.introVideo || '';
+
+  // Video Visibility & Permission Check
+  const videoVis = candidate.videoVisibility || candidate.documents?.videoVisibility || 'everyone';
+  const canShowVideo = rawIntroVideo && videoVis !== 'hidden' && videoVis !== 'none' && videoVis !== 'private';
+  const introVideoUrl = canShowVideo ? rawIntroVideo : '';
 
   // Skills
   const rawSkills = candidate.professionalDetails?.skills || candidate.skills;
@@ -400,8 +408,15 @@ export const generateIndeedProfileHtml = (candidate, employers = [], isForWord =
       <span class="badge-indeed">Candidate Profile</span>
     </div>
 
-    <h1 class="candidate-name">${name}</h1>
-    <div class="candidate-title">${designation} • ${currentCompany !== 'N/A' ? currentCompany : 'Job Seeker'}</div>
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+      ${avatarUrl ? `
+        <img src="${avatarUrl}" alt="${name}" style="width: 68px; height: 68px; border-radius: 12px; object-fit: cover; border: 2px solid #e2e8f0; background: #f8fafc; flex-shrink: 0;" onerror="this.style.display='none';" />
+      ` : ''}
+      <div>
+        <h1 class="candidate-name">${name}</h1>
+        <div class="candidate-title">${designation} • ${currentCompany !== 'N/A' ? currentCompany : 'Job Seeker'}</div>
+      </div>
+    </div>
 
     <!-- Contact & Overview Grid -->
     <div class="contact-grid">

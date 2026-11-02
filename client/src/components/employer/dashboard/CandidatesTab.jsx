@@ -1,9 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import DateRangePicker from '../../common/DateRangePicker';
 import VideoPlayer from '../../common/VideoPlayer';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
+import { 
+  exportCandidateProfileAsPdf, 
+  exportCandidateProfileAsDoc 
+} from '../../../utils/candidateProfileExporter';
 
 const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
   const location = useLocation();
@@ -19,6 +24,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportNotice, setExportNotice] = useState(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [avatarFailedMap, setAvatarFailedMap] = useState({});
 
   // Column Filters State (Filter for every single column)
   const initialFilters = {
@@ -1233,9 +1239,25 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       {/* 1. Candidate Name, Email & Avatar */}
                       <td className="py-3.5 px-3 font-medium text-gray-900">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-2xs ${cand.bg || 'bg-emerald-600'}`}>
-                            {cand.initials || (cand.name ? cand.name.charAt(0).toUpperCase() : 'C')}
-                          </div>
+                          {(() => {
+                            const candAvatar = cand.avatar || cand.profilePhoto || cand.profilePicture || cand.photo || cand.personalDetails?.profilePhoto;
+                            const candKey = cand._id || cand.id || cand.email;
+                            if (candAvatar && !avatarFailedMap[candKey]) {
+                              return (
+                                <img
+                                  src={candAvatar}
+                                  alt={cand.name || 'Candidate'}
+                                  onError={() => setAvatarFailedMap(prev => ({ ...prev, [candKey]: true }))}
+                                  className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-200"
+                                />
+                              );
+                            }
+                            return (
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-2xs ${cand.bg || 'bg-emerald-600'}`}>
+                                {cand.initials || (cand.name ? cand.name.charAt(0).toUpperCase() : 'C')}
+                              </div>
+                            );
+                          })()}
                           <div className="min-w-[130px]">
                             <p className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors text-[13px] leading-tight">
                               {cand.name}
@@ -1335,6 +1357,23 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                             </button>
                           )}
 
+                          {/* Quick Download Profile PDF (Available only for applicants) */}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportCandidateProfileAsPdf(cand, [], { 
+                                hasApplied: true, 
+                                jobTitle: item.jobTitle, 
+                                status: item.status, 
+                                appliedDate: item.appliedDate 
+                              });
+                            }}
+                            className="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg border border-gray-200/90 bg-white transition-colors cursor-pointer shadow-2xs"
+                            title="Download SahiJob Candidate Profile (PDF)"
+                          >
+                            <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                          </button>
+
                           {/* View Profile Drawer */}
                           <button 
                             onClick={() => handleOpenCandidate(cand, item)}
@@ -1406,14 +1445,14 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         )}
       </div>
 
-      {/* Candidate Profile Slide-over Drawer */}
-      {selectedCandidate && (
-        <>
+      {/* Candidate Profile Slide-over Drawer - Portaled to document.body so top bar is behind backdrop */}
+      {selectedCandidate && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-hidden font-sans">
           <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 animate-in fade-in duration-200"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
             onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
           ></div>
-          <div className="fixed inset-y-0 right-0 w-full sm:w-[560px] bg-white shadow-2xl z-50 p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-gray-200 font-sans">
+          <div className="fixed inset-y-0 right-0 w-full sm:w-[580px] bg-white shadow-2xl z-[10000] p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-gray-200">
             
             {/* Drawer Header */}
             <div className="flex justify-between items-start mb-5 shrink-0 border-b border-gray-100 pb-4">
@@ -1432,14 +1471,49 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   {selectedApplication ? selectedApplication.jobTitle : selectedCandidate.name}
                 </h3>
               </div>
-              <button 
-                onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
-                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+
+              <div className="flex items-center gap-2">
+                {/* SahiJob Recruiter Profile Export (Available because candidate applied) */}
+                <div className="flex items-center gap-1 bg-emerald-50/90 p-1 rounded-xl border border-emerald-200/80 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => exportCandidateProfileAsPdf(selectedCandidate, [], { 
+                      hasApplied: true, 
+                      jobTitle: selectedApplication?.jobTitle, 
+                      status: selectedApplication?.status,
+                      appliedDate: selectedApplication?.appliedDate 
+                    })}
+                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                    title="Download SahiJob Candidate Profile (PDF)"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <span>Download PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportCandidateProfileAsDoc(selectedCandidate, [], { 
+                      hasApplied: true, 
+                      jobTitle: selectedApplication?.jobTitle, 
+                      status: selectedApplication?.status,
+                      appliedDate: selectedApplication?.appliedDate 
+                    })}
+                    className="px-2 py-1.5 bg-white hover:bg-gray-100 text-gray-700 hover:text-gray-900 font-bold text-xs rounded-lg border border-gray-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                    title="Download SahiJob Candidate Profile (Word .doc)"
+                  >
+                    <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span>DOC</span>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
+                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Drawer Body Scroll */}
@@ -1448,17 +1522,28 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               {/* SECTION 1: BASIC DETAILS */}
               <div className="space-y-4">
                 <div className="flex flex-col items-center text-center bg-gray-50/80 p-6 rounded-2xl border border-gray-100 shadow-2xs">
-                  {selectedCandidate.avatar ? (
-                    <img 
-                      src={selectedCandidate.avatar} 
-                      alt={selectedCandidate.name || 'Candidate'} 
-                      className="w-20 h-20 rounded-2xl object-cover mb-3 shadow-sm ring-4 ring-white"
-                    />
-                  ) : (
-                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white font-black text-3xl mb-3 shadow-sm ring-4 ring-white ${selectedCandidate.bg || 'bg-[#18a058]'}`}>
-                      {selectedCandidate.initials || (selectedCandidate.name ? selectedCandidate.name.charAt(0).toUpperCase() : 'C')}
-                    </div>
-                  )}
+                  {(() => {
+                    const candAvatar = selectedCandidate.avatar || selectedCandidate.profilePhoto || selectedCandidate.profilePicture || selectedCandidate.photo || selectedCandidate.personalDetails?.profilePhoto;
+                    const candKey = selectedCandidate._id || selectedCandidate.id || selectedCandidate.email || selectedCandidate.name;
+                    return (
+                      <div className="relative w-20 h-20 mb-3 shrink-0">
+                        <div className={`w-full h-full rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-sm ring-4 ring-white ${selectedCandidate.bg || 'bg-[#18a058]'}`}>
+                          {selectedCandidate.initials || (selectedCandidate.name ? selectedCandidate.name.charAt(0).toUpperCase() : 'C')}
+                        </div>
+                        {candAvatar && !avatarFailedMap[candKey] && (
+                          <img 
+                            src={candAvatar} 
+                            alt="" 
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              setAvatarFailedMap(prev => ({ ...prev, [candKey]: true }));
+                            }}
+                            className="absolute inset-0 w-full h-full rounded-2xl object-cover ring-4 ring-white border border-gray-200"
+                          />
+                        )}
+                      </div>
+                    );
+                  })()}
                   <h2 className="text-xl font-extrabold text-gray-900">{selectedCandidate.name}</h2>
                   {(getCurrentDesignation(selectedCandidate) !== 'N/A' || getCurrentCompany(selectedCandidate) !== 'N/A') && (
                     <p className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100/80 mt-1.5 inline-block">
@@ -1506,265 +1591,142 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               </div>
 
               {/* SECTION 2: EDUCATION */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-3">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                      <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
-                    </svg>
-                    Education
-                  </h4>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                    Primary: {getHighestQualification(selectedCandidate)}
-                  </span>
-                </div>
+              {selectedCandidate.qualifications && selectedCandidate.qualifications.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                      </svg>
+                      Education
+                    </h4>
+                    {selectedCandidate.primaryQualification && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                        Primary: {selectedCandidate.primaryQualification}
+                      </span>
+                    )}
+                  </div>
 
-                <div className="space-y-3 pt-1">
-                  {(selectedCandidate.qualifications || selectedCandidate.education) && (selectedCandidate.qualifications || selectedCandidate.education).length > 0 ? (
-                    (() => {
-                      const qualsList = selectedCandidate.qualifications || selectedCandidate.education;
-                      const hasExplicitPrimary = qualsList.some(
-                        q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)
-                      );
-
-                      return qualsList.map((qual, i) => {
-                        const isPrimary = Boolean(
-                          qual.isPrimary === true ||
-                          qual.isPrimary === 'true' ||
-                          qual.isPrimary === 1 ||
-                          (!hasExplicitPrimary && i === 0)
-                        );
-                        const eduYear = formatEducationYear(qual);
-                        const eduScore = formatEducationScore(qual);
-                        const title = qual.degree || qual.course || qual.educationType || 'Degree / Course';
-                        const spec = qual.fieldOfStudy || qual.specialization;
-                        const institute = qual.institution || qual.college || qual.university || qual.board || 'Institution / Board not specified';
-
-                        return (
-                          <div key={i} className="relative pl-4 mb-3 border-l-2 border-[#18a058] ml-1.5 py-0.5 space-y-1">
-                            <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h5 className="font-extrabold text-gray-900 text-xs">
-                                {title} {spec ? `in ${spec}` : ''}
-                              </h5>
-                              {isPrimary && (
-                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-emerald-100">
+                    {selectedCandidate.qualifications.map((q, idx) => (
+                      <div key={idx} className="relative pl-7 group">
+                        <div className="absolute left-2.5 top-1.5 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white"></div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                              {q.course || q.degree || q.educationType || 'Degree / Course'}
+                              {q.isPrimary && (
+                                <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                                   Primary Education
                                 </span>
                               )}
-                            </div>
-                            {(eduYear || eduScore) && (
-                              <p className="text-[11px] text-emerald-700 font-bold">
-                                {eduYear}
-                                {eduYear && eduScore ? ` • ${eduScore}` : eduScore}
-                                {qual.courseType ? ` • ${qual.courseType}` : ''}
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-500 leading-relaxed">
-                              {institute}
+                            </span>
+                            <p className="text-[11px] font-semibold text-gray-600 mt-0.5">
+                              {q.university || q.institute || q.college || q.school || 'University / Institution'}
                             </p>
                           </div>
-                        );
-                      });
-                    })()
-                  ) : (
-                    <span className="text-gray-400 italic text-xs">No education details provided.</span>
-                  )}
+                          {(q.yearOfPassing || q.passingYear || q.year || q.cgpa || q.percentage) && (
+                            <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 shrink-0">
+                              {[q.yearOfPassing || q.passingYear || q.year, q.cgpa ? `${q.cgpa} CGPA` : q.percentage ? `${q.percentage}%` : null].filter(Boolean).join(' • ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* SECTION 3: WORK EXPERIENCE */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Work Experience
-                  </h4>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                    Total: {getWorkExp(selectedCandidate)}
-                  </span>
-                </div>
-
-                {/* Experience overview chips */}
-                <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl border border-gray-100">
-                  <div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">Current Designation</span>
-                    <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentDesignation(selectedCandidate)}</p>
+              {selectedCandidate.experience && selectedCandidate.experience.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Work Experience
+                    </h4>
+                    {selectedCandidate.totalExperience && (
+                      <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                        Total: {selectedCandidate.totalExperience}
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">Current Company</span>
-                    <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentCompany(selectedCandidate)}</p>
-                  </div>
-                </div>
 
-                {/* Experience Timeline */}
-                <div className="space-y-4 ml-1">
-                  {selectedCandidate.experience && selectedCandidate.experience.length > 0 ? (
-                    selectedCandidate.experience.map((exp, i) => {
-                      const isCurrent = Boolean(
-                        exp.currentCompany ||
-                        exp.currentJob ||
-                        (Array.isArray(exp.roles) && exp.roles.some(r => r.currentCompany || r.currentJob || String(r.leavingDate || '').toLowerCase() === 'present')) ||
-                        (i === 0 && getCurrentCompany(selectedCandidate) !== 'N/A' && (exp.company || exp.companyName || '').toLowerCase() === getCurrentCompany(selectedCandidate).toLowerCase())
-                      );
-                      const candidateNotice = (isCurrent && exp.noticePeriod) || selectedCandidate.noticePeriod || selectedCandidate.professionalDetails?.noticePeriod;
+                  <div className="space-y-4 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-emerald-100">
+                    {selectedCandidate.experience.map((exp, idx) => {
+                      const roles = exp.roles && exp.roles.length > 0 ? exp.roles : [{
+                        jobTitle: exp.designation || exp.jobTitle || 'Role',
+                        isCurrentCompany: exp.isCurrentCompany || exp.isCurrent,
+                        startDate: exp.startDate,
+                        endDate: exp.endDate,
+                        description: exp.description || exp.responsibilities || exp.rolesAndResponsibilities
+                      }];
 
                       return (
-                        <div key={i} className="mb-4">
-                          <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                            <h5 className="font-extrabold text-gray-900 text-xs">
-                              {exp.company || exp.companyName || 'Company Name'}
-                            </h5>
-                            {isCurrent && (
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                Current Company
-                              </span>
-                            )}
-                            {isCurrent && candidateNotice && candidateNotice !== 'N/A' && (
-                              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                                Notice Period: {candidateNotice}
-                              </span>
+                        <div key={idx} className="relative pl-7 group space-y-2">
+                          <div className="absolute left-2.5 top-1.5 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white"></div>
+                          
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-gray-900">
+                              {exp.companyName || exp.company || 'Company'}
+                            </span>
+                            {exp.location && (
+                              <span className="text-[10px] text-gray-400 font-medium">{exp.location}</span>
                             )}
                           </div>
 
-                          <div className="border-l-2 border-[#18a058] ml-1.5 space-y-3 py-1">
-                            {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
-                              const start = formatExperienceDate(role.joiningDate || role.startDate || exp.joiningDate || exp.startDate, 'Start');
-                              const isRoleCurrent = role.currentCompany || role.currentJob || exp.currentCompany || exp.currentJob || String(role.leavingDate || '').toLowerCase() === 'present';
-                              const end = isRoleCurrent ? 'Present' : formatExperienceDate(role.leavingDate || role.endDate || exp.leavingDate || exp.endDate, 'End');
-
-                              return (
-                                <div key={rIndex} className="relative pl-4 space-y-0.5">
-                                  <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
-                                  <h5 className="font-bold text-emerald-800 text-xs">
-                                    {role.jobTitle || role.title || role.role || exp.title || exp.designation || 'Position'}
-                                  </h5>
-                                  <p className="text-[11px] text-gray-400 font-medium">
-                                    {start} – {end} {role.employmentType && ` • ${role.employmentType}`}
-                                  </p>
-                                  {(role.roleDescription || role.description || exp.roleDescription || exp.description) && (
-                                    <p className="text-xs text-gray-600 leading-relaxed mt-1">
-                                      {role.roleDescription || role.description || exp.roleDescription || exp.description}
-                                    </p>
+                          {roles.map((r, rIdx) => (
+                            <div key={rIdx} className="bg-gray-50/70 p-3 rounded-xl border border-gray-100 space-y-1">
+                              <div className="flex items-center justify-between gap-1 flex-wrap">
+                                <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                                  {r.jobTitle || 'Designation'}
+                                  {r.isCurrentCompany && (
+                                    <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded border border-emerald-200">
+                                      Current Role
+                                    </span>
                                   )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                                </span>
+                                {(r.startDate || r.endDate) && (
+                                  <span className="text-[10px] text-gray-500 font-medium">
+                                    {r.startDate || 'N/A'} – {r.isCurrentCompany ? 'Present' : (r.endDate || 'N/A')}
+                                  </span>
+                                )}
+                              </div>
+                              {r.description && (
+                                <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-line mt-1">
+                                  {r.description}
+                                </p>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       );
-                    })
-                  ) : (
-                    <span className="text-gray-400 italic text-xs">No work experience provided (Fresher).</span>
-                  )}
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* SECTION 4: KEY SKILLS & PREFERENCES */}
-              <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
-                <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
-                  <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                  </svg>
-                  Key Skills &amp; Preferences
-                </h4>
-
-                {/* Skills tags */}
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Key Skills</span>
+              {/* SECTION 4: KEY SKILLS */}
+              {selectedCandidate.skills && (
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-3">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
+                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Key Skills & Competencies
+                  </h4>
                   <div className="flex flex-wrap gap-1.5">
-                    {(() => {
-                      const rawSkills = selectedCandidate.professionalDetails?.skills || selectedCandidate.skills;
-                      const skillsArray = typeof rawSkills === 'string' 
-                        ? rawSkills.split(',').map(s => s.trim()).filter(Boolean)
-                        : Array.isArray(rawSkills) 
-                          ? rawSkills.map(s => typeof s === 'string' ? s : s?.name || s?.label || String(s || '')).filter(Boolean)
-                          : [];
-                      
-                      if (skillsArray.length === 0) {
-                        return <span className="text-gray-400 italic text-xs">No skills listed.</span>;
-                      }
-
-                      return skillsArray.map((skill, idx) => (
-                        <span key={idx} className="px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full text-xs font-bold border border-emerald-100">
-                          {skill}
-                        </span>
-                      ));
-                    })()}
+                    {(Array.isArray(selectedCandidate.skills) ? selectedCandidate.skills : String(selectedCandidate.skills).split(',')).map((sk, idx) => (
+                      <span key={idx} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-100 rounded-lg text-xs font-bold">
+                        {String(sk).trim()}
+                      </span>
+                    ))}
                   </div>
                 </div>
-
-                {/* Preferences Grid */}
-                <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Function / Industry</h4>
-                    <p className="text-xs font-extrabold text-gray-900">{getFunction(selectedCandidate)}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Experience</h4>
-                    <p className="text-xs font-extrabold text-gray-900">{getWorkExp(selectedCandidate)}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                      Current {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
-                    </h4>
-                    <p className="text-xs font-extrabold text-gray-900">
-                      {selectedCandidate.professionalDetails?.currentSalary 
-                        ? `₹ ${selectedCandidate.professionalDetails.currentSalary}` 
-                        : (selectedCandidate.currentCTC && selectedCandidate.currentCTC !== 'N/A' ? `₹ ${selectedCandidate.currentCTC}` : 'N/A')}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                      Expected {selectedCandidate.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
-                    </h4>
-                    <p className="text-xs font-extrabold text-gray-900">
-                      {selectedCandidate.professionalDetails?.expectedSalary 
-                        ? `₹ ${selectedCandidate.professionalDetails.expectedSalary}` 
-                        : (selectedCandidate.expectedCTC && selectedCandidate.expectedCTC !== 'N/A' ? `₹ ${selectedCandidate.expectedCTC}` : 'N/A')}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Preferred Location</h4>
-                    <p className="text-xs font-extrabold text-gray-900">
-                      {selectedCandidate.preferredLocation || selectedCandidate.professionalDetails?.preferredLocation || selectedCandidate.location || 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notice Period</h4>
-                    <p className="text-xs font-extrabold text-gray-900">
-                      {selectedCandidate.noticePeriod || selectedCandidate.professionalDetails?.noticePeriod || 'Immediate / N/A'}
-                    </p>
-                  </div>
-                  {selectedCandidate.professionalDetails?.linkedinUrl && (
-                    <div className="col-span-2 pt-1 border-t border-gray-200/50">
-                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">LinkedIn Profile</h4>
-                      <a 
-                        href={selectedCandidate.professionalDetails.linkedinUrl.startsWith('http') ? selectedCandidate.professionalDetails.linkedinUrl : `https://${selectedCandidate.professionalDetails.linkedinUrl}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline truncate block"
-                      >
-                        {selectedCandidate.professionalDetails.linkedinUrl}
-                      </a>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Applied Date</h4>
-                    <p className="text-xs font-extrabold text-gray-900">{selectedApplication?.appliedDate || selectedCandidate.date || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Registered On</h4>
-                    <p className="text-xs font-extrabold text-gray-900">
-                      {getRegisteredDate(selectedCandidate)}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              )}
 
               {/* SECTION 5: DOCUMENTS & MEDIA */}
               {(selectedCandidate.resume || selectedApplication?.resume || selectedCandidate.introVideo || selectedApplication?.introVideo || selectedCandidate.coverLetter || selectedCandidate.documents) && (
@@ -1778,33 +1740,35 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   
                   <div className="space-y-3">
                     
-                    {/* Introductory Video */}
-                    {(selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo) && (
-                      <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
+                    {/* Introductory Video - Only if candidate shared it (not hidden) */}
+                    {(() => {
+                      const videoSrc = selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo;
+                      const videoVis = selectedCandidate.videoVisibility || selectedCandidate.documents?.videoVisibility || 'everyone';
+                      const canShowVideo = videoSrc && (videoVis === 'everyone' || videoVis === 'applied');
+                      if (!canShowVideo) return null;
+
+                      return (
+                        <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-gray-900">Introductory Video</p>
+                                <p className="text-[10px] text-gray-500">Candidate Video Introduction</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs font-bold text-gray-900">Introductory Video</p>
-                              <p className="text-[10px] text-gray-500">Candidate Video Introduction</p>
-                            </div>
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              Shared by Candidate
+                            </span>
                           </div>
-                          <a 
-                            href={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="px-3 py-1.5 bg-[#0c7844] hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1 shadow-2xs"
-                          >
-                            Watch Video
-                          </a>
+                          <VideoPlayer url={videoSrc} maxPlayerHeight="240px" className="mt-2" />
                         </div>
-                        <VideoPlayer url={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo} maxPlayerHeight="220px" className="mt-2" />
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Resume */}
                     {(selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume) && (
@@ -1830,22 +1794,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                                 setPreviewResume(selectedCandidate);
                               }
                             }}
-                            className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-lg transition-colors cursor-pointer shadow-2xs"
                           >
-                            Preview
+                            View
                           </button>
-                          {(selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume) && (
-                            <a 
-                              href={selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume} 
-                              download 
-                              className="p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
-                              title="Download"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                              </svg>
-                            </a>
-                          )}
                         </div>
                       </div>
                     )}
@@ -1867,16 +1819,16 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => {
-                              const covUrl = selectedApplication?.coverLetter || selectedCandidate.coverLetter || selectedCandidate.documents?.coverLetter;
-                              if (covUrl && covUrl.startsWith('http')) {
-                                window.open(covUrl, '_blank');
+                              const clUrl = selectedApplication?.coverLetter || selectedCandidate.coverLetter || selectedCandidate.documents?.coverLetter;
+                              if (clUrl && clUrl.startsWith('http')) {
+                                window.open(clUrl, '_blank');
                               } else {
                                 setPreviewCoverLetter(selectedCandidate);
                               }
                             }}
-                            className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-lg transition-colors cursor-pointer shadow-2xs"
                           >
-                            Preview
+                            View
                           </button>
                         </div>
                       </div>
@@ -1911,17 +1863,48 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             </div>
 
             {/* Drawer Footer */}
-            <div className="mt-4 pt-4 border-t border-gray-100 flex gap-3 shrink-0">
+            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => exportCandidateProfileAsPdf(selectedCandidate, [], { 
+                    hasApplied: true, 
+                    jobTitle: selectedApplication?.jobTitle, 
+                    status: selectedApplication?.status,
+                    appliedDate: selectedApplication?.appliedDate 
+                  })}
+                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                  title="Download SahiJob Candidate Profile (PDF)"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  <span>Download Profile (PDF)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportCandidateProfileAsDoc(selectedCandidate, [], { 
+                    hasApplied: true, 
+                    jobTitle: selectedApplication?.jobTitle, 
+                    status: selectedApplication?.status,
+                    appliedDate: selectedApplication?.appliedDate 
+                  })}
+                  className="px-2.5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-xl border border-gray-200 transition-all inline-flex items-center gap-1 cursor-pointer active:scale-95"
+                  title="Download SahiJob Candidate Profile (Word .doc)"
+                >
+                  <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  <span>DOC</span>
+                </button>
+              </div>
               <button 
                 onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
-                className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Close
               </button>
             </div>
 
           </div>
-        </>
+        </div>,
+        document.body
       )}
 
       {/* Screening Q&A Quick Modal */}

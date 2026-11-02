@@ -6,6 +6,10 @@ import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdow
 import VideoPlayer from '../../common/VideoPlayer';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 import { isExperienceMatch } from '../../../utils/experienceMatcher';
+import { 
+  exportCandidateProfileAsPdf, 
+  exportCandidateProfileAsDoc 
+} from '../../../utils/candidateProfileExporter';
 
 // Mapping algorithm to categorize employee designations into broader industries
 const designationToIndustryMap = {
@@ -74,6 +78,7 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [] }) => {
   const [industryFilter, setIndustryFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
   const [preferredLocationFilter, setPreferredLocationFilter] = useState('');
+  const [avatarFailedMap, setAvatarFailedMap] = useState({});
   const [lastUpdateFilter, setLastUpdateFilter] = useState('All');
 
   useEffect(() => {
@@ -636,12 +641,37 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [] }) => {
                   <h2 className="text-xl font-bold text-gray-900">
                     {isSelectedPrivate ? 'Confidential Candidate' : 'Profile Details'}
                   </h2>
-                  <button 
-                    onClick={() => setSelectedEmployee(null)}
-                    className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                  >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* ONLY allow profile download if candidate has applied to this employer */}
+                    {!isSelectedPrivate && selectedEmployee.appliedToYou && (
+                      <div className="flex items-center gap-1 bg-emerald-50/90 p-1 rounded-xl border border-emerald-200/80 shadow-2xs mr-1">
+                        <button
+                          type="button"
+                          onClick={() => exportCandidateProfileAsPdf(selectedEmployee, [], { hasApplied: true })}
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                          title="Download SahiJob Candidate Profile (PDF)"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                          <span>Download PDF</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => exportCandidateProfileAsDoc(selectedEmployee, [], { hasApplied: true })}
+                          className="px-2 py-1.5 bg-white hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-lg border border-gray-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                          title="Download SahiJob Candidate Profile (Word .doc)"
+                        >
+                          <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          <span>DOC</span>
+                        </button>
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => setSelectedEmployee(null)}
+                      className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                    >
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6">
@@ -673,17 +703,25 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [] }) => {
                     <>
                 {/* Header (Avatar, Name, Email, Location) */}
                 <div className="flex flex-col items-center text-center mb-6">
-                  {selectedEmployee.avatar ? (
-                    <img 
-                      src={selectedEmployee.avatar} 
-                      alt={selectedEmployee.name || 'Candidate'} 
-                      className="w-20 h-20 rounded-full object-cover mb-3 shadow-sm ring-4 ring-emerald-50 border border-emerald-100" 
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-full bg-[#18a058] flex items-center justify-center text-white font-bold text-3xl mb-3 shadow-sm">
-                      {selectedEmployee.name ? selectedEmployee.name.charAt(0).toUpperCase() : '?'}
-                    </div>
-                  )}
+                  {(() => {
+                    const empAvatar = selectedEmployee.avatar || selectedEmployee.profilePhoto || selectedEmployee.profilePicture || selectedEmployee.photo || selectedEmployee.personalDetails?.profilePhoto;
+                    const empKey = selectedEmployee._id || selectedEmployee.id || selectedEmployee.email;
+                    if (empAvatar && !avatarFailedMap[empKey]) {
+                      return (
+                        <img 
+                          src={empAvatar} 
+                          alt={selectedEmployee.name || 'Candidate'} 
+                          onError={() => setAvatarFailedMap(prev => ({ ...prev, [empKey]: true }))}
+                          className="w-20 h-20 rounded-full object-cover mb-3 shadow-sm ring-4 ring-emerald-50 border border-emerald-100" 
+                        />
+                      );
+                    }
+                    return (
+                      <div className="w-20 h-20 rounded-full bg-[#18a058] flex items-center justify-center text-white font-bold text-3xl mb-3 shadow-sm">
+                        {selectedEmployee.name ? selectedEmployee.name.charAt(0).toUpperCase() : '?'}
+                      </div>
+                    );
+                  })()}
                   <h3 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h3>
 
                   {(getCurrentDesignation(selectedEmployee) !== 'N/A' || getCurrentCompany(selectedEmployee) !== 'N/A') && (
