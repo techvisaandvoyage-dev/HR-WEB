@@ -433,9 +433,16 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
       if (profileStr) {
         viewerEmail = JSON.parse(profileStr).email;
       }
+      if (!viewerEmail) {
+        viewerEmail = localStorage.getItem('sahi_visitor_id');
+        if (!viewerEmail) {
+          viewerEmail = 'visitor_' + Math.random().toString(36).substring(2, 12);
+          localStorage.setItem('sahi_visitor_id', viewerEmail);
+        }
+      }
     } catch (e) {}
 
-    // Only count the view if the user is logged in (has an email)
+    // Count the view if user is logged in or guest visitor
     if (viewerEmail && selectedJobId && !viewedJobs.has(selectedJobId)) {
       setViewedJobs(prev => new Set(prev).add(selectedJobId));
       fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/${selectedJobId}/view`, {
@@ -1408,7 +1415,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                           {/* 3 Stats Bar (Mobile) */}
                           <div className="bg-gray-50/90 rounded-2xl p-4 mt-4 grid grid-cols-3 text-center border border-gray-100">
                             <div>
-                              <div className="text-xl font-black text-gray-900">{selectedJob.views || 2}</div>
+                              <div className="text-xl font-black text-gray-900">{selectedJob.views || 0}</div>
                               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">JOB VIEWS</div>
                             </div>
                             <div>
@@ -1416,7 +1423,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">APPLICATIONS</div>
                             </div>
                             <div>
-                              <div className="text-xl font-black text-gray-900">{selectedJob.recruiterActions || 1}</div>
+                              <div className="text-xl font-black text-gray-900">{selectedJob.recruiterActions || 0}</div>
                               <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">RECRUITER ACTIONS</div>
                             </div>
                           </div>

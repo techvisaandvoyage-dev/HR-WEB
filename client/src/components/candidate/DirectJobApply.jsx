@@ -613,6 +613,28 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     if (jobId) {
       captureJobAttribution(jobId);
       logJobVisitEvent(jobId, 'landed');
+
+      // Record job view immediately on landing direct apply link
+      try {
+        let visitorId = null;
+        const profileStr = localStorage.getItem('userProfile');
+        if (profileStr) {
+          visitorId = JSON.parse(profileStr).email;
+        }
+        if (!visitorId) {
+          visitorId = localStorage.getItem('sahi_visitor_id');
+          if (!visitorId) {
+            visitorId = 'visitor_' + Math.random().toString(36).substring(2, 12);
+            localStorage.setItem('sahi_visitor_id', visitorId);
+          }
+        }
+        fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/${jobId}/view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ viewerId: visitorId })
+        }).catch(err => console.warn('Failed to increment view on direct apply:', err));
+      } catch (e) {}
+
       fetchJob();
     }
   }, [jobId]);
@@ -1247,7 +1269,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           mobile: authMobile || user?.mobile || user?.phone,
           name: authName || user?.name,
           profileVisibility,
-          utmSource: getStoredAttribution()?.utmSource || undefined
+          utmSource: getStoredAttribution()?.utmSource || '01',
+          sourceLink: getStoredAttribution()?.utmSource || '01'
         })
       });
 

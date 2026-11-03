@@ -64,12 +64,12 @@ export const deleteCookie = (name) => {
  */
 export const extractSourceParams = (search = window.location.search) => {
   const params = new URLSearchParams(search);
-  const utmSource = params.get('utm_source') || params.get('ref') || params.get('source') || '';
+  const utmSource = params.get('src') || params.get('utm_source') || params.get('ref') || params.get('source') || '01';
   const utmMedium = params.get('utm_medium') || '';
   const utmCampaign = params.get('utm_campaign') || '';
 
   return {
-    utmSource: utmSource ? utmSource.trim() : null,
+    utmSource: utmSource ? utmSource.trim() : '01',
     utmMedium: utmMedium ? utmMedium.trim() : null,
     utmCampaign: utmCampaign ? utmCampaign.trim() : null,
   };

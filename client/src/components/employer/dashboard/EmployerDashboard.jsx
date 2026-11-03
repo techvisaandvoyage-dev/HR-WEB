@@ -96,7 +96,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
     { key: 'dashboard', name: sidebarCfg.dashboardLabel || sidebarCfg.dashboard || 'Dashboard', path: '/employer', icon: (
       <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
     )},
-    { key: 'applications', name: sidebarCfg.applicationsLabel || sidebarCfg.applications || 'Applications', path: '/employer/applications', icon: (
+    { key: 'applications', name: sidebarCfg.applicationsLabel || sidebarCfg.applications || 'Total Applications', path: '/employer/applications', icon: (
       <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>
     )},
     { key: 'candidates', name: sidebarCfg.candidatesLabel || sidebarCfg.candidates || 'Candidates', path: '/employer/candidates', icon: (
@@ -244,9 +244,9 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         <div className="flex-1 overflow-y-auto px-6 lg:px-10 py-8">
           <div className="max-w-[1180px] w-full">
             <Routes>
-              <Route index element={<DashboardOverview portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
+              <Route index element={<DashboardOverview portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} />} />
               <Route path="/post-job" element={<PostJob addJob={addJob} updateJob={updateJob} />} />
-              <Route path="/manage-jobs" element={<ManageJobs portalConfig={portalConfig?.dashboard} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} />} />
+              <Route path="/manage-jobs" element={<ManageJobs portalConfig={portalConfig?.dashboard} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} />} />
               <Route path="/applications" element={<CandidatesTab portalConfig={portalConfig?.applications} candidates={candidates} jobs={jobs} updateCandidateStatus={updateCandidateStatus} />} />
               <Route path="/candidates" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} />} />
               <Route path="/all-employees" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} />} />

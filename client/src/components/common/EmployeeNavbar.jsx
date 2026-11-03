@@ -253,45 +253,69 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
         </div>
 
         {/* Right Icons — Desktop Only (mobile uses bottom nav) */}
-        <div className="hidden md:flex items-center justify-end gap-3.5 md:gap-6 w-auto ml-auto">
+        <div className="hidden md:flex items-center justify-end gap-3.5 md:gap-5 w-auto ml-auto">
           {/* My Jobs (Bookmark) */}
-          <button 
-            onClick={() => navigate('/my-jobs')} 
-            className="text-gray-700 hover:text-emerald-800 transition-colors p-1" 
-            title="My jobs"
-          >
-            <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-            </svg>
-          </button>
+          <div className="relative group flex items-center justify-center">
+            <button 
+              onClick={() => navigate('/my-jobs')} 
+              className="text-gray-700 hover:text-emerald-800 transition-colors p-1.5 rounded-lg hover:bg-gray-100/80 flex items-center justify-center cursor-pointer" 
+              title="Saved Jobs"
+              aria-label="Saved Jobs"
+            >
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
+              </svg>
+            </button>
+            {/* Tooltip on Hover */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-bold rounded-lg shadow-xl pointer-events-none whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-150 transform group-hover:translate-y-0 translate-y-1 z-50">
+              Saved Jobs
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+            </div>
+          </div>
 
           {/* Messages (Chat) */}
-          <button 
-            onClick={() => navigate('/employee/messages')} 
-            className="text-gray-700 hover:text-emerald-800 transition-colors relative p-1" 
-            title="Messages"
-          >
-            <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-            </svg>
-            {totalUnread > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
-                {totalUnread > 9 ? '9+' : totalUnread}
-              </span>
-            )}
-          </button>
+          <div className="relative group flex items-center justify-center">
+            <button 
+              onClick={() => navigate('/employee/messages')} 
+              className="text-gray-700 hover:text-emerald-800 transition-colors relative p-1.5 rounded-lg hover:bg-gray-100/80 flex items-center justify-center cursor-pointer" 
+              title="Messages"
+              aria-label="Messages"
+            >
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+              </svg>
+              {totalUnread > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </span>
+              )}
+            </button>
+            {/* Tooltip on Hover */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-bold rounded-lg shadow-xl pointer-events-none whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-150 transform group-hover:translate-y-0 translate-y-1 z-50">
+              Messages
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+            </div>
+          </div>
 
           {/* Profile Dropdown Toggle */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative group flex items-center justify-center" ref={dropdownRef}>
             <button 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="text-gray-700 hover:text-emerald-800 transition-colors flex items-center justify-center focus:outline-none p-1"
-              title="Account"
+              className="text-gray-700 hover:text-emerald-800 transition-colors flex items-center justify-center focus:outline-none p-1.5 rounded-lg hover:bg-gray-100/80 cursor-pointer"
+              title="Profile"
+              aria-label="Profile"
             >
               <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
               </svg>
             </button>
+            {/* Tooltip on Hover (hidden when dropdown is open) */}
+            {!isDropdownOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 bg-gray-900 text-white text-[11px] font-bold rounded-lg shadow-xl pointer-events-none whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-150 transform group-hover:translate-y-0 translate-y-1 z-50">
+                Profile
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+              </div>
+            )}
             
             {isDropdownOpen && (
               <div className="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">

@@ -30,6 +30,15 @@ const ApplicationSchema = new mongoose.Schema({
     type: String,
     default: 'bg-blue-50 text-blue-600 border border-blue-100'
   },
+  sourceLink: {
+    type: String,
+    default: 'Direct',
+    index: true
+  },
+  utmSource: {
+    type: String,
+    default: null
+  },
   isBlocked: {
     type: Boolean,
     default: false

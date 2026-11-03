@@ -26,6 +26,12 @@ const JobSchema = new mongoose.Schema({
   views: { type: Number, default: 0 },
   viewedBy: [{ type: String }],
   recruiterActions: { type: Number, default: 0 },
+  shareLinks: [{
+    linkId: { type: String, required: true },
+    name: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    clicks: { type: Number, default: 0 }
+  }],
   qualifications: [{
     name: String,
     met: { type: Boolean, default: false }

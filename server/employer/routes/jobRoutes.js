@@ -1,5 +1,16 @@
 const express = require('express');
-const { createJob, getEmployerJobs, updateJob, toggleJobStatus, getApplicationsForEmployer, updateApplicationStatus, getDailyJobQuota } = require('../controllers/jobController');
+const { 
+  createJob, 
+  getEmployerJobs, 
+  updateJob, 
+  toggleJobStatus, 
+  getApplicationsForEmployer, 
+  updateApplicationStatus, 
+  getDailyJobQuota,
+  createShareLink,
+  updateShareLink,
+  deleteShareLink
+} = require('../controllers/jobController');
 const { protectEmployer } = require('../../middleware/authMiddleware');
 
 const router = express.Router();
@@ -17,6 +28,13 @@ router.route('/:id')
 
 router.route('/:id/status')
   .put(toggleJobStatus);
+
+router.route('/:id/share-links')
+  .post(createShareLink);
+
+router.route('/:id/share-links/:linkId')
+  .put(updateShareLink)
+  .delete(deleteShareLink);
 
 router.route('/applications')
   .get(getApplicationsForEmployer);

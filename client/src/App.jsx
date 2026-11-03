@@ -294,6 +294,7 @@ function App() {
                 blockedAt: app.blockedAt || null,
                 date: new Date(app.createdAt).toLocaleDateString(),
                 screeningAnswers: app.screeningAnswers || [],
+                sourceLink: app.sourceLink || app.utmSource || 'Direct',
                 resume: app.resume || emp.resume || emp.documents?.resume || '',
                 coverLetter: app.coverLetter || emp.coverLetter || emp.documents?.coverLetter || '',
                 introVideo: app.introVideo || emp.introVideo || emp.documents?.introVideo || '',
@@ -369,7 +370,10 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('employeeToken')}`
         },
-        body: JSON.stringify(candidateData)
+        body: JSON.stringify({
+          ...candidateData,
+          sourceLink: 'Portal'
+        })
       });
       const data = await res.json();
       if (data.success) {

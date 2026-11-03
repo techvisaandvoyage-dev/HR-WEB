@@ -138,17 +138,43 @@ exports.getEmployerJobs = async (req, res) => {
       .lean();
 
     const countByJobId = {};
+    const countByJobAndLink = {}; // { [jobId]: { '01': 3, 'Portal': 1 } }
     validApplications.forEach(app => {
       if (app.employeeId && app.jobId) {
-        const jId = String(app.jobId);
+        const jId = String(app.jobId._id || app.jobId);
         countByJobId[jId] = (countByJobId[jId] || 0) + 1;
+
+        const src = String(app.sourceLink || app.utmSource || 'Portal').trim();
+        if (!countByJobAndLink[jId]) countByJobAndLink[jId] = {};
+        countByJobAndLink[jId][src] = (countByJobAndLink[jId][src] || 0) + 1;
       }
     });
 
-    const enrichedJobs = jobs.map(job => ({
-      ...job,
-      applications: countByJobId[String(job._id)] ?? 0
-    }));
+    const enrichedJobs = jobs.map(job => {
+      const jId = String(job._id);
+      const linkStats = countByJobAndLink[jId] || {};
+
+      // Ensure shareLinks exists with at least default link '01' if empty
+      let shareLinks = Array.isArray(job.shareLinks) && job.shareLinks.length > 0
+        ? job.shareLinks
+        : [{ linkId: '01', name: '01', createdAt: job.createdAt || new Date() }];
+
+      // Enrich shareLinks with application count strictly for that shareable link
+      const enrichedShareLinks = shareLinks.map(link => {
+        const appsForLink = (linkStats[link.linkId] || 0) + (link.name !== link.linkId ? (linkStats[link.name] || 0) : 0);
+        return {
+          ...link,
+          applicationsCount: appsForLink
+        };
+      });
+
+      return {
+        ...job,
+        applications: countByJobId[jId] ?? 0,
+        shareLinks: enrichedShareLinks,
+        linkStats: linkStats
+      };
+    });
 
     res.status(200).json({ success: true, data: enrichedJobs });
   } catch (error) {
@@ -286,11 +312,6 @@ exports.updateApplicationStatus = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
-    // Increment recruiterActions on the Job if this is the first time the recruiter is taking action
-    if (application.status === 'New' && status !== 'New') {
-      await Job.findByIdAndUpdate(application.jobId, { $inc: { recruiterActions: 1 } });
-    }
-
     application.status = status;
     
     // Set status color based on status
@@ -305,6 +326,16 @@ exports.updateApplicationStatus = async (req, res) => {
     }
 
     await application.save();
+
+    // Recalculate distinct recruiter actions on the Job:
+    // Only genuine decisions (Shortlisted, Rejected, etc.) are counted.
+    // 'Viewed', 'New', and 'Applied' are NOT counted.
+    // Each unique application counts at most ONCE.
+    const actionedCount = await Application.countDocuments({
+      jobId: application.jobId,
+      status: { $nin: ['New', 'new', 'Viewed', 'viewed', 'Applied', 'applied', null] }
+    });
+    await Job.findByIdAndUpdate(application.jobId, { $set: { recruiterActions: actionedCount } });
     res.status(200).json({ success: true, data: application });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -369,6 +400,148 @@ exports.getDailyJobQuota = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching daily job quota:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+// Helper to compute enriched share links with application counts for a job
+const computeEnrichedShareLinks = async (jobId, shareLinks) => {
+  const applications = await Application.find({ jobId }).select('sourceLink utmSource').lean();
+  const linkStats = {};
+  applications.forEach(app => {
+    const src = String(app.sourceLink || app.utmSource || 'Portal').trim();
+    linkStats[src] = (linkStats[src] || 0) + 1;
+  });
+
+  const links = Array.isArray(shareLinks) && shareLinks.length > 0
+    ? shareLinks
+    : [{ linkId: '01', name: '01', createdAt: new Date() }];
+
+  return links.map(l => {
+    const linkId = l.linkId || l.name;
+    const name = l.name || linkId;
+    const count = (linkStats[linkId] || 0) + (name !== linkId ? (linkStats[name] || 0) : 0);
+    return {
+      _id: l._id,
+      linkId,
+      name,
+      createdAt: l.createdAt || new Date(),
+      applicationsCount: count
+    };
+  });
+};
+
+// @desc    Add a new shareable link to a job
+// @route   POST /api/employer/jobs/:id/share-links
+// @access  Private
+exports.createShareLink = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    if (job.employerId.toString() !== req.user.id) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    if (!Array.isArray(job.shareLinks) || job.shareLinks.length === 0) {
+      job.shareLinks = [{ linkId: '01', name: '01', createdAt: new Date() }];
+    }
+
+    // Auto-compute next number name e.g. 02, 03... if name not provided
+    let newName = req.body.name ? String(req.body.name).trim() : '';
+    if (!newName) {
+      let maxNum = 0;
+      job.shareLinks.forEach(l => {
+        const num = parseInt(l.name, 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      });
+      const nextNum = maxNum > 0 ? maxNum + 1 : job.shareLinks.length + 1;
+      newName = String(nextNum).padStart(2, '0');
+    }
+
+    // Ensure uniqueness of linkId
+    let uniqueLinkId = newName;
+    while (job.shareLinks.some(l => l.linkId === uniqueLinkId)) {
+      uniqueLinkId = `${newName}_${Date.now().toString().slice(-4)}`;
+    }
+
+    job.shareLinks.push({
+      linkId: uniqueLinkId,
+      name: newName,
+      createdAt: new Date()
+    });
+
+    await job.save();
+
+    const enrichedLinks = await computeEnrichedShareLinks(job._id, job.shareLinks);
+    res.status(201).json({ success: true, data: enrichedLinks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update / rename a shareable link
+// @route   PUT /api/employer/jobs/:id/share-links/:linkId
+// @access  Private
+exports.updateShareLink = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    if (job.employerId.toString() !== req.user.id) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Link name is required' });
+    }
+
+    if (!Array.isArray(job.shareLinks) || job.shareLinks.length === 0) {
+      job.shareLinks = [{ linkId: '01', name: '01', createdAt: new Date() }];
+    }
+
+    const link = job.shareLinks.find(
+      l => l.linkId === req.params.linkId || String(l._id) === req.params.linkId
+    );
+
+    if (!link) {
+      return res.status(404).json({ success: false, message: 'Share link not found' });
+    }
+
+    link.name = name.trim();
+    await job.save();
+
+    const enrichedLinks = await computeEnrichedShareLinks(job._id, job.shareLinks);
+    res.status(200).json({ success: true, data: enrichedLinks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Delete a shareable link
+// @route   DELETE /api/employer/jobs/:id/share-links/:linkId
+// @access  Private
+exports.deleteShareLink = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    if (job.employerId.toString() !== req.user.id) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    if (Array.isArray(job.shareLinks)) {
+      job.shareLinks = job.shareLinks.filter(
+        l => l.linkId !== req.params.linkId && String(l._id) !== req.params.linkId
+      );
+      if (job.shareLinks.length === 0) {
+        job.shareLinks = [{ linkId: '01', name: '01', createdAt: new Date() }];
+      }
+      await job.save();
+    }
+
+    const enrichedLinks = await computeEnrichedShareLinks(job._id, job.shareLinks);
+    res.status(200).json({ success: true, data: enrichedLinks });
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

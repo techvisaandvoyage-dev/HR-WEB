@@ -11,7 +11,7 @@ const sanitizeHtml = (html) => {
   });
 };
 
-const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [], toggleJobStatus, hideHeader = false }) => {
+const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [], toggleJobStatus, hideHeader = false, updateJob }) => {
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobToShare, setJobToShare] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -102,10 +102,11 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
       {/* Table-style Jobs List */}
       <div className="border-t border-[#eaecf0]">
         {/* Header Row (Desktop >= 1000px) */}
-        <div className="hidden min-[1000px]:grid grid-cols-[minmax(0,2.4fr)_80px_110px_150px_140px] gap-4 items-center py-2.5 px-2 text-[#98a2b3] text-[13px] font-semibold border-b border-[#eaecf0]">
+        <div className="hidden min-[1000px]:grid grid-cols-[minmax(0,2fr)_75px_125px_minmax(0,1.6fr)_135px_135px] gap-4 items-center py-2.5 px-2 text-[#98a2b3] text-[13px] font-semibold border-b border-[#eaecf0]">
           <span>Job</span>
           <span>Views</span>
-          <span>Applications</span>
+          <span>Total Applications</span>
+          <span>Tracked Links</span>
           <span>Status</span>
           <span></span>
         </div>
@@ -136,7 +137,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
             return (
               <div 
                 key={job.id || job._id}
-                className="grid min-[1000px]:grid-cols-[minmax(0,2.4fr)_80px_110px_150px_140px] grid-cols-[1fr_auto] gap-x-4 gap-y-2.5 items-center py-4 px-2 border-b border-[#eaecf0] hover:bg-[#f9fafb] transition-colors"
+                className="grid min-[1000px]:grid-cols-[minmax(0,2fr)_75px_125px_minmax(0,1.6fr)_135px_135px] grid-cols-[1fr_auto] gap-x-4 gap-y-2.5 items-center py-4 px-2 border-b border-[#eaecf0] hover:bg-[#f9fafb] transition-colors"
               >
                 {/* 1. Job Title & Meta */}
                 <div className="min-w-0 min-[1000px]:col-auto col-span-1">
@@ -151,8 +152,56 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                   </p>
                 </div>
 
-                {/* 2. Status (Mobile moves to top right, Desktop 4th col) */}
-                <div className="min-[1000px]:order-4 min-[1000px]:col-auto col-span-1 justify-self-end min-[1000px]:justify-self-start">
+                {/* 4. Tracked Links Column (Scalable button showing link count & total apps) */}
+                <div className="min-[1000px]:order-4 col-span-2 min-[1000px]:col-span-1 py-1 min-[1000px]:py-0">
+                  {(() => {
+                    const linksList = Array.isArray(job.shareLinks) && job.shareLinks.length > 0
+                      ? job.shareLinks
+                      : [{ 
+                          linkId: '01', 
+                          name: '01', 
+                          applicationsCount: job.linkStats?.['01'] ?? job.applications ?? 0 
+                        }];
+                    
+                    const totalLinkApps = linksList.reduce((acc, l) => {
+                      const count = l.applicationsCount !== undefined && l.applicationsCount !== null 
+                        ? l.applicationsCount 
+                        : (job.linkStats?.[l.linkId] ?? job.linkStats?.[l.name] ?? (linksList.length === 1 ? job.applications : 0));
+                      return acc + count;
+                    }, 0);
+
+                    const tooltipText = linksList.map(l => {
+                      const code = l.name || l.linkId || '01';
+                      const count = l.applicationsCount !== undefined && l.applicationsCount !== null 
+                        ? l.applicationsCount 
+                        : (job.linkStats?.[l.linkId] ?? job.linkStats?.[l.name] ?? (linksList.length === 1 ? job.applications : 0));
+                      return `Link ${code}: ${count} apps`;
+                    }).join(' | ');
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => { setJobToShare(job); setShowShareModal(true); }}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-emerald-50/80 text-gray-800 hover:text-emerald-800 border border-gray-200 hover:border-emerald-300 transition-all shadow-2xs cursor-pointer group"
+                        title={`Click to view & manage all tracked links: ${tooltipText}`}
+                      >
+                        <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] font-black shrink-0">
+                          🔗
+                        </span>
+                        <span className="font-extrabold text-[12px] text-gray-900 group-hover:text-emerald-800">
+                          {linksList.length} {linksList.length === 1 ? 'Link' : 'Links'}
+                        </span>
+                        <span className={`px-1.5 py-0.2 rounded-md text-[10.5px] font-black ${totalLinkApps > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}>
+                          {totalLinkApps} {totalLinkApps === 1 ? 'app' : 'apps'}
+                        </span>
+                        <span className="text-gray-400 group-hover:text-emerald-600 text-[10px] ml-0.5">▾</span>
+                      </button>
+                    );
+                  })()}
+                </div>
+
+                {/* 5. Status (Desktop 5th col) */}
+                <div className="min-[1000px]:order-5 min-[1000px]:col-auto col-span-1 justify-self-end min-[1000px]:justify-self-start">
                   <div className="relative inline-flex items-center">
                     <select
                       value={isClosed ? 'Closed' : 'Active'}
@@ -188,11 +237,11 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
 
                 {/* 4. Applications */}
                 <div className="min-[1000px]:order-3 font-semibold text-[14.5px] text-[#101828]">
-                  {appsCount} <span className="min-[1000px]:hidden text-[#667085] font-normal text-[13px]">applications</span>
+                  {appsCount} <span className="min-[1000px]:hidden text-[#667085] font-normal text-[13px]">total applications</span>
                 </div>
 
-                {/* 5. Actions (34px borderless icon buttons) */}
-                <div className="min-[1000px]:order-5 flex items-center justify-end gap-1 shrink-0 col-span-2 min-[1000px]:col-span-1 pt-1 min-[1000px]:pt-0">
+                {/* 6. Actions (34px borderless icon buttons) */}
+                <div className="min-[1000px]:order-6 flex items-center justify-end gap-1 shrink-0 col-span-2 min-[1000px]:col-span-1 pt-1 min-[1000px]:pt-0">
                   <button
                     type="button"
                     onClick={() => { setJobToShare(job); setShowShareModal(true); }}
@@ -519,6 +568,17 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
             setJobToShare(null);
           }}
           job={jobToShare}
+          onUpdateJobLinks={(jobId, updatedLinks) => {
+            if (updateJob && jobToShare) {
+              updateJob({
+                ...jobToShare,
+                shareLinks: updatedLinks
+              });
+            }
+            if (jobToShare && (jobToShare.id === jobId || jobToShare._id === jobId)) {
+              setJobToShare(prev => prev ? { ...prev, shareLinks: updatedLinks } : null);
+            }
+          }}
         />
       )}
 

@@ -11,8 +11,38 @@ exports.getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find({ status: 'Active' })
       .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo')
-      .sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: jobs });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const jobIds = jobs.map(j => j._id);
+    const applications = await Application.find({ jobId: { $in: jobIds } }).select('jobId status').lean();
+
+    const appsByJob = {};
+    const actionsByJob = {};
+    const passive = ['new', 'viewed', 'applied'];
+
+    applications.forEach(a => {
+      const jId = String(a.jobId);
+      appsByJob[jId] = (appsByJob[jId] || 0) + 1;
+      if (a.status && !passive.includes(a.status.toLowerCase())) {
+        actionsByJob[jId] = (actionsByJob[jId] || 0) + 1;
+      }
+    });
+
+    const enriched = jobs.map(j => {
+      const jId = String(j._id);
+      const liveApps = appsByJob[jId] !== undefined ? appsByJob[jId] : (j.applications || 0);
+      const liveActions = actionsByJob[jId] !== undefined ? actionsByJob[jId] : (j.recruiterActions || 0);
+      const liveViews = Math.max(j.views || 0, Array.isArray(j.viewedBy) ? j.viewedBy.length : 0, liveApps);
+      return {
+        ...j,
+        applications: liveApps,
+        views: liveViews,
+        recruiterActions: Math.min(liveActions, liveApps)
+      };
+    });
+
+    res.status(200).json({ success: true, data: enriched });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -24,11 +54,28 @@ exports.getAllJobs = async (req, res) => {
 exports.getJobById = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
-      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo');
+      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo')
+      .lean();
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
     }
-    res.status(200).json({ success: true, data: job });
+
+    const apps = await Application.find({ jobId: job._id }).select('status').lean();
+    const liveApps = apps.length;
+    const passive = ['new', 'viewed', 'applied'];
+    const liveActions = apps.filter(a => a.status && !passive.includes(a.status.toLowerCase())).length;
+
+    const liveViews = Math.max(job.views || 0, Array.isArray(job.viewedBy) ? job.viewedBy.length : 0, liveApps);
+
+    res.status(200).json({ 
+      success: true, 
+      data: {
+        ...job,
+        applications: liveApps,
+        views: liveViews,
+        recruiterActions: Math.min(liveActions, liveApps)
+      } 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -40,14 +87,12 @@ exports.getJobById = async (req, res) => {
 exports.incrementJobViews = async (req, res) => {
   try {
     const { viewerId } = req.body;
-    if (!viewerId) {
-      return res.status(400).json({ success: false, message: 'viewerId is required' });
-    }
+    const finalViewerId = viewerId || req.ip || `visitor_${Date.now()}`;
 
     // Use $addToSet to guarantee uniqueness at the DB level
     const updatedJob = await Job.findByIdAndUpdate(
       req.params.id,
-      { $addToSet: { viewedBy: viewerId } },
+      { $addToSet: { viewedBy: finalViewerId } },
       { new: true }
     );
 
@@ -55,9 +100,13 @@ exports.incrementJobViews = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Job not found' });
     }
 
-    // Sync the views count with the array length
-    if (updatedJob.views !== updatedJob.viewedBy.length) {
-      updatedJob.views = updatedJob.viewedBy.length;
+    const totalViews = Math.max(
+      Array.isArray(updatedJob.viewedBy) ? updatedJob.viewedBy.length : 0,
+      updatedJob.applications || 0,
+      updatedJob.views || 0
+    );
+    if (updatedJob.views !== totalViews) {
+      updatedJob.views = totalViews;
       await updatedJob.save();
     }
 
@@ -109,7 +158,9 @@ exports.applyForJob = async (req, res) => {
       jobId,
       employeeId,
       employerId: job.employerId,
-      screeningAnswers: req.body.screeningAnswers || []
+      screeningAnswers: req.body.screeningAnswers || [],
+      sourceLink: req.body.sourceLink || req.body.utmSource || 'Portal',
+      utmSource: req.body.utmSource || null
     });
 
     // Record 'applied' event in JobLinkVisits
@@ -123,8 +174,18 @@ exports.applyForJob = async (req, res) => {
       });
     } catch (_) {}
 
-    // Increment applications count
+    // Ensure applicant is also counted as a viewer of the job
+    const candidateEmployee = await Employee.findById(employeeId).select('email').lean();
+    const viewerIdentifier = candidateEmployee?.email || String(employeeId);
+
+    if (!Array.isArray(job.viewedBy)) job.viewedBy = [];
+    if (!job.viewedBy.includes(viewerIdentifier)) {
+      job.viewedBy.push(viewerIdentifier);
+    }
+
+    // Increment applications count and ensure views >= applications
     job.applications = (job.applications || 0) + 1;
+    job.views = Math.max(job.views || 0, job.viewedBy.length, job.applications);
     await job.save();
 
     // Background Auto-Sync to Employer's Google Sheet (Real-time without blocking response)

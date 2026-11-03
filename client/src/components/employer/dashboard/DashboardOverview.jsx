@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import ManageJobs from './ManageJobs';
 
-const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs = [], candidates = [], toggleJobStatus }) => {
+const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs = [], candidates = [], toggleJobStatus, updateJob }) => {
   const [selectedJob, setSelectedJob] = useState(null);
 
   const displayName = employerName || employerProfile?.fullName || employerProfile?.companyName || 'Recruiter';
@@ -72,7 +72,7 @@ const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs =
 
       {/* Main Layout / Job List */}
       <div>
-        <ManageJobs portalConfig={portalConfig} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} hideHeader={true} />
+        <ManageJobs portalConfig={portalConfig} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} hideHeader={true} />
       </div>
     </div>
   );

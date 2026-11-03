@@ -36,6 +36,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     designation: '',
     company: '',
     qualification: 'All',
+    sourceLink: location.state?.sourceLink || 'All',
     status: 'All',
     sortDate: 'desc' // 'desc' | 'asc'
   };
@@ -57,6 +58,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       designation: '',
       company: '',
       qualification: 'All',
+      sourceLink: 'All',
       status: 'All',
       sortDate: 'desc'
     });
@@ -73,6 +75,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     colFilters.designation !== '' ||
     colFilters.company !== '' ||
     colFilters.qualification !== 'All' ||
+    colFilters.sourceLink !== 'All' ||
     colFilters.status !== 'All' ||
     dateRange.start !== '' ||
     dateRange.end !== '';
@@ -279,6 +282,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           appliedDate: cand.date || new Date().toLocaleDateString(),
           createdAt: cand.createdAt || cand.date,
           screeningAnswers: cand.screeningAnswers || [],
+          sourceLink: cand.sourceLink || 'Portal',
           resume: cand.resume || cand.documents?.resume || '',
           coverLetter: cand.coverLetter || cand.documents?.coverLetter || '',
           introVideo: cand.introVideo || cand.documents?.introVideo || '',
@@ -295,6 +299,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             appliedDate: app.date || cand.date,
             createdAt: app.createdAt || cand.createdAt || app.date,
             screeningAnswers: app.screeningAnswers || [],
+            sourceLink: app.sourceLink || cand.sourceLink || 'Portal',
             resume: app.resume || cand.resume || cand.documents?.resume || '',
             coverLetter: app.coverLetter || cand.coverLetter || cand.documents?.coverLetter || '',
             introVideo: app.introVideo || cand.introVideo || cand.documents?.introVideo || '',
@@ -340,6 +345,22 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   const uniqueQualifications = useMemo(() => {
     const list = flattenedApplications.map(a => getHighestQualification(a.candidate)).filter(Boolean);
     return ['All', ...new Set(list)];
+  }, [jobs, flattenedApplications]);
+
+  const uniqueLinks = useMemo(() => {
+    const jobLinkCodes = [];
+    (jobs || []).forEach(j => {
+      if (Array.isArray(j.shareLinks)) {
+        j.shareLinks.forEach(l => {
+          if (l.name) jobLinkCodes.push(l.name);
+          if (l.linkId && l.linkId !== l.name) jobLinkCodes.push(l.linkId);
+        });
+      }
+    });
+    const appLinkCodes = flattenedApplications.map(a => a.sourceLink || 'Portal').filter(Boolean);
+    const combined = ['01', ...jobLinkCodes, ...appLinkCodes, 'Portal'];
+    const cleanList = Array.from(new Set(combined.map(s => (s === 'Direct' ? 'Portal' : s))));
+    return ['All', ...cleanList];
   }, [jobs, flattenedApplications]);
 
   // Filter and sort applications based on all column filters
@@ -416,6 +437,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       if (colFilters.status !== 'All') {
         if ((item.status || 'New').toLowerCase() !== colFilters.status.toLowerCase()) {
           return false;
+        }
+      }
+
+      // 8.5. Source Link Filter
+      if (colFilters.sourceLink !== 'All') {
+        const itemSrc = String(item.sourceLink || 'Portal').trim().toLowerCase();
+        const targetSrc = String(colFilters.sourceLink).trim().toLowerCase();
+        if (itemSrc !== targetSrc) {
+          if (!((targetSrc === 'portal' || targetSrc === 'direct') && (itemSrc === 'portal' || itemSrc === 'direct'))) {
+            return false;
+          }
         }
       }
 
@@ -687,6 +719,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           'Work Experience': workExp,
           'Current Designation': desig,
           'Current Company': comp,
+          'Source Link': item.sourceLink || 'Direct',
           'Current Salary': currentSalary,
           'Expected Salary': expectedSalary,
           'Applied Date': item.appliedDate || '',
@@ -959,7 +992,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-              {portalConfig?.title || 'Job Applications Management'}
+              {portalConfig?.title || 'Total Applications'}
             </h1>
             <span className="px-3 py-1 bg-emerald-50 text-emerald-800 font-extrabold text-xs rounded-full border border-emerald-200">
               {filteredApplications.length} of {flattenedApplications.length} Applications
@@ -1046,6 +1079,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
                 <th className="py-3 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
                 <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
+                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Source Link</th>
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Applied Date</th>
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap text-center">Status</th>
                 <th className="py-3 px-3 min-w-[130px] text-right whitespace-nowrap">Actions</th>
@@ -1148,6 +1182,22 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                     placeholder="Filter company..."
                     className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 shadow-2xs"
                   />
+                </th>
+
+                {/* Source Link Filter */}
+                <th className="p-1.5">
+                  <select
+                    value={colFilters.sourceLink}
+                    onChange={(e) => handleFilterChange('sourceLink', e.target.value)}
+                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
+                  >
+                    <option value="All">All Sources</option>
+                    {uniqueLinks.filter(l => l !== 'All').map(l => (
+                      <option key={l} value={l}>
+                        {l === 'Portal' || l === 'Direct' ? '🌐 Portal' : `🔗 Link ${l}`}
+                      </option>
+                    ))}
+                  </select>
                 </th>
 
                 {/* 8. Applied Date Sort Toggle */}
@@ -1307,6 +1357,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       {/* 7. Current Company */}
                       <td className="py-3.5 px-3 text-gray-700 font-medium whitespace-nowrap">
                         {comp}
+                      </td>
+
+                      {/* Link Source */}
+                      <td className="py-3.5 px-3 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
+                          item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-gray-100 text-gray-600 border border-gray-200'
+                        }`}>
+                          {item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct' ? `Link ${item.sourceLink}` : 'Portal'}
+                        </span>
                       </td>
 
                       {/* 8. Applied Date */}

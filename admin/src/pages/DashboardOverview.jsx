@@ -4683,6 +4683,88 @@ export default function DashboardOverview({ onNavigateTab }) {
                   </div>
                 </div>
 
+                {/* 1.5 Tracked Share Links & Applications Source Breakdown */}
+                <div className="pt-5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                      <h4 className="font-bold text-gray-900 uppercase text-[11px] tracking-wider">
+                        Tracked Share Links & Applications Source
+                      </h4>
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                      Total: {applicationsCount} Application{applicationsCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
+                  <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {/* Render all shareable links */}
+                      {(selectedJobDetail.shareLinks && selectedJobDetail.shareLinks.length > 0
+                        ? selectedJobDetail.shareLinks
+                        : [{ linkId: '01', name: '01', applicationsCount: selectedJobDetail.linkStats?.['01'] || applicationsCount }]
+                      ).map((link, idx) => {
+                        const code = link.name || link.linkId || '01';
+                        const count = link.applicationsCount !== undefined && link.applicationsCount !== null
+                          ? link.applicationsCount
+                          : (selectedJobDetail.linkStats?.[code] ?? selectedJobDetail.linkStats?.[link.linkId] ?? 0);
+                        const shareUrl = `${window.location.origin.replace(':5174', ':5173')}/apply-job/${jobId}?src=${encodeURIComponent(code)}`;
+
+                        return (
+                          <div key={link._id || link.linkId || idx} className="p-3 bg-white rounded-xl border border-gray-200/80 shadow-2xs space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 font-extrabold text-xs text-gray-900">
+                                <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px]">🔗</span>
+                                Link {code}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                {count} {count === 1 ? 'application' : 'applications'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 pt-0.5">
+                              <input
+                                type="text"
+                                readOnly
+                                value={shareUrl}
+                                className="w-full text-[10.5px] text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 truncate outline-none select-all font-mono"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(shareUrl);
+                                  setCopiedJobId(link.linkId || code);
+                                  setTimeout(() => setCopiedJobId(null), 2000);
+                                }}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10.5px] font-bold shrink-0 cursor-pointer transition-colors"
+                              >
+                                {copiedJobId === (link.linkId || code) ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Direct Portal Applicants (if any) */}
+                      {Boolean(selectedJobDetail.linkStats?.['Portal']) && (
+                        <div className="p-3 bg-white rounded-xl border border-gray-200/80 shadow-2xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="inline-flex items-center gap-1.5 font-extrabold text-xs text-gray-900">
+                              <span className="w-5 h-5 rounded-md bg-blue-100 text-blue-800 flex items-center justify-center text-[10px]">🌐</span>
+                              Direct Portal
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                              {selectedJobDetail.linkStats['Portal']} application(s)
+                            </span>
+                          </div>
+                          <p className="text-[10.5px] text-gray-500 m-0">
+                            Applied directly from Sahijob portal search without any share link.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* 2. About the Role / Role Overview */}
                 <div className="pt-5 space-y-2">
                   <div className="flex items-center gap-2">

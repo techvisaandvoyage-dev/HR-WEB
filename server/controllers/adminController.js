@@ -765,20 +765,44 @@ exports.getAllJobsAdmin = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Attach application counts
+    // Attach application counts and shareable links stats
     const jobIds = jobs.map(j => j._id);
     const applications = await Application.find({ jobId: { $in: jobIds } }).lean();
     const appCountMap = {};
+    const linkStatsMap = {};
     applications.forEach(a => {
       const idStr = String(a.jobId);
       appCountMap[idStr] = (appCountMap[idStr] || 0) + 1;
+
+      const src = String(a.sourceLink || a.utmSource || '01').trim();
+      if (!linkStatsMap[idStr]) linkStatsMap[idStr] = {};
+      linkStatsMap[idStr][src] = (linkStatsMap[idStr][src] || 0) + 1;
     });
 
-    const enrichedJobs = jobs.map(j => ({
-      ...j,
-      id: j._id,
-      applicationsCount: appCountMap[String(j._id)] || 0
-    }));
+    const enrichedJobs = jobs.map(j => {
+      const idStr = String(j._id);
+      const linkStats = linkStatsMap[idStr] || {};
+
+      let shareLinks = Array.isArray(j.shareLinks) && j.shareLinks.length > 0
+        ? j.shareLinks
+        : [{ linkId: '01', name: '01', createdAt: j.createdAt || new Date() }];
+
+      const enrichedLinks = shareLinks.map(l => {
+        const code = l.name || l.linkId || '01';
+        return {
+          ...l,
+          applicationsCount: linkStats[code] || linkStats[l.linkId] || 0
+        };
+      });
+
+      return {
+        ...j,
+        id: j._id,
+        applicationsCount: appCountMap[idStr] || 0,
+        shareLinks: enrichedLinks,
+        linkStats: linkStats
+      };
+    });
 
     res.json({ success: true, count: enrichedJobs.length, data: enrichedJobs });
   } catch (error) {
