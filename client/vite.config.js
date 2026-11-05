@@ -8,22 +8,7 @@ export default defineConfig({
     exclude: ['country-state-city']
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/pdf-lib') || id.includes('node_modules/pdfjs-dist')) {
-            return 'pdf-tools';
-          }
-          if (id.includes('node_modules/browser-image-compression')) {
-            return 'image-compression';
-          }
-          if (id.includes('node_modules/jszip')) {
-            return 'doc-compression';
-          }
-        },
-      },
-    },
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 2000,
   },
   server: {
     port: 5173

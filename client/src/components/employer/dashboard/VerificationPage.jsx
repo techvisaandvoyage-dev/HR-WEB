@@ -85,6 +85,7 @@ export default function VerificationPage({ employerProfile }) {
           if (empInfo && data.verification) {
             empInfo.verification = data.verification;
             localStorage.setItem('employerInfo', JSON.stringify(empInfo));
+            window.dispatchEvent(new Event('employer-profile-updated'));
           }
         } catch (_) {}
       } else {

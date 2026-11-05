@@ -20,7 +20,14 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
   const location = useLocation();
   const [totalUnread, setTotalUnread] = React.useState(0);
   const [refreshNav, setRefreshNav] = React.useState(false);
-  const [employerProfile, setEmployerProfile] = React.useState(null);
+  const [employerProfile, setEmployerProfile] = React.useState(() => {
+    try {
+      const stored = localStorage.getItem('employerInfo');
+      return stored ? JSON.parse(stored) : null;
+    } catch (_) {
+      return null;
+    }
+  });
   const [portalConfig, setPortalConfig] = React.useState(null);
 
   React.useEffect(() => {
@@ -38,27 +45,35 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
     fetchPortalConfig();
   }, []);
 
-  React.useEffect(() => {
-    const fetchProfile = async () => {
-      const token = localStorage.getItem('employerToken');
-      if (!token) return;
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success && data.data) {
-          setEmployerProfile(data.data);
-          try {
-            localStorage.setItem('employerInfo', JSON.stringify(data.data));
-          } catch (_) {}
-        }
-      } catch (err) {
-        console.error("Error fetching employer profile:", err);
+  const fetchProfile = React.useCallback(async () => {
+    const token = localStorage.getItem('employerToken');
+    if (!token) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setEmployerProfile(data.data);
+        try {
+          localStorage.setItem('employerInfo', JSON.stringify(data.data));
+        } catch (_) {}
       }
-    };
-    fetchProfile();
+    } catch (err) {
+      console.error("Error fetching employer profile:", err);
+    }
   }, []);
+
+  React.useEffect(() => {
+    fetchProfile();
+    const handleProfileUpdate = () => fetchProfile();
+    window.addEventListener('employer-profile-updated', handleProfileUpdate);
+    window.addEventListener('focus', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('employer-profile-updated', handleProfileUpdate);
+      window.removeEventListener('focus', handleProfileUpdate);
+    };
+  }, [fetchProfile, location.pathname]);
 
   const fetchUnreadCount = async () => {
     if (!localStorage.getItem('employerToken')) return;
@@ -94,6 +109,8 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
   const sidebarCfg = portalConfig?.sidebar || {};
   const [isMobileNavOpen, setIsMobileNavOpen] = React.useState(false);
 
+  const vStatus = employerProfile?.verification?.status || 'unverified';
+
   const navItems = [
     { key: 'dashboard', name: sidebarCfg.dashboardLabel || sidebarCfg.dashboard || 'Dashboard', path: '/employer', icon: (
       <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
@@ -106,6 +123,24 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
     )},
     { key: 'messages', name: sidebarCfg.messagesLabel || sidebarCfg.messages || 'Messages', path: '/employer/messages', icon: (
       <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg>
+    )},
+    { key: 'verification', name: 'Verify Account', path: '/employer/verification', badge: (
+      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto ${
+        vStatus === 'verified'
+          ? 'bg-[#ecfdf3] text-[#15803d]'
+          : vStatus === 'pending'
+          ? 'bg-[#fef0c7] text-[#b54708]'
+          : vStatus === 'rejected'
+          ? 'bg-[#fef2f2] text-[#b91c1c]'
+          : 'bg-[#fff7ed] text-[#c2410c]'
+      }`}>
+        {vStatus === 'verified' ? 'Verified' : vStatus === 'pending' ? 'Review' : vStatus === 'rejected' ? 'Fix' : 'Verify'}
+      </span>
+    ), icon: (
+      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        {vStatus === 'verified' && <path d="m9 12 2 2 4-4"/>}
+      </svg>
     )}
   ];
 
@@ -161,6 +196,9 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-auto bg-[#16a34a] text-white">
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
+                )}
+                {item.badge && item.key !== 'messages' && !isActive && (
+                  item.badge
                 )}
               </Link>
             );

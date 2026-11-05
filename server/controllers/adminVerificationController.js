@@ -206,31 +206,36 @@ exports.getAdminVerificationDetails = async (req, res) => {
  */
 exports.approveVerification = async (req, res) => {
   try {
-    const employer = await Employer.findById(req.params.userId);
-    if (!employer) {
-      return res.status(404).json({ success: false, message: 'Employer not found' });
-    }
-
-    if (!employer.verification) {
-      employer.verification = { status: 'unverified', documents: [] };
-    }
-
     const adminIdentity = (req.admin?.id && require('mongoose').Types.ObjectId.isValid(req.admin.id))
       ? req.admin.id
       : (req.admin?.email || 'admin');
 
-    employer.verification.status = 'verified';
-    employer.verification.verifiedAt = new Date();
-    employer.verification.reviewedAt = new Date();
-    employer.verification.reviewedBy = adminIdentity;
-    employer.verification.rejectionReason = '';
+    const updateFields = {
+      'verification.status': 'verified',
+      'verification.verifiedAt': new Date(),
+      'verification.reviewedAt': new Date(),
+      'verification.reviewedBy': adminIdentity,
+      'verification.rejectionReason': ''
+    };
 
-    await employer.save({ validateModifiedOnly: true });
+    const employer = await Employer.findByIdAndUpdate(
+      req.params.userId,
+      { $set: updateFields },
+      { new: true, runValidators: false }
+    );
+
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
 
     // Trigger notification email asynchronously to employer
-    notifyEmployerOnApproval(employer).catch(e => {
-      console.warn('[AdminVerification] Mail error on approve:', e.message);
-    });
+    try {
+      notifyEmployerOnApproval(employer).catch(e => {
+        console.warn('[AdminVerification] Mail error on approve:', e.message);
+      });
+    } catch (mailErr) {
+      console.warn('[AdminVerification] Synchronous mail error:', mailErr.message);
+    }
 
     res.json({
       success: true,
@@ -239,7 +244,7 @@ exports.approveVerification = async (req, res) => {
     });
   } catch (err) {
     console.error('approveVerification error:', err);
-    res.status(500).json({ success: false, message: 'Server error approving verification' });
+    res.status(500).json({ success: false, message: err.message || 'Server error approving verification' });
   }
 };
 
@@ -255,30 +260,35 @@ exports.rejectVerification = async (req, res) => {
       return res.status(400).json({ success: false, message: 'A rejection reason is mandatory' });
     }
 
-    const employer = await Employer.findById(req.params.userId);
-    if (!employer) {
-      return res.status(404).json({ success: false, message: 'Employer not found' });
-    }
-
-    if (!employer.verification) {
-      employer.verification = { status: 'unverified', documents: [] };
-    }
-
     const adminIdentity = (req.admin?.id && require('mongoose').Types.ObjectId.isValid(req.admin.id))
       ? req.admin.id
       : (req.admin?.email || 'admin');
 
-    employer.verification.status = 'rejected';
-    employer.verification.rejectionReason = reason.trim();
-    employer.verification.reviewedAt = new Date();
-    employer.verification.reviewedBy = adminIdentity;
+    const updateFields = {
+      'verification.status': 'rejected',
+      'verification.rejectionReason': reason.trim(),
+      'verification.reviewedAt': new Date(),
+      'verification.reviewedBy': adminIdentity
+    };
 
-    await employer.save({ validateModifiedOnly: true });
+    const employer = await Employer.findByIdAndUpdate(
+      req.params.userId,
+      { $set: updateFields },
+      { new: true, runValidators: false }
+    );
+
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
 
     // Trigger notification email asynchronously to employer with rejection reason
-    notifyEmployerOnRejection(employer, reason.trim()).catch(e => {
-      console.warn('[AdminVerification] Mail error on reject:', e.message);
-    });
+    try {
+      notifyEmployerOnRejection(employer, reason.trim()).catch(e => {
+        console.warn('[AdminVerification] Mail error on reject:', e.message);
+      });
+    } catch (mailErr) {
+      console.warn('[AdminVerification] Synchronous mail error:', mailErr.message);
+    }
 
     res.json({
       success: true,
@@ -287,7 +297,41 @@ exports.rejectVerification = async (req, res) => {
     });
   } catch (err) {
     console.error('rejectVerification error:', err);
-    res.status(500).json({ success: false, message: 'Server error rejecting verification' });
+    res.status(500).json({ success: false, message: err.message || 'Server error rejecting verification' });
+  }
+};
+
+/**
+ * @desc    Revoke employer verification / set back to unverified
+ * @route   PATCH /api/admin/verifications/:userId/unverify
+ * @access  Private (Admin)
+ */
+exports.unverifyVerification = async (req, res) => {
+  try {
+    const updateFields = {
+      'verification.status': 'unverified',
+      'verification.verifiedAt': null,
+      'verification.rejectionReason': ''
+    };
+
+    const employer = await Employer.findByIdAndUpdate(
+      req.params.userId,
+      { $set: updateFields },
+      { new: true, runValidators: false }
+    );
+
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Employer not found' });
+    }
+
+    res.json({
+      success: true,
+      message: `Account verification revoked for "${employer.companyName || employer.fullName}"`,
+      verification: employer.verification
+    });
+  } catch (err) {
+    console.error('unverifyVerification error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error revoking verification' });
   }
 };
 

@@ -318,82 +318,70 @@ const notifyEmployerOnApproval = async (employer) => {
 /**
  * 3. Notify Employer when verification is REJECTED
  * Includes the exact text written in the Admin rejection textbox!
+ * Uses the exact sleek SahiJob responsive design template requested by user.
  * Target: employer.email
  */
 const notifyEmployerOnRejection = async (employer, rejectionReason) => {
   try {
     if (!employer?.email) return;
 
-    const companyName = employer.companyName || employer.fullName || 'Company';
-    const contactName = employer.fullName || 'Recruiter';
-    const reasonText = (rejectionReason && rejectionReason.trim()) || 'Documents provided could not be validated against official registry records.';
-    const subject = `⚠️ Action Required: Account Verification Update for ${companyName}`;
+    const companyName = employer.companyName || employer.fullName || 'your company';
+    const contactName = employer.fullName || employer.companyName || 'Employer';
+    const reasonText = (rejectionReason && rejectionReason.trim()) || 'The documents provided could not be verified. Please upload a clear and valid copy.';
+    const verificationUrl = `${CLIENT_URL}/employer/verification`;
+    const refCode = 'VER-' + String(employer._id || employer.id || employer.employerId || '400204').slice(-6).toUpperCase();
+    const reviewDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const currentYear = new Date().getFullYear();
+    const subject = `Action needed on your SahiJob verification - ${companyName}`;
 
-    const html = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px 16px; background: #f8fafc;">
-        <div style="background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(15,23,42,0.04);">
-          
-          <!-- Banner -->
-          <div style="background: linear-gradient(135deg, #b91c1c, #dc2626); padding: 26px 24px; color: white;">
-            <div style="display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px;">
-              Action Required
-            </div>
-            <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: white; line-height: 1.3;">
-              Verification Documents Need Correction
-            </h1>
-            <p style="margin: 6px 0 0; font-size: 13.5px; color: #fecaca;">
-              Please review the feedback below and re-submit your documents.
-            </p>
-          </div>
-
-          <!-- Body -->
-          <div style="padding: 26px 24px;">
-            <p style="font-size: 15px; color: #0f172a; margin-top: 0; line-height: 1.6;">
-              Dear <strong>${contactName}</strong>,
-            </p>
-            <p style="font-size: 14px; color: #334155; line-height: 1.6;">
-              Our compliance team reviewed the business verification documents submitted for <strong>${companyName}</strong>. At this time, we were unable to approve the verification due to the issue noted below.
-            </p>
-
-            <!-- Prominent Rejection Reason Box -->
-            <div style="background: #fef2f2; border-left: 4px solid #dc2626; border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
-              <p style="margin: 0 0 6px; font-size: 12.5px; font-weight: 800; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em;">
-                Problem Identified with Document(s):
-              </p>
-              <p style="margin: 0; font-size: 15px; font-weight: 600; color: #7f1d1d; line-height: 1.5;">
-                "${reasonText}"
-              </p>
-            </div>
-
-            <!-- Steps to Fix -->
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0;">
-              <p style="margin: 0 0 10px; font-size: 13px; font-weight: 800; color: #334155;">
-                How to re-submit your documents:
-              </p>
-              <ol style="margin: 0; padding-left: 18px; font-size: 13px; color: #475569; line-height: 1.7;">
-                <li>Log in to your <strong>SahiJob Employer Dashboard</strong>.</li>
-                <li>Go to the <strong>Verify Account</strong> page.</li>
-                <li>Click <strong>Remove</strong> or <strong>Replace</strong> on the flagged document(s).</li>
-                <li>Upload clear, valid PDF or image documents strictly under <strong>300 KB</strong>.</li>
-                <li>Click <strong>Re-submit for verification</strong> to send for immediate re-review.</li>
-              </ol>
-            </div>
-
-            <!-- CTA Button -->
-            <div style="text-align: center; margin: 28px 0 14px;">
-              <a href="${CLIENT_URL}/employer/verification" style="display: inline-block; background: #dc2626; color: #ffffff; padding: 13px 32px; border-radius: 10px; font-weight: 700; font-size: 14.5px; text-decoration: none; box-shadow: 0 2px 6px rgba(220,38,38,0.3);">
-                Update &amp; Re-submit Documents &rarr;
-              </a>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-            Need help? Reply directly to this email or contact our support team.
-          </div>
-        </div>
-      </div>
-    `;
+    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Action needed on your SahiJob verification</title></head>
+<body style="margin:0;padding:0;background:#f3f6f4;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">We could not approve your documents yet. Here is what to fix. It takes about 2 minutes.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f6f4;padding:32px 12px;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+  <tr><td style="padding:0 4px 18px;font-size:22px;font-weight:800;letter-spacing:-.3px;color:#0f172a;">sahijob<span style="color:#1f9d4c;">.com</span></td></tr>
+  <tr><td style="background:#ffffff;border:1px solid #e5eae7;border-radius:16px;overflow:hidden;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="height:4px;background:#1f9d4c;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="padding:32px 36px 8px;">
+        <div style="display:inline-block;background:#fff4e5;color:#9a5b00;font-size:12px;font-weight:700;padding:5px 12px;border-radius:99px;">Verification update</div>
+        <h1 style="margin:16px 0 8px;font-size:24px;line-height:1.3;font-weight:800;letter-spacing:-.4px;">We need one more change to verify ${companyName}</h1>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#5b6b62;">Hi ${contactName}, thank you for submitting your documents. Our review team could not approve them yet. Nothing is lost: you can fix this and submit again.</p>
+      </td></tr>
+      <tr><td style="padding:20px 36px 4px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fafbfa;border:1px solid #e5eae7;border-radius:12px;">
+          <tr><td style="padding:18px 20px;">
+            <div style="font-size:13px;font-weight:700;color:#5b6b62;margin-bottom:6px;">Feedback from our review team</div>
+            <div style="font-size:16px;line-height:1.55;font-weight:600;color:#0f172a;white-space:pre-line;">${reasonText}</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:24px 36px 0;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:12px;">How to fix it</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td width="32" valign="top" style="padding:0 0 12px;"><div style="width:24px;height:24px;border-radius:50%;background:#e4f6ea;color:#14753a;font-size:13px;font-weight:700;text-align:center;line-height:24px;">1</div></td><td style="padding:2px 0 12px;font-size:15px;line-height:1.5;color:#2b3a32;">Log in to your SahiJob employer dashboard.</td></tr><tr><td width="32" valign="top" style="padding:0 0 12px;"><div style="width:24px;height:24px;border-radius:50%;background:#e4f6ea;color:#14753a;font-size:13px;font-weight:700;text-align:center;line-height:24px;">2</div></td><td style="padding:2px 0 12px;font-size:15px;line-height:1.5;color:#2b3a32;">Open <b>Verify Account</b> from the top bar.</td></tr><tr><td width="32" valign="top" style="padding:0 0 12px;"><div style="width:24px;height:24px;border-radius:50%;background:#e4f6ea;color:#14753a;font-size:13px;font-weight:700;text-align:center;line-height:24px;">3</div></td><td style="padding:2px 0 12px;font-size:15px;line-height:1.5;color:#2b3a32;">Remove the flagged document and upload a clear, valid copy (PDF, JPG or PNG).</td></tr><tr><td width="32" valign="top" style="padding:0 0 12px;"><div style="width:24px;height:24px;border-radius:50%;background:#e4f6ea;color:#14753a;font-size:13px;font-weight:700;text-align:center;line-height:24px;">4</div></td><td style="padding:2px 0 12px;font-size:15px;line-height:1.5;color:#2b3a32;">Select <b>Submit for verification</b>. We will review it again.</td></tr>
+        </table>
+      </td></tr>
+      <tr><td align="center" style="padding:8px 36px 8px;">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#1f9d4c;border-radius:10px;">
+          <a href="${verificationUrl}" style="display:inline-block;padding:14px 30px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;">Update documents</a>
+        </td></tr></table>
+        <div style="font-size:12.5px;color:#5b6b62;margin-top:12px;">Button not working? Open <a href="${verificationUrl}" style="color:#14753a;">${verificationUrl}</a></div>
+      </td></tr>
+      <tr><td style="padding:24px 36px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2fbf5;border-radius:12px;">
+          <tr><td style="padding:14px 18px;font-size:13.5px;line-height:1.55;color:#24523a;"><b>Your account is safe.</b> SahiJob will never ask for your password, OTP or payment by email. Your jobs stay hidden from candidates until verification is approved.</td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="border-top:1px solid #e5eae7;padding:18px 36px;font-size:13px;line-height:1.6;color:#5b6b62;">
+        Questions? Reply to this email or write to <a href="mailto:support@sahijob.com" style="color:#14753a;">support@sahijob.com</a>.<br>
+        Reference: <b style="color:#0f172a;">${refCode}</b> &nbsp;|&nbsp; Reviewed on ${reviewDate}
+      </td></tr>
+    </table>
+  </td></tr>
+  <tr><td align="center" style="padding:20px 12px 0;font-size:12px;line-height:1.6;color:#8a988f;">You received this email because you registered ${companyName} on SahiJob.com.<br>&copy; ${currentYear} SahiJob.com. All rights reserved.</td></tr>
+</table></td></tr></table></body></html>`;
 
     await dispatchEmail({
       to: employer.email,

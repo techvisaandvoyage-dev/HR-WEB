@@ -609,6 +609,108 @@ export default function DashboardOverview({ onNavigateTab }) {
     }
   };
 
+  // Direct manual verification for any employer (even without documents)
+  const handleDirectVerifyEmployer = async (employerId) => {
+    if (!window.confirm('Are you sure you want to verify this employer account? Their jobs will become immediately visible to candidates.')) return;
+    try {
+      setUpdatingControlId(employerId);
+      const res = await fetch(`${API_URL}/api/admin/verifications/${employerId}/approve`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
+          'x-admin-auth': 'true'
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('Employer account verified successfully! Jobs are now live.');
+        setEmployers(prev => prev.map(e => {
+          if ((e._id || e.id) === employerId) {
+            return {
+              ...e,
+              verification: {
+                ...(e.verification || {}),
+                status: 'verified',
+                verifiedAt: new Date(),
+                rejectionReason: ''
+              }
+            };
+          }
+          return e;
+        }));
+        if (selectedEmployer && (selectedEmployer._id || selectedEmployer.id) === employerId) {
+          setSelectedEmployer(prev => ({
+            ...prev,
+            verification: {
+              ...(prev.verification || {}),
+              status: 'verified',
+              verifiedAt: new Date(),
+              rejectionReason: ''
+            }
+          }));
+        }
+      } else {
+        alert(data.message || 'Failed to verify employer');
+      }
+    } catch (err) {
+      console.error('Error verifying employer:', err);
+      alert('Network error verifying employer');
+    } finally {
+      setUpdatingControlId(null);
+    }
+  };
+
+  // Direct manual unverify / revoke verification
+  const handleDirectUnverifyEmployer = async (employerId) => {
+    if (!window.confirm('Are you sure you want to revoke verification for this employer? Their posted jobs will become hidden from candidates.')) return;
+    try {
+      setUpdatingControlId(employerId);
+      const res = await fetch(`${API_URL}/api/admin/verifications/${employerId}/unverify`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
+          'x-admin-auth': 'true'
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('Verification revoked. Account is now Unverified.');
+        setEmployers(prev => prev.map(e => {
+          if ((e._id || e.id) === employerId) {
+            return {
+              ...e,
+              verification: {
+                ...(e.verification || {}),
+                status: 'unverified',
+                verifiedAt: null
+              }
+            };
+          }
+          return e;
+        }));
+        if (selectedEmployer && (selectedEmployer._id || selectedEmployer.id) === employerId) {
+          setSelectedEmployer(prev => ({
+            ...prev,
+            verification: {
+              ...(prev.verification || {}),
+              status: 'unverified',
+              verifiedAt: null
+            }
+          }));
+        }
+      } else {
+        alert(data.message || 'Failed to revoke verification');
+      }
+    } catch (err) {
+      console.error('Error revoking verification:', err);
+      alert('Network error revoking verification');
+    } finally {
+      setUpdatingControlId(null);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
     fetchGlobalSettings();
@@ -4021,6 +4123,20 @@ export default function DashboardOverview({ onNavigateTab }) {
                                     </button>
                                   )}
 
+                                  {/* Quick direct verify for unverified or rejected employers */}
+                                  {empr.verification?.status !== 'verified' && (
+                                    <button
+                                      type="button"
+                                      disabled={updatingControlId === (empr._id || empr.id)}
+                                      onClick={() => handleDirectVerifyEmployer(empr._id || empr.id)}
+                                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap disabled:opacity-50"
+                                      title="Directly verify this employer without documents"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>{updatingControlId === (empr._id || empr.id) ? '...' : 'Verify'}</span>
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
                                     onClick={() => handleOpenEmployerDrawer(empr)}
@@ -5418,16 +5534,43 @@ export default function DashboardOverview({ onNavigateTab }) {
                       </div>
                     </div>
 
-                    {docCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setReviewEmployerId(targetEmp._id || targetEmp.id)}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 shadow-2xs"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Review Docs</span>
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {docCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setReviewEmployerId(targetEmp._id || targetEmp.id)}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 shadow-2xs"
+                          title="Review uploaded business documents"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Review Docs</span>
+                        </button>
+                      )}
+
+                      {vStatus !== 'verified' ? (
+                        <button
+                          type="button"
+                          disabled={updatingControlId === (targetEmp._id || targetEmp.id)}
+                          onClick={() => handleDirectVerifyEmployer(targetEmp._id || targetEmp.id)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+                          title="Directly verify this employer account (without documents)"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{updatingControlId === (targetEmp._id || targetEmp.id) ? 'Verifying...' : 'Verify Account'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={updatingControlId === (targetEmp._id || targetEmp.id)}
+                          onClick={() => handleDirectUnverifyEmployer(targetEmp._id || targetEmp.id)}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-700 border border-gray-200 font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+                          title="Revoke verification for this employer account"
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
+                          <span>{updatingControlId === (targetEmp._id || targetEmp.id) ? '...' : 'Unverify'}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })()}
