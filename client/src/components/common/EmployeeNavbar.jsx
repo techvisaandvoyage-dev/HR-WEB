@@ -318,7 +318,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
             )}
             
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+              <div className="absolute right-0 top-full mt-2 w-72 md:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                 <div className="p-4 md:p-5 border-b border-gray-100">
                   <p className="text-sm md:text-base font-bold text-gray-900 truncate">{userEmail}</p>
                 </div>

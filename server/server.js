@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const cors = require('cors');
+const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const { initSocket } = require('./socket');
 const employeeAuthRoutes = require('./employee/routes/authRoutes');
@@ -97,7 +98,20 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date() });
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  }[dbState] || 'unknown';
+  res.status(dbState === 1 ? 200 : 503).json({
+    status: dbState === 1 ? 'healthy' : 'degraded',
+    database: dbStatus,
+    mongoConfigured: Boolean(process.env.MONGO_URI),
+    lastError: global.__lastMongoError || null,
+    timestamp: new Date()
+  });
 });
 
 const PORT = process.env.PORT || 5000;
