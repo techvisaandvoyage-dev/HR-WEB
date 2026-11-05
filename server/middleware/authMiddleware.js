@@ -39,11 +39,13 @@ const protectEmployer = async (req, res, next) => {
   let token;
 
   if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
+    (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) ||
+    req.query.token
   ) {
     try {
-      token = req.headers.authorization.split(' ')[1];
+      token = req.headers.authorization?.startsWith('Bearer')
+        ? req.headers.authorization.split(' ')[1]
+        : req.query.token;
       if (!token || token === 'undefined' || token === 'null') {
         return res.status(401).json({ message: 'Not authorized, invalid token' });
       }

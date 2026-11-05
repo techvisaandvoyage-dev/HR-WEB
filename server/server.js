@@ -65,6 +65,8 @@ app.use('/api/companies', require('./routes/companyRoutes'));
 app.use('/api/support', require('./routes/supportRoutes'));
 app.use('/api/admin/support', require('./routes/adminSupportRoutes'));
 app.use('/api/admin/otp-locks', require('./routes/adminOtpLockRoutes'));
+app.use('/api/verification', require('./routes/verificationRoutes'));
+app.use('/api/admin/verifications', require('./routes/adminVerificationRoutes'));
 
 // SEO, Sitemap & Robots
 const seoRoutes = require('./routes/seoRoutes');

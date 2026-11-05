@@ -849,5 +849,51 @@ exports.getAllApplicationsAdmin = async (req, res) => {
   }
 };
 
+// @desc    Get single job by ID for Admin
+// @route   GET /api/admin/jobs/:id
+// @access  Admin
+exports.getJobByIdAdmin = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant verification')
+      .lean();
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    const apps = await Application.find({ jobId: job._id }).lean();
+    const liveApps = apps.length;
+    const passive = ['new', 'viewed', 'applied'];
+    const active = ['shortlisted', 'interview_scheduled', 'hired', 'offered'];
+    const passiveCount = apps.filter(a => passive.includes((a.status || '').toLowerCase())).length;
+    const activeCount = apps.filter(a => active.includes((a.status || '').toLowerCase())).length;
+
+    // Attach linkStats
+    const linkStats = {};
+    apps.forEach(a => {
+      const src = String(a.sourceLink || a.utmSource || '01').trim();
+      linkStats[src] = (linkStats[src] || 0) + 1;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        ...job,
+        applications: liveApps,
+        applicationsCount: liveApps,
+        totalApplicants: liveApps,
+        passiveApplicants: passiveCount,
+        activeApplicants: activeCount,
+        linkStats,
+        views: Math.max(job.views || 0, liveApps)
+      }
+    });
+  } catch (err) {
+    console.error('getJobByIdAdmin error:', err);
+    res.status(500).json({ success: false, message: 'Server error fetching job details', error: err.message });
+  }
+};
+
+
 
 

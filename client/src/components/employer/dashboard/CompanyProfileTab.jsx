@@ -601,6 +601,24 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
         >
           {isConsultant ? (portalConfig?.consultantTabLabel || 'Consultant details') : (portalConfig?.companyTabLabel || 'Company details')}
         </button>
+        <button
+          type="button"
+          onClick={() => window.location.href = '/employer/verification'}
+          className="pb-3 text-[14.5px] font-semibold border-b-2 border-transparent text-[#667085] hover:text-[#101828] transition-colors flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>Verification</span>
+          <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
+            employerProfile?.verification?.status === 'verified'
+              ? 'bg-[#ecfdf3] text-[#15803d]'
+              : employerProfile?.verification?.status === 'pending'
+              ? 'bg-[#fef0c7] text-[#b54708]'
+              : employerProfile?.verification?.status === 'rejected'
+              ? 'bg-[#fef2f2] text-[#b91c1c]'
+              : 'bg-[#fff7ed] text-[#c2410c]'
+          }`}>
+            {employerProfile?.verification?.status === 'verified' ? 'Verified' : employerProfile?.verification?.status === 'pending' ? 'Pending' : employerProfile?.verification?.status === 'rejected' ? 'Rejected' : 'Verify'}
+          </span>
+        </button>
       </div>
 
       {/* Account Details Tab */}

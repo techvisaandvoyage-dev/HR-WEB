@@ -150,6 +150,8 @@ exports.getEmployerJobs = async (req, res) => {
       }
     });
 
+    const vStatus = req.user?.verification?.status || 'unverified';
+    const isEmployerVerified = Boolean(vStatus === 'verified');
     const enrichedJobs = jobs.map(job => {
       const jId = String(job._id);
       const linkStats = countByJobAndLink[jId] || {};
@@ -171,6 +173,9 @@ exports.getEmployerJobs = async (req, res) => {
       return {
         ...job,
         applications: countByJobId[jId] ?? 0,
+        visibleToCandidates: isEmployerVerified && job.status === 'Active',
+        isEmployerVerified: isEmployerVerified,
+        employerVerificationStatus: vStatus,
         shareLinks: enrichedShareLinks,
         linkStats: linkStats
       };
@@ -193,6 +198,16 @@ exports.updateJob = async (req, res) => {
     }
     if (job.employerId.toString() !== req.user.id) {
       return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    const Employer = require('../models/Employer');
+    const employer = await Employer.findById(req.user.id).select('verification').lean();
+    if (!employer || employer.verification?.status !== 'verified') {
+      return res.status(403).json({
+        success: false,
+        code: 'EMPLOYER_NOT_VERIFIED',
+        message: 'Verify your account to create application links.'
+      });
     }
 
     let {

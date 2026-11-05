@@ -11,6 +11,8 @@ import AllEmployeesTab from './AllEmployeesTab';
 import EmployerMessages from '../messages/EmployerMessages';
 import EmployerSettingsTab from './EmployerSettingsTab';
 
+const VerificationPage = React.lazy(() => import('./VerificationPage'));
+
 import EmployerUserMenu from './EmployerUserMenu';
 import { socket } from '../../../utils/socket';
 
@@ -228,7 +230,65 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Status Chip / Button next to Post new job */}
+            {(() => {
+              const vStatus = employerProfile?.verification?.status || 'unverified';
+              if (vStatus === 'verified') {
+                return (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#ecfdf3] text-[#15803d] border border-[#abefc6] font-semibold text-[13px]">
+                    <svg className="w-4 h-4 text-[#15803d]" viewBox="0 0 24 24" fill="currentColor">
+                      <path fillRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" clipRule="evenodd" />
+                    </svg>
+                    <span>Verified</span>
+                  </div>
+                );
+              }
+              if (vStatus === 'pending') {
+                return (
+                  <Link
+                    to="/employer/verification"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#fef0c7] text-[#b54708] border border-[#fedf89] font-semibold text-[13px] hover:bg-[#fde287] transition-colors"
+                    title="Verification is under review by SahiJob team"
+                  >
+                    <svg className="w-4 h-4 animate-spin text-[#b54708]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <span>Under Review</span>
+                  </Link>
+                );
+              }
+              if (vStatus === 'rejected') {
+                return (
+                  <Link
+                    to="/employer/verification"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca] font-semibold text-[13px] hover:bg-[#fee2e2] transition-colors"
+                    title="Verification rejected. Click to review reason and re-submit"
+                  >
+                    <svg className="w-4 h-4 text-[#b91c1c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span>Verify Account (Action Required)</span>
+                  </Link>
+                );
+              }
+              return (
+                <Link
+                  to="/employer/verification"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#fff7ed] text-[#c2410c] border border-[#ffedd5] hover:bg-[#ffedd5] font-semibold text-[13px] transition-colors"
+                  title="Verify your account to activate candidate job visibility"
+                >
+                  <svg className="w-4 h-4 text-[#c2410c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  <span>Verify Account</span>
+                </Link>
+              );
+            })()}
+
             <Link 
               to="/employer/post-job"
               className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold text-[14px] px-4 py-2.5 rounded-[8px] transition-colors shadow-none cursor-pointer"
@@ -246,11 +306,16 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
             <Routes>
               <Route index element={<DashboardOverview portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} />} />
               <Route path="/post-job" element={<PostJob addJob={addJob} updateJob={updateJob} />} />
-              <Route path="/manage-jobs" element={<ManageJobs portalConfig={portalConfig?.dashboard} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} />} />
+              <Route path="/manage-jobs" element={<ManageJobs portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} />} />
               <Route path="/applications" element={<CandidatesTab portalConfig={portalConfig?.applications} candidates={candidates} jobs={jobs} updateCandidateStatus={updateCandidateStatus} />} />
               <Route path="/candidates" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} />} />
               <Route path="/all-employees" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} />} />
               <Route path="/company-profile" element={<CompanyProfileTab portalConfig={portalConfig?.account} employerProfile={employerProfile} />} />
+              <Route path="/verification" element={
+                <React.Suspense fallback={<div className="p-12 text-center text-sm font-semibold text-gray-500">Loading verification workspace...</div>}>
+                  <VerificationPage employerProfile={employerProfile} />
+                </React.Suspense>
+              } />
               {/* Placeholders for Messages and Settings */}
               <Route path="/messages" element={<EmployerMessages portalConfig={portalConfig?.messages} candidates={candidates} triggerNavRefresh={() => setRefreshNav(prev => !prev)} updateCandidateStatus={updateCandidateStatus} />} />
               <Route path="/settings" element={<EmployerSettingsTab portalConfig={portalConfig?.settings} />} />

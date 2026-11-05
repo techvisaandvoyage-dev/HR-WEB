@@ -58,9 +58,57 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
     return matchesSearch && matchesStatus;
   });
 
+  const isPendingVerification = (() => {
+    if (employerProfile?.verification?.status === 'pending') return true;
+    if (jobs[0]?.employerVerificationStatus === 'pending') return true;
+    try {
+      const empInfo = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+      if (empInfo?.verification?.status === 'pending') return true;
+    } catch (_) {}
+    return false;
+  })();
+
+  const verificationStatus = (() => {
+    if (employerProfile?.verification?.status) return employerProfile.verification.status;
+    if (jobs[0]?.employerVerificationStatus) return jobs[0].employerVerificationStatus;
+    try {
+      const empInfo = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+      if (empInfo?.verification?.status) return empInfo.verification.status;
+    } catch (_) {}
+    return 'unverified';
+  })();
+
   return (
     <div className={`animate-in fade-in duration-150 ${hideHeader ? '' : 'space-y-6 pb-10'}`}>
       
+      {/* Unverified / Pending Employer Warning Banner */}
+      {jobs.length > 0 && jobs[0]?.isEmployerVerified === false && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between gap-3 flex-wrap mb-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <svg className="w-5 h-5 text-amber-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span className="text-sm font-semibold">
+              {isPendingVerification ? (
+                <>Your account verification is currently under review. Your posted jobs will become visible to candidates once approved.</>
+              ) : verificationStatus === 'rejected' ? (
+                <>Your verification submission needs correction. Please review feedback and re-upload documents.</>
+              ) : (
+                <>Your account is not verified. Your posted jobs are currently hidden from candidates until verification is approved.</>
+              )}
+            </span>
+          </div>
+          <Link
+            to="/employer/verification"
+            className="px-3.5 py-1.5 rounded-lg bg-[#b54708] hover:bg-[#93370d] text-white text-xs font-bold transition-colors shrink-0"
+          >
+            {isPendingVerification ? 'Check Status →' : 'Verify Now →'}
+          </Link>
+        </div>
+      )}
+
       {!hideHeader && (
         <div className="mb-6">
           <h1 className="text-[26px] font-bold text-[#101828] tracking-[-0.025em]">Jobs</h1>
@@ -146,6 +194,21 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                     <span className="font-semibold text-[12px] text-[#667085] bg-[#f9fafb] border border-[#eaecf0] px-2 py-0.5 rounded-full shrink-0">
                       {openingsCount} {openingsCount > 1 ? 'openings' : 'opening'}
                     </span>
+                    {job.isEmployerVerified === false && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setJobToShare(job);
+                          setShowShareModal(true);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-200 transition-all shrink-0 cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                        title="Click to check verification status and requirements"
+                      >
+                        <span>Hidden from candidates</span>
+                        <span className="text-[10px] text-amber-700 font-bold">ⓘ</span>
+                      </button>
+                    )}
                   </h3>
                   <p className="text-[#667085] text-[13.5px] mt-0.5 mb-0 truncate">
                     {empType} · {mode}{payText ? ` · ${payText}` : ''}
@@ -374,6 +437,21 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                   <span className="border border-[#eaecf0] bg-white text-[#667085] text-[13px] font-semibold px-3 py-[3px] rounded-full">
                     {openingsCount} {openingsCount === 1 ? 'opening' : 'openings'}
                   </span>
+
+                  {selectedJob.isEmployerVerified === false && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setJobToShare(selectedJob);
+                        setShowShareModal(true);
+                      }}
+                      className="inline-flex items-center gap-1 text-[12px] font-bold px-3 py-[3px] rounded-full bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                      title="Click to check verification status and requirements"
+                    >
+                      <span>Hidden from candidates</span>
+                      <span className="text-[10px] text-amber-700 font-bold">ⓘ</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* 3. Stats Strip (minmax(0, 1fr) for columns to prevent overflow, min-w-0 on all cells) */}
@@ -568,6 +646,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
             setJobToShare(null);
           }}
           job={jobToShare}
+          employerProfile={employerProfile}
           onUpdateJobLinks={(jobId, updatedLinks) => {
             if (updateJob && jobToShare) {
               updateJob({

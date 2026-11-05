@@ -50,13 +50,17 @@ import {
   Zap,
   MousePointerClick,
   Activity,
-  Table
+  Table,
+  Shield,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   exportCandidateProfileAsPdf, 
   exportCandidateProfileAsDoc 
 } from '../utils/candidateProfileExporter';
 import AdminVideoPlayer from '../components/AdminVideoPlayer';
+import VerificationReviewModal from '../components/VerificationReviewModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -98,6 +102,8 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [selectedEmployer, setSelectedEmployer] = useState(null);
   const [detailEmployer, setDetailEmployer] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [reviewEmployerId, setReviewEmployerId] = useState(null);
+  const [quickApprovingId, setQuickApprovingId] = useState(null);
 
   // Employees List State
   const [employees, setEmployees] = useState([]);
@@ -214,10 +220,26 @@ export default function DashboardOverview({ onNavigateTab }) {
       return;
     }
     try {
-      const res = await fetch(`${API_URL}/api/employee/jobs/${cleanId}`);
-      const data = await res.json();
+      const adminToken = localStorage.getItem('adminToken') || '';
+      const headers = {
+        'x-admin-auth': 'true',
+        ...(adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {})
+      };
+
+      // 1. First try admin-specific endpoint (unrestricted by verification status)
+      let res = await fetch(`${API_URL}/api/admin/jobs/${cleanId}`, { headers });
+      let data = await res.json();
+
+      // 2. Fallback to employee jobs endpoint with admin header
+      if (!res.ok || !data.success || !data.data) {
+        res = await fetch(`${API_URL}/api/employee/jobs/${cleanId}`, { headers });
+        data = await res.json();
+      }
+
       if (res.ok && data.success && data.data) {
         setSelectedJobDetail(data.data);
+      } else {
+        console.warn('Could not load job details:', data?.message);
       }
     } catch (err) {
       console.error('Error fetching job detail:', err);
@@ -959,7 +981,9 @@ export default function DashboardOverview({ onNavigateTab }) {
     location: 'All',
     jobPosted: 'All',
     joinedOn: 'All',
-    lastUpdate: 'All'
+    lastUpdate: 'All',
+    docsSubmitted: 'All',
+    verification: 'All'
   });
 
   const [emprSort, setEmprSort] = useState({ column: 'joinedOn', direction: 'desc' });
@@ -978,6 +1002,53 @@ export default function DashboardOverview({ onNavigateTab }) {
       locations: ['All', ...Array.from(locs).sort()]
     };
   }, [employers]);
+
+  const pendingVerificationCount = useMemo(() => {
+    return employers.filter(e => (e.verification?.status === 'pending')).length;
+  }, [employers]);
+
+  const handleQuickApprove = async (empId) => {
+    if (!window.confirm('Are you sure you want to approve this verification? The employer will receive a verified badge and their jobs will become visible to all candidates.')) {
+      return;
+    }
+    setQuickApprovingId(empId);
+    try {
+      const token = localStorage.getItem('adminToken') || '';
+      const res = await fetch(`${API_URL}/api/admin/verifications/${empId}/approve`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'x-admin-auth': 'true'
+        }
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setEmployers(prev => prev.map(emp => {
+          if ((emp._id || emp.id) === empId) {
+            return {
+              ...emp,
+              verification: {
+                ...(emp.verification || {}),
+                status: 'verified',
+                rejectionReason: '',
+                reviewedAt: new Date(),
+                verifiedAt: new Date()
+              }
+            };
+          }
+          return emp;
+        }));
+      } else {
+        alert(json.message || 'Failed to approve');
+      }
+    } catch (err) {
+      console.error('Quick approve error:', err);
+      alert('Error connecting to server');
+    } finally {
+      setQuickApprovingId(null);
+    }
+  };
 
   const handleEmployerSort = (column) => {
     setEmprSort(prev => {
@@ -1002,7 +1073,9 @@ export default function DashboardOverview({ onNavigateTab }) {
       location: 'All',
       jobPosted: 'All',
       joinedOn: 'All',
-      lastUpdate: 'All'
+      lastUpdate: 'All',
+      docsSubmitted: 'All',
+      verification: 'All'
     });
   };
 
@@ -1021,6 +1094,8 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (emprColFilters.jobPosted !== 'All') count++;
     if (emprColFilters.joinedOn !== 'All') count++;
     if (emprColFilters.lastUpdate !== 'All') count++;
+    if (emprColFilters.docsSubmitted !== 'All') count++;
+    if (emprColFilters.verification !== 'All') count++;
     return count;
   }, [employerSearch, employerTypeFilter, employerIndustryFilter, emprColFilters]);
 
@@ -1139,6 +1214,20 @@ export default function DashboardOverview({ onNavigateTab }) {
           if (emprColFilters.lastUpdate === '90d' && diffDays > 90) return false;
         }
 
+        // Column Filter 8c: Docs Submitted Status
+        if (emprColFilters.docsSubmitted && emprColFilters.docsSubmitted !== 'All') {
+          const docCount = (empr.verification?.documents || []).length;
+          const isSubmitted = docCount > 0 || Boolean(empr.verification?.submittedAt);
+          if (emprColFilters.docsSubmitted === 'submitted' && !isSubmitted) return false;
+          if (emprColFilters.docsSubmitted === 'not_submitted' && isSubmitted) return false;
+        }
+
+        // Column Filter 9: Verification Status
+        if (emprColFilters.verification && emprColFilters.verification !== 'All') {
+          const vStatus = (empr.verification?.status || 'unverified').toLowerCase();
+          if (vStatus !== emprColFilters.verification.toLowerCase()) return false;
+        }
+
         return true;
       })
       .sort((a, b) => {
@@ -1161,6 +1250,16 @@ export default function DashboardOverview({ onNavigateTab }) {
             return (a.industry || '').localeCompare(b.industry || '') * dir;
           case 'location':
             return (a.location || '').localeCompare(b.location || '') * dir;
+          case 'docsSubmitted': {
+            const countA = (a.verification?.documents || []).length;
+            const countB = (b.verification?.documents || []).length;
+            return (countA - countB) * dir;
+          }
+          case 'verification': {
+            const vA = a.verification?.status || 'unverified';
+            const vB = b.verification?.status || 'unverified';
+            return vA.localeCompare(vB) * dir;
+          }
           case 'jobPosted': {
             const jA = a.totalJobs !== undefined ? a.totalJobs : (a.jobs?.length || a.activeJobs || 0);
             const jB = b.totalJobs !== undefined ? b.totalJobs : (b.jobs?.length || b.activeJobs || 0);
@@ -3292,6 +3391,24 @@ export default function DashboardOverview({ onNavigateTab }) {
                 {filteredAndSortedEmployers.length} Companies
               </span>
 
+              {pendingVerificationCount > 0 && (
+                <button
+                  onClick={() => setEmprColFilters(prev => ({
+                    ...prev,
+                    verification: prev.verification === 'pending' ? 'All' : 'pending'
+                  }))}
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
+                    emprColFilters.verification === 'pending'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                      : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                  }`}
+                  title="Click to filter pending verifications"
+                >
+                  <Clock className="w-3.5 h-3.5 animate-pulse text-amber-600" />
+                  <span>{pendingVerificationCount} Pending Verification{pendingVerificationCount > 1 ? 's' : ''}</span>
+                </button>
+              )}
+
               <button
                 onClick={() => { fetchEmployers(); fetchGlobalSettings(); }}
                 disabled={loadingEmployers}
@@ -3345,6 +3462,18 @@ export default function DashboardOverview({ onNavigateTab }) {
                     {employerIndustries.map(ind => (
                       <option key={ind} value={ind}>{ind === 'All' ? 'All Industries' : ind}</option>
                     ))}
+                  </select>
+
+                  <select
+                    value={emprColFilters.verification}
+                    onChange={(e) => setEmprColFilters(prev => ({ ...prev, verification: e.target.value }))}
+                    className="px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="All">All Verification Status</option>
+                    <option value="pending">Pending Review</option>
+                    <option value="verified">Verified</option>
+                    <option value="unverified">Unverified</option>
+                    <option value="rejected">Rejected</option>
                   </select>
                 </div>
               </div>
@@ -3485,7 +3614,7 @@ export default function DashboardOverview({ onNavigateTab }) {
 
                         <th 
                           onClick={() => handleEmployerSort('lastUpdate')}
-                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors"
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Last Profile Update</span>
@@ -3497,7 +3626,35 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </div>
                         </th>
 
-                        <th className="px-4 py-3 text-right">Actions</th>
+                        <th 
+                          onClick={() => handleEmployerSort('docsSubmitted')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Docs Submitted</span>
+                            {emprSort.column === 'docsSubmitted' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th 
+                          onClick={() => handleEmployerSort('verification')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors whitespace-nowrap"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Verification</span>
+                            {emprSort.column === 'verification' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
+                        <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                       </tr>
 
                       {/* Row 2: Per-Column Filter Inputs & Dropdowns */}
@@ -3631,6 +3788,34 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </select>
                         </th>
 
+                        {/* 7c. Docs Submitted Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.docsSubmitted || 'All'}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, docsSubmitted: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="All">All Docs</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="not_submitted">Not Submitted</option>
+                          </select>
+                        </th>
+
+                        {/* 7d. Verification Status Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.verification || 'All'}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, verification: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="All">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="verified">Verified</option>
+                            <option value="unverified">Unverified</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                        </th>
+
                         {/* 8. Reset Button */}
                         <th className="p-2 text-right">
                           {activeEmployerFiltersCount > 0 && (
@@ -3649,14 +3834,14 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                       {loadingEmployers ? (
                         <tr>
-                          <td colSpan="11" className="py-16 text-center text-gray-400">
+                          <td colSpan="13" className="py-16 text-center text-gray-400">
                             <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                             Loading employer records...
                           </td>
                         </tr>
                       ) : filteredAndSortedEmployers.length === 0 ? (
                         <tr>
-                          <td colSpan="11" className="py-16 text-center text-gray-400">
+                          <td colSpan="13" className="py-16 text-center text-gray-400">
                             No employer records found matching your filters.
                           </td>
                         </tr>
@@ -3667,27 +3852,27 @@ export default function DashboardOverview({ onNavigateTab }) {
                           return (
                             <tr key={empr._id || empr.id} className="hover:bg-emerald-50/30 transition-colors">
                               {/* 0. Employer ID */}
-                              <td className="px-5 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
                                 <span className="font-mono font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80 text-[11px] inline-block shadow-2xs">
                                   #{empr.employerId || 'N/A'}
                                 </span>
                               </td>
 
-                              <td className="px-5 py-4">
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-sm border border-emerald-200 shrink-0">
+                                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0">
                                     {empr.companyName ? empr.companyName.charAt(0).toUpperCase() : 'C'}
                                   </div>
-                                  <div>
-                                    <div className="font-bold text-gray-900 text-xs">
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-gray-900 text-xs truncate max-w-[150px]" title={empr.companyName || empr.fullName}>
                                       {empr.companyName || empr.fullName || 'N/A'}
                                     </div>
-                                    <span className="text-[11px] text-gray-400">{empr.employees || 'Team'}</span>
+                                    <span className="text-[11px] text-gray-400 block">{empr.employees || 'Team'}</span>
                                   </div>
                                 </div>
                               </td>
 
-                              <td className="px-5 py-4">
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                                   isConsultant 
                                     ? 'bg-amber-100 text-amber-800 border border-amber-200/80' 
@@ -3697,15 +3882,15 @@ export default function DashboardOverview({ onNavigateTab }) {
                                 </span>
                               </td>
 
-                              <td className="px-5 py-4">
-                                <div className="font-bold text-gray-900">{empr.fullName || 'Recruiter'}</div>
-                                <div className="text-[11px] text-gray-500">{empr.email}</div>
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
+                                <div className="font-bold text-gray-900 text-xs truncate max-w-[160px]">{empr.fullName || 'Recruiter'}</div>
+                                <div className="text-[11px] text-gray-500 font-mono truncate max-w-[160px]">{empr.email}</div>
                               </td>
 
                               {/* Phone No. Column */}
-                              <td className="px-5 py-4 whitespace-nowrap">
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
                                 {empr.mobile ? (
-                                  <div className="flex items-center gap-1.5 font-mono text-gray-800 font-bold text-[11px]">
+                                  <div className="flex items-center gap-1.5 font-mono text-gray-800 font-bold text-[11px] whitespace-nowrap">
                                     <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                     <span>
                                       {empr.mobile.startsWith('+') 
@@ -3718,44 +3903,132 @@ export default function DashboardOverview({ onNavigateTab }) {
                                 )}
                               </td>
 
-                              <td className="px-5 py-4">
-                                <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-[11px] font-bold">
+                              {/* Industry (Fixed: NO WRAPPING) */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
+                                <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-[11px] font-bold whitespace-nowrap inline-block shadow-2xs">
                                   {empr.industry || 'General'}
                                 </span>
                               </td>
 
-                              <td className="px-5 py-4 text-gray-600">
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                                  <span>{empr.location || 'N/A'}</span>
+                              {/* Location */}
+                              <td className="px-4 py-3.5 text-gray-600 whitespace-nowrap align-middle">
+                                <div className="flex items-center gap-1 whitespace-nowrap">
+                                  <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                  <span className="text-xs">{empr.location || 'N/A'}</span>
                                 </div>
                               </td>
 
-                              <td className="px-5 py-4">
-                                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px] border border-emerald-200/60">
+                              {/* Job Posted */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
+                                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-full text-[11px] border border-emerald-200/60 whitespace-nowrap inline-block">
                                   {empr.totalJobs !== undefined ? empr.totalJobs : (empr.jobs?.length || empr.activeJobs || 0)} posted
                                 </span>
                               </td>
 
-                              <td className="px-5 py-4">
+                              {/* Registered Date */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
                                 <span className="font-bold text-gray-900 text-xs">
                                   {empr.createdAt ? new Date(empr.createdAt).toLocaleDateString() : 'N/A'}
                                 </span>
                               </td>
 
-                              <td className="px-5 py-4">
+                              {/* Last Profile Update */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
                                 <span className="font-bold text-gray-900 text-xs">
                                   {empr.updatedAt ? new Date(empr.updatedAt).toLocaleDateString() : (empr.createdAt ? new Date(empr.createdAt).toLocaleDateString() : 'N/A')}
                                 </span>
                               </td>
 
-                              <td className="px-5 py-4 text-right">
-                                <button
-                                  onClick={() => handleOpenEmployerDrawer(empr)}
-                                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
-                                >
-                                  View Details
-                                </button>
+                              {/* Docs Submitted Column */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
+                                {(() => {
+                                  const docList = empr.verification?.documents || [];
+                                  const count = docList.length;
+                                  if (count > 0 || empr.verification?.submittedAt) {
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => setReviewEmployerId(empr._id || empr.id)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer shadow-2xs group"
+                                        title="Click to view submitted documents"
+                                      >
+                                        <FileText className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                                        <span>{count > 0 ? `${count} ${count === 1 ? 'Doc' : 'Docs'}` : 'Submitted'}</span>
+                                        <Eye className="w-3 h-3 text-blue-400 group-hover:text-blue-600" />
+                                      </button>
+                                    );
+                                  }
+                                  return (
+                                    <span className="text-gray-400 text-xs font-medium">
+                                      Not Submitted
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+
+                              {/* Verification Column */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
+                                {(() => {
+                                  const vStatus = empr.verification?.status || 'unverified';
+                                  if (vStatus === 'verified') {
+                                    return (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                        Verified
+                                      </span>
+                                    );
+                                  }
+                                  if (vStatus === 'pending') {
+                                    return (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-300 animate-pulse shadow-2xs">
+                                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                        Pending
+                                      </span>
+                                    );
+                                  }
+                                  if (vStatus === 'rejected') {
+                                    return (
+                                      <span 
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200 shadow-2xs"
+                                        title={empr.verification?.rejectionReason ? `Reason: ${empr.verification.rejectionReason}` : 'Verification Rejected'}
+                                      >
+                                        <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                                        Rejected
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-gray-100 text-gray-500 border border-gray-200">
+                                      Unverified
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+
+                              {/* Actions Column (Clean single-line layout) */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle text-right">
+                                <div className="flex items-center justify-end gap-2 flex-nowrap">
+                                  {/* Prominent Review Docs button for Pending status */}
+                                  {empr.verification?.status === 'pending' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setReviewEmployerId(empr._id || empr.id)}
+                                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
+                                      title="Review documents to approve or reject"
+                                    >
+                                      <ShieldAlert className="w-3.5 h-3.5" />
+                                      <span>Review Docs</span>
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEmployerDrawer(empr)}
+                                    className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                                  >
+                                    View Details
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -5094,6 +5367,71 @@ export default function DashboardOverview({ onNavigateTab }) {
                 )}
               </div>
 
+              {/* Verification & Trust Status Card */}
+              {(() => {
+                const targetEmp = detailEmployer || selectedEmployer;
+                const vStatus = targetEmp?.verification?.status || 'unverified';
+                const docCount = targetEmp?.verification?.documents?.length || 0;
+
+                return (
+                  <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-200 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        vStatus === 'verified' 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : vStatus === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : vStatus === 'rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {vStatus === 'verified' ? (
+                          <CheckCircle2 className="w-5 h-5" />
+                        ) : vStatus === 'pending' ? (
+                          <Clock className="w-5 h-5 animate-pulse" />
+                        ) : vStatus === 'rejected' ? (
+                          <AlertCircle className="w-5 h-5" />
+                        ) : (
+                          <Shield className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-gray-900 text-xs">Verification:</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            vStatus === 'verified'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : vStatus === 'pending'
+                              ? 'bg-amber-100 text-amber-800'
+                              : vStatus === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {vStatus}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          {docCount > 0 
+                            ? `${docCount} documents submitted for business verification.` 
+                            : 'No verification documents submitted yet.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {docCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setReviewEmployerId(targetEmp._id || targetEmp.id)}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Review Docs</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Recruiter Card Display Toggle */}
               <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex items-center justify-between">
                 <div>
@@ -6206,6 +6544,30 @@ export default function DashboardOverview({ onNavigateTab }) {
           </div>
         </div>
       )}
+
+      {/* Verification Review Modal */}
+      <VerificationReviewModal
+        isOpen={Boolean(reviewEmployerId)}
+        onClose={() => setReviewEmployerId(null)}
+        employerId={reviewEmployerId}
+        onVerificationUpdated={(id, status, reason) => {
+          setEmployers(prev => prev.map(emp => {
+            if ((emp._id || emp.id) === id) {
+              return {
+                ...emp,
+                verification: {
+                  ...(emp.verification || {}),
+                  status,
+                  rejectionReason: reason || '',
+                  reviewedAt: new Date(),
+                  verifiedAt: status === 'verified' ? new Date() : (emp.verification?.verifiedAt || null)
+                }
+              };
+            }
+            return emp;
+          }));
+        }}
+      />
 
     </div>
   );

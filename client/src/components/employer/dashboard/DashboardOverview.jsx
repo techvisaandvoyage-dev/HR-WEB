@@ -72,7 +72,15 @@ const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs =
 
       {/* Main Layout / Job List */}
       <div>
-        <ManageJobs portalConfig={portalConfig} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} hideHeader={true} />
+        <ManageJobs 
+          portalConfig={portalConfig} 
+          employerProfile={employerProfile}
+          jobs={jobs} 
+          candidates={candidates} 
+          toggleJobStatus={toggleJobStatus} 
+          updateJob={updateJob} 
+          hideHeader={true} 
+        />
       </div>
     </div>
   );

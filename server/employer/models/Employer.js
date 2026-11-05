@@ -113,6 +113,51 @@ const EmployerSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  // Verification details (Additive)
+  verification: {
+    status: {
+      type: String,
+      enum: ['unverified', 'pending', 'verified', 'rejected'],
+      default: 'unverified',
+      index: true
+    },
+    documents: [{
+      category: {
+        type: String,
+        enum: ['tax', 'incorporation', 'address', 'authorized_signatory', 'license', 'other'],
+        required: true
+      },
+      docType: {
+        type: String,
+        required: true
+      },
+      fileUrl: {
+        type: String,
+        required: true
+      },
+      fileName: {
+        type: String,
+        required: true
+      },
+      mimeType: {
+        type: String,
+        required: true
+      },
+      fileSize: {
+        type: Number,
+        default: 0
+      },
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    submittedAt: { type: Date },
+    reviewedAt: { type: Date },
+    reviewedBy: { type: mongoose.Schema.Types.Mixed },
+    rejectionReason: { type: String, default: '' },
+    verifiedAt: { type: Date }
+  },
   createdAt: {
     type: Date,
     default: Date.now

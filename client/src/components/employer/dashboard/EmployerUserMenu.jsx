@@ -91,6 +91,39 @@ const EmployerUserMenu = ({ employerProfile }) => {
             </Link>
 
             <Link
+              to="/employer/verification"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center justify-between px-2.5 py-2 rounded-[8px] text-[#101828] font-semibold text-[14px] hover:bg-[#f9fafb] transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <svg className="w-[18px] h-[18px] text-[#667085] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                <div className="min-w-0">
+                  <div className="leading-tight text-[14px]">Verify Account</div>
+                  <small className="block font-normal text-[#667085] text-[12.5px] leading-snug mt-0.5">Get verified badge</small>
+                </div>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                employerProfile?.verification?.status === 'verified'
+                  ? 'bg-[#ecfdf3] text-[#15803d]'
+                  : employerProfile?.verification?.status === 'pending'
+                  ? 'bg-[#fef0c7] text-[#b54708]'
+                  : employerProfile?.verification?.status === 'rejected'
+                  ? 'bg-[#fef2f2] text-[#b91c1c]'
+                  : 'bg-[#fff7ed] text-[#c2410c]'
+              }`}>
+                {employerProfile?.verification?.status === 'verified'
+                  ? 'Verified'
+                  : employerProfile?.verification?.status === 'pending'
+                  ? 'Under Review'
+                  : employerProfile?.verification?.status === 'rejected'
+                  ? 'Rejected'
+                  : 'Unverified'}
+              </span>
+            </Link>
+
+            <Link
               to="/employer/settings"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-2.5 py-2 rounded-[8px] text-[#101828] font-semibold text-[14px] hover:bg-[#f9fafb] transition-colors"

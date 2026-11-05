@@ -1,18 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-const JobShareModal = ({ isOpen, onClose, job, isNewlyPublished = false, onUpdateJobLinks }) => {
+const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished = false, onUpdateJobLinks }) => {
   const [links, setLinks] = useState([]);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [loadingAction, setLoadingAction] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
 
   const jobId = job?._id || job?.id;
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const jobTitle = job?.title || job?.details?.jobTitle || 'Job Opening';
   const companyName = job?.company || job?.companyName || 'Company';
+
+  // Compute live verification status
+  const getVerificationStatus = () => {
+    if (employerProfile?.verification?.status) {
+      return employerProfile.verification.status;
+    }
+    if (job?.employerVerificationStatus) {
+      return job.employerVerificationStatus;
+    }
+    if (job?.isEmployerVerified === true) {
+      return 'verified';
+    }
+    try {
+      const empInfo = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+      if (empInfo?.verification?.status) {
+        return empInfo.verification.status;
+      }
+    } catch (_) {}
+    return job?.isEmployerVerified ? 'verified' : 'unverified';
+  };
+
+  const verificationStatus = getVerificationStatus();
+  const isVerified = verificationStatus === 'verified';
 
   // Sync links when modal opens or job changes
   useEffect(() => {
@@ -118,6 +142,19 @@ const JobShareModal = ({ isOpen, onClose, job, isNewlyPublished = false, onUpdat
   };
 
   const handleAddNewLink = async () => {
+    let isVerified = true;
+    try {
+      const empInfo = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+      if (empInfo && empInfo.verification) {
+        isVerified = empInfo.verification.status === 'verified';
+      }
+    } catch (_) {}
+
+    if (!isVerified) {
+      setShowVerificationPrompt(true);
+      return;
+    }
+
     setLoadingAction(true);
     setActionError('');
     const token = localStorage.getItem('employerToken');
@@ -221,6 +258,90 @@ const JobShareModal = ({ isOpen, onClose, job, isNewlyPublished = false, onUpdat
       setLoadingAction(false);
     }
   };
+
+  // If employer is not verified, render the Verification Required prompt first!
+  if (!isVerified) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div 
+          className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in zoom-in-95 duration-200 flex flex-col text-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between shrink-0">
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${
+              verificationStatus === 'pending'
+                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}>
+              {verificationStatus === 'pending' ? '⏳ Under Review' : '⚠️ Account Not Verified'}
+            </span>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Icon & Heading */}
+          <div className="pt-1">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-2xs mb-3.5">
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="m9 12 2 2 4-4"/>
+              </svg>
+            </div>
+            <h3 className="text-lg font-extrabold text-gray-900 leading-snug">
+              {verificationStatus === 'pending' 
+                ? 'Verification is Under Review' 
+                : 'Verify Account to Share Links'}
+            </h3>
+            <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+              {verificationStatus === 'pending' ? (
+                <>
+                  Your business documents have been submitted and are currently being reviewed by our admin team. Application links and candidate visibility will activate automatically upon approval.
+                </>
+              ) : (
+                <>
+                  Direct candidate application links are locked for unverified accounts. Complete your business verification to unlock custom application links and receive candidate applications.
+                </>
+              )}
+            </p>
+          </div>
+
+          {/* Target Job preview */}
+          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-left flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">
+              {(companyName || 'CO').substring(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-gray-900 truncate">{jobTitle}</p>
+              <p className="text-[11px] text-gray-500 truncate">{companyName} • {job.location || 'Remote'}</p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <Link
+              to="/employer/verification"
+              onClick={onClose}
+              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer text-center"
+            >
+              <span>{verificationStatus === 'pending' ? 'Check Status →' : 'Verify Now →'}</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -436,6 +557,36 @@ const JobShareModal = ({ isOpen, onClose, job, isNewlyPublished = false, onUpdat
             Done
           </button>
         </div>
+
+        {/* Verification Required Prompt Modal */}
+        {showVerificationPrompt && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-3.5">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <h3 className="text-base font-bold text-gray-900">Account Verification Required</h3>
+              <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+                Verify your employer account to create custom application tracking links. Verified status activates candidate visibility and unique link tracking.
+              </p>
+              <div className="mt-5 flex items-center justify-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowVerificationPrompt(false)}
+                  className="px-3.5 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+                <a
+                  href="/employer/verification"
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#16a34a] hover:bg-[#15803d] rounded-lg transition-colors shadow-sm"
+                >
+                  Verify Account Now
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

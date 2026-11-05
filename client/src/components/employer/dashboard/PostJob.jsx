@@ -800,6 +800,12 @@ const PostJob = ({ addJob, updateJob }) => {
           localStorage.removeItem('employer_post_job_salary_values');
           localStorage.removeItem('employer_post_job_salary_note');
           setPublishedJob(data.data);
+          try {
+            const empInfo = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+            if (empInfo?.verification?.status !== 'verified') {
+              alert("Job posted successfully!\n\nImportant Note: Your job is saved, but it is NOT visible to candidates until your account verification is approved.");
+            }
+          } catch (_) {}
           setShowShareModal(true);
         }
       } else {

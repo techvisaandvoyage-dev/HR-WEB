@@ -9,8 +9,12 @@ const googleSheetService = require('../../services/googleSheetService');
 // @access  Public or Private (Let's make it private if needed, but usually jobs can be public)
 exports.getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find({ status: 'Active' })
-      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo')
+    // Only return jobs from verified employers to candidates
+    const verifiedEmployers = await Employer.find({ 'verification.status': 'verified' }).select('_id').lean();
+    const verifiedEmployerIds = verifiedEmployers.map(e => e._id);
+
+    const jobs = await Job.find({ status: 'Active', employerId: { $in: verifiedEmployerIds } })
+      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo verification')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -54,10 +58,16 @@ exports.getAllJobs = async (req, res) => {
 exports.getJobById = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
-      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo')
+      .populate('employerId', 'fullName designation companyName hiringFor employees industry location aboutCompany website hidePostedByCard hideJobAnalytics isConsultant companyLogo verification')
       .lean();
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    // Admin / internal preview can always view job details regardless of verification status
+    const isAdmin = req.headers['x-admin-auth'] === 'true' || Boolean(req.admin);
+    if (!isAdmin && (!job.employerId || job.employerId.verification?.status !== 'verified')) {
+      return res.status(404).json({ success: false, code: 'JOB_UNAVAILABLE', message: 'This job is currently unavailable' });
     }
 
     const apps = await Application.find({ jobId: job._id }).select('status').lean();
@@ -128,6 +138,11 @@ exports.applyForJob = async (req, res) => {
     const job = await Job.findById(jobId);
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    const employer = await Employer.findById(job.employerId).select('verification').lean();
+    if (!employer || employer.verification?.status !== 'verified') {
+      return res.status(403).json({ success: false, code: 'EMPLOYER_NOT_VERIFIED', message: 'This job is currently unavailable for applications.' });
     }
 
     if (job.status === 'Closed') {
