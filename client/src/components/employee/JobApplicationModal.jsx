@@ -10,6 +10,12 @@ import { uploadFileToStorage } from '../../utils/firebaseStorage';
 import { compressFileIfNeeded, formatFileSize } from '../../utils/fileCompressor';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 import { getJobLocationBadges } from '../../data/preferredLocations';
+import {
+  countScreeningNumberDigits,
+  getScreeningNumberMaxDigits,
+  getScreeningTextMaxLength,
+  validateScreeningAnswer
+} from '../../utils/screeningQuestions';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -349,18 +355,15 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
   };
 
   const validateQuestions = () => {
-    let isValid = true;
     const errors = {};
     if (job?.screeningQuestions) {
       job.screeningQuestions.forEach((sq, i) => {
-        if (isScreeningQuestionRequired(sq) && (!screeningAnswers[i] || screeningAnswers[i].trim() === '')) {
-          errors[i] = true;
-          isValid = false;
-        }
+        const error = validateScreeningAnswer(sq, screeningAnswers[i]);
+        if (error) errors[i] = error;
       });
     }
     setQuestionErrors(errors);
-    return isValid;
+    return Object.keys(errors).length === 0;
   };
 
   React.useEffect(() => {
@@ -530,7 +533,7 @@ const JobApplicationModal = ({ isOpen, onClose, job, applyToJob }) => {
                   introVideo: formData.documents?.introVideo || formData.introVideo || ''
                 }
               ],
-              screeningAnswers: job.screeningQuestions ? job.screeningQuestions.map((sq, i) => ({ question: sq.question, answer: screeningAnswers[i] })).filter(item => item.answer && item.answer.trim() !== '') : []
+              screeningAnswers: job.screeningQuestions ? job.screeningQuestions.map((sq, i) => ({ question: sq.question, answer: screeningAnswers[i] || '' })) : []
             });
             if (!result.success) {
               setSubmitError(result.message);
@@ -612,6 +615,10 @@ const p = formData.professionalDetails || {};
           const isRequired = isScreeningQuestionRequired(sq);
           const hasError = questionErrors[i];
           const isYesNo = sq.type === 'Yes/No';
+          const isDropdown = sq.type === 'Dropdown';
+          const isNumber = sq.type === 'Number';
+          const maxLength = getScreeningTextMaxLength(sq);
+          const maxDigits = getScreeningNumberMaxDigits(sq);
 
           return (
             <div 
@@ -681,32 +688,60 @@ const p = formData.professionalDetails || {};
                     );
                   })}
                 </div>
+              ) : isDropdown ? (
+                <select
+                  value={screeningAnswers[i] || ''}
+                  onChange={(e) => {
+                    setScreeningAnswers({ ...screeningAnswers, [i]: e.target.value });
+                    if (questionErrors[i]) setQuestionErrors({ ...questionErrors, [i]: false });
+                  }}
+                  className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-gray-900 outline-none ${
+                    hasError ? 'border-red-400' : 'border-gray-200 focus:border-[#29953f]'
+                  }`}
+                >
+                  <option value="">Select an option</option>
+                  {(Array.isArray(sq.options) ? sq.options : []).map((option, optionIndex) => (
+                    <option key={`${option}-${optionIndex}`} value={option}>{option}</option>
+                  ))}
+                </select>
               ) : (
                 <div className="pt-1 space-y-1">
                   <input
-                    type="text"
-                    maxLength={16}
+                    type={isNumber ? 'number' : 'text'}
+                    step={isNumber ? 'any' : undefined}
+                    maxLength={isNumber ? undefined : maxLength}
                     className={`w-full px-4 py-3 bg-white border rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-all shadow-sm ${
                       hasError
                         ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                         : 'border-gray-200 focus:border-[#29953f] focus:ring-2 focus:ring-green-100'
                     }`}
-                    placeholder="Type your answer (max 16 chars)..."
+                    placeholder={isNumber ? 'Enter a number...' : `Type your answer (max ${maxLength} chars)...`}
                     value={screeningAnswers[i] || ''}
                     onChange={(e) => {
-                      setScreeningAnswers({ ...screeningAnswers, [i]: e.target.value.slice(0, 16) });
+                      if (isNumber && countScreeningNumberDigits(e.target.value) > maxDigits) return;
+                      setScreeningAnswers({
+                        ...screeningAnswers,
+                        [i]: isNumber ? e.target.value : e.target.value.slice(0, maxLength)
+                      });
                       if (questionErrors[i]) {
                         setQuestionErrors({ ...questionErrors, [i]: false });
                       }
                     }}
                   />
-                  <div className="flex justify-end">
+                  {sq.type === 'Short Text' && <div className="flex justify-end">
                     <span className={`text-[10px] font-semibold ${
-                      (screeningAnswers[i]?.length || 0) >= 16 ? 'text-amber-600 font-bold' : 'text-gray-400'
+                      (screeningAnswers[i]?.length || 0) >= maxLength ? 'text-amber-600 font-bold' : 'text-gray-400'
                     }`}>
-                      {screeningAnswers[i]?.length || 0}/16 characters
+                      {screeningAnswers[i]?.length || 0}/{maxLength} characters
                     </span>
-                  </div>
+                  </div>}
+                  {isNumber && <div className="flex justify-end">
+                    <span className={`text-[10px] font-semibold ${
+                      countScreeningNumberDigits(screeningAnswers[i]) >= maxDigits ? 'text-amber-600 font-bold' : 'text-gray-400'
+                    }`}>
+                      {countScreeningNumberDigits(screeningAnswers[i])}/{maxDigits} digits
+                    </span>
+                  </div>}
                 </div>
               )}
 
@@ -716,7 +751,7 @@ const p = formData.professionalDetails || {};
                   <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>Please {isYesNo ? 'select Yes or No' : 'type an answer'} to continue.</span>
+                  <span>{questionErrors[i] || `Please ${isYesNo ? 'select Yes or No' : 'type an answer'} to continue.`}</span>
                 </div>
               )}
             </div>

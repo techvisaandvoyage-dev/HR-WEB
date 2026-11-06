@@ -113,15 +113,16 @@ export const DEFAULT_CONSULTANT_LOGIN_CONFIG = {
 };
 
 import EmployerPortalEditor, { DEFAULT_EMPLOYER_PORTAL_CONFIG } from './homepage-cms/components/EmployerPortalEditor';
+import AccountStatusControl from '../components/AccountStatusControl';
 
 export default function ConsultantsTab() {
   // Navigation State
   const [activeSection, setActiveSectionState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sec = params.get('section');
-    if (sec && ['auth', 'portal'].includes(sec)) return sec;
+    if (sec && ['auth', 'portal', 'accounts'].includes(sec)) return sec;
     const saved = localStorage.getItem('adminConsultantSection');
-    if (saved && ['auth', 'portal'].includes(saved)) return saved;
+    if (saved && ['auth', 'portal', 'accounts'].includes(saved)) return saved;
     return 'auth';
   });
 
@@ -158,6 +159,32 @@ export default function ConsultantsTab() {
   const [registerConfig, setRegisterConfig] = useState(DEFAULT_CONSULTANT_REGISTER_CONFIG);
   const [loginConfig, setLoginConfig] = useState(DEFAULT_CONSULTANT_LOGIN_CONFIG);
   const [dailyJobLimit, setDailyJobLimit] = useState({ enabled: false, maxJobsPerDay: 5 });
+  const [consultantAccounts, setConsultantAccounts] = useState([]);
+  const [consultantAccountsLoading, setConsultantAccountsLoading] = useState(false);
+  const [consultantAccountSearch, setConsultantAccountSearch] = useState('');
+  const [consultantAccountStatus, setConsultantAccountStatus] = useState('All');
+
+  const fetchConsultantAccounts = async () => {
+    setConsultantAccountsLoading(true);
+    try {
+      const token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken') || '';
+      const response = await fetch(`${API_URL}/api/admin/employers?role=consultant`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Failed to load consultant accounts.');
+      setConsultantAccounts(result.data || []);
+    } catch (error) {
+      setErrorMessage(error.message || 'Unable to load consultant accounts.');
+      setTimeout(() => setErrorMessage(null), 4000);
+    } finally {
+      setConsultantAccountsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'accounts' && consultantAccounts.length === 0) fetchConsultantAccounts();
+  }, [activeSection, consultantAccounts.length]);
 
   // Live Preview states
   const [previewRegisterStep, setPreviewRegisterStep] = useState(1);
@@ -330,6 +357,14 @@ export default function ConsultantsTab() {
     }));
   };
 
+  const filteredConsultantAccounts = consultantAccounts.filter((account) => {
+    const status = account.account?.status === 'blocked' ? 'blocked' : 'active';
+    const search = consultantAccountSearch.trim().toLowerCase();
+    const matchesSearch = !search || [account.fullName, account.companyName, account.email, account.mobile]
+      .some(value => String(value || '').toLowerCase().includes(search));
+    return matchesSearch && (consultantAccountStatus === 'All' || status === consultantAccountStatus);
+  });
+
   return (
     <div className="flex-1 w-full h-full flex flex-col md:flex-row overflow-hidden bg-[#f8fafc]">
       
@@ -386,6 +421,18 @@ export default function ConsultantsTab() {
           >
             <Layers className={`w-4 h-4 ${activeSection === 'portal' ? 'text-emerald-700' : 'text-gray-400'}`} />
             <span>Portal & Dashboard</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('accounts')}
+            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeSection === 'accounts'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/90 shadow-2xs font-extrabold'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-transparent'
+            }`}
+          >
+            <Users className={`w-4 h-4 ${activeSection === 'accounts' ? 'text-emerald-700' : 'text-gray-400'}`} />
+            <span>Consultant Accounts</span>
           </button>
         </nav>
 
@@ -1200,6 +1247,110 @@ export default function ConsultantsTab() {
             setToastMessage('Portal & Dashboard settings saved and live!');
             setTimeout(() => setToastMessage(null), 3000);
           }} />
+        )}
+
+        {activeSection === 'accounts' && (
+          <div className="mx-auto max-w-6xl space-y-6 animate-in fade-in duration-200">
+            <div className="flex flex-col gap-4 rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight text-gray-900">
+                  <Users className="h-7 w-7 text-emerald-600" />
+                  Consultant Accounts
+                </h1>
+                <p className="mt-1 text-xs text-gray-500">Manage consultant account access and review blocked status.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-extrabold text-emerald-700">
+                  {consultantAccounts.length} Consultants
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setConsultantAccountStatus(value => value === 'blocked' ? 'All' : 'blocked')}
+                  className={`rounded-xl border px-3.5 py-1.5 text-xs font-extrabold transition-colors ${
+                    consultantAccountStatus === 'blocked'
+                      ? 'border-rose-700 bg-rose-600 text-white'
+                      : 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                  }`}
+                >
+                  {consultantAccounts.filter(account => account.account?.status === 'blocked').length} Blocked
+                </button>
+                <button
+                  type="button"
+                  onClick={fetchConsultantAccounts}
+                  disabled={consultantAccountsLoading}
+                  aria-label="Refresh consultant accounts"
+                  className="rounded-xl border border-gray-200 bg-white p-2.5 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 text-emerald-600 ${consultantAccountsLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 rounded-2xl border border-gray-200/80 bg-white p-4 sm:flex-row">
+              <input
+                type="search"
+                value={consultantAccountSearch}
+                onChange={(event) => setConsultantAccountSearch(event.target.value)}
+                placeholder="Search consultant name, company, email, or phone..."
+                className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs outline-none focus:border-emerald-500"
+              />
+              <select
+                value={consultantAccountStatus}
+                onChange={(event) => setConsultantAccountStatus(event.target.value)}
+                aria-label="Filter consultants by account status"
+                className="rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs font-semibold text-gray-700 focus:border-emerald-500"
+              >
+                <option value="All">All Status</option>
+                <option value="active">Active</option>
+                <option value="blocked">Blocked</option>
+              </select>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-gray-200 bg-gray-50/80 text-[11px] font-black uppercase tracking-wider text-gray-500">
+                    <tr>
+                      <th className="px-5 py-3">Consultant</th>
+                      <th className="px-5 py-3">Company</th>
+                      <th className="px-5 py-3">Email</th>
+                      <th className="px-5 py-3">Phone</th>
+                      <th className="px-5 py-3 text-right">Account Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+                    {consultantAccountsLoading ? (
+                      <tr><td colSpan="5" className="py-12 text-center text-gray-400">Loading consultant accounts...</td></tr>
+                    ) : filteredConsultantAccounts.length === 0 ? (
+                      <tr><td colSpan="5" className="py-12 text-center text-gray-400">No consultant accounts match these filters.</td></tr>
+                    ) : (
+                      filteredConsultantAccounts.map(account => (
+                        <tr key={account._id || account.id} className="hover:bg-emerald-50/30">
+                          <td className="px-5 py-4 font-bold text-gray-900">{account.fullName || 'Consultant'}</td>
+                          <td className="px-5 py-4">{account.companyName || 'N/A'}</td>
+                          <td className="px-5 py-4">{account.email || 'N/A'}</td>
+                          <td className="px-5 py-4">{account.mobile || 'N/A'}</td>
+                          <td className="px-5 py-4">
+                            <div className="flex justify-end">
+                              <AccountStatusControl
+                                account={account.account}
+                                accountId={account._id || account.id}
+                                email={account.email}
+                                role="consultant"
+                                onUpdate={(updated) => setConsultantAccounts(current => current.map(item =>
+                                  (item._id || item.id) === (account._id || account.id)
+                                    ? { ...item, account: updated?.account || item.account }
+                                    : item
+                                ))}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         )}
 
       </main>

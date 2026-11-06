@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
+import CustomDropdown from '../../common/CustomDropdown';
 
 const ApplicationsTab = () => {
+  const [jobFilter, setJobFilter] = useState('All Job');
+  const [statusFilter, setStatusFilter] = useState('All Status');
   const applications = [
     { id: 1, name: 'John Smith', email: 'john.smith@email.com', initials: 'JS', bg: 'bg-green-600', job: 'UI/UX Designer', date: 'May 24, 2025', status: 'New', statusColor: 'bg-blue-50 text-blue-600 border border-blue-100' },
     { id: 2, name: 'Alice Martin', email: 'alice.martin@email.com', initials: 'AM', bg: 'bg-blue-600', job: 'Frontend Developer', date: 'May 23, 2025', status: 'Shortlisted', statusColor: 'bg-green-50 text-green-600 border border-green-100' },
@@ -36,20 +39,20 @@ const ApplicationsTab = () => {
           </div>
           
           <div className="flex w-full sm:w-auto gap-3">
-            <select className="flex-1 sm:w-auto px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 outline-none focus:border-[#29953f] transition-all bg-white cursor-pointer min-w-[150px]">
-              <option>All Job</option>
-              <option>UI/UX Designer</option>
-              <option>Frontend Developer</option>
-              <option>Content Writer</option>
-            </select>
-            <select className="flex-1 sm:w-auto px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 outline-none focus:border-[#29953f] transition-all bg-white cursor-pointer min-w-[150px]">
-              <option>All Status</option>
-              <option>New</option>
-              <option>Shortlisted</option>
-              <option>Viewed</option>
-              <option>Interview</option>
-              <option>Rejected</option>
-            </select>
+            <CustomDropdown
+              options={['All Job', 'UI/UX Designer', 'Frontend Developer', 'Content Writer']}
+              value={jobFilter}
+              onChange={setJobFilter}
+              allowCustomValue={false}
+              className="flex-1 sm:w-auto min-w-[150px] px-4 py-2 border-gray-200 rounded-lg text-sm font-semibold"
+            />
+            <CustomDropdown
+              options={['All Status', 'New', 'Shortlisted', 'Viewed', 'Interview', 'Rejected']}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              allowCustomValue={false}
+              className="flex-1 sm:w-auto min-w-[150px] px-4 py-2 border-gray-200 rounded-lg text-sm font-semibold"
+            />
           </div>
         </div>
 

@@ -7,12 +7,29 @@ import ExperienceCombobox from '../../common/ExperienceCombobox';
 import RichTextEditor from '../../common/RichTextEditor';
 import JobShareModal from '../../common/JobShareModal';
 import { allSkillsOptions, getSuggestedSkills } from '../../../utils/skillsData';
+import {
+  DEFAULT_SCREENING_NUMBER_MAX_DIGITS,
+  DEFAULT_SCREENING_TEXT_MAX_LENGTH,
+  MAX_SCREENING_NUMBER_MAX_DIGITS,
+  MAX_SCREENING_TEXT_MAX_LENGTH,
+  MIN_SCREENING_NUMBER_MAX_DIGITS,
+  MIN_SCREENING_TEXT_MAX_LENGTH,
+  SCREENING_QUESTION_TYPES,
+  normalizeScreeningOptions
+} from '../../../utils/screeningQuestions';
 
 const formatIndianNumber = (numStr) => {
   const digits = String(numStr).replace(/\D/g, '');
   if (!digits) return '';
   return new Intl.NumberFormat('en-IN').format(Number(digits));
 };
+
+const countWords = (html = '') => {
+  const plainText = String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ');
+  return plainText.trim().split(/\s+/).filter(Boolean).length;
+};
+
+const MAX_JOB_DESCRIPTION_WORDS = 500;
 
 const DEFAULT_CATEGORIES = [
   'Accounting & Finance', 'Administration & Office Support', 'Advertising & Media', 'Agriculture & Farming',
@@ -555,11 +572,15 @@ const PostJob = ({ addJob, updateJob }) => {
       const plainAbout = (jobData.about || '').replace(/<[^>]*>/g, '').trim();
       if (aboutCfg.isRequired && !plainAbout) {
         errors.about = `Please enter ${aboutCfg.label}.`;
+      } else if (countWords(jobData.about) > MAX_JOB_DESCRIPTION_WORDS) {
+        errors.about = `${aboutCfg.label} must be ${MAX_JOB_DESCRIPTION_WORDS} words or fewer.`;
       }
       const respCfg = getFieldConfig('step2', 'responsibilities', 'Responsibilities', '', true);
       const plainResp = (jobData.responsibilities || '').replace(/<[^>]*>/g, '').trim();
       if (respCfg.isRequired && !plainResp) {
         errors.responsibilities = `Please enter ${respCfg.label}.`;
+      } else if (countWords(jobData.responsibilities) > MAX_JOB_DESCRIPTION_WORDS) {
+        errors.responsibilities = `${respCfg.label} must be ${MAX_JOB_DESCRIPTION_WORDS} words or fewer.`;
       }
       const skillsCfg = getFieldConfig('step2', 'skillsRequired', 'Skills Required', '', true);
       if (skillsCfg.isRequired && (!skillsList || skillsList.length === 0)) {
@@ -604,6 +625,32 @@ const PostJob = ({ addJob, updateJob }) => {
           const sq = jobData.screeningQuestions[i];
           if (!sq.question?.trim()) {
             errors[`screening_${i}`] = `Please enter question text for Question ${i + 1}.`;
+          }
+          if (sq.type === 'Dropdown') {
+            const options = normalizeScreeningOptions(sq.options);
+            if (options.length < 2) {
+              errors[`screening_options_${i}`] = 'Add at least two answer options.';
+            } else if (options.length > 10) {
+              errors[`screening_options_${i}`] = 'You can add up to 10 answer options.';
+            } else if (new Set(options.map((option) => option.toLowerCase())).size !== options.length) {
+              errors[`screening_options_${i}`] = 'Answer options must be unique.';
+            }
+          }
+          if (sq.type === 'Short Text') {
+            const maxLength = Number(sq.maxLength ?? DEFAULT_SCREENING_TEXT_MAX_LENGTH);
+            if (!Number.isInteger(maxLength)
+              || maxLength < MIN_SCREENING_TEXT_MAX_LENGTH
+              || maxLength > MAX_SCREENING_TEXT_MAX_LENGTH) {
+              errors[`screening_max_length_${i}`] = `Maximum answer length must be between ${MIN_SCREENING_TEXT_MAX_LENGTH} and ${MAX_SCREENING_TEXT_MAX_LENGTH}.`;
+            }
+          }
+          if (sq.type === 'Number') {
+            const maxDigits = Number(sq.maxDigits ?? DEFAULT_SCREENING_NUMBER_MAX_DIGITS);
+            if (!Number.isInteger(maxDigits)
+              || maxDigits < MIN_SCREENING_NUMBER_MAX_DIGITS
+              || maxDigits > MAX_SCREENING_NUMBER_MAX_DIGITS) {
+              errors[`screening_max_digits_${i}`] = `Maximum number of digits must be between ${MIN_SCREENING_NUMBER_MAX_DIGITS} and ${MAX_SCREENING_NUMBER_MAX_DIGITS}.`;
+            }
           }
         }
       }
@@ -686,6 +733,7 @@ const PostJob = ({ addJob, updateJob }) => {
     }
   };
   const cSym = getCurrencySymbol(currency);
+  const currentSalaryValues = salaryValues[salaryType] || { min: '', max: '' };
 
   const titleConfig = getFieldConfig('step1', 'title', 'Job Title', 'e.g. Frontend Developer', true);
   const empTypeConfig = getFieldConfig('step1', 'employmentType', 'Employment Type', 'Select employment type', true);
@@ -721,10 +769,10 @@ const PostJob = ({ addJob, updateJob }) => {
 
     setIsSubmitting(true);
 
-    const baseSalary = salaryValues[salaryType].min && salaryValues[salaryType].max 
+    const baseSalary = currentSalaryValues.min && currentSalaryValues.max
       ? (salaryType === 'Yearly' 
-          ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} PA` 
-          : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`) 
+          ? `${cSym} ${currentSalaryValues.min}-${currentSalaryValues.max} PA`
+          : `${cSym}${currentSalaryValues.min} - ${cSym}${currentSalaryValues.max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`)
       : '';
     const trimmedSalaryNote = (salaryNote || '').trim();
     let finalSalary = 'Not specified';
@@ -766,8 +814,8 @@ const PostJob = ({ addJob, updateJob }) => {
         skillsRequired: skillsList.join(', '),
         salaryType,
         currency,
-        salaryMin: salaryValues[salaryType].min || '',
-        salaryMax: salaryValues[salaryType].max || '',
+        salaryMin: currentSalaryValues.min || '',
+        salaryMax: currentSalaryValues.max || '',
         salaryNote: trimmedSalaryNote,
         salaryAdditionalInfo: trimmedSalaryNote,
         openings: jobData.openings || ''
@@ -1088,6 +1136,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   <RichTextEditor 
                     placeholder={aboutConfig.placeholder} 
                     value={jobData.about}
+                    maxWords={MAX_JOB_DESCRIPTION_WORDS}
                     onChange={(val) => {
                       setJobData({...jobData, about: val});
                       clearFieldError('about');
@@ -1113,6 +1162,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   <RichTextEditor 
                     placeholder={respConfig.placeholder} 
                     value={jobData.responsibilities}
+                    maxWords={MAX_JOB_DESCRIPTION_WORDS}
                     onChange={(val) => {
                       setJobData({...jobData, responsibilities: val});
                       clearFieldError('responsibilities');
@@ -1224,39 +1274,25 @@ const PostJob = ({ addJob, updateJob }) => {
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">
                         {cmsConfig?.step3?.salaryTypeLabel || 'Salary Type'}
                       </label>
-                      <div className="relative w-full">
-                        <select 
-                          value={salaryType}
-                          onChange={(e) => setSalaryType(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
-                        >
-                          {salaryTypeOptions.map((st) => (
-                            <option key={st} value={st}>{st}</option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                        </div>
-                      </div>
+                      <CustomDropdown
+                        options={salaryTypeOptions}
+                        value={salaryType}
+                        onChange={setSalaryType}
+                        allowCustomValue={false}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold"
+                      />
                     </div>
                     <div className="flex-1">
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">
                         {cmsConfig?.step3?.currencyLabel || 'Currency'}
                       </label>
-                      <div className="relative w-full">
-                        <select 
-                          value={currency}
-                          onChange={(e) => setCurrency(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all appearance-none bg-white cursor-pointer"
-                        >
-                          {currencyOptions.map((c) => (
-                            <option key={c.code} value={c.code}>{c.label}</option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                        </div>
-                      </div>
+                      <CustomDropdown
+                        options={currencyOptions.map((item) => ({ value: item.code, label: item.label }))}
+                        value={currency}
+                        onChange={setCurrency}
+                        allowCustomValue={false}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold"
+                      />
                     </div>
                   </div>
 
@@ -1269,9 +1305,9 @@ const PostJob = ({ addJob, updateJob }) => {
                         <input 
                           type="text" 
                           placeholder={salaryType === 'Yearly' ? (cmsConfig?.step3?.minSalaryPlaceholder || 'write the amount in LPA') : salaryType === 'Monthly' ? `${cSym}40,000` : `${cSym}300`}
-                          value={salaryValues[salaryType].min}
+                          value={currentSalaryValues.min}
                           onChange={(e) => {
-                            setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], min: formatIndianNumber(e.target.value)}});
+                            setSalaryValues({...salaryValues, [salaryType]: {...currentSalaryValues, min: formatIndianNumber(e.target.value)}});
                             clearFieldError('compensation');
                           }}
                           className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
@@ -1284,9 +1320,9 @@ const PostJob = ({ addJob, updateJob }) => {
                         <input 
                           type="text" 
                           placeholder={salaryType === 'Yearly' ? (cmsConfig?.step3?.maxSalaryPlaceholder || 'write the amount in LPA') : salaryType === 'Monthly' ? `${cSym}60,000` : `${cSym}600`}
-                          value={salaryValues[salaryType].max}
+                          value={currentSalaryValues.max}
                           onChange={(e) => {
-                            setSalaryValues({...salaryValues, [salaryType]: {...salaryValues[salaryType], max: formatIndianNumber(e.target.value)}});
+                            setSalaryValues({...salaryValues, [salaryType]: {...currentSalaryValues, max: formatIndianNumber(e.target.value)}});
                             clearFieldError('compensation');
                           }}
                           className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
@@ -1343,19 +1379,19 @@ const PostJob = ({ addJob, updateJob }) => {
                       </div>
 
                       {/* Live Salary Preview for Employer */}
-                      {(salaryValues[salaryType].min || salaryValues[salaryType].max || salaryNote) && (
+                      {(currentSalaryValues.min || currentSalaryValues.max || salaryNote) && (
                         <div className="mt-3 p-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-lg flex items-center justify-between text-xs">
                           <span className="text-gray-600 font-semibold flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             Listing Salary Preview:
                           </span>
                           <span className="font-bold text-emerald-800">
-                            {salaryValues[salaryType].min && salaryValues[salaryType].max 
+                            {currentSalaryValues.min && currentSalaryValues.max
                               ? (salaryType === 'Yearly' 
-                                  ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} PA` 
-                                  : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`)
+                                  ? `${cSym} ${currentSalaryValues.min}-${currentSalaryValues.max} PA`
+                                  : `${cSym}${currentSalaryValues.min} - ${cSym}${currentSalaryValues.max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`)
                               : ''}
-                            {salaryNote ? ` (${salaryNote.trim()})` : (!salaryValues[salaryType].min ? 'Not specified' : '')}
+                            {salaryNote ? ` (${salaryNote.trim()})` : (!currentSalaryValues.min ? 'Not specified' : '')}
                           </span>
                         </div>
                       )}
@@ -1524,7 +1560,12 @@ const PostJob = ({ addJob, updateJob }) => {
                             if (!isAlreadyAdded && jobData.screeningQuestions.length < 5) {
                               setJobData({
                                 ...jobData, 
-                                screeningQuestions: [...jobData.screeningQuestions, { question: template.question, type: template.type || 'Yes/No', required: template.required !== false }]
+                                screeningQuestions: [...jobData.screeningQuestions, {
+                                  question: template.question,
+                                  type: template.type || 'Yes/No',
+                                  maxLength: DEFAULT_SCREENING_TEXT_MAX_LENGTH,
+                                  required: template.required !== false
+                                }]
                               });
                             }
                           }}
@@ -1608,19 +1649,27 @@ const PostJob = ({ addJob, updateJob }) => {
                           <label className="block text-xs font-bold text-gray-700 mb-1.5">
                             {cmsConfig?.step4?.responseTypeLabel || 'Response Type'}
                           </label>
-                          <select
+                          <CustomDropdown
+                            options={SCREENING_QUESTION_TYPES}
                             value={q.type}
-                            onChange={(e) => {
+                            allowCustomValue={false}
+                            onChange={(value) => {
                               const newQs = [...jobData.screeningQuestions];
-                              newQs[index].type = e.target.value;
+                              newQs[index].type = value;
+                              if (value === 'Short Text' && !newQs[index].maxLength) {
+                                newQs[index].maxLength = DEFAULT_SCREENING_TEXT_MAX_LENGTH;
+                              }
+                              if (value === 'Number' && !newQs[index].maxDigits) {
+                                newQs[index].maxDigits = DEFAULT_SCREENING_NUMBER_MAX_DIGITS;
+                              }
+                              if (value === 'Dropdown' && (!Array.isArray(newQs[index].options) || newQs[index].options.length === 0)) {
+                                newQs[index].options = ['', ''];
+                              }
                               setJobData({...jobData, screeningQuestions: newQs});
+                              clearFieldError(`screening_options_${index}`);
                             }}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:border-[#29953f] transition-colors bg-white cursor-pointer"
-                          >
-                            {(cmsConfig?.step4?.responseTypeOptions || ['Yes/No', 'Short Text']).map((rt) => (
-                              <option key={rt} value={rt}>{rt}</option>
-                            ))}
-                          </select>
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm"
+                          />
                         </div>
                         <div className="flex items-end pb-1">
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -1640,6 +1689,119 @@ const PostJob = ({ addJob, updateJob }) => {
                           </label>
                         </div>
                       </div>
+
+                      {q.type === 'Short Text' && (
+                        <div className="space-y-1">
+                          <label className="block text-xs font-bold text-gray-700">
+                            Maximum Answer Length (characters)
+                          </label>
+                          <input
+                            type="number"
+                            min={MIN_SCREENING_TEXT_MAX_LENGTH}
+                            max={MAX_SCREENING_TEXT_MAX_LENGTH}
+                            step="1"
+                            value={q.maxLength ?? DEFAULT_SCREENING_TEXT_MAX_LENGTH}
+                            onChange={(e) => {
+                              const newQs = [...jobData.screeningQuestions];
+                              newQs[index] = { ...newQs[index], maxLength: e.target.value };
+                              setJobData({ ...jobData, screeningQuestions: newQs });
+                              clearFieldError(`screening_max_length_${index}`);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f]"
+                          />
+                          <p className="text-xs text-gray-500">Choose a value from {MIN_SCREENING_TEXT_MAX_LENGTH} to {MAX_SCREENING_TEXT_MAX_LENGTH} characters. Default: {DEFAULT_SCREENING_TEXT_MAX_LENGTH}.</p>
+                          {fieldErrors[`screening_max_length_${index}`] && (
+                            <p className="text-xs text-red-500 font-semibold">{fieldErrors[`screening_max_length_${index}`]}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {q.type === 'Number' && (
+                        <div className="space-y-1">
+                          <label className="block text-xs font-bold text-gray-700">
+                            Maximum Number of Digits
+                          </label>
+                          <input
+                            type="number"
+                            min={MIN_SCREENING_NUMBER_MAX_DIGITS}
+                            max={MAX_SCREENING_NUMBER_MAX_DIGITS}
+                            step="1"
+                            value={q.maxDigits ?? DEFAULT_SCREENING_NUMBER_MAX_DIGITS}
+                            onChange={(e) => {
+                              const newQs = [...jobData.screeningQuestions];
+                              newQs[index] = { ...newQs[index], maxDigits: e.target.value };
+                              setJobData({ ...jobData, screeningQuestions: newQs });
+                              clearFieldError(`screening_max_digits_${index}`);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f]"
+                          />
+                          <p className="text-xs text-gray-500">Choose a value from {MIN_SCREENING_NUMBER_MAX_DIGITS} to {MAX_SCREENING_NUMBER_MAX_DIGITS} digits. Default: {DEFAULT_SCREENING_NUMBER_MAX_DIGITS}.</p>
+                          {fieldErrors[`screening_max_digits_${index}`] && (
+                            <p className="text-xs text-red-500 font-semibold">{fieldErrors[`screening_max_digits_${index}`]}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {q.type === 'Dropdown' && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-xs font-bold text-gray-700">Answer Options</label>
+                            <button
+                              type="button"
+                              disabled={(q.options || []).length >= 10}
+                              onClick={() => {
+                                const newQs = [...jobData.screeningQuestions];
+                                newQs[index] = { ...newQs[index], options: [...(newQs[index].options || []), ''] };
+                                setJobData({ ...jobData, screeningQuestions: newQs });
+                                clearFieldError(`screening_options_${index}`);
+                              }}
+                              className="text-xs font-bold text-[#29953f] disabled:text-gray-400"
+                            >
+                              + Add option
+                            </button>
+                          </div>
+                          {(q.options || []).map((option, optionIndex) => (
+                            <div key={optionIndex} className="flex gap-2">
+                              <input
+                                type="text"
+                                maxLength={80}
+                                value={option}
+                                placeholder={`Option ${optionIndex + 1}`}
+                                onChange={(e) => {
+                                  const newQs = [...jobData.screeningQuestions];
+                                  const options = [...(newQs[index].options || [])];
+                                  options[optionIndex] = e.target.value;
+                                  newQs[index] = { ...newQs[index], options };
+                                  setJobData({ ...jobData, screeningQuestions: newQs });
+                                  clearFieldError(`screening_options_${index}`);
+                                }}
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f]"
+                              />
+                              {(q.options || []).length > 2 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newQs = [...jobData.screeningQuestions];
+                                    newQs[index] = {
+                                      ...newQs[index],
+                                      options: newQs[index].options.filter((_, idx) => idx !== optionIndex)
+                                    };
+                                    setJobData({ ...jobData, screeningQuestions: newQs });
+                                    clearFieldError(`screening_options_${index}`);
+                                  }}
+                                  className="px-2 text-gray-400 hover:text-red-500"
+                                  aria-label={`Remove option ${optionIndex + 1}`}
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {fieldErrors[`screening_options_${index}`] && (
+                            <p className="text-xs text-red-500 font-semibold">{fieldErrors[`screening_options_${index}`]}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1672,7 +1834,7 @@ const PostJob = ({ addJob, updateJob }) => {
                       <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> {jobData.workplaceType || 'Not specified'}</span>
                       <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> {jobData.location || 'Not specified'}</span>
                       <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg> {jobData.experience || 'Not specified'}</span>
-                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> {salaryValues[salaryType].min && salaryValues[salaryType].max ? (salaryType === 'Yearly' ? `${cSym} ${salaryValues[salaryType].min}-${salaryValues[salaryType].max} PA` : `${cSym}${salaryValues[salaryType].min} - ${cSym}${salaryValues[salaryType].max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`) : 'Salary not specified'}</span>
+                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> {currentSalaryValues.min && currentSalaryValues.max ? (salaryType === 'Yearly' ? `${cSym} ${currentSalaryValues.min}-${currentSalaryValues.max} PA` : `${cSym}${currentSalaryValues.min} - ${cSym}${currentSalaryValues.max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`) : 'Salary not specified'}</span>
                     </div>
                   </div>
 

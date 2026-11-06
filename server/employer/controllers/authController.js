@@ -4,6 +4,7 @@ const Employer = require('../models/Employer');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
 const { sendOtp, resendOtp, verifyOtp } = require('../../utils/email');
 const { verifyEmailDeliverability } = require('../../utils/emailValidator');
+const { respondIfAccountBlocked } = require('../../utils/accountStatus');
 
 // Helper: validate email deliverability (format, non-disposable, DNS MX check)
 const validateEmailDomain = async (email) => {
@@ -366,6 +367,7 @@ exports.login = async (req, res) => {
           : "We couldn't find an employer account with this email. Please register first to continue." 
       });
     }
+    if (respondIfAccountBlocked(employer.account, res)) return;
 
     // Check portal type collision
     if (isConsultant !== undefined) {
@@ -796,6 +798,8 @@ exports.googleAuth = async (req, res) => {
     let isNewUser = false;
     const isTargetConsultant = Boolean(isConsultant === true);
 
+    if (employer && respondIfAccountBlocked(employer.account, res)) return;
+
     if (!employer) {
       isNewUser = true;
       const employerId = await getNextEmployerId();
@@ -907,6 +911,7 @@ exports.googleAuth = async (req, res) => {
           : "We couldn't find an employer account with this email. Please register first." 
       });
     }
+    if (respondIfAccountBlocked(employer.account, res)) return;
 
     if (isConsultant !== undefined) {
       const isTargetConsultant = Boolean(isConsultant === true);
@@ -965,6 +970,7 @@ exports.resendLoginOtp = async (req, res) => {
     if (!employer) {
       return res.status(404).json({ success: false, message: 'Employer not found with this email.' });
     }
+    if (respondIfAccountBlocked(employer.account, res)) return;
 
     const isConsultantAcc = Boolean(employer.isConsultant === true);
     const result = await resendOtp({
@@ -1006,6 +1012,7 @@ exports.verifyLoginOtp = async (req, res) => {
     if (!employer) {
       return res.status(404).json({ success: false, message: 'Account not found.' });
     }
+    if (respondIfAccountBlocked(employer.account, res)) return;
 
     // Verify OTP
     try {

@@ -149,6 +149,71 @@ exports.applyForJob = async (req, res) => {
       return res.status(400).json({ success: false, message: 'This job is closed' });
     }
 
+    const screeningAnswers = Array.isArray(req.body.screeningAnswers) ? req.body.screeningAnswers : [];
+    for (let index = 0; index < (job.screeningQuestions || []).length; index += 1) {
+      const question = job.screeningQuestions[index];
+      const answer = String(screeningAnswers[index]?.answer ?? '').trim();
+      if (!answer && question.required !== false) {
+        return res.status(400).json({
+          success: false,
+          message: `Please answer screening question ${index + 1}.`,
+          questionIndex: index
+        });
+      }
+      if (!answer) continue;
+      if (question.type === 'Number' && !Number.isFinite(Number(answer))) {
+        return res.status(400).json({
+          success: false,
+          message: `Enter a valid number for screening question ${index + 1}.`,
+          questionIndex: index
+        });
+      }
+      if (question.type === 'Number') {
+        const configuredMaxDigits = Number(question.maxDigits);
+        const maxDigits = Number.isInteger(configuredMaxDigits)
+          && configuredMaxDigits >= 1
+          && configuredMaxDigits <= 100
+          ? configuredMaxDigits
+          : 16;
+        if (answer.replace(/\D/g, '').length > maxDigits) {
+          return res.status(400).json({
+            success: false,
+            message: `Enter no more than ${maxDigits} digits for screening question ${index + 1}.`,
+            questionIndex: index
+          });
+        }
+      }
+      if (question.type === 'Short Text') {
+        const configuredMaxLength = Number(question.maxLength);
+        const maxLength = Number.isInteger(configuredMaxLength)
+          && configuredMaxLength >= 1
+          && configuredMaxLength <= 500
+          ? configuredMaxLength
+          : 16;
+        if (answer.length > maxLength) {
+          return res.status(400).json({
+            success: false,
+            message: `Keep your answer to ${maxLength} characters or fewer for screening question ${index + 1}.`,
+            questionIndex: index
+          });
+        }
+      }
+      if (question.type === 'Yes/No' && !['Yes', 'No'].includes(answer)) {
+        return res.status(400).json({
+          success: false,
+          message: `Select Yes or No for screening question ${index + 1}.`,
+          questionIndex: index
+        });
+      }
+      if (question.type === 'Dropdown' && !(question.options || []).includes(answer)) {
+        return res.status(400).json({
+          success: false,
+          message: `Choose a listed option for screening question ${index + 1}.`,
+          questionIndex: index
+        });
+      }
+    }
+
     // Check if already applied
     const existingApplication = await Application.findOne({ jobId, employeeId });
     if (existingApplication) {
@@ -173,7 +238,10 @@ exports.applyForJob = async (req, res) => {
       jobId,
       employeeId,
       employerId: job.employerId,
-      screeningAnswers: req.body.screeningAnswers || [],
+      screeningAnswers: (job.screeningQuestions || []).map((question, index) => ({
+        question: question.question,
+        answer: String(screeningAnswers[index]?.answer ?? '').trim()
+      })).filter((item) => item.answer),
       sourceLink: req.body.sourceLink || req.body.utmSource || 'Portal',
       utmSource: req.body.utmSource || null
     });
@@ -295,5 +363,3 @@ exports.checkIfApplied = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-
-

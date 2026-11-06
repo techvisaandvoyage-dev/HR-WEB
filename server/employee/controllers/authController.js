@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { verifyEmailDeliverability } = require('../../utils/emailValidator');
 const { verifyIdToken } = require('../../config/firebaseAdmin');
 const { sendOtp, verifyOtp, resendOtp } = require('../../utils/email');
+const { respondIfAccountBlocked } = require('../../utils/accountStatus');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -54,7 +55,8 @@ const sendRegistrationOtp = async (req, res) => {
     const result = await sendOtp({ email, name: email.split('@')[0], purpose: 'registration:employee' });
     res.json({
       message: result.message || 'OTP sent successfully to your email',
-      cooldownSeconds: result.cooldownSeconds || 30
+      cooldownSeconds: result.cooldownSeconds || 30,
+      otpLength: result.otpLength || 4
     });
   } catch (error) {
     console.error('Send OTP Error:', error.message);
@@ -81,7 +83,8 @@ const resendRegistrationOtp = async (req, res) => {
     const result = await resendOtp({ email, name: email.split('@')[0], purpose: 'registration:employee' });
     return res.json({
       message: result.message || 'OTP resent successfully to your email',
-      cooldownSeconds: result.cooldownSeconds || 30
+      cooldownSeconds: result.cooldownSeconds || 30,
+      otpLength: result.otpLength || 4
     });
   } catch (error) {
     console.error('Resend OTP Error:', error.message);
@@ -330,6 +333,7 @@ const loginEmployee = async (req, res) => {
         message: "We couldn't find an account with this email. Please register first to continue." 
       });
     }
+    if (respondIfAccountBlocked(employee.account, res)) return;
 
     if (!employee.password) {
       return res.status(400).json({ 
@@ -435,6 +439,7 @@ const sendLoginOtp = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: "We couldn't find an account with this email. Please register first to continue.", field: 'email' });
     }
+    if (respondIfAccountBlocked(employee.account, res)) return;
 
     const result = await sendOtp({
       email: employee.email,
@@ -447,6 +452,7 @@ const sendLoginOtp = async (req, res) => {
       message: result.message || 'OTP sent successfully to your email.',
       email: employee.email,
       cooldownSeconds: result.cooldownSeconds || 30,
+      otpLength: result.otpLength || 4,
     });
   } catch (error) {
     console.error('sendLoginOtp error:', error.message);
@@ -474,6 +480,7 @@ const resendLoginOtp = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found with this email.' });
     }
+    if (respondIfAccountBlocked(employee.account, res)) return;
 
     const result = await resendOtp({
       email: employee.email,
@@ -485,6 +492,7 @@ const resendLoginOtp = async (req, res) => {
       success: true,
       message: result.message || 'A new OTP has been sent to your email.',
       cooldownSeconds: result.cooldownSeconds || 30,
+      otpLength: result.otpLength || 4,
     });
   } catch (error) {
     console.error('resendLoginOtp error:', error.message);
@@ -512,6 +520,7 @@ const verifyLoginOtp = async (req, res) => {
     if (!employee) {
       return res.status(404).json({ message: 'Account not found.' });
     }
+    if (respondIfAccountBlocked(employee.account, res)) return;
 
     // Verify OTP
     try {
@@ -557,6 +566,7 @@ const verifyLoginOtp = async (req, res) => {
     const currentOnboardingStep = employee.onboardingStep || 1;
 
     res.json({
+      success: true,
       _id: employee.id,
       name: employee.name,
       email: employee.email,
@@ -838,6 +848,8 @@ const googleAuth = async (req, res) => {
 
     let isNewUser = false;
     let employee = await Employee.findOne({ email });
+
+    if (employee && respondIfAccountBlocked(employee.account, res)) return;
 
     if (!employee) {
       // Register

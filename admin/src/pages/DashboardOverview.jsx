@@ -61,6 +61,7 @@ import {
 } from '../utils/candidateProfileExporter';
 import AdminVideoPlayer from '../components/AdminVideoPlayer';
 import VerificationReviewModal from '../components/VerificationReviewModal';
+import AccountStatusControl from '../components/AccountStatusControl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -98,6 +99,7 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [loadingEmployers, setLoadingEmployers] = useState(false);
   const [employerSearch, setEmployerSearch] = useState('');
   const [employerTypeFilter, setEmployerTypeFilter] = useState('All');
+  const [employerAccountStatusFilter, setEmployerAccountStatusFilter] = useState('All');
   const [employerIndustryFilter, setEmployerIndustryFilter] = useState('All');
   const [selectedEmployer, setSelectedEmployer] = useState(null);
   const [detailEmployer, setDetailEmployer] = useState(null);
@@ -109,6 +111,7 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [employees, setEmployees] = useState([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const [employeeAccountStatusFilter, setEmployeeAccountStatusFilter] = useState('All');
   const [employeeExpFilter, setEmployeeExpFilter] = useState('All');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [detailEmployee, setDetailEmployee] = useState(null);
@@ -1164,6 +1167,7 @@ export default function DashboardOverview({ onNavigateTab }) {
   const handleClearAllEmployerFilters = () => {
     setEmployerSearch('');
     setEmployerTypeFilter('All');
+    setEmployerAccountStatusFilter('All');
     setEmployerIndustryFilter('All');
     setEmprColFilters({
       employerId: '',
@@ -1185,6 +1189,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     let count = 0;
     if (employerSearch) count++;
     if (employerTypeFilter !== 'All') count++;
+    if (employerAccountStatusFilter !== 'All') count++;
     if (employerIndustryFilter !== 'All') count++;
     if (emprColFilters.employerId) count++;
     if (emprColFilters.company) count++;
@@ -1199,12 +1204,14 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (emprColFilters.docsSubmitted !== 'All') count++;
     if (emprColFilters.verification !== 'All') count++;
     return count;
-  }, [employerSearch, employerTypeFilter, employerIndustryFilter, emprColFilters]);
+  }, [employerSearch, employerTypeFilter, employerAccountStatusFilter, employerIndustryFilter, emprColFilters]);
 
   // Filter & Sort Employers
   const filteredAndSortedEmployers = useMemo(() => {
     return employers
       .filter(empr => {
+        const accountStatus = empr.account?.status === 'blocked' ? 'blocked' : 'active';
+        if (employerAccountStatusFilter !== 'All' && accountStatus !== employerAccountStatusFilter) return false;
         // Global Search
         if (employerSearch.trim()) {
           const q = employerSearch.toLowerCase().trim();
@@ -1381,7 +1388,7 @@ export default function DashboardOverview({ onNavigateTab }) {
           }
         }
       });
-  }, [employers, employerSearch, employerTypeFilter, employerIndustryFilter, emprColFilters, emprSort]);
+  }, [employers, employerSearch, employerTypeFilter, employerAccountStatusFilter, employerIndustryFilter, emprColFilters, emprSort]);
 
   const filteredEmployers = filteredAndSortedEmployers;
 
@@ -1602,6 +1609,7 @@ export default function DashboardOverview({ onNavigateTab }) {
 
   const handleClearAllEmpFilters = () => {
     setEmployeeSearch('');
+    setEmployeeAccountStatusFilter('All');
     setEmpFilters({
       name: '',
       email: '',
@@ -1624,6 +1632,7 @@ export default function DashboardOverview({ onNavigateTab }) {
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (employeeSearch.trim()) count++;
+    if (employeeAccountStatusFilter !== 'All') count++;
     if (empFilters.name.trim()) count++;
     if (empFilters.email.trim()) count++;
     if (empFilters.phone.trim()) count++;
@@ -1640,13 +1649,15 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (empFilters.registeredDate !== 'All') count++;
     if (empFilters.lastUpdate !== 'All') count++;
     return count;
-  }, [employeeSearch, empFilters]);
+  }, [employeeSearch, employeeAccountStatusFilter, empFilters]);
 
   const hasActiveFilters = activeFiltersCount > 0;
 
   // Filter & Sort Employees
   const filteredEmployees = useMemo(() => {
     let result = employees.filter(emp => {
+      const accountStatus = emp.account?.status === 'blocked' ? 'Blocked' : 'Active';
+      if (employeeAccountStatusFilter !== 'All' && accountStatus !== employeeAccountStatusFilter) return false;
       const q = employeeSearch.toLowerCase().trim();
       const name = (emp.name || '').toLowerCase();
       const email = (emp.email || '').toLowerCase();
@@ -1857,7 +1868,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     });
 
     return result;
-  }, [employees, employeeSearch, empFilters, empSort]);
+  }, [employees, employeeSearch, employeeAccountStatusFilter, empFilters, empSort]);
 
   return (
     <div className="p-6 lg:p-8 w-full h-full overflow-y-auto space-y-8 animate-in fade-in duration-300 relative">
@@ -2926,6 +2937,17 @@ export default function DashboardOverview({ onNavigateTab }) {
               <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-xl border border-emerald-200">
                 {filteredEmployees.length} Candidates
               </span>
+              <button
+                type="button"
+                onClick={() => setEmployeeAccountStatusFilter(prev => prev === 'Blocked' ? 'All' : 'Blocked')}
+                className={`px-3.5 py-1.5 rounded-xl border text-xs font-extrabold transition-colors ${
+                  employeeAccountStatusFilter === 'Blocked'
+                    ? 'bg-rose-600 text-white border-rose-700'
+                    : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                }`}
+              >
+                {employees.filter(candidate => candidate.account?.status === 'blocked').length} Blocked
+              </button>
 
               <button
                 onClick={fetchEmployees}
@@ -2960,6 +2982,16 @@ export default function DashboardOverview({ onNavigateTab }) {
             </div>
 
             <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+              <select
+                value={employeeAccountStatusFilter}
+                onChange={(event) => setEmployeeAccountStatusFilter(event.target.value)}
+                aria-label="Filter candidates by account status"
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Blocked">Blocked</option>
+              </select>
               {hasActiveFilters && (
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-1.5">
@@ -3076,6 +3108,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                         {empSort.column === 'lastUpdate' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
                       </div>
                     </th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap">Account Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
 
@@ -3268,6 +3301,19 @@ export default function DashboardOverview({ onNavigateTab }) {
                       </select>
                     </th>
 
+                    {/* Account Status Filter */}
+                    <th className="p-2">
+                      <select
+                        value={employeeAccountStatusFilter}
+                        onChange={(event) => setEmployeeAccountStatusFilter(event.target.value)}
+                        aria-label="Filter candidates by account status"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-normal text-gray-800 focus:border-emerald-500 focus:outline-none"
+                      >
+                        <option value="All">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Blocked">Blocked</option>
+                      </select>
+                    </th>
                     {/* Reset Button */}
                     <th className="p-2 text-right">
                       {hasActiveFilters && (
@@ -3287,14 +3333,14 @@ export default function DashboardOverview({ onNavigateTab }) {
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                   {loadingEmployees ? (
                     <tr>
-                      <td colSpan="15" className="py-16 text-center text-gray-400">
+                      <td colSpan="16" className="py-16 text-center text-gray-400">
                         <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                         Loading candidate records...
                       </td>
                     </tr>
                   ) : filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan="15" className="py-16 text-center text-gray-400">
+                      <td colSpan="16" className="py-16 text-center text-gray-400">
                         No candidate records found matching your filters.
                       </td>
                     </tr>
@@ -3425,6 +3471,22 @@ export default function DashboardOverview({ onNavigateTab }) {
                             </span>
                           </td>
 
+                          {/* Account Status */}
+                          <td className="px-5 py-4 text-center">
+                            <AccountStatusControl
+                              mode="status"
+                              account={emp.account}
+                              accountId={emp._id || emp.id}
+                              email={emp.email}
+                              role="candidate"
+                              onUpdate={(updated) => setEmployees(current => current.map(candidate =>
+                                (candidate._id || candidate.id) === (emp._id || emp.id)
+                                  ? { ...candidate, account: updated?.account || { ...candidate.account, status: 'active' } }
+                                  : candidate
+                              ))}
+                            />
+                          </td>
+
                           {/* Actions */}
                           <td className="px-5 py-4 text-right">
                             <button
@@ -3492,6 +3554,17 @@ export default function DashboardOverview({ onNavigateTab }) {
               <span className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-extrabold rounded-xl border border-emerald-200">
                 {filteredAndSortedEmployers.length} Companies
               </span>
+              <button
+                type="button"
+                onClick={() => setEmployerAccountStatusFilter(prev => prev === 'blocked' ? 'All' : 'blocked')}
+                className={`px-3.5 py-1.5 rounded-xl border text-xs font-extrabold transition-colors ${
+                  employerAccountStatusFilter === 'blocked'
+                    ? 'bg-rose-600 text-white border-rose-700'
+                    : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                }`}
+              >
+                {employers.filter(employer => employer.account?.status === 'blocked').length} Blocked
+              </button>
 
               {pendingVerificationCount > 0 && (
                 <button
@@ -3546,6 +3619,16 @@ export default function DashboardOverview({ onNavigateTab }) {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                  <select
+                    value={employerAccountStatusFilter}
+                    onChange={(event) => setEmployerAccountStatusFilter(event.target.value)}
+                    aria-label="Filter employers by account status"
+                    className="px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="All">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="blocked">Blocked</option>
+                  </select>
                   <select
                     value={employerTypeFilter}
                     onChange={(e) => setEmployerTypeFilter(e.target.value)}
@@ -3756,6 +3839,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </div>
                         </th>
 
+                        <th className="px-4 py-3 text-center whitespace-nowrap">Account Status</th>
                         <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                       </tr>
 
@@ -3918,7 +4002,20 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </select>
                         </th>
 
-                        {/* 8. Reset Button */}
+                        {/* Account Status Filter */}
+                        <th className="p-2">
+                          <select
+                            value={employerAccountStatusFilter}
+                            onChange={(event) => setEmployerAccountStatusFilter(event.target.value)}
+                            aria-label="Filter employers by account status"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-medium text-gray-800 focus:border-emerald-500 focus:outline-none"
+                          >
+                            <option value="All">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="blocked">Blocked</option>
+                          </select>
+                        </th>
+                        {/* Reset Button */}
                         <th className="p-2 text-right">
                           {activeEmployerFiltersCount > 0 && (
                             <button
@@ -3936,14 +4033,14 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                       {loadingEmployers ? (
                         <tr>
-                          <td colSpan="13" className="py-16 text-center text-gray-400">
+                          <td colSpan="14" className="py-16 text-center text-gray-400">
                             <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                             Loading employer records...
                           </td>
                         </tr>
                       ) : filteredAndSortedEmployers.length === 0 ? (
                         <tr>
-                          <td colSpan="13" className="py-16 text-center text-gray-400">
+                          <td colSpan="14" className="py-16 text-center text-gray-400">
                             No employer records found matching your filters.
                           </td>
                         </tr>
@@ -4107,7 +4204,25 @@ export default function DashboardOverview({ onNavigateTab }) {
                                 })()}
                               </td>
 
-                              {/* Actions Column (Clean single-line layout) */}
+                              {/* Account Status */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle">
+                                <div className="flex justify-center">
+                                  <AccountStatusControl
+                                    mode="status"
+                                    account={empr.account}
+                                    accountId={empr._id || empr.id}
+                                    email={empr.email}
+                                    role={isConsultant ? 'consultant' : 'employer'}
+                                    onUpdate={(updated) => setEmployers(current => current.map(employer =>
+                                      (employer._id || employer.id) === (empr._id || empr.id)
+                                        ? { ...employer, account: updated?.account || { ...employer.account, status: 'active' } }
+                                        : employer
+                                    ))}
+                                  />
+                                </div>
+                              </td>
+
+                              {/* Actions Column */}
                               <td className="px-4 py-3.5 whitespace-nowrap align-middle text-right">
                                 <div className="flex items-center justify-end gap-2 flex-nowrap">
                                   {/* Prominent Review Docs button for Pending status */}

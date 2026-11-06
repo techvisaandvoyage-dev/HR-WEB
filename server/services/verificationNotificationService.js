@@ -249,9 +249,14 @@ const notifyEmployerOnApproval = async (employer) => {
           
           <!-- Banner -->
           <div style="background: linear-gradient(135deg, #15803d, #16a34a); padding: 26px 24px; color: white; text-align: center;">
-            <div style="width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.2); display: inline-flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 12px;">
-              ✓
-            </div>
+            <!-- Perfectly centered checkmark circle (Gmail & Email-client safe) -->
+            <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto 14px auto; border-collapse: collapse;">
+              <tr>
+                <td align="center" valign="middle" style="width: 54px; height: 54px; min-width: 54px; min-height: 54px; border-radius: 50%; background-color: rgba(255, 255, 255, 0.22); text-align: center; vertical-align: middle; padding: 0; line-height: 54px; mso-line-height-rule: exactly;">
+                  <span style="font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; font-size: 28px; line-height: 54px; color: #ffffff; font-weight: 900; display: inline-block; text-align: center; vertical-align: middle;">&#10003;</span>
+                </td>
+              </tr>
+            </table>
             <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: white;">
               Account Verified Successfully!
             </h1>

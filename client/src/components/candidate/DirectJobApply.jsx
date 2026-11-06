@@ -8,6 +8,12 @@ import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/empl
 import { captureJobAttribution, getStoredAttribution, clearStoredAttribution, logJobVisitEvent } from '../../utils/attribution';
 import SEOHead from '../common/SEOHead';
 import { trackJobView, trackJobApplyClick } from '../../utils/analytics';
+import {
+  countScreeningNumberDigits,
+  getScreeningNumberMaxDigits,
+  getScreeningTextMaxLength,
+  validateScreeningAnswer
+} from '../../utils/screeningQuestions';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India (+91)' },
@@ -107,7 +113,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   // Current Step: 1: Auth, 2: Questions & CV, 3: Review, 4: Success
   const [step, setStep] = useState(1);
 
-  // User auth state
+  // Shareable application links start unauthenticated; sign-in must be explicit per application.
   const [user, setUser] = useState(null);
   const [token, setToken] = useState('');
 
@@ -159,6 +165,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const [loginMode, setLoginMode] = useState('password'); // 'password' | 'otp'
   const [isLoginOtpSent, setIsLoginOtpSent] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '']);
+  const [loginOtpLength, setLoginOtpLength] = useState(4);
   const [resendTimer, setResendTimer] = useState(0);
   const [otpSuccessMessage, setOtpSuccessMessage] = useState('');
 
@@ -185,15 +192,15 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     // Handle full paste or multi-character typing
     if (digits.length > 1) {
       if (digits.length >= 3) {
-        // Multi-digit code paste (e.g. 4 digits)
-        const pasteData = digits.slice(0, 4).split('');
+        // Fill all OTP inputs when a complete code is pasted.
+        const pasteData = digits.slice(0, otp.length).split('');
         const newOtp = [...otp];
         pasteData.forEach((char, idx) => {
-          if (idx < 4) newOtp[idx] = char;
+          if (idx < newOtp.length) newOtp[idx] = char;
         });
         setOtp(newOtp);
         if (authError) setAuthError('');
-        const nextIdx = Math.min(pasteData.length, 3);
+        const nextIdx = Math.min(pasteData.length, newOtp.length - 1);
         const nextEl = getOtpInputEl(nextIdx);
         if (nextEl) {
           nextEl.focus();
@@ -209,7 +216,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       setOtp(newOtp);
       if (authError) setAuthError('');
 
-      if (val && index < 3) {
+      if (val && index < otp.length - 1) {
         const nextEl = getOtpInputEl(index + 1);
         if (nextEl) {
           nextEl.focus();
@@ -227,7 +234,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     if (authError) setAuthError('');
 
     // Auto advance to next box
-    if (val && index < 3) {
+    if (val && index < otp.length - 1) {
       const nextEl = getOtpInputEl(index + 1);
       if (nextEl) {
         nextEl.focus();
@@ -251,7 +258,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         prevEl.focus();
         prevEl.select?.();
       }
-    } else if (e.key === 'ArrowRight' && index < 3) {
+    } else if (e.key === 'ArrowRight' && index < otp.length - 1) {
       const nextEl = getOtpInputEl(index + 1);
       if (nextEl) {
         nextEl.focus();
@@ -384,40 +391,6 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const loginEmailConfig = getFieldConfig('loginEmail', 'Email ID', 'Tell us your Email ID', true);
   const loginPasswordConfig = getFieldConfig('loginPassword', 'Password', 'Your password', true);
 
-  // Check initial user login from localStorage and restore session on page refresh
-  useEffect(() => {
-    // Check specific employeeToken, or fallback to token
-    const storedToken = localStorage.getItem('employeeToken') || localStorage.getItem('token');
-    const storedUserStr = localStorage.getItem('employeeUser') || localStorage.getItem('userProfile');
-    
-    if (storedToken) {
-      setToken(storedToken);
-
-      let parsed = null;
-      if (storedUserStr) {
-        try {
-          parsed = JSON.parse(storedUserStr);
-        } catch (_) {}
-      }
-
-      if (parsed) {
-        setUser(parsed);
-        if (parsed.resume) {
-          setResumeUrl(parsed.resume);
-          setResumeName(parsed.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
-        }
-        if (parsed.mobile || parsed.phone) setAuthMobile(parsed.mobile || parsed.phone);
-        if (parsed.name || parsed.firstName) setAuthName(parsed.name || `${parsed.firstName || ''} ${parsed.lastName || ''}`.trim());
-        if (parsed.email) setAuthEmail(parsed.email);
-      }
-
-      // Validate token with server BEFORE advancing past Step 1.
-      // fetchUserProfileAndAdvance will setStep(1) on 401 (invalid/expired token),
-      // or advance to Step 2 only when the server confirms the token is valid.
-      fetchUserProfileAndAdvance(storedToken, jobId);
-    }
-  }, [jobId]);
-
   // Save application step to sessionStorage on changes
   useEffect(() => {
     if (jobId && step >= 2 && step <= 3) {
@@ -514,67 +487,6 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       }
     } catch (err) {
       console.warn('Silent profile fetch error:', err);
-    }
-  };
-
-  // Validates token against server and advances to Step 2 only on confirmed valid session.
-  // On 401/network error when token is stale, stays on Step 1 (auth screen).
-  const fetchUserProfileAndAdvance = async (authToken, targetJobId) => {
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await fetch(`${apiUrl}/api/employee/profile`, {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data) {
-          setUser(prev => ({ ...(prev || {}), ...data }));
-          if (data.resume) {
-            setResumeUrl(data.resume);
-            setResumeName(data.resume.split('/').pop().split('?')[0] || 'My_Resume.pdf');
-          }
-          if (data.phone) setAuthMobile(data.phone);
-          if (data.email) setAuthEmail(data.email);
-          if (data.firstName) setAuthName(`${data.firstName} ${data.lastName || ''}`.trim());
-        }
-        // Token is valid — now check application status and advance step
-        if (targetJobId) {
-          const hasApplied = await checkApplicationStatus(authToken, targetJobId);
-          if (!hasApplied) {
-            try {
-              const savedStep = sessionStorage.getItem(`apply_step_${targetJobId}`);
-              if (savedStep && ['2', '3'].includes(savedStep)) {
-                setStep(Number(savedStep));
-              } else {
-                setStep(2);
-              }
-              const savedAnswers = sessionStorage.getItem(`apply_answers_${targetJobId}`);
-              if (savedAnswers) {
-                setScreeningAnswers(JSON.parse(savedAnswers));
-              }
-              const savedVisibility = sessionStorage.getItem(`apply_visibility_${targetJobId}`);
-              if (savedVisibility) {
-                setProfileVisibility(savedVisibility);
-              }
-            } catch (_) {
-              setStep(2);
-            }
-          }
-        } else {
-          setStep(2);
-        }
-      } else {
-        // Token invalid or expired — clear it and show login (Step 1)
-        setUser(null);
-        setToken('');
-        localStorage.removeItem('employeeToken');
-        localStorage.removeItem('employeeUser');
-        setStep(1);
-      }
-    } catch (err) {
-      // Network error — keep user on Step 1 to avoid showing protected steps
-      console.warn('Profile validation error, staying on Step 1:', err);
-      setStep(1);
     }
   };
 
@@ -718,9 +630,15 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         return;
       }
 
-      setOtp(['', '', '', '']);
+      const otpLength = Number.isInteger(Number(data.otpLength))
+        && Number(data.otpLength) >= 4
+        && Number(data.otpLength) <= 10
+        ? Number(data.otpLength)
+        : 4;
+      setLoginOtpLength(otpLength);
+      setOtp(Array(otpLength).fill(''));
       setResendTimer(data.cooldownSeconds || 30);
-      setOtpSuccessMessage('A 4-digit verification code has been sent to your email.');
+      setOtpSuccessMessage(`A ${otpLength}-digit verification code has been sent to your email.`);
       setIsOtpStep(true);
     } catch (err) {
       console.error('Send OTP Error:', err);
@@ -754,7 +672,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         }
         setAuthError(data.message || 'Failed to resend OTP');
       } else {
-        setOtp(['', '', '', '']);
+        const otpLength = Number.isInteger(Number(data.otpLength))
+          && Number(data.otpLength) >= 4
+          && Number(data.otpLength) <= 10
+          ? Number(data.otpLength)
+          : loginOtpLength;
+        setLoginOtpLength(otpLength);
+        setOtp(Array(otpLength).fill(''));
         setResendTimer(data.cooldownSeconds || 30);
         setOtpSuccessMessage('Verification OTP resent successfully to your email!');
       }
@@ -772,8 +696,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     setAuthError('');
     setOtpSuccessMessage('');
     const enteredOtp = otp.join('');
-    if (enteredOtp.length < 4) {
-      setAuthError('Please enter the 4-digit OTP sent to your email.');
+    if (enteredOtp.length !== loginOtpLength) {
+      setAuthError(`Please enter the complete ${loginOtpLength}-digit OTP sent to your email.`);
       return;
     }
 
@@ -928,8 +852,14 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        const otpLength = Number.isInteger(Number(data.otpLength))
+          && Number(data.otpLength) >= 4
+          && Number(data.otpLength) <= 10
+          ? Number(data.otpLength)
+          : 4;
+        setLoginOtpLength(otpLength);
         setIsLoginOtpSent(true);
-        setOtp(['', '', '', '']);
+        setOtp(Array(otpLength).fill(''));
         setResendTimer(data.cooldownSeconds || 30);
         setOtpSuccessMessage(data.message || 'OTP sent successfully to your registered email');
       } else {
@@ -959,6 +889,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        const otpLength = Number.isInteger(Number(data.otpLength))
+          && Number(data.otpLength) >= 4
+          && Number(data.otpLength) <= 10
+          ? Number(data.otpLength)
+          : loginOtpLength;
+        setLoginOtpLength(otpLength);
+        setOtp(Array(otpLength).fill(''));
         setResendTimer(data.cooldownSeconds || 30);
         setOtpSuccessMessage(data.message || 'A new OTP has been sent to your email.');
       } else {
@@ -976,8 +913,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   const handleVerifyLoginOtp = async (e) => {
     if (e) e.preventDefault();
     const enteredOtp = otp.join('');
-    if (enteredOtp.length !== 4) {
-      setAuthError('Please enter the complete 4-digit verification code.');
+    if (enteredOtp.length !== loginOtpLength) {
+      setAuthError(`Please enter the complete ${loginOtpLength}-digit verification code.`);
       return;
     }
 
@@ -1145,8 +1082,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       for (let i = 0; i < job.screeningQuestions.length; i++) {
         const q = job.screeningQuestions[i];
         const ans = screeningAnswers[i];
-        if (q.required !== false && (!ans || String(ans).trim() === '')) {
-          newFieldErrors[i] = `Please provide an answer for this question.`;
+        const answerError = validateScreeningAnswer(q, ans);
+        if (answerError) {
+          newFieldErrors[i] = answerError;
           if (firstErrorIdx === null) firstErrorIdx = i;
         }
       }
@@ -1154,7 +1092,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
     if (Object.keys(newFieldErrors).length > 0) {
       setQuestionFieldErrors(newFieldErrors);
-      setQuestionsError('Please answer the required question(s) highlighted in red below.');
+      setQuestionsError('Please correct the screening question(s) highlighted in red below.');
       
       // Auto-scroll smoothly to first error element
       setTimeout(() => {
@@ -1256,7 +1194,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
     })) || [];
 
     try {
-      const activeToken = token || localStorage.getItem('token') || localStorage.getItem('employeeToken');
+      const activeToken = token;
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/jobs/${jobId}/apply`, {
         method: 'POST',
         headers: {
@@ -1621,7 +1559,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">Verify Your Email Address</h2>
                   <p className="text-xs sm:text-sm text-gray-500">
-                    We have sent a 4-digit verification code to <span className="font-bold text-gray-900">{authEmail}</span>
+                    We have sent a {loginOtpLength}-digit verification code to <span className="font-bold text-gray-900">{authEmail}</span>
                   </p>
                 </div>
 
@@ -1646,21 +1584,21 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 )}
 
                 <form onSubmit={handleVerifyOtpAndRegister} className="space-y-6">
-                  {/* 4-Digit OTP Boxes */}
-                  <div className="flex justify-center gap-3 sm:gap-4">
+                  {/* One input per OTP digit */}
+                  <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
                     {otp.map((digit, index) => (
                       <input
                         key={index}
                         id={`apply-otp-${index}`}
                         type="text"
                         inputMode="numeric"
-                        maxLength="2"
+                        maxLength={otp.length}
                         value={digit}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                         autoFocus={index === 0}
-                        className="w-14 h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
+                        className="w-10 h-12 sm:w-14 sm:h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
                       />
                     ))}
                   </div>
@@ -2213,7 +2151,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               <span>{authFieldErrors.email}</span>
                             </div>
                           )}
-                          <p className="text-xs text-gray-400 pl-2">We will send a 4-digit verification code to this email</p>
+                          <p className="text-xs text-gray-400 pl-2">We will send a verification code to this email</p>
                         </div>
 
                         <div className="pt-2">
@@ -2246,7 +2184,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                       </form>
                     )}
 
-                    {/* Mode 2: OTP Login (Step B: Enter 4-digit Code & Verify) */}
+                    {/* Mode 2: OTP Login (Step B: Enter Code & Verify) */}
                     {loginMode === 'otp' && isLoginOtpSent && (
                       <form onSubmit={handleVerifyLoginOtp} noValidate className="space-y-5 animate-in fade-in duration-200">
                         <div className="text-center space-y-1">
@@ -2255,21 +2193,21 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                           </p>
                         </div>
 
-                        {/* 4-digit OTP Boxes */}
-                        <div className="flex justify-center gap-3 sm:gap-4">
+                        {/* One input per OTP digit */}
+                        <div className="flex flex-wrap justify-center gap-2 sm:gap-4">
                           {otp.map((digit, index) => (
                             <input
                               key={index}
                               id={`apply-login-otp-${index}`}
                               type="text"
                               inputMode="numeric"
-                              maxLength="2"
+                              maxLength={otp.length}
                               value={digit}
                               onFocus={(e) => e.target.select()}
                               onChange={(e) => handleOtpChange(index, e.target.value)}
                               onKeyDown={(e) => handleOtpKeyDown(index, e)}
                               autoFocus={index === 0}
-                              className="w-14 h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
+                              className="w-10 h-12 sm:w-14 sm:h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
                             />
                           ))}
                         </div>
@@ -2375,6 +2313,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 <div className="space-y-4">
                   {job.screeningQuestions.map((q, idx) => {
                     const hasError = !!questionFieldErrors[idx];
+                    const maxLength = getScreeningTextMaxLength(q);
+                    const maxDigits = getScreeningNumberMaxDigits(q);
                     return (
                       <div 
                         key={idx} 
@@ -2422,27 +2362,56 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               </label>
                             ))}
                           </div>
+                        ) : q.type === 'Dropdown' ? (
+                          <select
+                            value={screeningAnswers[idx] || ''}
+                            onChange={(e) => handleAnswerChange(idx, e.target.value)}
+                            className={`w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none transition-all ${
+                              hasError
+                                ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                                : 'border-gray-200 focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]'
+                            }`}
+                          >
+                            <option value="">Select an option</option>
+                            {(Array.isArray(q.options) ? q.options : []).map((option, optionIndex) => (
+                              <option key={`${option}-${optionIndex}`} value={option}>{option}</option>
+                            ))}
+                          </select>
                         ) : (
                           <div className="space-y-1">
                             <input
-                              type="text"
-                              maxLength={16}
-                              placeholder="Type your answer (max 16 chars)..."
+                              type={q.type === 'Number' ? 'number' : 'text'}
+                              step={q.type === 'Number' ? 'any' : undefined}
+                              maxLength={q.type === 'Number' ? undefined : maxLength}
+                              placeholder={q.type === 'Number' ? 'Enter a number...' : `Type your answer (max ${maxLength} chars)...`}
                               value={screeningAnswers[idx] || ''}
-                              onChange={(e) => handleAnswerChange(idx, e.target.value.slice(0, 16))}
+                              onChange={(e) => {
+                                if (q.type === 'Number' && countScreeningNumberDigits(e.target.value) > maxDigits) return;
+                                handleAnswerChange(
+                                  idx,
+                                  q.type === 'Number' ? e.target.value : e.target.value.slice(0, maxLength)
+                                );
+                              }}
                               className={`w-full px-3.5 py-2.5 text-sm bg-white border rounded-xl focus:outline-none transition-all ${
                                 hasError
                                   ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
                                   : 'border-gray-200 focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]'
                               }`}
                             />
-                            <div className="flex justify-end">
+                            {q.type === 'Short Text' && <div className="flex justify-end">
                               <span className={`text-[10px] font-semibold ${
-                                (screeningAnswers[idx]?.length || 0) >= 16 ? 'text-amber-600 font-bold' : 'text-gray-400'
+                                (screeningAnswers[idx]?.length || 0) >= maxLength ? 'text-amber-600 font-bold' : 'text-gray-400'
                               }`}>
-                                {screeningAnswers[idx]?.length || 0}/16 characters
+                                {screeningAnswers[idx]?.length || 0}/{maxLength} characters
                               </span>
-                            </div>
+                            </div>}
+                            {q.type === 'Number' && <div className="flex justify-end">
+                              <span className={`text-[10px] font-semibold ${
+                                countScreeningNumberDigits(screeningAnswers[idx]) >= maxDigits ? 'text-amber-600 font-bold' : 'text-gray-400'
+                              }`}>
+                                {countScreeningNumberDigits(screeningAnswers[idx])}/{maxDigits} digits
+                              </span>
+                            </div>}
                           </div>
                         )}
 
@@ -2946,15 +2915,8 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap text-sm font-semibold text-gray-600 mb-0.5">
                     <span className="flex items-center gap-1">
-                  {companyName}
-                  {(job?.employerId?.verification?.status === 'verified' || job?.isVerified) && (
-                    <span className="inline-flex items-center text-emerald-600" title="Verified Employer">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path fillRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" clipRule="evenodd" />
-                      </svg>
+                      {companyName}
                     </span>
-                  )}
-                </span>
                     {(job?.employerId?.verification?.status === 'verified' || job?.isVerified) && (
                       <span className="inline-flex items-center text-emerald-600" title="Verified Employer">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">

@@ -24,6 +24,7 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [totalCount, setTotalCount] = useState(0);
+  const [dailyLimitCount, setDailyLimitCount] = useState(0);
 
   // Keep ref to onLocksUpdated to avoid infinite render loops
   const onLocksUpdatedRef = useRef(onLocksUpdated);
@@ -87,7 +88,8 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
 
       if (json.success) {
         setLockedUsers(json.data || []);
-        setTotalCount(json.counts?.totalLocked || (json.data ? json.data.length : 0));
+        setTotalCount(json.pagination?.totalRecords ?? json.data?.length ?? 0);
+        setDailyLimitCount(json.counts?.totalDailyLimitReached || 0);
         if (json.pagination) {
           setTotalPages(json.pagination.totalPages || 1);
         }
@@ -229,15 +231,16 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
           <div>
             <h2 className="text-xl font-black text-gray-900 tracking-tight">OTP Locked Users</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Users temporarily locked out after 5 consecutive failed OTP attempts (24h lockout period).
+              Manage failed-attempt lockouts and accounts that have reached today&apos;s OTP send limit.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Currently Locked</span>
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Matching Accounts</span>
             <span className="text-2xl font-black text-rose-600">{totalCount}</span>
+            <span className="text-[11px] font-semibold text-amber-700 block">{dailyLimitCount} daily limit reached</span>
           </div>
         </div>
       </div>
@@ -322,11 +325,11 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
             <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h4 className="text-base font-bold text-gray-800">No locked accounts</h4>
+            <h4 className="text-base font-bold text-gray-800">No locked or daily-limited accounts</h4>
             <p className="text-xs text-gray-500 max-w-sm mx-auto">
               {search || roleFilter !== 'all'
-                ? 'No locked accounts match your active search or role filter.'
-                : 'All clear! No users are currently locked out of OTP verification.'}
+                ? 'No accounts match your active search or role filter.'
+                : "All clear! No users are currently locked out or at today's OTP send limit."}
             </p>
           </div>
         ) : (
@@ -338,7 +341,7 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
                   <th className="py-3.5 px-4">Email</th>
                   <th className="py-3.5 px-4">Phone</th>
                   <th className="py-3.5 px-4">Role</th>
-                  <th className="py-3.5 px-4 text-center">Failed Attempts</th>
+                  <th className="py-3.5 px-4 text-center">OTP Usage</th>
                   <th className="py-3.5 px-5">Locked Until</th>
                   <th className="py-3.5 px-5 text-right">Action</th>
                 </tr>
@@ -388,9 +391,18 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
 
                       {/* Failed Attempts */}
                       <td className="py-4 px-4 text-center">
-                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-200">
-                          {user.failedAttempts} / 5
-                        </span>
+                        <div className="space-y-1">
+                          {user.lockUntil && (
+                            <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-200">
+                              {user.failedAttempts} / 5 failed
+                            </span>
+                          )}
+                          {user.dailyLimitReached && (
+                            <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-200">
+                              {user.sendCount} / 5 sent today
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Locked Until */}
@@ -420,7 +432,7 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
                           ) : (
                             <Unlock className="w-3.5 h-3.5" />
                           )}
-                          <span>Unlock</span>
+                          <span>{user.dailyLimitReached && !user.lockUntil ? 'Reset Limit' : user.dailyLimitReached ? 'Unlock & Reset' : 'Unlock'}</span>
                         </button>
                       </td>
                     </tr>
@@ -435,7 +447,7 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
         {!loading && !error && totalPages > 1 && (
           <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
             <span className="text-xs font-bold text-gray-500">
-              Page {page} of {totalPages} ({totalCount} locked {totalCount === 1 ? 'user' : 'users'})
+              Page {page} of {totalPages} ({totalCount} matching {totalCount === 1 ? 'account' : 'accounts'})
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -470,11 +482,20 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
             </div>
 
             <div>
-              <h3 className="text-lg font-black text-gray-900">Remove OTP lock for this user?</h3>
+              <h3 className="text-lg font-black text-gray-900">
+                {userToUnlock.dailyLimitReached
+                  ? userToUnlock.lockUntil
+                    ? 'Remove lock and reset daily OTP limit?'
+                    : 'Reset daily OTP limit?'
+                  : 'Remove OTP lock for this user?'}
+              </h3>
               <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-                This will reset failed OTP attempts to 0 and immediately clear the 24-hour lockout for{' '}
-                <strong className="text-gray-900">{userToUnlock.email}</strong> under role{' '}
-                <span className="capitalize font-bold text-green-700">{userToUnlock.role}</span>. The user will be able to request and verify OTP right away.
+                This will {userToUnlock.dailyLimitReached && userToUnlock.lockUntil
+                  ? 'reset failed OTP attempts, clear the 24-hour lockout, and reset the daily OTP send count for'
+                  : userToUnlock.dailyLimitReached
+                    ? 'reset the daily OTP send count for'
+                    : 'reset failed OTP attempts and clear the 24-hour lockout for'}{' '}
+                <strong className="text-gray-900">{userToUnlock.email}</strong>. The user will be able to request OTP right away.
               </p>
             </div>
 
@@ -488,8 +509,10 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
                 <span className="font-bold text-gray-900">{userToUnlock.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 font-medium">Locked Until:</span>
-                <span className="font-bold text-rose-600">{userToUnlock.remainingLockTime}</span>
+                <span className="text-gray-500 font-medium">{userToUnlock.dailyLimitReached ? 'OTP Usage Today:' : 'Locked Until:'}</span>
+                <span className="font-bold text-rose-600">
+                  {userToUnlock.dailyLimitReached ? `${userToUnlock.sendCount} / 5 sent` : userToUnlock.remainingLockTime}
+                </span>
               </div>
             </div>
 
@@ -506,7 +529,11 @@ export default function OtpLockedUsers({ onLocksUpdated }) {
                 onClick={handleConfirmUnlock}
                 className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
               >
-                Yes, Remove Lock
+                {userToUnlock.dailyLimitReached && userToUnlock.lockUntil
+                  ? 'Yes, Unlock & Reset'
+                  : userToUnlock.dailyLimitReached
+                    ? 'Yes, Reset Limit'
+                    : 'Yes, Continue'}
               </button>
             </div>
           </div>

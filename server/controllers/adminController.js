@@ -4,6 +4,19 @@ const Job = require('../models/Job');
 const Application = require('../models/Application');
 const SiteSettings = require('../models/SiteSettings');
 
+const escapeRegex = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const applyAccountStatusFilter = (query, status) => {
+  if (status === 'blocked') {
+    query['account.status'] = 'blocked';
+  } else if (status === 'active') {
+    query.$and = [
+      ...(query.$and || []),
+      { $or: [{ 'account.status': 'active' }, { 'account.status': { $exists: false } }] }
+    ];
+  }
+};
+
 // @desc    Get Admin Dashboard Stats & Activity Overview
 // @route   GET /api/admin/stats
 // @access  Admin
@@ -30,13 +43,13 @@ exports.getDashboardStats = async (req, res) => {
     const recentEmployees = await Employee.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('name email mobile designation location createdAt lastLogin avatar');
+      .select('name email mobile designation location createdAt lastLogin avatar account');
 
     // Recent 5 Employers
     const recentEmployers = await Employer.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('fullName email mobile companyName industry location createdAt lastLogin');
+      .select('fullName email mobile companyName industry location createdAt lastLogin account isConsultant');
 
     // Recent 5 Jobs
     const recentJobs = await Job.find()
@@ -137,11 +150,14 @@ exports.getDashboardStats = async (req, res) => {
 // @access  Admin
 exports.getAllEmployees = async (req, res) => {
   try {
-    const { search, experience, industry, sourceType, jobId, employerId, utmSource } = req.query;
+    const { experience, sourceType, jobId, employerId, status } = req.query;
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const industry = typeof req.query.industry === 'string' ? req.query.industry : '';
+    const utmSource = typeof req.query.utmSource === 'string' ? req.query.utmSource : '';
     let query = {};
 
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
+      const searchRegex = new RegExp(escapeRegex(search), 'i');
       query.$or = [
         { name: searchRegex },
         { email: searchRegex },
@@ -160,7 +176,7 @@ exports.getAllEmployees = async (req, res) => {
     }
 
     if (industry && industry !== 'All') {
-      query.industry = new RegExp(industry, 'i');
+      query.industry = new RegExp(escapeRegex(industry), 'i');
     }
 
     if (sourceType && sourceType !== 'All') {
@@ -176,8 +192,9 @@ exports.getAllEmployees = async (req, res) => {
     }
 
     if (utmSource && utmSource !== 'All') {
-      query['acquisition.utmSource'] = new RegExp(utmSource, 'i');
+      query['acquisition.utmSource'] = new RegExp(escapeRegex(utmSource), 'i');
     }
+    if (['active', 'blocked'].includes(status)) applyAccountStatusFilter(query, status);
 
     const employees = await Employee.find(query)
       .select('-password')
@@ -203,6 +220,7 @@ exports.getAllEmployees = async (req, res) => {
 
       return {
         ...emp,
+        account: { ...(emp.account || {}), status: emp.account?.status || 'active' },
         id: emp._id,
         sourceType: acq.sourceType || 'direct',
         utmSource: acq.utmSource || null,
@@ -367,6 +385,7 @@ exports.getEmployeeById = async (req, res) => {
       success: true,
       data: {
         ...employee,
+        account: { ...(employee.account || {}), status: employee.account?.status || 'active' },
         id: employee._id,
         sourceType: employee.acquisition?.sourceType || 'direct',
         utmSource: employee.acquisition?.utmSource || null,
@@ -387,11 +406,13 @@ exports.getEmployeeById = async (req, res) => {
 // @access  Admin
 exports.getAllEmployers = async (req, res) => {
   try {
-    const { search, industry } = req.query;
+    const { role, status } = req.query;
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const industry = typeof req.query.industry === 'string' ? req.query.industry : '';
     let query = {};
 
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
+      const searchRegex = new RegExp(escapeRegex(search), 'i');
       query.$or = [
         { fullName: searchRegex },
         { companyName: searchRegex },
@@ -403,8 +424,11 @@ exports.getAllEmployers = async (req, res) => {
     }
 
     if (industry && industry !== 'All') {
-      query.industry = new RegExp(industry, 'i');
+      query.industry = new RegExp(escapeRegex(industry), 'i');
     }
+    if (role === 'consultant') query.isConsultant = true;
+    if (role === 'employer') query.isConsultant = { $ne: true };
+    if (['active', 'blocked'].includes(status)) applyAccountStatusFilter(query, status);
 
     const employers = await Employer.find(query)
       .select('-password')
@@ -442,6 +466,7 @@ exports.getAllEmployers = async (req, res) => {
       const stats = jobStatsMap[String(employer._id)] || { totalJobs: 0, activeJobs: 0, closedJobs: 0 };
       return {
         ...employer,
+        account: { ...(employer.account || {}), status: employer.account?.status || 'active' },
         id: employer._id,
         totalJobs: stats.totalJobs,
         activeJobs: stats.activeJobs,
@@ -500,6 +525,7 @@ exports.getEmployerById = async (req, res) => {
       success: true,
       data: {
         ...employer,
+        account: { ...(employer.account || {}), status: employer.account?.status || 'active' },
         id: employer._id,
         totalJobs: enrichedJobs.length,
         activeJobs,
@@ -747,13 +773,14 @@ exports.syncEmployersSheetAdmin = async (req, res) => {
 // @access  Admin
 exports.getAllJobsAdmin = async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { status } = req.query;
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     let query = {};
     if (status && status !== 'All') {
       query.status = status;
     }
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
+      const searchRegex = new RegExp(escapeRegex(search), 'i');
       query.$or = [
         { title: searchRegex },
         { company: searchRegex },
@@ -893,7 +920,3 @@ exports.getJobByIdAdmin = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error fetching job details', error: err.message });
   }
 };
-
-
-
-

@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const Employee = require('../employee/models/Employee');
+const { userApiRateLimiter } = require('./rateLimiters');
+const { respondIfAccountBlocked } = require('../utils/accountStatus');
 
 const protectEmployee = async (req, res, next) => {
   let token;
@@ -20,8 +22,9 @@ const protectEmployee = async (req, res, next) => {
       if (!req.employee) {
         return res.status(401).json({ message: 'Not authorized, user not found' });
       }
+      if (respondIfAccountBlocked(req.employee.account, res)) return;
 
-      return next();
+      return userApiRateLimiter(req, res, next);
     } catch (error) {
       console.warn("Auth Middleware warning (invalid or expired token):", error.message);
       return res.status(401).json({ message: 'Not authorized, token failed' });
@@ -55,8 +58,9 @@ const protectEmployer = async (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({ message: 'Not authorized, employer not found' });
       }
+      if (respondIfAccountBlocked(req.user.account, res)) return;
       req.employer = req.user;
-      return next();
+      return userApiRateLimiter(req, res, next);
     } catch (error) {
       console.warn("Auth Middleware warning (invalid or expired token):", error.message);
       return res.status(401).json({ message: 'Not authorized, token failed' });

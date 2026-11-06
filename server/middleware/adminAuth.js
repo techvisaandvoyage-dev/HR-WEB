@@ -2,7 +2,7 @@
  * Admin Authentication Middleware
  * Ensures only authenticated administrators can access admin OTP-lock management endpoints.
  */
-const adminAuth = (req, res, next) => {
+const authorizeAdmin = (req, res, next, unauthorizedStatus = 401, allowLegacyHeaders = true) => {
   const authHeader = req.headers.authorization;
   const adminAuthHeader = req.headers['x-admin-auth'];
   const adminSecretHeader = req.headers['x-admin-secret'];
@@ -30,7 +30,7 @@ const adminAuth = (req, res, next) => {
     } catch (_) {}
   }
 
-  if (isSessionAdmin || isSecretAdmin) {
+  if (allowLegacyHeaders && (isSessionAdmin || isSecretAdmin)) {
     req.admin = {
       id: 'admin',
       role: 'admin',
@@ -38,10 +38,13 @@ const adminAuth = (req, res, next) => {
     return next();
   }
 
-  return res.status(401).json({
+  return res.status(unauthorizedStatus).json({
     success: false,
     message: 'Access denied. Administrator authorization is required.',
   });
 };
+
+const adminAuth = (req, res, next) => authorizeAdmin(req, res, next);
+adminAuth.strict = (req, res, next) => authorizeAdmin(req, res, next, 403, false);
 
 module.exports = adminAuth;

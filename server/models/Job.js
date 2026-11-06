@@ -59,7 +59,10 @@ const JobSchema = new mongoose.Schema({
   },
   screeningQuestions: [{
     question: String,
-    type: { type: String, enum: ['Yes/No', 'Short Text'] },
+    type: { type: String, enum: ['Yes/No', 'Short Text', 'Number', 'Dropdown'] },
+    maxLength: { type: Number, min: 1, max: 500 },
+    maxDigits: { type: Number, min: 1, max: 100 },
+    options: { type: [String], default: [] },
     required: { type: Boolean, default: true }
   }],
   // Per-Job SEO Overrides

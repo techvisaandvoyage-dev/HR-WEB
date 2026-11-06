@@ -25,25 +25,26 @@ const {
   changePassword
 } = require('../controllers/authController');
 const { protectEmployer } = require('../../middleware/authMiddleware');
+const { ipAuthRateLimiter } = require('../../middleware/rateLimiters');
 
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.post('/login/send-otp', sendLoginOtp);
-router.post('/login/resend-otp', resendLoginOtp);
-router.post('/login/verify-otp', verifyLoginOtp);
-router.post('/google', googleAuth);
+router.post('/register', ipAuthRateLimiter, register);
+router.post('/login', ipAuthRateLimiter, login);
+router.post('/login/send-otp', ipAuthRateLimiter, sendLoginOtp);
+router.post('/login/resend-otp', ipAuthRateLimiter, resendLoginOtp);
+router.post('/login/verify-otp', ipAuthRateLimiter, verifyLoginOtp);
+router.post('/google', ipAuthRateLimiter, googleAuth);
 router.post('/check-mobile', checkMobile);
 router.post('/check-mobile-available', checkMobileAvailable);
 router.post('/check-email', checkEmail);
-router.post('/send-otp', sendRegistrationOtp);
-router.post('/resend-otp', resendRegistrationOtp);
-router.post('/verify-otp', verifyRegistrationOtp);
-router.post('/forgot-password/otp', forgotPasswordOtp);
-router.post('/forgot-password/resend-otp', resendForgotPasswordOtp);
-router.post('/forgot-password/verify-otp', verifyForgotPasswordOtp);
-router.post('/reset-password', resetPassword);
+router.post('/send-otp', ipAuthRateLimiter, sendRegistrationOtp);
+router.post('/resend-otp', ipAuthRateLimiter, resendRegistrationOtp);
+router.post('/verify-otp', ipAuthRateLimiter, verifyRegistrationOtp);
+router.post('/forgot-password/otp', ipAuthRateLimiter, forgotPasswordOtp);
+router.post('/forgot-password/resend-otp', ipAuthRateLimiter, resendForgotPasswordOtp);
+router.post('/forgot-password/verify-otp', ipAuthRateLimiter, verifyForgotPasswordOtp);
+router.post('/reset-password', ipAuthRateLimiter, resetPassword);
 
 router.get('/me', protectEmployer, getMe);
 router.put('/update', protectEmployer, updateProfile);
@@ -56,4 +57,3 @@ router.post('/change-password/resend-otp', protectEmployer, resendChangePassword
 router.post('/change-password', protectEmployer, changePassword);
 
 module.exports = router;
-

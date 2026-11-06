@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import DateRangePicker from '../../common/DateRangePicker';
 import VideoPlayer from '../../common/VideoPlayer';
+import CustomDropdown from '../../common/CustomDropdown';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 import { 
   exportCandidateProfileAsPdf, 
@@ -1112,54 +1113,50 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
                 {/* 2. Job Applied Filter */}
                 <th className="p-1.5">
-                  <select
+                  <CustomDropdown
+                    options={uniqueJobs.map((jobTitle) => ({ value: jobTitle, label: jobTitle === 'All' ? 'All Jobs' : jobTitle }))}
                     value={colFilters.job}
-                    onChange={(e) => handleFilterChange('job', e.target.value)}
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
-                  >
-                    {uniqueJobs.map(j => (
-                      <option key={j} value={j}>{j === 'All' ? 'All Jobs' : j}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleFilterChange('job', value)}
+                    allowCustomValue={false}
+                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                    dropdownClassName="w-56"
+                  />
                 </th>
 
                 {/* 3. Primary Qualification Filter (Education) */}
                 <th className="p-1.5">
-                  <select
+                  <CustomDropdown
+                    options={uniqueQualifications.map((qualification) => ({ value: qualification, label: qualification === 'All' ? 'All Quals' : qualification }))}
                     value={colFilters.qualification}
-                    onChange={(e) => handleFilterChange('qualification', e.target.value)}
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
-                  >
-                    {uniqueQualifications.map(q => (
-                      <option key={q} value={q}>{q === 'All' ? 'All Quals' : q}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleFilterChange('qualification', value)}
+                    allowCustomValue={false}
+                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                    dropdownClassName="w-56"
+                  />
                 </th>
 
                 {/* 4. Function Filter */}
                 <th className="p-1.5">
-                  <select
+                  <CustomDropdown
+                    options={uniqueFunctions.map((fn) => ({ value: fn, label: fn === 'All' ? 'All Functions' : fn }))}
                     value={colFilters.functionArea}
-                    onChange={(e) => handleFilterChange('functionArea', e.target.value)}
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
-                  >
-                    {uniqueFunctions.map(f => (
-                      <option key={f} value={f}>{f === 'All' ? 'All Functions' : f}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleFilterChange('functionArea', value)}
+                    allowCustomValue={false}
+                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                    dropdownClassName="w-56"
+                  />
                 </th>
 
                 {/* 5. Work Exp Filter */}
                 <th className="p-1.5">
-                  <select
+                  <CustomDropdown
+                    options={uniqueWorkExps.map((experience) => ({ value: experience, label: experience === 'All' ? 'All Exp' : experience }))}
                     value={colFilters.workExp}
-                    onChange={(e) => handleFilterChange('workExp', e.target.value)}
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
-                  >
-                    {uniqueWorkExps.map(exp => (
-                      <option key={exp} value={exp}>{exp === 'All' ? 'All Exp' : exp}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleFilterChange('workExp', value)}
+                    allowCustomValue={false}
+                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                    dropdownClassName="w-56"
+                  />
                 </th>
 
                 {/* 6. Current Designation Filter */}
@@ -1186,18 +1183,20 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
                 {/* Source Link Filter */}
                 <th className="p-1.5">
-                  <select
+                  <CustomDropdown
+                    options={[
+                      { value: 'All', label: 'All Sources' },
+                      ...uniqueLinks.filter((link) => link !== 'All').map((link) => ({
+                        value: link,
+                        label: link === 'Portal' || link === 'Direct' ? '🌐 Portal' : `🔗 Link ${link}`
+                      }))
+                    ]}
                     value={colFilters.sourceLink}
-                    onChange={(e) => handleFilterChange('sourceLink', e.target.value)}
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
-                  >
-                    <option value="All">All Sources</option>
-                    {uniqueLinks.filter(l => l !== 'All').map(l => (
-                      <option key={l} value={l}>
-                        {l === 'Portal' || l === 'Direct' ? '🌐 Portal' : `🔗 Link ${l}`}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleFilterChange('sourceLink', value)}
+                    allowCustomValue={false}
+                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                    dropdownClassName="w-44"
+                  />
                 </th>
 
                 {/* 8. Applied Date Sort Toggle */}
@@ -1213,14 +1212,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
                 {/* 9. Status Filter */}
                 <th className="p-1.5">
-                  <select
+                  <CustomDropdown
+                    options={[
+                      { value: 'All', label: 'All Status' },
+                      ...statusOptions.map((status) => ({ value: status, label: status }))
+                    ]}
                     value={colFilters.status}
-                    onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer shadow-2xs"
-                  >
-                    <option value="All">All Status</option>
-                    {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                  </select>
+                    onChange={(value) => handleFilterChange('status', value)}
+                    allowCustomValue={false}
+                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                    dropdownClassName="w-44"
+                  />
                 </th>
 
                 {/* 10. Actions Filter Reset */}
@@ -1377,13 +1379,13 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
                       {/* 9. Status (Dropdown) */}
                       <td className="py-3 px-3 text-center align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative inline-flex items-center">
-                          <select 
-                            className={`appearance-none cursor-pointer outline-none transition-all !h-[22px] !min-h-0 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs !leading-none ${getStatusBadgeStyles(item.status)}`}
-                            style={{ height: '22px', minHeight: '22px', lineHeight: '20px', paddingLeft: '10px', paddingRight: '18px' }}
+                        <div className="relative inline-flex items-center min-w-[120px]">
+                          <CustomDropdown
+                            className={`!h-[22px] !px-2 !py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs !leading-none ${getStatusBadgeStyles(item.status)}`}
+                            options={[...new Set([item.status || 'New', ...statusOptions])]}
+                            allowCustomValue={false}
                             value={item.status || 'New'}
-                            onChange={(e) => {
-                              const newStatus = e.target.value;
+                            onChange={(newStatus) => {
                               if (updateCandidateStatus) {
                                 updateCandidateStatus(item.appId, newStatus);
                               }
@@ -1392,12 +1394,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                                 cand.history = cand.history.map(h => h.appId === item.appId ? { ...h, status: newStatus } : h);
                               }
                             }}
-                          >
-                            {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                          </select>
-                          <svg className="w-2.5 h-2.5 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                          </svg>
+                          />
                         </div>
                       </td>
 
@@ -1622,20 +1619,21 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   {selectedApplication && (
                     <div className="mt-4 flex items-center gap-2">
                       <span className="text-xs font-bold text-gray-500">Status:</span>
-                      <select 
-                        className={`appearance-none cursor-pointer outline-none transition-all px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(selectedApplication.status)}`}
-                        value={selectedApplication.status || 'New'}
-                        onChange={(e) => {
-                          const newStatus = e.target.value;
+                      <div className="min-w-[140px]">
+                        <CustomDropdown
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider border shadow-2xs ${getStatusBadgeStyles(selectedApplication.status)}`}
+                          options={[...new Set([selectedApplication.status || 'New', ...statusOptions])]}
+                          allowCustomValue={false}
+                          value={selectedApplication.status || 'New'}
+                          onChange={(newStatus) => {
                           if (updateCandidateStatus) {
                             updateCandidateStatus(selectedApplication.appId, newStatus);
                           }
                           selectedApplication.status = newStatus;
                           setSelectedApplication({ ...selectedApplication, status: newStatus });
-                        }}
-                      >
-                        {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                      </select>
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

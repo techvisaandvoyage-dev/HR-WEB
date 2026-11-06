@@ -158,6 +158,19 @@ const EmployeeSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  account: {
+    status: {
+      type: String,
+      enum: ['active', 'blocked'],
+      default: 'active',
+      index: true
+    },
+    blockReason: { type: String, default: '' },
+    blockedAt: { type: Date, default: null },
+    blockedBy: { type: String, default: '' },
+    blockedByEmail: { type: String, default: '' },
+    unblockedAt: { type: Date, default: null }
+  },
   createdAt: {
     type: Date,
     default: Date.now

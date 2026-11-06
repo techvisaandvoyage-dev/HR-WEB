@@ -8,7 +8,8 @@ const CustomDropdown = ({
   error = false, 
   className = "", 
   rounded = "rounded-lg",
-  dropdownClassName = ""
+  dropdownClassName = "",
+  allowCustomValue = true
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,7 +44,7 @@ const CustomDropdown = ({
               opt.keywords.some(k => k.toLowerCase() === searchLower)
             )
           );
-          if (exactMatch) {
+          if (exactMatch && exactMatch.value !== String(value ?? '')) {
             onChange(exactMatch.value);
           }
         }
@@ -53,7 +54,7 @@ const CustomDropdown = ({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, searchTerm, onChange, safeOptions]);
+  }, [isOpen, searchTerm, onChange, safeOptions, value, allowCustomValue]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -134,13 +135,15 @@ const CustomDropdown = ({
                   e.preventDefault();
                   if (searchTerm.trim() !== '') {
                     const firstMatch = filteredOptions.find(opt => !opt.isGroupLabel);
-                    if (firstMatch) {
+                  if (firstMatch && firstMatch.value !== String(value ?? '')) {
                       onChange(firstMatch.value);
-                    } else {
-                      onChange(searchTerm.trim());
+                    } else if (allowCustomValue) {
+                    if (searchTerm.trim() !== String(value ?? '')) onChange(searchTerm.trim());
                     }
-                    setIsOpen(false);
-                    setSearchTerm('');
+                    if (firstMatch || allowCustomValue) {
+                      setIsOpen(false);
+                      setSearchTerm('');
+                    }
                   }
                 }
               }}
@@ -185,7 +188,7 @@ const CustomDropdown = ({
               <div
                 key={idx}
                 onClick={() => {
-                  onChange(opt.value);
+                  if (opt.value !== String(value ?? '')) onChange(opt.value);
                   setIsOpen(false);
                   setSearchTerm('');
                 }}
@@ -195,7 +198,7 @@ const CustomDropdown = ({
               </div>
             );
           }) : (
-            searchTerm.trim() !== '' ? (
+            searchTerm.trim() !== '' && allowCustomValue ? (
               <div
                 onClick={() => {
                   onChange(searchTerm);

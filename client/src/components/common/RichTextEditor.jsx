@@ -40,19 +40,40 @@ const RichTextEditor = ({
   onChange,
   placeholder = 'Write here...',
   minHeight = '180px',
-  className = ''
+  className = '',
+  maxWords
 }) => {
+  const wordCount = (() => {
+    const plainText = typeof DOMParser !== 'undefined'
+      ? new DOMParser().parseFromString(String(value || '').replace(/<[^>]*>/g, ' '), 'text/html').body.textContent || ''
+      : String(value || '').replace(/<[^>]*>/g, ' ');
+    return plainText.trim().split(/\s+/).filter(Boolean).length;
+  })();
+
+  const handleChange = (content, _delta, _source, editor) => {
+    if (Number.isInteger(maxWords) && maxWords > 0) {
+      const currentWordCount = editor.getText().trim().split(/\s+/).filter(Boolean).length;
+      if (currentWordCount > maxWords) return;
+    }
+    onChange?.(content);
+  };
+
   return (
     <div className={`rich-text-editor-container w-full max-w-full rounded-lg overflow-hidden border border-gray-200 bg-white focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f]/20 transition-all ${className}`}>
       <ReactQuill
         theme="snow"
         value={value || ''}
-        onChange={onChange}
+        onChange={handleChange}
         modules={modules}
         formats={formats}
         placeholder={placeholder}
         style={{ minHeight }}
       />
+      {Number.isInteger(maxWords) && maxWords > 0 && (
+        <div className={`px-3 py-1.5 text-right text-xs ${wordCount > maxWords ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+          {wordCount} / {maxWords} words
+        </div>
+      )}
       <style>{`
         .rich-text-editor-container {
           width: 100%;

@@ -1,6 +1,96 @@
 const Job = require('../../models/Job');
 const Application = require('../../models/Application');
 
+const DEFAULT_SCREENING_TEXT_MAX_LENGTH = 16;
+const MIN_SCREENING_TEXT_MAX_LENGTH = 1;
+const MAX_SCREENING_TEXT_MAX_LENGTH = 500;
+const DEFAULT_SCREENING_NUMBER_MAX_DIGITS = 16;
+const MIN_SCREENING_NUMBER_MAX_DIGITS = 1;
+const MAX_SCREENING_NUMBER_MAX_DIGITS = 100;
+
+const normalizeScreeningQuestions = (questions) => {
+  if (!Array.isArray(questions)) return { questions, error: '' };
+
+  const normalized = questions.slice(0, 5).map((question, index) => {
+    const item = question && typeof question === 'object' ? question : {};
+    const type = item.type || 'Yes/No';
+    const options = type === 'Dropdown' && Array.isArray(item.options)
+      ? item.options.map((option) => String(option ?? '').trim()).filter(Boolean)
+      : [];
+
+    if (!String(item.question || '').trim()) {
+      return { error: `Screening question ${index + 1} needs question text.` };
+    }
+    if (!['Yes/No', 'Short Text', 'Number', 'Dropdown'].includes(type)) {
+      return { error: `Screening question ${index + 1} has an unsupported response type.` };
+    }
+    const maxLength = item.maxLength == null || item.maxLength === ''
+      ? DEFAULT_SCREENING_TEXT_MAX_LENGTH
+      : Number(item.maxLength);
+    if (type === 'Short Text' && (!Number.isInteger(maxLength)
+      || maxLength < MIN_SCREENING_TEXT_MAX_LENGTH
+      || maxLength > MAX_SCREENING_TEXT_MAX_LENGTH)) {
+      return { error: `Maximum answer length for screening question ${index + 1} must be between ${MIN_SCREENING_TEXT_MAX_LENGTH} and ${MAX_SCREENING_TEXT_MAX_LENGTH}.` };
+    }
+    const maxDigits = item.maxDigits == null || item.maxDigits === ''
+      ? DEFAULT_SCREENING_NUMBER_MAX_DIGITS
+      : Number(item.maxDigits);
+    if (type === 'Number' && (!Number.isInteger(maxDigits)
+      || maxDigits < MIN_SCREENING_NUMBER_MAX_DIGITS
+      || maxDigits > MAX_SCREENING_NUMBER_MAX_DIGITS)) {
+      return { error: `Maximum number of digits for screening question ${index + 1} must be between ${MIN_SCREENING_NUMBER_MAX_DIGITS} and ${MAX_SCREENING_NUMBER_MAX_DIGITS}.` };
+    }
+    if (type === 'Dropdown') {
+      if (options.length < 2 || options.length > 10) {
+        return { error: `Dropdown question ${index + 1} needs between 2 and 10 answer options.` };
+      }
+      if (options.some((option) => option.length > 80)) {
+        return { error: `Dropdown options for question ${index + 1} must be 80 characters or fewer.` };
+      }
+      if (new Set(options.map((option) => option.toLowerCase())).size !== options.length) {
+        return { error: `Dropdown options for question ${index + 1} must be unique.` };
+      }
+    }
+
+    return {
+      question: String(item.question).trim(),
+      type,
+      ...(type === 'Short Text' ? { maxLength } : {}),
+      ...(type === 'Number' ? { maxDigits } : {}),
+      options,
+      required: item.required !== false
+    };
+  });
+
+  const invalid = normalized.find((question) => question.error);
+  return invalid
+    ? { questions: null, error: invalid.error }
+    : { questions: normalized, error: '' };
+};
+
+const MAX_JOB_DESCRIPTION_WORDS = 500;
+
+const countHtmlWords = (value) => {
+  const plainText = String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ');
+  return plainText.trim().split(/\s+/).filter(Boolean).length;
+};
+
+const validateJobDescriptionWordLimit = (details, body) => {
+  const fields = [
+    ['aboutRole', 'About Role'],
+    ['responsibilities', 'Responsibilities'],
+  ];
+  for (const [field, label] of fields) {
+    const value = details?.[field] ?? body[field];
+    if (countHtmlWords(value) > MAX_JOB_DESCRIPTION_WORDS) {
+      return `${label} must be ${MAX_JOB_DESCRIPTION_WORDS} words or fewer.`;
+    }
+  }
+  return '';
+};
+
 // @desc    Create a new job
 // @route   POST /api/employer/jobs
 // @access  Private
@@ -65,6 +155,11 @@ exports.createJob = async (req, res) => {
       easyApply, qualifications, details, screeningQuestions, seo
     } = req.body;
 
+    const descriptionError = validateJobDescriptionWordLimit(details, req.body);
+    if (descriptionError) {
+      return res.status(400).json({ success: false, message: descriptionError });
+    }
+
     if (!company) {
       company = (req.user && req.user.companyName) || (req.user && req.user.fullName) || 'Company';
     }
@@ -76,7 +171,11 @@ exports.createJob = async (req, res) => {
     }
 
     if (Array.isArray(screeningQuestions)) {
-      screeningQuestions = screeningQuestions.slice(0, 5);
+      const result = normalizeScreeningQuestions(screeningQuestions);
+      if (result.error) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      screeningQuestions = result.questions;
     }
 
     // Deduplication safeguard: Prevent duplicate job if submitted within 10 seconds with identical title
@@ -215,8 +314,17 @@ exports.updateJob = async (req, res) => {
       easyApply, qualifications, details, screeningQuestions, seo
     } = req.body;
 
+    const descriptionError = validateJobDescriptionWordLimit(details, req.body);
+    if (descriptionError) {
+      return res.status(400).json({ success: false, message: descriptionError });
+    }
+
     if (Array.isArray(screeningQuestions)) {
-      screeningQuestions = screeningQuestions.slice(0, 5);
+      const result = normalizeScreeningQuestions(screeningQuestions);
+      if (result.error) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      screeningQuestions = result.questions;
     }
 
     if (!company) {

@@ -375,7 +375,7 @@ exports.deleteProblem = async (req, res) => {
 exports.getSupportRequests = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 10));
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit, 10) || 10));
     const skip = (page - 1) * limit;
 
     const { status, userType, search } = req.query;
@@ -395,7 +395,7 @@ exports.getSupportRequests = async (req, res) => {
     // Search by name, email, phone (case-insensitive)
     if (search && search.trim()) {
       const cleanSearch = escapeRegex(search.trim());
-      const searchRegex = new RegExp(cleanSearch, 'i');
+      const searchRegex = new RegExp(cleanSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       filter.$or = [
         { name: searchRegex },
         { email: searchRegex },

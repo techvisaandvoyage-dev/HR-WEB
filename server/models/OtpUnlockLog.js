@@ -37,6 +37,10 @@ const OtpUnlockLogSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    previousDailySendCount: {
+      type: Number,
+      default: 0,
+    },
     previousLockUntil: {
       type: Date,
       default: null,

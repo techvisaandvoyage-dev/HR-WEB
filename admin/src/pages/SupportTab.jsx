@@ -31,6 +31,7 @@ import {
   Copy,
 } from 'lucide-react';
 import OtpLockedUsers from './support/OtpLockedUsers';
+import BlockedAccounts from './support/BlockedAccounts';
 import { socket } from '../utils/socket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -45,6 +46,7 @@ export default function SupportTab() {
   const [activeLockedEmails, setActiveLockedEmails] = useState([]);
   const [activeLocks, setActiveLocks] = useState([]); // Array of { email, role }
   const [lockedCount, setLockedCount] = useState(0);
+  const [blockedAccountCount, setBlockedAccountCount] = useState(0);
   const [unlockToast, setUnlockToast] = useState(null);
 
   // Requests state
@@ -857,7 +859,7 @@ export default function SupportTab() {
         </div>
 
         {/* Subtabs Switcher */}
-        <div className="inline-flex items-center bg-gray-200/80 p-1 rounded-2xl shrink-0">
+        <div className="inline-flex flex-wrap items-center bg-gray-200/80 p-1 rounded-2xl shrink-0">
           <button
             type="button"
             onClick={() => setActiveSubTab('requests')}
@@ -921,6 +923,24 @@ export default function SupportTab() {
             <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-emerald-600 text-white">
               {quickReplies.length}
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('blocked-accounts')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
+              activeSubTab === 'blocked-accounts'
+                ? 'bg-white text-green-800 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4 text-rose-600" />
+            <span>Blocked Accounts</span>
+            {blockedAccountCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-rose-600 text-white">
+                {blockedAccountCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -1283,6 +1303,9 @@ export default function SupportTab() {
         <OtpLockedUsers
           onLocksUpdated={handleLocksUpdated}
         />
+      )}
+      {activeSubTab === 'blocked-accounts' && (
+        <BlockedAccounts onCountChange={setBlockedAccountCount} />
       )}
 
       {/* =========================================================

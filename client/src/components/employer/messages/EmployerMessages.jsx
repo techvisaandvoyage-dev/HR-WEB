@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import VideoPlayer from '../../common/VideoPlayer';
+import CustomDropdown from '../../common/CustomDropdown';
 import { socket } from '../../../utils/socket';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
 const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, updateCandidateStatus }) => {
   const location = useLocation();
   const initialEmployeeData = location.state?.initialEmployee;
+  const initialApplicationData = location.state?.initialApplication;
 
   const [backendConversations, setBackendConversations] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -780,24 +782,20 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
 
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                  <select 
-                    className={`appearance-none cursor-pointer outline-none transition-all inline-flex px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
-                    value={selectedApplication?.status || 'Under Review'}
-                    onChange={(e) => {
-                      const newStatus = e.target.value;
-                      setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
-                      if (updateCandidateStatus) {
-                        updateCandidateStatus(selectedApplication.appId, newStatus);
-                      }
-                    }}
-                  >
-                    {!statusOptions.includes(selectedApplication?.status || 'Under Review') && (
-                      <option value={selectedApplication?.status || 'Under Review'} disabled>
-                        {selectedApplication?.status || 'Under Review'}
-                      </option>
-                    )}
-                    {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                  </select>
+                  <div className="w-fit min-w-[145px]">
+                    <CustomDropdown
+                      className={`px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
+                      value={selectedApplication?.status || 'Under Review'}
+                      options={[...new Set([selectedApplication?.status || 'Under Review', ...statusOptions])]}
+                      allowCustomValue={false}
+                      onChange={(newStatus) => {
+                        setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
+                        if (updateCandidateStatus) {
+                          updateCandidateStatus(selectedApplication.appId, newStatus);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
 
@@ -863,24 +861,20 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                    <select 
-                      className={`appearance-none cursor-pointer outline-none transition-all inline-flex px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
-                      value={selectedApplication?.status || 'Under Review'}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
-                        if (updateCandidateStatus) {
-                          updateCandidateStatus(selectedApplication.appId, newStatus);
-                        }
-                      }}
-                    >
-                      {!statusOptions.includes(selectedApplication?.status || 'Under Review') && (
-                        <option value={selectedApplication?.status || 'Under Review'} disabled>
-                          {selectedApplication?.status || 'Under Review'}
-                        </option>
-                      )}
-                      {statusOptions.map(st => <option key={st} value={st}>{st}</option>)}
-                    </select>
+                    <div className="w-fit min-w-[145px]">
+                      <CustomDropdown
+                        className={`px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
+                        value={selectedApplication?.status || 'Under Review'}
+                        options={[...new Set([selectedApplication?.status || 'Under Review', ...statusOptions])]}
+                        allowCustomValue={false}
+                        onChange={(newStatus) => {
+                          setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
+                          if (updateCandidateStatus) {
+                            updateCandidateStatus(selectedApplication.appId, newStatus);
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
 

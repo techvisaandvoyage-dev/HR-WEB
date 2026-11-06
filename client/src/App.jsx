@@ -21,8 +21,10 @@ import SEOHead from './components/common/SEOHead';
 import { initAnalytics, trackPageView } from './utils/analytics';
 import { formatPhoneWithCountryCode } from './data/countryCodes';
 import SupportWidget from './components/common/SupportWidget';
+import BlockedAccountPage from './components/common/BlockedAccountPage';
 
 function App() {
+  const [blockedAccount, setBlockedAccount] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('employeeToken') || !!localStorage.getItem('employerToken'));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState(() => {
@@ -54,6 +56,44 @@ function App() {
   const [candidates, setCandidates] = useState([]);
 
   const location = useLocation();
+
+  useEffect(() => {
+    const previousFetch = window.fetch;
+    const callPreviousFetch = previousFetch.bind(window);
+    const blockedEventName = 'sahijob:account-blocked';
+    const handleBlockedAccount = (event) => {
+      localStorage.removeItem('employeeToken');
+      localStorage.removeItem('employerToken');
+      localStorage.removeItem('employeeUser');
+      localStorage.removeItem('employerInfo');
+      localStorage.removeItem('userProfile');
+      localStorage.removeItem('userRole');
+      setIsLoggedIn(false);
+      setUserRole(null);
+      setBlockedAccount({ reason: event.detail?.reason || '' });
+    };
+    const wrappedFetch = async (...args) => {
+      const response = await callPreviousFetch(...args);
+      if (response.status === 403) {
+        try {
+          const body = await response.clone().json();
+          if (body?.code === 'ACCOUNT_BLOCKED') {
+            window.dispatchEvent(new CustomEvent(blockedEventName, { detail: { reason: body.reason || '' } }));
+          }
+        } catch {
+          // Non-JSON 403 responses are handled by the existing request flow.
+        }
+      }
+      return response;
+    };
+
+    window.addEventListener(blockedEventName, handleBlockedAccount);
+    window.fetch = wrappedFetch;
+    return () => {
+      window.removeEventListener(blockedEventName, handleBlockedAccount);
+      if (window.fetch === wrappedFetch) window.fetch = previousFetch;
+    };
+  }, []);
 
   const [homepageConfig, setHomepageConfig] = useState(null);
   const [visibleJobsCount, setVisibleJobsCount] = useState(6);
@@ -566,6 +606,8 @@ function App() {
     const matchLocation = isLocationMatch(job.location || job.employerId?.location, searchLocation, job.details?.workLocation, job.workplaceMode || job.details?.workplaceMode, job);
     return matchTitle && matchLocation;
   });
+
+  if (blockedAccount) return <BlockedAccountPage reason={blockedAccount.reason} />;
 
   return (
     <>

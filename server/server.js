@@ -2,6 +2,8 @@ const http = require('http');
 const https = require('https');
 const express = require('express');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
 
 // Load env vars before requiring local modules that might depend on them
 dotenv.config();
@@ -18,6 +20,7 @@ connectDB();
 
 const app = express();
 const server = http.createServer(app);
+app.use(helmet());
 
 // Initialize Socket.io
 initSocket(server);
@@ -34,12 +37,55 @@ app.use('/__/auth', (req, res) => {
   });
 });
 
-// Body parser with 10mb limit for uploads and settings
-app.use(express.json({ limit: '10mb' }));
+// Keep existing large CMS, backup, profile and verification payloads working.
+const legacyLargeJsonPaths = [
+  '/api/admin/backup',
+  '/api/homepage',
+  '/api/footer',
+  '/api/pages',
+  '/api/employee/profile',
+  '/api/verification',
+  '/api/admin/site-settings'
+];
+const standardJsonParser = express.json({ limit: '100kb' });
+const legacyLargeJsonParser = express.json({ limit: '10mb' });
+app.use((req, res, next) => {
+  const acceptsLargePayload = legacyLargeJsonPaths.some(
+    (routePath) => req.path === routePath || req.path.startsWith(`${routePath}/`)
+  );
+  return (acceptsLargePayload ? legacyLargeJsonParser : standardJsonParser)(req, res, next);
+});
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Enable CORS
 app.use(cors());
+
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    req.body = mongoSanitize.sanitize(req.body, { replaceWith: '_' });
+  }
+  const sanitizedQuery = mongoSanitize.sanitize(req.query, { replaceWith: '_' });
+  Object.defineProperty(req, 'query', {
+    configurable: true,
+    enumerable: true,
+    value: sanitizedQuery
+  });
+  next();
+});
+
+app.use((req, res, next) => {
+  const query = { ...req.query };
+  if (query.limit !== undefined) {
+    const requestedLimit = Number.parseInt(query.limit, 10);
+    if (Number.isFinite(requestedLimit)) query.limit = String(Math.min(Math.max(requestedLimit, 1), 50));
+  }
+  Object.defineProperty(req, 'query', {
+    configurable: true,
+    enumerable: true,
+    value: query
+  });
+  next();
+});
 
 // Mount routers
 app.use('/api/employee/auth', employeeAuthRoutes);
@@ -56,6 +102,7 @@ app.use('/api/homepage', require('./routes/homepageRoutes'));
 app.use('/api/footer', require('./routes/footerRoutes'));
 app.use('/api/mux', require('./routes/muxRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/admin', require('./routes/adminAccountRoutes'));
 app.use('/api/admin/auth', require('./routes/adminAuthRoutes'));
 app.use('/api/admin/backup', require('./routes/backupRoutes'));
 app.use('/api/education', require('./routes/educationRoutes'));
@@ -129,4 +176,3 @@ server.listen(PORT, () => {
   const { seedSupportQuickReplies } = require('./controllers/supportController');
   seedSupportQuickReplies();
 });
-

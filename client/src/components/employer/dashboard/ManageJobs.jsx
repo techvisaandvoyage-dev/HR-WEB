@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import JobShareModal from '../../common/JobShareModal';
+import CustomDropdown from '../../common/CustomDropdown';
 
 const sanitizeHtml = (html) => {
   if (!html) return '';
@@ -135,16 +136,20 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
         </label>
 
         {/* Status filter select */}
-        <select 
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-[#d0d5dd] rounded-[8px] py-2 px-3 bg-white font-medium text-[14px] text-[#101828] outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all cursor-pointer"
-          aria-label="Filter by status"
-        >
-          <option value="All Status">All statuses</option>
-          <option value="Active">Active</option>
-          <option value="Closed">Closed</option>
-        </select>
+        <div className="w-full sm:w-auto min-w-[170px]" aria-label="Filter by status">
+          <CustomDropdown
+            options={[
+              { value: 'All Status', label: 'All statuses' },
+              { value: 'Active', label: 'Active' },
+              { value: 'Closed', label: 'Closed' }
+            ]}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            allowCustomValue={false}
+            className="w-full border-[#d0d5dd] rounded-[8px] py-2 px-3 bg-white font-medium text-[14px]"
+            dropdownClassName="w-full"
+          />
+        </div>
       </div>
 
       {/* Table-style Jobs List */}
@@ -265,28 +270,22 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
 
                 {/* 5. Status (Desktop 5th col) */}
                 <div className="min-[1000px]:order-5 min-[1000px]:col-auto col-span-1 justify-self-end min-[1000px]:justify-self-start">
-                  <div className="relative inline-flex items-center">
-                    <select
+                  <div className="relative min-w-[100px]" onClick={(event) => event.stopPropagation()}>
+                    <CustomDropdown
+                      options={['Active', 'Closed']}
                       value={isClosed ? 'Closed' : 'Active'}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        if (toggleJobStatus) toggleJobStatus(job.id || job._id);
+                      onChange={(nextStatus) => {
+                        if (nextStatus !== (isClosed ? 'Closed' : 'Active')) {
+                          toggleJobStatus?.(job.id || job._id);
+                        }
                       }}
-                      className={`appearance-none text-[11px] font-bold rounded-full !h-[22px] !min-h-0 cursor-pointer outline-none border transition-colors !leading-none shadow-2xs ${
-                        isClosed 
-                          ? 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200' 
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      allowCustomValue={false}
+                      className={`!px-2 !py-1 !h-[22px] rounded-full border text-[11px] font-bold !leading-none shadow-2xs ${
+                        isClosed
+                          ? 'bg-gray-100 text-gray-600 border-gray-200'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       }`}
-                      style={{ height: '22px', minHeight: '22px', lineHeight: '20px', paddingLeft: '22px', paddingRight: '18px' }}
-                      aria-label="Job status"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Closed">Closed</option>
-                    </select>
-                    <span className={`absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none ${isClosed ? 'bg-gray-400' : 'bg-emerald-500'}`} />
-                    <svg className="w-2.5 h-2.5 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    />
                   </div>
                   <small className="block text-[#98a2b3] text-[11px] mt-0.5 pl-0.5 whitespace-nowrap">
                     {isClosed ? 'Closed' : 'Posted'} {postedDate}

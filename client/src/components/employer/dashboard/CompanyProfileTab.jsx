@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
+import CustomDropdown from '../../common/CustomDropdown';
 import { currentLocationOptions } from '../../../data/preferredLocations';
 import { uploadFileToStorage, deleteFileFromStorage } from '../../../utils/firebaseStorage';
 import { COUNTRY_CODES, formatPhoneWithCountryCode } from '../../../data/countryCodes';
@@ -412,17 +413,29 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 autoFocus
               />
             ) : type === 'select-industry' ? (
-              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] bg-white cursor-pointer font-medium">
-                <option>Information Technology</option><option>Finance</option><option>Healthcare</option><option>Manufacturing</option><option>Education</option><option>Other</option>
-              </select>
+              <CustomDropdown
+                options={['Information Technology', 'Finance', 'Healthcare', 'Manufacturing', 'Education', 'Other']}
+                value={value}
+                onChange={(nextValue) => handleChange(section, field, nextValue)}
+                allowCustomValue={false}
+                className="w-full max-w-[360px] px-3 py-2 border-[#16a34a] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
+              />
             ) : type === 'select-employees' ? (
-              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] bg-white cursor-pointer font-medium">
-                <option>1-10</option><option>11-50</option><option>51-200</option><option>201-500</option><option>500+</option><option>1000+</option>
-              </select>
+              <CustomDropdown
+                options={['1-10', '11-50', '51-200', '201-500', '500+', '1000+']}
+                value={value}
+                onChange={(nextValue) => handleChange(section, field, nextValue)}
+                allowCustomValue={false}
+                className="w-full max-w-[360px] px-3 py-2 border-[#16a34a] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
+              />
             ) : type === 'select-designation' ? (
-              <select value={value} onChange={(e) => handleChange(section, field, e.target.value)} className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] bg-white cursor-pointer font-medium">
-                <option>HR Manager</option><option>Recruiter</option><option>Talent Acquisition</option><option>Founder / CEO</option><option>Director</option><option>Other</option>
-              </select>
+              <CustomDropdown
+                options={['HR Manager', 'Recruiter', 'Talent Acquisition', 'Founder / CEO', 'Director', 'Other']}
+                value={value}
+                onChange={(nextValue) => handleChange(section, field, nextValue)}
+                allowCustomValue={false}
+                className="w-full max-w-[360px] px-3 py-2 border-[#16a34a] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
+              />
             ) : type === 'location' ? (
               <MultiSelectLocationDropdown 
                 options={currentLocationOptions} 
