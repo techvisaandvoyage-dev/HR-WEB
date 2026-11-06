@@ -24,7 +24,7 @@ export default function AccountStatusControl({ account, accountId, email, role, 
   const isOwnAccount = Boolean(ownAdminEmail && email?.toLowerCase() === ownAdminEmail);
   const showStatus = mode !== 'action';
   const showActionButton = mode === 'action' || mode === 'both';
-  const showDialogs = mode !== 'action';
+  const showDialogs = true;
 
   useEffect(() => {
     if (!menuOpen) return undefined;

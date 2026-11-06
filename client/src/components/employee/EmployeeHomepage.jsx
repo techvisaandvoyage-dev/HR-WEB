@@ -472,11 +472,19 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
   }, [activeJobs, selectedJobId]);
 
   const [filters, setFilters] = useState({
-    keyword: '',
-    location: '',
-    experience: 'All',
-    postingDate: 'Any time'
+    keyword: location.state?.searchFilters?.keyword || '',
+    location: location.state?.searchFilters?.location || '',
+    experience: location.state?.searchFilters?.experience || 'All',
+    postingDate: location.state?.searchFilters?.postingDate || 'Any time'
   });
+
+  // Navbar filters can be selected from Profile, My Jobs, or Messages. Apply them
+  // as soon as this results page opens, even when no keyword was entered.
+  useEffect(() => {
+    if (location.state?.searchFilters) {
+      setFilters(prev => ({ ...prev, ...location.state.searchFilters }));
+    }
+  }, [location.state?.searchFilters]);
 
   let rawFilteredJobs = activeJobs;
 
@@ -583,6 +591,13 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
   const displayedJobs = jobsWithMatch.filter(j => !dismissedJobIds.includes(j.id));
   const matchedJobsCount = displayedJobs.filter(j => j._match?.isMatched).length;
+
+  // Do not leave the details panel on a job that has just been filtered out.
+  useEffect(() => {
+    if (displayedJobs.length > 0 && !displayedJobs.some(job => String(job.id || job._id) === String(selectedJobId))) {
+      setSelectedJobId(displayedJobs[0].id || displayedJobs[0]._id);
+    }
+  }, [displayedJobs, selectedJobId]);
 
   const filteredMobileJobs = mobileSearchTerm 
     ? activeJobs.filter(job => job.title.toLowerCase().includes(mobileSearchTerm.toLowerCase()) || job.company.toLowerCase().includes(mobileSearchTerm.toLowerCase()))

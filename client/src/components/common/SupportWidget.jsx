@@ -289,6 +289,8 @@ export default function SupportWidget() {
   const [problemFetchError, setProblemFetchError] = useState('');
   const [selectedProblemId, setSelectedProblemId] = useState('');
   const [customProblemText, setCustomProblemText] = useState('');
+  const [problemDescription, setProblemDescription] = useState('');
+  const [isProblemDescriptionOpen, setIsProblemDescriptionOpen] = useState(false);
 
   // Multi-request state for Updates & chat
   const [userRequests, setUserRequests] = useState([]);
@@ -854,6 +856,7 @@ export default function SupportWidget() {
       const bodyPayload = {
         problemId: selectedProblemId || null,
         customProblemText: customProblemText.trim(),
+        description: problemDescription.trim(),
         targetRole,
         name: activeName,
         email: activeEmail,
@@ -938,6 +941,8 @@ export default function SupportWidget() {
   const handleStartNewRequest = () => {
     setSelectedProblemId('');
     setCustomProblemText('');
+    setProblemDescription('');
+    setIsProblemDescriptionOpen(false);
     setSubmitSuccess(false);
     setSubmitError('');
     setIsEditingPhone(false);
@@ -970,6 +975,74 @@ export default function SupportWidget() {
     (p) => !p.role || p.role === 'all' || p.role === currentBackendRole || p.role === currentRole
   );
 
+  const renderProblemDescription = (isSelectedProblem) => {
+    const fieldId = isSelectedProblem ? 'fProblemDescription' : 'fCustomProblem';
+    const value = isSelectedProblem ? problemDescription : customProblemText;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <label
+          htmlFor={fieldId}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontWeight: 700,
+            fontSize: '12.5px',
+            color: 'var(--ink)',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--g600)' }}>
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+            {isSelectedProblem ? 'Describe your problem' : 'Type your problem'} <i style={{ color: 'var(--ink3)', fontWeight: 400, fontStyle: 'normal' }}>{isSelectedProblem ? '(optional)' : '(describe your issue)'}</i>
+          </span>
+          {value && (
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
+              {value.length}/500
+            </span>
+          )}
+        </label>
+        <textarea
+          id={fieldId}
+          rows={3}
+          maxLength={500}
+          className="sj-input"
+          style={{
+            resize: 'vertical',
+            minHeight: '74px',
+            padding: '10px 12px',
+            fontSize: '13px',
+            lineHeight: '1.45',
+            borderRadius: '12px',
+            border: '1.5px solid var(--line)',
+            fontFamily: 'inherit',
+            boxSizing: 'border-box',
+          }}
+          placeholder={isSelectedProblem
+            ? 'Add details about the selected problem...'
+            : 'Describe what problem you are facing in your own words...'}
+          value={value}
+          onChange={(e) => {
+            if (isSelectedProblem) {
+              setProblemDescription(e.target.value);
+            } else {
+              setCustomProblemText(e.target.value);
+            }
+            if (submitError) setSubmitError('');
+          }}
+        />
+        <div style={{ fontSize: '11px', color: '#64748b' }}>
+          {isSelectedProblem
+            ? 'Add any specific details or error messages to help us resolve this faster.'
+            : 'You can type your problem directly if it is not listed above.'}
+        </div>
+      </div>
+    );
+  };
+
   // Unread badge indicator for Updates & Chat tab
   const hasUnread = Boolean(
     userRequests.some((r) => r.hasUnreadAdminReply) ||
@@ -991,7 +1064,7 @@ export default function SupportWidget() {
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-controls="sjPanel"
-        aria-label={isOpen ? 'Close support chat' : 'Open support chat'}
+        aria-label={isOpen ? 'Close support' : 'Open support'}
       >
         {isOpen ? (
           <svg className="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -999,8 +1072,10 @@ export default function SupportWidget() {
           </svg>
         ) : (
           <>
-            <svg className="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5Z" />
+            <svg className="i-support" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 13v-2a9 9 0 0 1 18 0v2" />
+              <path d="M5 13h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3v-2a2 2 0 0 1 2-2Z" />
+              <path d="M19 13h-2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1a3 3 0 0 0 3-3v-2a2 2 0 0 0-2-2Z" />
             </svg>
             <span className="sj-fab-ping">
               <span className="sj-fab-ping-ring" />
@@ -1576,6 +1651,8 @@ export default function SupportWidget() {
                         onClick={() => {
                           setGuestRole(r);
                           setSelectedProblemId('');
+                          setProblemDescription('');
+                          setIsProblemDescriptionOpen(false);
                           setSubmitError('');
                         }}
                       >
@@ -1624,7 +1701,7 @@ export default function SupportWidget() {
                   {filteredProblems.map((p) => {
                     const isSelected = selectedProblemId === p._id;
                     return (
-                      <li key={p._id}>
+                      <li key={p._id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <button
                           type="button"
                           className="sj-issue"
@@ -1633,82 +1710,95 @@ export default function SupportWidget() {
                           onClick={() => {
                             setSelectedProblemId(p._id);
                             setCustomProblemText('');
+                            setProblemDescription('');
+                            setIsProblemDescriptionOpen(false);
                             setSubmitError('');
                           }}
                         >
                           <span>{p.title}</span>
                           <span className="r" />
                         </button>
+                        {isSelected && (
+                          <>
+                            <button
+                              type="button"
+                              aria-expanded={isProblemDescriptionOpen}
+                              aria-controls="fProblemDescription"
+                              onClick={() => setIsProblemDescriptionOpen((isOpen) => !isOpen)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                width: '100%',
+                                padding: '10px 12px',
+                                border: '1px solid var(--g100)',
+                                borderRadius: '12px',
+                                background: '#f7fbf7',
+                                color: 'var(--g800)',
+                                font: 'inherit',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                  width: '28px',
+                                  height: '28px',
+                                  flex: 'none',
+                                  borderRadius: '50%',
+                                  background: 'var(--g100)',
+                                  fontSize: '19px',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {isProblemDescriptionOpen ? '−' : '+'}
+                              </span>
+                              <span style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 700 }}>
+                                  {isProblemDescriptionOpen ? 'Hide details' : 'Add details about this issue'}
+                                </span>
+                                {!isProblemDescriptionOpen && (
+                                  <span style={{ fontSize: '11px', color: 'var(--ink3)' }}>
+                                    Optional — help us resolve it faster
+                                  </span>
+                                )}
+                              </span>
+                              <svg
+                                aria-hidden="true"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{
+                                  flex: 'none',
+                                  transform: isProblemDescriptionOpen ? 'rotate(180deg)' : 'none',
+                                  transition: 'transform 0.15s ease',
+                                }}
+                              >
+                                <path d="m6 9 6 6 6-6" />
+                              </svg>
+                            </button>
+                            {isProblemDescriptionOpen && renderProblemDescription(true)}
+                          </>
+                        )}
                       </li>
                     );
                   })}
                 </ul>
               )}
 
-              {/* Type your problem custom text field */}
-              <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label
-                  htmlFor="fCustomProblem"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    fontWeight: 700,
-                    fontSize: '12.5px',
-                    color: 'var(--ink)',
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--g600)' }}>
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                    </svg>
-                    Type your problem <i style={{ color: 'var(--ink3)', fontWeight: 400, fontStyle: 'normal' }}>(describe your issue)</i>
-                  </span>
-                  {customProblemText && (
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
-                      {customProblemText.length}/500
-                    </span>
-                  )}
-                </label>
-                <textarea
-                  id="fCustomProblem"
-                  rows={3}
-                  maxLength={500}
-                  className="sj-input"
-                  style={{
-                    resize: 'vertical',
-                    minHeight: '74px',
-                    padding: '10px 12px',
-                    fontSize: '13px',
-                    lineHeight: '1.45',
-                    borderRadius: '12px',
-                    border: '1.5px solid var(--line)',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                  }}
-                  placeholder="Describe what problem you are facing in your own words..."
-                  value={customProblemText}
-                  onFocus={() => {
-                    if (selectedProblemId) {
-                      setSelectedProblemId('');
-                    }
-                  }}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCustomProblemText(val);
-                    if (selectedProblemId) {
-                      setSelectedProblemId('');
-                    }
-                    if (submitError) setSubmitError('');
-                  }}
-                />
-                <div style={{ fontSize: '11px', color: '#64748b' }}>
-                  {selectedProblemId
-                    ? 'Optional: You can provide specific details or error messages.'
-                    : 'You can type your problem directly if it is not listed above.'}
+              {!selectedProblemId && (
+                <div style={{ marginTop: '14px' }}>
+                  {renderProblemDescription(false)}
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>

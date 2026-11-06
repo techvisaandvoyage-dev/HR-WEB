@@ -118,6 +118,16 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [loadingEmployeeDetail, setLoadingEmployeeDetail] = useState(false);
   const [previewResumeInDrawer, setPreviewResumeInDrawer] = useState(true);
   const [previewCoverLetterInDrawer, setPreviewCoverLetterInDrawer] = useState(false);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+
+  useEffect(() => {
+    if (!profileImagePreview) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setProfileImagePreview(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [profileImagePreview]);
 
   // Jobs List & Management State
   const [jobs, setJobs] = useState([]);
@@ -142,6 +152,50 @@ export default function DashboardOverview({ onNavigateTab }) {
     navigator.clipboard?.writeText(String(id));
     setCopiedJobId(String(id));
     setTimeout(() => setCopiedJobId(null), 1800);
+  };
+
+  const getCandidateAvatar = (candidate) => (
+    candidate?.avatar ||
+    candidate?.profilePhoto ||
+    candidate?.profilePicture ||
+    candidate?.photo ||
+    candidate?.personalDetails?.profilePhoto ||
+    ''
+  );
+  const getEmployerAvatar = (employer) => employer?.companyLogo || '';
+  const renderProfileAvatar = (src, name, className, imageLabel) => {
+    const initials = (name || 'U').trim().slice(0, 2).toUpperCase();
+    const avatar = (
+      <>
+        <span>{initials}</span>
+        {src && (
+          <img
+            src={src}
+            alt={name ? `${name} profile` : 'Profile'}
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
+      </>
+    );
+
+    return src ? (
+      <button
+        type="button"
+        className={`${className} relative overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500`}
+        aria-label={`View ${imageLabel} image`}
+        title="Click to view larger image"
+        onClick={() => setProfileImagePreview({ src, alt: name || imageLabel })}
+      >
+        {avatar}
+      </button>
+    ) : (
+      <div className={`${className} relative overflow-hidden`} aria-hidden="true">
+        {avatar}
+      </div>
+    );
   };
 
   const activeJobFiltersCount = useMemo(() => {
@@ -3356,9 +3410,12 @@ export default function DashboardOverview({ onNavigateTab }) {
                           {/* Name */}
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0">
-                                {emp.name ? emp.name.charAt(0).toUpperCase() : 'U'}
-                              </div>
+                              {renderProfileAvatar(
+                                getCandidateAvatar(emp),
+                                emp.name || 'Candidate',
+                                'w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0',
+                                'candidate'
+                              )}
                               <span className="font-bold text-gray-900 text-xs">{emp.name || 'Candidate'}</span>
                             </div>
                           </td>
@@ -4059,9 +4116,12 @@ export default function DashboardOverview({ onNavigateTab }) {
 
                               <td className="px-4 py-3.5 whitespace-nowrap align-middle">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0">
-                                    {empr.companyName ? empr.companyName.charAt(0).toUpperCase() : 'C'}
-                                  </div>
+                                  {renderProfileAvatar(
+                                    getEmployerAvatar(empr),
+                                    empr.companyName || empr.fullName || 'Company',
+                                    'w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs border border-emerald-200 shrink-0',
+                                    'employer'
+                                  )}
                                   <div className="min-w-0">
                                     <div className="font-bold text-gray-900 text-xs truncate max-w-[150px]" title={empr.companyName || empr.fullName}>
                                       {empr.companyName || empr.fullName || 'N/A'}
@@ -4250,6 +4310,21 @@ export default function DashboardOverview({ onNavigateTab }) {
                                       <CheckCircle2 className="w-3.5 h-3.5" />
                                       <span>{updatingControlId === (empr._id || empr.id) ? '...' : 'Verify'}</span>
                                     </button>
+                                  )}
+
+                                  {(empr.verification?.status === 'verified' || empr.account?.status === 'blocked') && (
+                                    <AccountStatusControl
+                                      mode="action"
+                                      account={empr.account}
+                                      accountId={empr._id || empr.id}
+                                      email={empr.email}
+                                      role={isConsultant ? 'consultant' : 'employer'}
+                                      onUpdate={(updated) => setEmployers(current => current.map(employer =>
+                                        (employer._id || employer.id) === (empr._id || empr.id)
+                                          ? { ...employer, account: updated?.account || { ...employer.account, status: 'active' } }
+                                          : employer
+                                      ))}
+                                    />
                                   )}
 
                                   <button
@@ -5521,9 +5596,12 @@ export default function DashboardOverview({ onNavigateTab }) {
             {/* Drawer Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center tracking-wider shrink-0 shadow-xs">
-                  {(selectedEmployer.companyName || selectedEmployer.fullName || 'TE').substring(0, 2).toUpperCase()}
-                </div>
+                {renderProfileAvatar(
+                  getEmployerAvatar(detailEmployer || selectedEmployer),
+                  selectedEmployer.companyName || selectedEmployer.fullName || 'Employer',
+                  'w-12 h-12 rounded-2xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center tracking-wider shrink-0 shadow-xs',
+                  'employer'
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-extrabold text-gray-900 text-base leading-tight">
@@ -5802,9 +5880,12 @@ export default function DashboardOverview({ onNavigateTab }) {
             {/* Drawer Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white font-black text-lg flex items-center justify-center tracking-wider shrink-0 shadow-xs ring-4 ring-emerald-50">
-                  {selectedEmployee.name ? selectedEmployee.name.charAt(0).toUpperCase() : 'C'}
-                </div>
+                {renderProfileAvatar(
+                  getCandidateAvatar(detailEmployee || selectedEmployee),
+                  selectedEmployee.name || 'Candidate',
+                  'w-12 h-12 rounded-2xl bg-emerald-600 text-white font-black text-lg flex items-center justify-center tracking-wider shrink-0 shadow-xs ring-4 ring-emerald-50',
+                  'candidate'
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-extrabold text-gray-900 text-base leading-tight">
@@ -6799,6 +6880,35 @@ export default function DashboardOverview({ onNavigateTab }) {
                 Close Drawer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {profileImagePreview && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${profileImagePreview.alt} image preview`}
+          onClick={() => setProfileImagePreview(null)}
+        >
+          <div
+            className="relative flex max-h-[90vh] max-w-[92vw] items-center justify-center rounded-2xl bg-white p-2 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setProfileImagePreview(null)}
+              className="absolute -right-3 -top-3 z-10 rounded-full bg-white p-2 text-gray-700 shadow-lg transition hover:bg-gray-100"
+              aria-label="Close image preview"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <img
+              src={profileImagePreview.src}
+              alt={profileImagePreview.alt}
+              className="max-h-[86vh] max-w-[88vw] rounded-xl object-contain"
+            />
           </div>
         </div>
       )}

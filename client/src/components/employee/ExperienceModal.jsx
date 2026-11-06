@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
+import CustomDropdown from '../common/CustomDropdown';
 import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import { IconPlus, IconBag, IconTrash, IconClose, IconChevronDown } from './ProfileIcons';
 
@@ -150,6 +151,25 @@ const ExperienceModal = ({
   const leavingDate = field('leavingDate', 'Leaving date');
   const currentCompany = field('currentCompany', 'I currently work here');
   const roleDescription = field('roleDescription', 'Roles & responsibilities', 'Briefly describe your roles & responsibilities');
+  const noticeOptions = [
+    { value: '', label: notice.placeholder },
+    ...noticePeriods.map(item => {
+      const value = typeof item === 'string' ? item : (item.value || item.label);
+      const label = typeof item === 'string' ? item : (item.label || item.value);
+      return { value, label };
+    }),
+    { value: '__custom__', label: 'Custom (Enter Days)' }
+  ];
+  const employmentTypeOptions = [
+    { value: '', label: employmentType.placeholder },
+    ...employmentTypes.map(item => {
+      const value = typeof item === 'string' ? item : (item.value || item.label);
+      const label = typeof item === 'string' ? item : (item.label || item.value);
+      return { value, label };
+    })
+  ];
+  const monthOptions = [{ value: '', label: 'Month' }, ...MONTHS];
+  const yearOptions = [{ value: '', label: 'Year' }, ...years];
 
   const toggleRoleCollapse = (idx) => {
     setCollapsedRoles(prev => ({
@@ -370,11 +390,14 @@ const ExperienceModal = ({
                   </button>
                 </div>
                 {!isCustomNotice ? (
-                  <select
+                  <CustomDropdown
                     className="sj-in"
+                    rounded="rounded-[14px]"
+                    options={noticeOptions}
                     value={noticePeriod}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                    placeholder={notice.placeholder}
+                    allowCustomValue={false}
+                    onChange={(val) => {
                       if (val === '__custom__') {
                         setIsCustomNotice(true);
                         setCustomDays('');
@@ -382,13 +405,7 @@ const ExperienceModal = ({
                         setNoticePeriod(val);
                       }
                     }}
-                  >
-                    <option value="">{notice.placeholder}</option>
-                    {noticePeriods.map(item => { const np = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return (
-                      <option key={np} value={np}>{label}</option>
-                    ); })}
-                    <option value="__custom__">Custom (Enter Days)</option>
-                  </select>
+                  />
                 ) : (
                   <div className="relative flex items-center">
                     <input
@@ -477,14 +494,15 @@ const ExperienceModal = ({
                           <label className="sj-lb">
                             {employmentType.label} {employmentType.isRequired && <span className="sj-req">*</span>}
                           </label>
-                          <select
+                          <CustomDropdown
                             className="sj-in"
+                            rounded="rounded-[14px]"
+                            options={employmentTypeOptions}
                             value={role.employmentType}
-                            onChange={(e) => handleRoleChange(idx, 'employmentType', e.target.value)}
-                          >
-                            <option value="">{employmentType.placeholder}</option>
-                            {employmentTypes.map(item => { const t = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={t} value={t}>{label}</option>; })}
-                          </select>
+                            placeholder={employmentType.placeholder}
+                            allowCustomValue={false}
+                            onChange={(value) => handleRoleChange(idx, 'employmentType', value)}
+                          />
                         </div>
 
                         {/* I currently work here */}
@@ -506,26 +524,22 @@ const ExperienceModal = ({
                             {joiningDate.label} {joiningDate.isRequired && <span className="sj-req">*</span>}
                           </label>
                           <div className="grid grid-cols-2 gap-2">
-                            <select
+                            <CustomDropdown
                               className="sj-in"
+                              rounded="rounded-[14px]"
+                              options={monthOptions}
                               value={joinMonth}
-                              onChange={(e) => handleMonthYearChange(idx, 'join', 'month', e.target.value)}
-                            >
-                              <option value="">Month</option>
-                              {MONTHS.map(m => (
-                                <option key={m.value} value={m.value}>{m.label}</option>
-                              ))}
-                            </select>
-                            <select
+                              allowCustomValue={false}
+                              onChange={(value) => handleMonthYearChange(idx, 'join', 'month', value)}
+                            />
+                            <CustomDropdown
                               className="sj-in"
+                              rounded="rounded-[14px]"
+                              options={yearOptions}
                               value={joinYear}
-                              onChange={(e) => handleMonthYearChange(idx, 'join', 'year', e.target.value)}
-                            >
-                              <option value="">Year</option>
-                              {years.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                              ))}
-                            </select>
+                              allowCustomValue={false}
+                              onChange={(value) => handleMonthYearChange(idx, 'join', 'year', value)}
+                            />
                           </div>
                         </div>
 
@@ -542,26 +556,22 @@ const ExperienceModal = ({
                             />
                           ) : (
                             <div className="grid grid-cols-2 gap-2">
-                              <select
+                              <CustomDropdown
                                 className="sj-in"
+                                rounded="rounded-[14px]"
+                                options={monthOptions}
                                 value={leaveMonth}
-                                onChange={(e) => handleMonthYearChange(idx, 'leave', 'month', e.target.value)}
-                              >
-                                <option value="">Month</option>
-                                {MONTHS.map(m => (
-                                  <option key={m.value} value={m.value}>{m.label}</option>
-                                ))}
-                              </select>
-                              <select
+                                allowCustomValue={false}
+                                onChange={(value) => handleMonthYearChange(idx, 'leave', 'month', value)}
+                              />
+                              <CustomDropdown
                                 className="sj-in"
+                                rounded="rounded-[14px]"
+                                options={yearOptions}
                                 value={leaveYear}
-                                onChange={(e) => handleMonthYearChange(idx, 'leave', 'year', e.target.value)}
-                              >
-                                <option value="">Year</option>
-                                {years.map(y => (
-                                  <option key={y} value={y}>{y}</option>
-                                ))}
-                              </select>
+                                allowCustomValue={false}
+                                onChange={(value) => handleMonthYearChange(idx, 'leave', 'year', value)}
+                              />
                             </div>
                           )}
                           {dateError && <p className="sj-err">{dateError}</p>}

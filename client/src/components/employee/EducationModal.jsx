@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import CustomDropdown from '../common/CustomDropdown';
 import InstituteAutocomplete from '../common/InstituteAutocomplete';
-import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import { IconPlus, IconGraduationCap, IconTrash, IconClose } from './ProfileIcons';
 import { DEFAULT_EDUCATION_DATA, DEFAULT_BOARD_OPTIONS } from './EmployeeOnboarding';
 
@@ -168,11 +168,14 @@ const EducationModal = ({
               <label className="sj-lb">
                 {educationType.label} {educationType.isRequired && <span className="sj-req">*</span>}
               </label>
-              <select
+              <CustomDropdown
                 className="sj-in"
+                rounded="rounded-[14px]"
+                options={[{ value: '', label: educationType.placeholder }, ...educationTypes]}
                 value={form.educationType}
-                onChange={(e) => {
-                  const val = e.target.value;
+                placeholder={educationType.placeholder}
+                allowCustomValue={false}
+                onChange={(val) => {
                   setForm(prev => ({
                     ...prev,
                     educationType: val,
@@ -183,11 +186,8 @@ const EducationModal = ({
                   }));
                   setErrors(prev => ({ ...prev, educationType: '' }));
                 }}
-                aria-invalid={!!errors.educationType}
-              >
-                <option value="">{educationType.placeholder}</option>
-                {educationTypes.map(item => { const value = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={value} value={value}>{label}</option>; })}
-              </select>
+                error={!!errors.educationType}
+              />
               {errors.educationType && <p className="sj-err">{errors.educationType}</p>}
             </div>
 
@@ -198,20 +198,22 @@ const EducationModal = ({
                   <label className="sj-lb">
                     Board <span className="sj-req">*</span>
                   </label>
-                  <select
+                  <CustomDropdown
                     className="sj-in"
+                    rounded="rounded-[14px]"
+                    options={[
+                      { value: '', label: 'Select board' },
+                      ...(selectOptions.length ? selectOptions : DEFAULT_BOARD_OPTIONS)
+                    ]}
                     value={form.board}
-                    onChange={(e) => {
-                      setForm({ ...form, board: e.target.value });
+                    placeholder="Select board"
+                    allowCustomValue={false}
+                    onChange={(value) => {
+                      setForm({ ...form, board: value });
                       setErrors(prev => ({ ...prev, board: '' }));
                     }}
-                    aria-invalid={!!errors.board}
-                  >
-                    <option value="">Select board</option>
-                    {(selectOptions.length ? selectOptions : DEFAULT_BOARD_OPTIONS).map(item => item.isGroupLabel ? (
-                      <option key={item.label} value="" disabled>{item.label}</option>
-                    ) : <option key={item.value || item.label} value={item.value || item.label}>{item.label || item.value}</option>)}
-                  </select>
+                    error={!!errors.board}
+                  />
                   {errors.board && <p className="sj-err">{errors.board}</p>}
                 </div>
 
@@ -219,31 +221,33 @@ const EducationModal = ({
                   <label className="sj-lb">
                     {endYear.label} {endYear.isRequired && <span className="sj-req">*</span>}
                   </label>
-                  <select
+                  <CustomDropdown
                     className="sj-in"
+                    rounded="rounded-[14px]"
+                    options={[{ value: '', label: endYear.placeholder }, ...years]}
                     value={form.endYear}
-                    onChange={(e) => {
-                      setForm({ ...form, endYear: e.target.value });
+                    placeholder={endYear.placeholder}
+                    allowCustomValue={false}
+                    onChange={(value) => {
+                      setForm({ ...form, endYear: value });
                       setErrors(prev => ({ ...prev, endYear: '' }));
                     }}
-                    aria-invalid={!!errors.endYear}
-                  >
-                    <option value="">{endYear.placeholder}</option>
-                    {years.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                    error={!!errors.endYear}
+                  />
                   {errors.endYear && <p className="sj-err">{errors.endYear}</p>}
                 </div>
 
                 <div className="sj-fld">
                   <label className="sj-lb">{schoolMedium.label}</label>
-                  <select
+                  <CustomDropdown
                     className="sj-in"
+                    rounded="rounded-[14px]"
+                    options={[{ value: '', label: schoolMedium.placeholder }, ...mediums]}
                     value={form.schoolMedium}
-                    onChange={(e) => setForm({ ...form, schoolMedium: e.target.value })}
-                  >
-                    <option value="">{schoolMedium.placeholder}</option>
-                    {mediums.map(item => { const value = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={value} value={value}>{label}</option>; })}
-                  </select>
+                    placeholder={schoolMedium.placeholder}
+                    allowCustomValue={false}
+                    onChange={(value) => setForm({ ...form, schoolMedium: value })}
+                  />
                 </div>
               </>
             ) : (
@@ -268,19 +272,19 @@ const EducationModal = ({
                   <label className="sj-lb">
                     {course.label} {course.isRequired && <span className="sj-req">*</span>}
                   </label>
-                  <select
+                  <CustomDropdown
                     className="sj-in"
+                    rounded="rounded-[14px]"
+                    options={[{ value: '', label: course.placeholder }, ...selectOptions]}
                     value={form.course}
-                    onChange={(e) => {
-                      setForm({ ...form, course: e.target.value });
+                    placeholder={course.placeholder}
+                    allowCustomValue={false}
+                    onChange={(value) => {
+                      setForm({ ...form, course: value });
                       setErrors(prev => ({ ...prev, course: '' }));
                     }}
-                  >
-                    <option value="">{course.placeholder}</option>
-                    {selectOptions.map(item => item.isGroupLabel ? (
-                      <option key={item.label} value="" disabled>{item.label}</option>
-                    ) : <option key={item.value} value={item.value}>{item.label}</option>)}
-                  </select>
+                    error={!!errors.course}
+                  />
                   {errors.course && <p className="sj-err">{errors.course}</p>}
                 </div>
 
@@ -306,18 +310,19 @@ const EducationModal = ({
                   <label className="sj-lb">
                     {startYear.label} {startYear.isRequired && <span className="sj-req">*</span>}
                   </label>
-                  <select
+                  <CustomDropdown
                     className="sj-in"
+                    rounded="rounded-[14px]"
+                    options={[{ value: '', label: startYear.placeholder }, ...years]}
                     value={form.startYear}
-                    onChange={(e) => {
-                      setForm({ ...form, startYear: e.target.value });
+                    placeholder={startYear.placeholder}
+                    allowCustomValue={false}
+                    onChange={(value) => {
+                      setForm({ ...form, startYear: value });
                       setErrors(prev => ({ ...prev, startYear: '' }));
                     }}
-                    aria-invalid={!!errors.startYear}
-                  >
-                    <option value="">{startYear.placeholder}</option>
-                    {years.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                    error={!!errors.startYear}
+                  />
                   {errors.startYear && <p className="sj-err">{errors.startYear}</p>}
                 </div>
 
@@ -325,18 +330,19 @@ const EducationModal = ({
                   <label className="sj-lb">
                     {endYear.label} {endYear.isRequired && <span className="sj-req">*</span>}
                   </label>
-                  <select
+                  <CustomDropdown
                     className="sj-in"
+                    rounded="rounded-[14px]"
+                    options={[{ value: '', label: endYear.placeholder }, ...years]}
                     value={form.endYear}
-                    onChange={(e) => {
-                      setForm({ ...form, endYear: e.target.value });
+                    placeholder={endYear.placeholder}
+                    allowCustomValue={false}
+                    onChange={(value) => {
+                      setForm({ ...form, endYear: value });
                       setErrors(prev => ({ ...prev, endYear: '' }));
                     }}
-                    aria-invalid={!!errors.endYear}
-                  >
-                    <option value="">{endYear.placeholder}</option>
-                    {years.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                    error={!!errors.endYear}
+                  />
                   {errors.endYear && <p className="sj-err">{errors.endYear}</p>}
                 </div>
               </>
@@ -345,13 +351,14 @@ const EducationModal = ({
             {/* Grading System & Score */}
             <div className="sj-fld">
               <label className="sj-lb">{gradingSystem.label}</label>
-              <select
+              <CustomDropdown
                 className="sj-in"
+                rounded="rounded-[14px]"
+                options={gradingSystems}
                 value={form.gradingSystem}
-                onChange={(e) => setForm({ ...form, gradingSystem: e.target.value })}
-              >
-                {gradingSystems.map(item => { const value = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={value} value={value}>{label}</option>; })}
-              </select>
+                allowCustomValue={false}
+                onChange={(value) => setForm({ ...form, gradingSystem: value })}
+              />
             </div>
 
             <div className="sj-fld">

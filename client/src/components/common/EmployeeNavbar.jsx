@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 import LocationAutocomplete from './LocationAutocomplete';
+import { isLocationMatch } from '../../data/preferredLocations';
+import { isExperienceMatch } from '../../utils/experienceMatcher';
 
 const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -55,13 +57,18 @@ const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
 import { socket } from '../../utils/socket';
 
 const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters, hideBottomNav = false }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const incomingFilters = location.state?.searchFilters;
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showFilterSuggestions, setShowFilterSuggestions] = useState(false);
+  const [fetchedJobs, setFetchedJobs] = useState([]);
   
-  const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [localSearchLocation, setLocalSearchLocation] = useState('');
-  const [localExperience, setLocalExperience] = useState('All');
-  const [localPostingDate, setLocalPostingDate] = useState('Any time');
+  const [localSearchTerm, setLocalSearchTerm] = useState(incomingFilters?.keyword || '');
+  const [localSearchLocation, setLocalSearchLocation] = useState(incomingFilters?.location || '');
+  const [localExperience, setLocalExperience] = useState(incomingFilters?.experience || 'All');
+  const [localPostingDate, setLocalPostingDate] = useState(incomingFilters?.postingDate || 'Any time');
 
   const searchTerm = filters ? filters.keyword : localSearchTerm;
   const searchLocation = filters ? filters.location : localSearchLocation;
@@ -73,23 +80,24 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
     else setLocalSearchTerm(val);
   };
 
-  const handleSetSearchLocation = (val) => {
+  const handleSetSearchLocation = (val, showResults = false) => {
     if (setFilters) setFilters(prev => ({ ...prev, location: val }));
     else setLocalSearchLocation(val);
+    if (showResults) setShowFilterSuggestions(true);
   };
 
   const handleSetExperience = (val) => {
     if (setFilters) setFilters(prev => ({ ...prev, experience: val }));
     else setLocalExperience(val);
+    setShowFilterSuggestions(true);
   };
 
   const handleSetPostingDate = (val) => {
     if (setFilters) setFilters(prev => ({ ...prev, postingDate: val }));
     else setLocalPostingDate(val);
+    setShowFilterSuggestions(true);
   };
   const dropdownRef = useRef(null);
-  const navigate = useNavigate();
-  const location = useLocation();
   const currentPath = location.pathname;
   
   const [totalUnread, setTotalUnread] = useState(0);
@@ -149,15 +157,50 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
     const handleClickOutsideSearch = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowSuggestions(false);
+        setShowFilterSuggestions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutsideSearch);
     return () => document.removeEventListener('mousedown', handleClickOutsideSearch);
   }, []);
 
-  const filteredJobs = searchTerm 
-    ? jobs.filter(job => job.title.toLowerCase().includes(searchTerm.toLowerCase()) || job.company.toLowerCase().includes(searchTerm.toLowerCase()))
-    : [];
+  const hasProvidedJobs = jobs.length > 0;
+
+  useEffect(() => {
+    if (hasProvidedJobs) return;
+    const loadJobs = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/employee/jobs`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) setFetchedJobs(data.data.map(job => ({ ...job, id: job.id || job._id })));
+      } catch (err) {
+        console.error('Unable to load navbar job suggestions:', err);
+      }
+    };
+    loadJobs();
+  }, [hasProvidedJobs]);
+
+  const availableJobs = jobs.length > 0 ? jobs : fetchedJobs;
+  // Treat an in-progress workplace-mode word as its intended filter so "Re"
+  // already suggests Remote jobs instead of waiting for the full word.
+  const locationInput = searchLocation.trim().toLowerCase();
+  const locationQuery = locationInput.length >= 2
+    ? (['remote', 'hybrid', 'on-site'].find(mode => mode.startsWith(locationInput)) || searchLocation)
+    : searchLocation;
+  const filteredJobs = availableJobs.filter(job => {
+    if (job.status === 'Closed') return false;
+    const keyword = searchTerm.trim().toLowerCase();
+    if (keyword && ![job.title, job.company, job.details?.skillsRequired].some(value => String(value || '').toLowerCase().includes(keyword))) return false;
+    if (locationQuery && !isLocationMatch(job.location || job.employerId?.location, locationQuery, job.details?.workLocation, job.workplaceMode || job.details?.workplaceMode, job)) return false;
+    if (experience !== 'All' && !isExperienceMatch(job.details?.experience || job.experience || '', experience)) return false;
+    if (postingDate !== 'Any time') {
+      const ageDays = postingDate.includes('24') ? 1 : postingDate.includes('3') ? 3 : postingDate.toLowerCase().includes('week') ? 7 : 30;
+      const postedAt = new Date(job.createdAt || job.date || 0).getTime();
+      if (!postedAt || Date.now() - postedAt > ageDays * 24 * 60 * 60 * 1000) return false;
+    }
+    return true;
+  });
 
   return (
     <>
@@ -217,13 +260,19 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
                 handleSetSearchTerm(e.target.value);
                 setShowSuggestions(true);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchTerm.trim()) {
+                  setShowFilterSuggestions(true);
+                  setShowSuggestions(false);
+                }
+              }}
               onFocus={() => setShowSuggestions(true)}
               className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm text-gray-900 placeholder-gray-500 shadow-none ring-0"
             />
             {showSuggestions && searchTerm && (
               <div className="absolute top-[200%] left-0 w-[120%] bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[100] max-h-64 overflow-y-auto">
                 {filteredJobs.length > 0 ? filteredJobs.slice(0, 5).map(job => (
-                  <div key={job.id} onClick={() => { handleSetSearchTerm(job.title); setShowSuggestions(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
+                  <div key={job.id || job._id} onClick={() => { handleSetSearchTerm(job.title); setShowSuggestions(false); setShowFilterSuggestions(true); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-3 border-b border-gray-50 last:border-0">
                     <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center font-bold text-gray-600 text-xs shrink-0">
                       {job.companyInitial}
                     </div>
@@ -245,11 +294,33 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
             </svg>
             <LocationAutocomplete 
               value={searchLocation}
-              onChange={(val) => handleSetSearchLocation(typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || ''))}
+              onChange={(val) => handleSetSearchLocation(typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || ''), true)}
+              onSelect={(val) => handleSetSearchLocation(val, true)}
               placeholder="City, state" 
               className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm text-gray-900 placeholder-gray-500 shadow-none ring-0"
             />
           </div>
+
+          {showFilterSuggestions && (
+            <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[100] max-h-80 overflow-y-auto">
+              <div className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                Matching jobs ({filteredJobs.length})
+              </div>
+              {filteredJobs.length > 0 ? filteredJobs.slice(0, 6).map(job => (
+                <div key={job.id || job._id} className="px-4 py-2.5 flex items-center gap-3 border-t border-gray-50">
+                  <div className="w-8 h-8 bg-emerald-50 rounded flex items-center justify-center font-bold text-emerald-700 text-xs shrink-0">
+                    {job.companyInitial || job.company?.charAt(0)?.toUpperCase() || 'J'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-gray-900 text-sm truncate">{job.title}</div>
+                    <div className="text-xs text-gray-500 truncate">{job.company} • {job.location || job.details?.workLocation || 'Location not specified'}</div>
+                  </div>
+                </div>
+              )) : (
+                <div className="px-4 py-3 text-sm text-gray-500 text-center">No jobs match these filters</div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Icons — Desktop Only (mobile uses bottom nav) */}

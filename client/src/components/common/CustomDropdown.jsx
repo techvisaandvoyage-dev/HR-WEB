@@ -9,7 +9,8 @@ const CustomDropdown = ({
   className = "", 
   rounded = "rounded-lg",
   dropdownClassName = "",
-  allowCustomValue = true
+  allowCustomValue = true,
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +55,7 @@ const CustomDropdown = ({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, searchTerm, onChange, safeOptions, value, allowCustomValue]);
+  }, [isOpen, searchTerm, onChange, safeOptions, value, allowCustomValue, disabled]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -81,7 +82,10 @@ const CustomDropdown = ({
   const searchClean = cleanStr(searchTerm);
   const searchTokens = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
 
-  const selectedOption = safeOptions.find(opt => String(opt.value) === String(value) && !opt.isGroupLabel);
+  const selectedOption = value !== undefined && value !== null && String(value) !== ''
+    ? safeOptions.find(opt => String(opt.value) === String(value) && !opt.isGroupLabel)
+    : undefined;
+  const isDropdownOpen = isOpen && !disabled;
 
   // Filter options based on search term (label, value, keywords, aliases, cleaned matches)
   const filteredOptions = safeOptions.filter(opt => {
@@ -118,13 +122,16 @@ const CustomDropdown = ({
   return (
     <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          if (!disabled) setIsOpen(true);
+        }}
+        aria-disabled={disabled}
         className={`w-full ${className.includes('px-') ? '' : 'px-4'} ${className.includes('py-') ? '' : 'py-2.5'} bg-white border ${
-          isOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : (className.includes('border-') ? '' : 'border-gray-200'))
-        } ${rounded} text-gray-700 flex justify-between items-center transition-all shadow-2xs cursor-text text-sm ${className}`}
+          isDropdownOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : (className.includes('border-') ? '' : 'border-gray-200'))
+        } ${rounded} text-gray-700 flex justify-between items-center transition-all shadow-2xs ${disabled ? 'cursor-not-allowed bg-gray-100 opacity-70' : 'cursor-text'} text-sm ${className}`}
       >
         <div className="flex-1 overflow-hidden pr-1.5">
-          {isOpen ? (
+          {isDropdownOpen ? (
             <input
               ref={inputRef}
               type="text"
@@ -158,18 +165,20 @@ const CustomDropdown = ({
         </div>
         <button
           type="button"
+          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
+            if (disabled) return;
             setIsOpen(!isOpen);
             if (isOpen) setSearchTerm('');
           }}
-          className="focus:outline-none flex-shrink-0"
+          className="focus:outline-none flex-shrink-0 disabled:cursor-not-allowed"
         >
-          <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+          <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
         </button>
       </div>
 
-      {isOpen && (
+      {isDropdownOpen && (
         <div className={`absolute z-50 min-w-full ${dropdownClassName || 'w-full'} ${openUpward ? 'bottom-full mb-2' : 'mt-1.5'} bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-1.5`}>
           {filteredOptions.some(opt => !opt.isGroupLabel) ? filteredOptions.map((opt, idx) => {
             if (opt.isGroupLabel) {

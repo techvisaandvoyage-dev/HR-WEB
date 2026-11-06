@@ -4,6 +4,7 @@ import { preferredLocationOptions } from '../../data/preferredLocations';
 const LocationAutocomplete = ({ 
   value, 
   onChange, 
+  onSelect,
   placeholder = "City, state", 
   className = "w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
 }) => {
@@ -112,6 +113,9 @@ const LocationAutocomplete = ({
     setIsOpen(false);
     if (onChange) {
       onChange(val);
+    }
+    if (onSelect) {
+      onSelect(val);
     }
   };
 

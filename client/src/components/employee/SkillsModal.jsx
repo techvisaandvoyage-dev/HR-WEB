@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
+import CustomDropdown from '../common/CustomDropdown';
 import MultiSelectLocationDropdown from '../common/MultiSelectLocationDropdown';
 import { preferredLocationOptions } from '../../data/preferredLocations';
 import { getSuggestedSkills, allSkillsOptions } from '../../utils/skillsData';
@@ -29,19 +29,6 @@ const TOTAL_EXP_OPTIONS = [
   '11 – 15 Yrs',
   '16 – 20 Yrs',
   '20+ Yrs'
-];
-
-const FUNCTION_OPTIONS = [
-  'Finance & Accounting',
-  'IT & Software',
-  'Design & Creative',
-  'Sales & Business Development',
-  'Marketing & Communication',
-  'Operations & Supply Chain',
-  'Human Resources',
-  'Healthcare & Pharmaceuticals',
-  'Manufacturing & Production',
-  'Other'
 ];
 
 const DEFAULT_SUGGESTED_SKILLS = [
@@ -162,13 +149,19 @@ const SkillsModal = ({
   const activeCms = cmsConfig || internalCmsConfig;
   const fields = activeCms?.step4?.fields || {};
   const field = (key, label, placeholder = '') => ({ label: fields[key]?.label || label, placeholder: fields[key]?.placeholder || placeholder, isRequired: fields[key]?.isRequired !== false });
-  const functionsMap = activeCms?.step1?.functionsData;
-  const functionOptions = functionsMap && typeof functionsMap === 'object' && Object.keys(functionsMap).length
-    ? Object.keys(functionsMap) : FUNCTION_OPTIONS;
+  const functionsMap = activeCms?.step1?.functionsData && typeof activeCms.step1.functionsData === 'object'
+    ? activeCms.step1.functionsData
+    : {};
+  const functionOptions = Object.keys(functionsMap);
+  const roleOptions = Array.isArray(functionsMap[form.function])
+    ? functionsMap[form.function]
+      .map(item => (typeof item === 'string' ? item : (item?.value || item?.label || '')).trim())
+      .filter(Boolean)
+    : [];
   const experienceOptions = Array.isArray(activeCms?.step1?.experienceOptions) && activeCms.step1.experienceOptions.length ? activeCms.step1.experienceOptions : TOTAL_EXP_OPTIONS;
   const locationOptions = Array.isArray(activeCms?.step1?.locationCities) && activeCms.step1.locationCities.length
     ? activeCms.step1.locationCities.map(item => ({ value: typeof item === 'string' ? item : (item.value || item.label), label: typeof item === 'string' ? item : (item.label || item.value) })) : preferredLocationOptions;
-  const designation = field('designation', 'Designation / Role', 'Select or type designation');
+  const designation = field('designation', 'Designation / Role', 'Select role');
   const industry = field('industry', 'Function', 'Select Function');
   const preferredLocation = field('preferredLocation', 'Preferred location', 'Select Preferred Locations');
   const totalExperience = field('totalExperience', 'Total experience', 'Select Experience');
@@ -366,34 +359,53 @@ const SkillsModal = ({
 
           {/* Body */}
           <div className="sj-mb">
+            {/* Function */}
+            <div className="sj-fld">
+              <label className="sj-lb">{industry.label}</label>
+              <CustomDropdown
+                className="sj-in"
+                rounded="rounded-[14px]"
+                options={[{ value: '', label: industry.placeholder }, ...functionOptions]}
+                value={form.function}
+                placeholder={industry.placeholder}
+                allowCustomValue={false}
+                onChange={(value) => {
+                  setForm(prev => ({ ...prev, function: value, designation: '' }));
+                  setErrors(prev => ({ ...prev, designation: '' }));
+                }}
+              />
+            </div>
+
             {/* Designation / Role */}
             <div className="sj-fld">
               <label className="sj-lb">
                 {designation.label} {designation.isRequired && <span className="sj-req">*</span>}
               </label>
-              <JobTitleAutocomplete
+              <CustomDropdown
+                className="sj-in"
+                rounded="rounded-[14px]"
+                options={[
+                  {
+                    value: '',
+                    label: !form.function
+                      ? 'Select function first'
+                      : roleOptions.length === 0
+                        ? 'No roles configured for this function'
+                        : designation.placeholder
+                  },
+                  ...roleOptions
+                ]}
                 value={form.designation}
-                onChange={(val) => {
-                  setForm({ ...form, designation: val });
+                placeholder={designation.placeholder}
+                disabled={!form.function || roleOptions.length === 0}
+                allowCustomValue={false}
+                onChange={(value) => {
+                  setForm(prev => ({ ...prev, designation: value }));
                   setErrors(prev => ({ ...prev, designation: '' }));
                 }}
-                placeholder={designation.placeholder}
-                className="sj-in"
+                error={!!errors.designation}
               />
               {errors.designation && <p className="sj-err">{errors.designation}</p>}
-            </div>
-
-            {/* Function */}
-            <div className="sj-fld">
-              <label className="sj-lb">{industry.label}</label>
-              <select
-                className="sj-in"
-                value={form.function}
-                onChange={(e) => setForm({ ...form, function: e.target.value })}
-              >
-                <option value="">{industry.placeholder}</option>
-                {functionOptions.map(item => { const fn = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={fn} value={fn}>{label}</option>; })}
-              </select>
             </div>
 
             {/* Preferred Location */}
@@ -412,14 +424,19 @@ const SkillsModal = ({
             {/* Total Experience */}
             <div className="sj-fld">
               <label className="sj-lb">{totalExperience.label}</label>
-              <select
+              <CustomDropdown
                 className="sj-in"
+                rounded="rounded-[14px]"
+                options={[{ value: '', label: totalExperience.placeholder }, ...experienceOptions.map(item => {
+                  const value = typeof item === 'string' ? item : (item.value || item.label);
+                  const label = typeof item === 'string' ? item : (item.label || item.value);
+                  return { value, label };
+                })]}
                 value={form.totalExperience}
-                onChange={(e) => setForm({ ...form, totalExperience: e.target.value })}
-              >
-                <option value="">{totalExperience.placeholder}</option>
-                {experienceOptions.map(item => { const te = typeof item === 'string' ? item : (item.value || item.label); const label = typeof item === 'string' ? item : (item.label || item.value); return <option key={te} value={te}>{label}</option>; })}
-              </select>
+                placeholder={totalExperience.placeholder}
+                allowCustomValue={false}
+                onChange={(value) => setForm({ ...form, totalExperience: value })}
+              />
             </div>
 
             {/* LinkedIn Profile */}
@@ -437,26 +454,27 @@ const SkillsModal = ({
             {/* Salary Type */}
             <div className="sj-fld">
               <label className="sj-lb">{salaryType.label}</label>
-              <select
+              <CustomDropdown
                 className="sj-in"
+                rounded="rounded-[14px]"
+                options={['Yearly', 'Monthly']}
                 value={form.salaryType}
-                onChange={(e) => setForm({ ...form, salaryType: e.target.value })}
-              >
-                <option value="Yearly">Yearly</option>
-                <option value="Monthly">Monthly</option>
-              </select>
+                allowCustomValue={false}
+                onChange={(value) => setForm({ ...form, salaryType: value })}
+              />
             </div>
 
             {/* Currency */}
             <div className="sj-fld">
               <label className="sj-lb">{currency.label}</label>
-              <select
+              <CustomDropdown
                 className="sj-in"
+                rounded="rounded-[14px]"
+                options={CURRENCY_OPTIONS}
                 value={form.currency}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              >
-                {CURRENCY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+                allowCustomValue={false}
+                onChange={(value) => setForm({ ...form, currency: value })}
+              />
             </div>
 
             {/* Current annual CTC */}
