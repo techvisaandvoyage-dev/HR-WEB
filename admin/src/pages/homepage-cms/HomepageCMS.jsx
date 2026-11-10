@@ -4,13 +4,14 @@ import HeroSectionEditor from './components/HeroSectionEditor';
 import SearchBarEditor from './components/SearchBarEditor';
 import JobCardsEditor from './components/JobCardsEditor';
 import TypographySectionEditor from './components/TypographySectionEditor';
+import ThemeMasterColorsEditor from './components/ThemeMasterColorsEditor';
 
 /**
  * HomepageCMS Component
  * Main orchestrator for Homepage CMS with 2-tier sub-navigation sidebar,
  * managing Logo, Typography & Fonts, Hero, Search Bar, and Job Cards configurations.
  */
-const VALID_SECTIONS = ['logo', 'hero', 'search', 'jobCards']; // 'typography' temporarily hidden
+const VALID_SECTIONS = ['logo', 'themeTokens', 'hero', 'search', 'jobCards']; // 'typography' temporarily hidden
 
 const HomepageCMS = () => {
   const [activeSection, setActiveSectionState] = useState(() => {
@@ -177,6 +178,15 @@ const HomepageCMS = () => {
         </svg>
       )
     },
+    {
+      id: 'themeTokens',
+      label: 'Theme Colors',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4 4.5 4.5 0 015.65-4.32A4.5 4.5 0 0113 16.5c0 1.25-.5 2.4-1.32 3.25L10 21H7zM16 3a4 4 0 014 4 4.5 4.5 0 01-4.32 5.65A4.5 4.5 0 0113 7.5c0-1.25.5-2.4 1.32-3.25L16 3z" />
+        </svg>
+      )
+    },
     /* Typography & Fonts temporarily hidden - do not remove code
     {
       id: 'typography',
@@ -310,6 +320,15 @@ const HomepageCMS = () => {
         <div className="max-w-[1600px] mx-auto pb-12">
           {activeSection === 'logo' && (
             <LogoSectionEditor
+              data={cmsData}
+              onChange={handleSectionChange}
+              onSave={handleSave}
+              isSaving={isSaving}
+            />
+          )}
+
+          {activeSection === 'themeTokens' && (
+            <ThemeMasterColorsEditor
               data={cmsData}
               onChange={handleSectionChange}
               onSave={handleSave}

@@ -26,6 +26,22 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
   const [errors, setErrors] = useState({});
   const [cmsConfig, setCmsConfig] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
+  const [renderModal, setRenderModal] = useState(isOpen);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRenderModal(true);
+      setIsClosing(false);
+    } else if (renderModal) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setRenderModal(false);
+        setIsClosing(false);
+      }, 230);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, renderModal]);
 
   const isOtpLocked = Boolean(
     isLocked ||
@@ -220,7 +236,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
     }
   };
 
-  if (!isOpen) return null;
+  if (!renderModal) return null;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -546,8 +562,8 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'sj-modal-closing' : ''}`}>
+      <div className={`relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden ${isClosing ? 'sj-modal-closing' : ''}`}>
         
         {/* Close Button */}
         <button 

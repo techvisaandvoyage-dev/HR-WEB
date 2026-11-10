@@ -32,6 +32,21 @@ const homepageConfigSchema = new mongoose.Schema({
     initialCount: { type: Number, default: 6 },
     showMoreCount: { type: Number, default: 6 }
   },
+  themeTokens: {
+    preset: { type: String, default: 'orange' },
+    acc: { type: String, default: '#ff7a00' },
+    accHover: { type: String, default: '#e66e00' },
+    accS: { type: String, default: '#fff1e5' },
+    accL: { type: String, default: '#ff9433' },
+    onacc: { type: String, default: '#ffffff' },
+    mk: { type: String, default: '#ffd3c7' },
+    ink: { type: String, default: '#111111' },
+    mute: { type: String, default: '#6b7280' },
+    line: { type: String, default: '#e6e7ea' },
+    soft: { type: String, default: '#f7f7f4' },
+    ok: { type: String, default: '#0a7a4b' },
+    danger: { type: String, default: '#b91c1c' }
+  },
   typography: {
     primaryFont: {
       source: { type: String, enum: ['google', 'custom'], default: 'google' },

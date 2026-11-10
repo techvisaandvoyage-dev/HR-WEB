@@ -529,11 +529,28 @@ const EmployeeRegisterModal = ({ isOpen, onClose, onLoginClick, onLoginSuccess }
   const hasMinLength = password.length >= 8;
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-  if (!isOpen) return null;
+  const [renderModal, setRenderModal] = useState(isOpen);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRenderModal(true);
+      setIsClosing(false);
+    } else if (renderModal) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setRenderModal(false);
+        setIsClosing(false);
+      }, 230);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, renderModal]);
+
+  if (!renderModal) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'sj-modal-closing' : ''}`}>
+      <div className={`relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto ${isClosing ? 'sj-modal-closing' : ''}`}>
         
         {/* Close Button */}
         <button 

@@ -22,6 +22,9 @@ import { initAnalytics, trackPageView } from './utils/analytics';
 import { formatPhoneWithCountryCode } from './data/countryCodes';
 import SupportWidget from './components/common/SupportWidget';
 import BlockedAccountPage from './components/common/BlockedAccountPage';
+import { USE_NEW_HOME_UI } from './config/themeConfig';
+import SjHomeView from './components/sj-home/SjHomeView';
+import { injectThemeTokens } from './utils/themeInjector';
 
 function App() {
   const [blockedAccount, setBlockedAccount] = useState(null);
@@ -231,6 +234,13 @@ function App() {
     document.documentElement.style.setProperty('--font-heading', `'${hFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
     document.documentElement.style.setProperty('--font-secondary', `'${sFamily}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`);
   }, [homepageConfig?.typography]);
+
+  // Dynamically inject modern theme color tokens configured in Admin CMS
+  useEffect(() => {
+    if (homepageConfig?.themeTokens) {
+      injectThemeTokens(homepageConfig.themeTokens);
+    }
+  }, [homepageConfig?.themeTokens]);
 
   // 1. Always fetch public active jobs for Homepage & Employee
   useEffect(() => {
@@ -484,6 +494,18 @@ function App() {
   const [employerRegisterInitialData, setEmployerRegisterInitialData] = useState(null);
   const navigate = useNavigate();
 
+  const handleSignOut = () => {
+    localStorage.removeItem('employeeToken');
+    localStorage.removeItem('employerToken');
+    localStorage.removeItem('employeeUser');
+    localStorage.removeItem('employerInfo');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('userRole');
+    setIsLoggedIn(false);
+    setUserRole(null);
+    navigate('/');
+  };
+
   // Google Sitelinks Direct Navigation Handler (?auth=candidate, ?auth=employer, ?auth=consultant, ?search=...)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -669,6 +691,18 @@ function App() {
       />
       <Routes>
         <Route path="/" element={
+          USE_NEW_HOME_UI ? (
+            <SjHomeView
+              isLoggedIn={isLoggedIn}
+              userRole={userRole}
+              jobs={homepageJobs.length > 0 ? homepageJobs : jobs}
+              applyToJob={applyToJob}
+              onOpenEmployeeLogin={() => setIsEmployeeLoginOpen(true)}
+              onOpenEmployerLogin={() => { setIsConsultantMode(false); setIsEmployerLoginOpen(true); }}
+              onOpenConsultantLogin={() => { setIsConsultantMode(true); setIsEmployerLoginOpen(true); }}
+              onSignOut={handleSignOut}
+            />
+          ) : (
           <div className="min-h-screen bg-white font-sans text-palette-900 flex flex-col selection:bg-palette-200 selection:text-palette-900">
             {/* Navbar */}
       <nav className="w-full px-6 py-4 md:px-12 md:py-5 flex justify-between items-center gap-4 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-palette-100 shadow-sm">
@@ -965,6 +999,7 @@ function App() {
 
       <Footer />
           </div>
+          )
         } />
         
         <Route 
@@ -992,7 +1027,26 @@ function App() {
         
         <Route 
           path="/employee" 
-          element={isLoggedIn && userRole === 'employee' ? <EmployeeHomepage jobs={homepageJobs.length > 0 ? homepageJobs : jobs} applyToJob={applyToJob} /> : <Navigate to="/" />} 
+          element={
+            isLoggedIn && userRole === 'employee' ? (
+              USE_NEW_HOME_UI ? (
+                <SjHomeView
+                  isLoggedIn={isLoggedIn}
+                  userRole={userRole}
+                  jobs={homepageJobs.length > 0 ? homepageJobs : jobs}
+                  applyToJob={applyToJob}
+                  onOpenEmployeeLogin={() => setIsEmployeeLoginOpen(true)}
+                  onOpenEmployerLogin={() => { setIsConsultantMode(false); setIsEmployerLoginOpen(true); }}
+                  onOpenConsultantLogin={() => { setIsConsultantMode(true); setIsEmployerLoginOpen(true); }}
+                  onSignOut={handleSignOut}
+                />
+              ) : (
+                <EmployeeHomepage jobs={homepageJobs.length > 0 ? homepageJobs : jobs} applyToJob={applyToJob} />
+              )
+            ) : (
+              <Navigate to="/" />
+            )
+          } 
         />
 
         <Route 
@@ -1037,43 +1091,45 @@ function App() {
         />
       </Routes>
 
-      <EmployeeLoginModal 
-        isOpen={isEmployeeLoginOpen} 
-        onClose={() => setIsEmployeeLoginOpen(false)} 
-        onRegisterClick={openRegister}
-        onLoginSuccess={handleEmployeeLoginSuccess}
-      />
-      <EmployeeRegisterModal 
-        isOpen={isEmployeeRegisterOpen}
-        onClose={() => setIsEmployeeRegisterOpen(false)}
-        onLoginClick={openLogin}
-        onLoginSuccess={handleEmployeeLoginSuccess}
-      />
-      <EmployerLoginModal 
-        isOpen={isEmployerLoginOpen} 
-        isConsultant={isConsultantMode}
-        onClose={() => { setIsEmployerLoginOpen(false); setIsConsultantMode(false); }} 
-        onRegisterClick={openEmployerRegister}
-        onLoginSuccess={handleEmployerLoginSuccess}
-        onSwitchMode={openEmployerLogin}
-      />
-      <EmployerRegisterModal 
-        isOpen={isEmployerRegisterOpen}
-        isConsultant={employerRegisterInitialData?.isConsultant !== undefined ? employerRegisterInitialData.isConsultant : isConsultantMode}
-        initialData={employerRegisterInitialData}
-        onClose={() => { 
-          setIsEmployerRegisterOpen(false); 
-          setEmployerRegisterInitialData(null); 
-          setIsConsultantMode(false);
-          // Clear any saved draft when user manually closes modal
-          try { 
-            sessionStorage.removeItem('emp_register_draft_employer');
-            sessionStorage.removeItem('emp_register_draft_consultant');
-          } catch (_) {}
-        }}
-        onLoginClick={openEmployerLogin}
-        onLoginSuccess={handleEmployerLoginSuccess}
-      />
+      <div className={USE_NEW_HOME_UI ? 'sj-theme sj-auth-modals' : ''}>
+        <EmployeeLoginModal 
+          isOpen={isEmployeeLoginOpen} 
+          onClose={() => setIsEmployeeLoginOpen(false)} 
+          onRegisterClick={openRegister}
+          onLoginSuccess={handleEmployeeLoginSuccess}
+        />
+        <EmployeeRegisterModal 
+          isOpen={isEmployeeRegisterOpen}
+          onClose={() => setIsEmployeeRegisterOpen(false)}
+          onLoginClick={openLogin}
+          onLoginSuccess={handleEmployeeLoginSuccess}
+        />
+        <EmployerLoginModal 
+          isOpen={isEmployerLoginOpen} 
+          isConsultant={isConsultantMode}
+          onClose={() => { setIsEmployerLoginOpen(false); setIsConsultantMode(false); }} 
+          onRegisterClick={openEmployerRegister}
+          onLoginSuccess={handleEmployerLoginSuccess}
+          onSwitchMode={openEmployerLogin}
+        />
+        <EmployerRegisterModal 
+          isOpen={isEmployerRegisterOpen}
+          isConsultant={employerRegisterInitialData?.isConsultant !== undefined ? employerRegisterInitialData.isConsultant : isConsultantMode}
+          initialData={employerRegisterInitialData}
+          onClose={() => { 
+            setIsEmployerRegisterOpen(false); 
+            setEmployerRegisterInitialData(null); 
+            setIsConsultantMode(false);
+            // Clear any saved draft when user manually closes modal
+            try { 
+              sessionStorage.removeItem('emp_register_draft_employer');
+              sessionStorage.removeItem('emp_register_draft_consultant');
+            } catch (_) {}
+          }}
+          onLoginClick={openEmployerLogin}
+          onLoginSuccess={handleEmployerLoginSuccess}
+        />
+      </div>
       {googlePrivacyUser && (
         <GooglePrivacyModal 
           isOpen={Boolean(googlePrivacyUser)} 
@@ -1085,7 +1141,9 @@ function App() {
           }}
         />
       )}
-      <SupportWidget />
+      {(!USE_NEW_HOME_UI || (!['/', '/employee'].includes(location.pathname))) && (
+        <SupportWidget />
+      )}
     </>
   )
 }

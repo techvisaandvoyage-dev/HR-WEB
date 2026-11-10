@@ -1,0 +1,65 @@
+/* =====================================================================
+   SahiJob Modern Theme Tokens & Scope Definitions
+   Reference: SahiJob_com___Orange__2_.html
+   ===================================================================== */
+
+:root {
+  --sj-f: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sj-fh: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sj-ink: #111111;
+  --sj-mute: #6b7280;
+  --sj-line: #e6e7ea;
+  --sj-soft: #f4f5f7;
+  --sj-acc: #ff4f2b; /* Original Orange default; configurable via Admin */
+  --sj-accS: #fff0ec;
+  --sj-accD: #d63a17;
+  --sj-accL: #ff8a6b;
+  --sj-onacc: #ffffff;
+  --sj-mk: #ffd3c7;
+  --sj-bg: #ffffff;
+  --sj-ok: #0a7a4b;
+  --palette-50: #fff5f0;
+  --palette-100: #ffffff;
+  --palette-200: #fff0ec;
+  --palette-400: #ff4f2b;
+  --palette-900: #ff4f2b;
+}
+
+/* Scoped Theme Wrapper: keeps all modern theme styling encapsulated */
+.sj-theme {
+  font-family: var(--sj-f);
+  color: var(--sj-ink);
+  background-color: var(--sj-bg);
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.sj-theme *,
+.sj-theme *::before,
+.sj-theme *::after {
+  box-sizing: border-box;
+}
+
+.sj-theme h1,
+.sj-theme h2,
+.sj-theme h3,
+.sj-theme .sj-serif {
+  font-family: var(--sj-fh);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sj-theme button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+
+.sj-theme :focus-visible {
+  outline: 2px solid var(--sj-acc);
+  outline-offset: 3px;
+}
+

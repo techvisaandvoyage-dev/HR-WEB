@@ -1,0 +1,446 @@
+/* =====================================================================
+   SahiJob Modern Auth Modals Theme
+   Pixel-matched to mockup: SahiJob.com – Orange
+   Features:
+   - Modern pill inputs with pure white background & soft peach focus halo
+   - Jet-black primary CTAs transitioning to vibrant Orange on hover
+   - Underline peach marker highlights (.lk) for text action links
+   - Smooth, relaxing (lax) pop-in and pop-out animations
+   ===================================================================== */
+
+/* ---------------- Keyframe Animations ---------------- */
+@keyframes sjBackdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes sjBackdropFadeOut {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+}
+
+@keyframes sjPopIn {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sjPopOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+
+/* ---------------- Backdrop & Container ---------------- */
+.sj-auth-modals .fixed.inset-0 {
+  background: rgba(17, 17, 17, 0.52) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  z-index: 100 !important;
+  animation: sjBackdropFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.sj-auth-modals .fixed.inset-0.sj-modal-closing {
+  animation: sjBackdropFadeOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* ---------------- Modal Dialog Card ---------------- */
+.sj-auth-modals .relative.bg-white,
+.sj-auth-modals [role="dialog"],
+.sj-auth-modals .sj-auth-card {
+  border-radius: 28px !important;
+  width: min(480px, 100%) !important;
+  max-width: 480px !important;
+  max-height: 94vh !important;
+  overflow-y: auto !important;
+  padding: 38px 40px 34px !important;
+  background: #ffffff !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24) !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  color: var(--sj-ink, #111111) !important;
+  animation: sjPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  box-sizing: border-box !important;
+}
+
+.sj-auth-modals .sj-modal-closing .relative.bg-white,
+.sj-auth-modals .sj-modal-closing [role="dialog"],
+.sj-auth-modals .relative.bg-white.sj-modal-closing {
+  animation: sjPopOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* Strip inner extra padding wrapper if present */
+.sj-auth-modals .relative.bg-white > .p-8 {
+  padding: 0 !important;
+}
+
+/* ---------------- Close Button ---------------- */
+.sj-auth-modals button.absolute.top-4.right-4,
+.sj-auth-modals .sj-auth-close {
+  top: 18px !important;
+  right: 18px !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: transparent !important;
+  display: grid !important;
+  place-items: center !important;
+  color: var(--sj-ink, #111111) !important;
+  cursor: pointer !important;
+  transition: background 0.18s ease, color 0.18s ease !important;
+}
+
+.sj-auth-modals button.absolute.top-4.right-4:hover,
+.sj-auth-modals .sj-auth-close:hover {
+  background: var(--sj-soft, #f4f5f7) !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+/* ---------------- Titles: Bold Dark Ink ---------------- */
+.sj-auth-modals h2,
+.sj-auth-modals h2.text-palette-900,
+.sj-auth-modals h2.text-2xl,
+.sj-auth-modals h3.text-palette-900 {
+  font-family: var(--sj-fh), "Manrope", system-ui, sans-serif !important;
+  font-weight: 800 !important;
+  font-size: clamp(24px, 5vw, 30px) !important;
+  letter-spacing: -0.025em !important;
+  color: var(--sj-ink, #111111) !important;
+  margin: 0 0 20px 0 !important;
+  line-height: 1.2 !important;
+}
+
+.sj-auth-modals h3 {
+  font-family: var(--sj-fh), "Manrope", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+/* Subheadings / helper text */
+.sj-auth-modals p.text-gray-500,
+.sj-auth-modals p.text-gray-600,
+.sj-auth-modals p.text-sm {
+  color: var(--sj-mute, #6b7280) !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+/* ---------------- Google Sign-in Button (.gb) ---------------- */
+.sj-auth-modals button:has(svg path[fill="#4285F4"]),
+.sj-auth-modals .sj-auth-gb {
+  height: 52px !important;
+  border: 1.5px solid var(--sj-line, #e6e7ea) !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  color: var(--sj-ink, #111111) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  margin-bottom: 0 !important;
+  transition: border-color 0.15s ease, background 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+.sj-auth-modals button:has(svg path[fill="#4285F4"]):hover,
+.sj-auth-modals .sj-auth-gb:hover {
+  border-color: var(--sj-ink, #111111) !important;
+  background: var(--sj-soft, #f4f5f7) !important;
+}
+
+/* ---------------- Divider ("OR WITH EMAIL" / "OR") ---------------- */
+.sj-auth-modals .flex.items-center.my-5,
+.sj-auth-modals .flex.items-center.gap-4.my-5,
+.sj-auth-modals .sj-auth-divider {
+  margin: 20px 0 !important;
+  color: var(--sj-mute, #6b7280) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+}
+
+.sj-auth-modals .flex.items-center.my-5 .h-px,
+.sj-auth-modals .flex.items-center.gap-4.my-5 .h-px {
+  background: var(--sj-line, #e6e7ea) !important;
+}
+
+.sj-auth-modals .flex.items-center.my-5 span,
+.sj-auth-modals .flex.items-center.gap-4.my-5 span {
+  color: var(--sj-mute, #6b7280) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+}
+
+/* ---------------- Form Fields & Labels (.pf2) ---------------- */
+.sj-auth-modals label.block,
+.sj-auth-modals label.text-sm {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--sj-ink, #111111) !important;
+  margin-bottom: 7px !important;
+}
+
+.sj-auth-modals label span.text-red-500,
+.sj-auth-modals label i {
+  color: #d92d20 !important;
+  font-style: normal !important;
+}
+
+/* Inputs & Selects: Pure White Pill Shape (.pf2 input) */
+.sj-auth-modals input[type="text"],
+.sj-auth-modals input[type="email"],
+.sj-auth-modals input[type="password"],
+.sj-auth-modals input[type="tel"],
+.sj-auth-modals input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.sj-auth-modals select {
+  height: 52px !important;
+  border: 1.5px solid var(--sj-line, #e6e7ea) !important;
+  border-radius: 999px !important;
+  padding: 0 20px !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  background: #ffffff !important;
+  color: var(--sj-ink, #111111) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  width: 100% !important;
+}
+
+.sj-auth-modals input::placeholder {
+  color: #a0a4ac !important;
+  font-weight: 400 !important;
+}
+
+/* Focus: Dark ink border with peach accent glow */
+.sj-auth-modals input:focus,
+.sj-auth-modals select:focus,
+.sj-auth-modals input:focus-visible,
+.sj-auth-modals select:focus-visible {
+  border-color: var(--sj-ink, #111111) !important;
+  box-shadow: 0 0 0 4px var(--sj-accS, #fff0ec) !important;
+}
+
+/* Error state */
+.sj-auth-modals input[aria-invalid="true"],
+.sj-auth-modals input.border-red-600,
+.sj-auth-modals .border-red-600 {
+  border-color: #d92d20 !important;
+}
+
+/* Password Eye Button */
+.sj-auth-modals .relative button[type="button"] {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  color: var(--sj-mute, #6b7280) !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+  background: transparent !important;
+}
+
+.sj-auth-modals .relative button[type="button"]:hover {
+  background: var(--sj-soft, #f4f5f7) !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+/* ---------------- Primary Action Buttons (.gp) ---------------- */
+/* Submit buttons: "Login", "Register now", "Verify & Login", "Get OTP", "Update Password" */
+.sj-auth-modals button[type="submit"],
+.sj-auth-modals button.bg-palette-900,
+.sj-auth-modals .sj-auth-btn-primary {
+  width: 100% !important;
+  height: 54px !important;
+  border-radius: 999px !important;
+  background-color: var(--sj-ink, #111111) !important;
+  color: #ffffff !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  border: 1.5px solid var(--sj-ink, #111111) !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.18s ease,
+              transform 0.15s ease,
+              box-shadow 0.18s ease !important;
+}
+
+.sj-auth-modals button[type="submit"]:hover:not(:disabled),
+.sj-auth-modals button.bg-palette-900:hover:not(:disabled),
+.sj-auth-modals .sj-auth-btn-primary:hover:not(:disabled) {
+  background-color: var(--sj-acc, #ff4f2b) !important;
+  border-color: var(--sj-acc, #ff4f2b) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(255, 79, 43, 0.35) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.sj-auth-modals button[type="submit"]:active:not(:disabled),
+.sj-auth-modals button.bg-palette-900:active:not(:disabled) {
+  transform: translateY(1px) !important;
+}
+
+.sj-auth-modals button[type="submit"]:disabled,
+.sj-auth-modals button.bg-palette-900:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+/* ---------------- Underline Highlight Links (.lk) ---------------- */
+/* "Forgot Password?", "Use OTP to Login", "Register for free", "Login", "Back to Login" */
+.sj-auth-modals .flex.justify-end button,
+.sj-auth-modals button.text-palette-400,
+.sj-auth-modals button.text-palette-900,
+.sj-auth-modals a.text-palette-900,
+.sj-auth-modals .sj-auth-link {
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  color: var(--sj-ink, #111111) !important;
+  background: linear-gradient(transparent 62%, var(--sj-mk, #ffd3c7) 62%) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 3px !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  display: inline-block !important;
+  text-decoration: none !important;
+  transition: background 0.15s ease !important;
+}
+
+.sj-auth-modals .flex.justify-end button:hover,
+.sj-auth-modals button.text-palette-400:hover,
+.sj-auth-modals button.text-palette-900:hover,
+.sj-auth-modals .sj-auth-link:hover {
+  background: var(--sj-mk, #ffd3c7) !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+/* ---------------- Secondary / Outline Button ---------------- */
+/* "Use Password to Login" */
+.sj-auth-modals button.border-palette-400,
+.sj-auth-modals .border-palette-400 {
+  height: 50px !important;
+  border: 1.5px solid var(--sj-line, #e6e7ea) !important;
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  background: #ffffff !important;
+  color: var(--sj-ink, #111111) !important;
+  transition: border-color 0.15s, background 0.15s !important;
+}
+
+.sj-auth-modals button.border-palette-400:hover,
+.sj-auth-modals .border-palette-400:hover {
+  border-color: var(--sj-ink, #111111) !important;
+  background: var(--sj-soft, #f4f5f7) !important;
+}
+
+/* ---------------- Footer Text ("Don't have an account?") ---------------- */
+.sj-auth-modals .mt-8.text-center p,
+.sj-auth-modals .mt-6.text-center p,
+.sj-auth-modals .sj-auth-footer-text {
+  color: var(--sj-mute, #6b7280) !important;
+  font-size: 14px !important;
+  margin: 20px 0 0 0 !important;
+}
+
+/* ---------------- Stepper for Employer Multi-Step ---------------- */
+.sj-auth-modals .sj-auth-stepper {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  justify-content: center !important;
+  margin: 0 0 22px !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  color: var(--sj-mute, #6b7280) !important;
+}
+
+.sj-auth-modals .sj-auth-stepper .n {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 50% !important;
+  background: var(--sj-line, #e6e7ea) !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  font-size: 12px !important;
+  margin-right: 6px !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+.sj-auth-modals .sj-auth-stepper .on {
+  color: var(--sj-ink, #111111) !important;
+}
+
+.sj-auth-modals .sj-auth-stepper .on .n {
+  background: var(--sj-acc, #ff4f2b) !important;
+  color: #ffffff !important;
+}
+
+.sj-auth-modals .sj-auth-stepper i {
+  width: 56px !important;
+  height: 2px !important;
+  background: var(--sj-line, #e6e7ea) !important;
+}
+
+/* ---------------- OTP Verification Inputs ---------------- */
+.sj-auth-modals input[maxlength="1"],
+.sj-auth-modals .flex.justify-center input {
+  width: 52px !important;
+  height: 54px !important;
+  border-radius: 16px !important;
+  text-align: center !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  padding: 0 !important;
+}
+
+/* Country code dropdowns */
+.sj-auth-modals button:has(svg) + input[type="tel"],
+.sj-auth-modals select.w-28,
+.sj-auth-modals select.w-24 {
+  height: 52px !important;
+  border-radius: 999px !important;
+}

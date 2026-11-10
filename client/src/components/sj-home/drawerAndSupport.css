@@ -1,0 +1,425 @@
+/* =====================================================================
+   SahiJob Details Drawer, Toast & Support Widget Stylesheet
+   ===================================================================== */
+
+/* ---------------- Drawer Backdrop & Container ---------------- */
+.sj-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.45);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sj-drawer-backdrop.sj-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sj-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(700px, 100%);
+  background: #ffffff;
+  z-index: 55;
+  transform: translateX(104%);
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow-y: auto;
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.15);
+  color: var(--sj-ink);
+  font-family: var(--sj-f);
+}
+
+.sj-drawer-panel.sj-open {
+  transform: none;
+}
+
+/* Sticky top toolbar */
+.sj-drawer-topbar {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 24px 14px;
+  border-bottom: 1px solid var(--sj-line);
+}
+
+.sj-drawer-topbar .sj-pagination-info {
+  margin-right: auto;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--sj-mute);
+}
+
+.sj-drawer-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--sj-ink);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sj-drawer-icon-btn:hover:not(:disabled) {
+  background: var(--sj-soft);
+}
+
+.sj-drawer-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Drawer Body Content */
+.sj-drawer-body {
+  padding: 30px 32px 60px;
+}
+
+.sj-drawer-company {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--sj-ink);
+}
+
+.sj-drawer-title {
+  font-family: var(--sj-fh);
+  font-size: clamp(28px, 5vw, 44px);
+  line-height: 1.08;
+  margin: 20px 0 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--sj-ink);
+}
+
+.sj-drawer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sj-drawer-actions {
+  display: flex;
+  gap: 12px;
+  margin: 26px 0 12px;
+  flex-wrap: wrap;
+}
+
+.sj-drawer-section {
+  border-top: 1.5px solid var(--sj-ink);
+  margin-top: 34px;
+  padding-top: 18px;
+}
+
+.sj-drawer-section h3 {
+  font-family: var(--sj-fh);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin: 0 0 14px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--sj-ink);
+}
+
+.sj-drawer-section h3 span {
+  color: var(--sj-mute);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Stats grid */
+.sj-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 16px;
+  border: 1px solid var(--sj-line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.sj-stats-grid div {
+  padding: 16px;
+  text-align: center;
+}
+
+.sj-stats-grid div + div {
+  border-left: 1px solid var(--sj-line);
+}
+
+.sj-stats-grid b {
+  display: block;
+  font-family: var(--sj-fh);
+  font-size: 38px;
+  line-height: 1;
+  color: var(--sj-ink);
+}
+
+.sj-stats-grid small {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sj-mute);
+  margin-top: 4px;
+  display: block;
+}
+
+/* Recruiter Who Card */
+.sj-recruiter-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* Skills list */
+.sj-skills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sj-skills-wrap span {
+  border: 1.5px solid var(--sj-ink);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--sj-ink);
+}
+
+/* Key Value Table */
+.sj-kv-table {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 160px 1fr;
+}
+
+.sj-kv-table dt,
+.sj-kv-table dd {
+  margin: 0;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--sj-line);
+  font-size: 14.5px;
+}
+
+.sj-kv-table dt {
+  color: var(--sj-mute);
+}
+
+.sj-kv-table dd {
+  font-weight: 700;
+  color: var(--sj-ink);
+}
+
+/* Responsibilities List */
+ol.sj-resp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: r;
+}
+
+ol.sj-resp-list li {
+  counter-increment: r;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--sj-line);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+ol.sj-resp-list li::before {
+  content: counter(r);
+  font-family: var(--sj-fh);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--sj-ink);
+  line-height: 1.1;
+}
+
+/* ---------------- Toast Notification ---------------- */
+.sj-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 20px);
+  background: var(--sj-ink);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 22px 10px 10px;
+  border-radius: 999px;
+  font-family: var(--sj-f);
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+  max-width: min(92vw, 460px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 70;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sj-toast.sj-toast-show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.sj-toast .sj-toast-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sj-accL);
+  color: var(--sj-ink);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.sj-toast.sj-toast-err {
+  border-color: #ff8a80;
+}
+
+.sj-toast.sj-toast-err .sj-toast-icon {
+  background: #ff8a80;
+  color: #ffffff;
+}
+
+/* ---------------- Support Floating Button & Widget ---------------- */
+.sj-support-fab {
+  position: fixed;
+  right: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: var(--sj-ink, #111111);
+  color: var(--sj-acc, #ff4f2b);
+  display: grid;
+  place-items: center;
+  z-index: 65;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
+}
+
+.sj-support-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.sj-support-fab svg {
+  stroke: var(--sj-acc, #ff4f2b);
+  stroke-width: 2.2;
+}
+
+.sj-support-fab .sj-support-badge-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--sj-acc, #ff4f2b);
+  border: 3px solid #ffffff;
+}
+
+.sj-support-flyout {
+  position: fixed;
+  right: 24px;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100vh - 130px);
+  background: #ffffff;
+  border-radius: 26px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: sjPop 0.25s ease;
+  border: 1px solid var(--sj-line);
+}
+
+.sj-support-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 20px;
+  background: var(--sj-ink);
+  color: #ffffff;
+}
+
+.sj-support-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px;
+  background: var(--sj-soft);
+}
+
+.sj-support-tabs button {
+  height: 44px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--sj-mute);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sj-support-tabs button.sj-on {
+  background: #ffffff;
+  color: var(--sj-ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.sj-support-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sj-support-foot {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--sj-line);
+  background: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .sj-drawer-body {
+    padding: 22px 18px 50px;
+  }
+  .sj-kv-table {
+    grid-template-columns: 120px 1fr;
+  }
+  .sj-stats-grid b {
+    font-size: 30px;
+  }
+}
+

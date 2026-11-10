@@ -11,6 +11,22 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
   const isConsultantMode = Boolean(initialData?.isConsultant !== undefined ? initialData.isConsultant : isConsultant);
   const [step, setStep] = useState(1); // 1: Email & Account, 2: Company Details, 3: Success
   const [isGoogleAuth, setIsGoogleAuth] = useState(false);
+  const [renderModal, setRenderModal] = useState(isOpen);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRenderModal(true);
+      setIsClosing(false);
+    } else if (renderModal) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setRenderModal(false);
+        setIsClosing(false);
+      }, 230);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, renderModal]);
 
   // Step 1 states
   const [accountType, setAccountType] = useState('company'); // 'company' or 'individual'
@@ -436,7 +452,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
     }
   }, [isOpen, email, isConsultantMode]);
 
-  if (!isOpen) return null;
+  if (!renderModal) return null;
 
   const handleOtpChange = (index, value) => {
     if (value.length <= 1 && /^\d*$/.test(value)) {
@@ -805,12 +821,12 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+    <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm overflow-y-auto ${isClosing ? 'sj-modal-closing' : ''}`}>
       <div className="flex min-h-full items-center justify-center p-4 py-10">
         <div className="w-full max-w-lg">
 
         {/* Form Card */}
-        <div className="relative w-full bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 border border-gray-100">
+        <div className={`relative w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 ${isClosing ? 'sj-modal-closing' : ''}`}>
           
           {/* Close Button */}
           <button
