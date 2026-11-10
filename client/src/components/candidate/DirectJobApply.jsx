@@ -1349,14 +1349,18 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
   const renderRichText = (content) => {
     if (!content) return null;
-    if (typeof content !== 'string') return <div>{String(content)}</div>;
+    if (typeof content !== 'string') return <div className="break-words [overflow-wrap:anywhere]">{String(content)}</div>;
     
     const hasHtml = /<[a-z][\s\S]*>/i.test(content);
     const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim();
     if (!textOnly && !hasHtml) return null;
 
     if (!hasHtml) {
-      return <div className="text-gray-700 leading-relaxed whitespace-pre-line text-xs font-normal">{content}</div>;
+      return (
+        <div className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-xs font-normal max-w-full min-w-0">
+          {content}
+        </div>
+      );
     }
 
     const sanitized = content
@@ -1367,7 +1371,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
     return (
       <div 
-        className="text-gray-700 leading-relaxed text-xs font-normal space-y-2 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-2 [&>li]:mb-1 [&>strong]:font-bold [&>strong]:text-gray-900 [&>b]:font-bold [&>b]:text-gray-900 [&_a]:text-emerald-600 [&_a]:underline"
+        className="text-gray-700 leading-relaxed text-xs font-normal space-y-2 break-words [overflow-wrap:anywhere] max-w-full min-w-0 overflow-hidden [&>p]:mb-2 [&>p:last-child]:mb-0 [&>p]:break-words [&>p]:[overflow-wrap:anywhere] [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-2 [&>ul]:max-w-full [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-2 [&>ol]:max-w-full [&>li]:mb-1 [&>li]:break-words [&>li]:[overflow-wrap:anywhere] [&>strong]:font-bold [&>strong]:text-gray-900 [&>b]:font-bold [&>b]:text-gray-900 [&_a]:text-emerald-600 [&_a]:underline [&_a]:break-all"
         dangerouslySetInnerHTML={{ __html: sanitized }}
       />
     );
@@ -1507,10 +1511,10 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         </div>
 
         {/* 2-Column Responsive Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start lg:items-stretch lg:flex-1 lg:min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start lg:items-stretch lg:flex-1 lg:min-h-0 min-w-0 w-full">
           
           {/* LEFT COLUMN: Apply Flow (Independent scroll on desktop) */}
-          <div className="lg:col-span-6 xl:col-span-5 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-2 pb-8">
+          <div className="lg:col-span-6 xl:col-span-5 min-w-0 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto lg:overflow-x-hidden split-scroll-col pr-3 sm:pr-4 pb-8">
 
             {/* ========================================================================= */}
             {/* STEP 1: AUTHENTICATION (LOGIN OR REGISTER)                                 */}
@@ -2900,11 +2904,11 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           </div>
 
           {/* RIGHT COLUMN: Permanent Full Job Details Card (Independent scroll on desktop) */}
-          <div id="job-details-column" className="lg:col-span-6 xl:col-span-7 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-2 pb-8">
+          <div id="job-details-column" className="lg:col-span-6 xl:col-span-7 min-w-0 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto lg:overflow-x-hidden split-scroll-col pr-3 sm:pr-4 pb-8">
             
             {/* 1. Job Header Card */}
-            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs">
-              <div className="flex items-start gap-4">
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs min-w-0 max-w-full overflow-hidden">
+              <div className="flex items-start gap-4 min-w-0">
                 <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-extrabold text-2xl shrink-0 overflow-hidden shadow-xs">
                   {companyLogo ? (
                     <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
@@ -2925,32 +2929,32 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                       </span>
                     )}
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight break-words [overflow-wrap:anywhere]">
                     {title}
                   </h1>
                   
                   {/* Badges Row */}
                   <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
                     {experience && (
-                      <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 font-medium border border-gray-200/60">
+                      <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 font-medium border border-gray-200/60 break-words max-w-full">
                         {experience}
                       </span>
                     )}
                     {workLocation && (
-                      <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80">
+                      <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 break-words max-w-full">
                         {workLocation}
                       </span>
                     )}
                     {openings && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200/80">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200/80 break-words max-w-full">
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                         <span>{openings} Openings</span>
                       </span>
                     )}
                     {salary && salary !== 'Not specified' && (
-                      <span className="px-3 py-1 rounded-lg bg-gray-50 text-gray-900 font-extrabold border border-gray-200/80">
+                      <span className="px-3 py-1 rounded-lg bg-gray-50 text-gray-900 font-extrabold border border-gray-200/80 break-words max-w-full">
                         {salary}
                       </span>
                     )}
@@ -2961,18 +2965,18 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
             {/* 2. Skills Section */}
             {(skillsList.length > 0 || extraQualifications.length > 0) && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
-                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3 min-w-0 max-w-full overflow-hidden">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2 min-w-0 flex-wrap">
                   <span>Skills</span>
-                  <span className="text-xs font-normal text-gray-500">
+                  <span className="text-xs font-normal text-gray-500 truncate">
                     (Matching for {job.role || title})
                   </span>
                 </h3>
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-2 pt-1 min-w-0">
                   {skillsList.map((skill, idx) => (
                     <span 
                       key={idx} 
-                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#137333] border border-emerald-200/80 shadow-2xs"
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#137333] border border-emerald-200/80 shadow-2xs break-words max-w-full"
                     >
                       {skill}
                     </span>
@@ -2980,7 +2984,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   {extraQualifications.map((q, idx) => (
                     <span 
                       key={`extra-${idx}`} 
-                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200/80 shadow-2xs"
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200/80 shadow-2xs break-words max-w-full"
                     >
                       {q.name.replace(/[;,]+$/, '').trim()}
                     </span>
@@ -2990,60 +2994,60 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             )}
 
             {/* 4. Key Job Overview Specs Grid */}
-            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-4 min-w-0 max-w-full overflow-hidden">
               <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider flex items-center gap-2">
                 <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
                 <span>Job Overview & Details</span>
               </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Role / Category</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{jobCategory}</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2.5 sm:gap-3 min-w-0">
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Role / Category</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{jobCategory}</span>
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Industry</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{industry}</span>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Industry</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{industry}</span>
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Salary</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{salary}</span>
-                  {salaryType && <span className="text-[10px] text-gray-500 block">{salaryType} pay</span>}
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Salary</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{salary}</span>
+                  {salaryType && <span className="text-[10px] text-gray-500 block truncate">{salaryType} pay</span>}
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Job Type</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{jobType}</span>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Job Type</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{jobType}</span>
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Experience</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{experience}</span>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Experience</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{experience}</span>
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Work Mode</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{workLocation}</span>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Work Mode</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{workLocation}</span>
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Openings</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{openings} Position(s)</span>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Openings</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{openings} Position(s)</span>
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Education</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{educationText}</span>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Education</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{educationText}</span>
                 </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Posted Date</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{postedDate}</span>
+                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100 min-w-0 overflow-hidden">
+                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5 truncate">Posted Date</span>
+                  <span className="font-bold text-gray-900 text-xs block break-words [overflow-wrap:anywhere]">{postedDate}</span>
                 </div>
               </div>
             </div>
 
             {/* 5. Role Overview / About the Role */}
             {aboutRoleContent && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3 min-w-0 max-w-full overflow-hidden">
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
+                  <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full shrink-0"></span>
                   <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">About the Role</h4>
                 </div>
-                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
                   {renderRichText(aboutRoleContent)}
                 </div>
               </div>
@@ -3051,12 +3055,12 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
             {/* 6. Key Responsibilities */}
             {responsibilitiesContent && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3 min-w-0 max-w-full overflow-hidden">
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
+                  <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full shrink-0"></span>
                   <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">Responsibilities</h4>
                 </div>
-                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
                   {renderRichText(responsibilitiesContent)}
                 </div>
               </div>
@@ -3064,19 +3068,19 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
             {/* 6. Additional Description (if separate) */}
             {separateDescription && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3 min-w-0 max-w-full overflow-hidden">
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-3.5 bg-blue-500 rounded-full"></span>
+                  <span className="w-1.5 h-3.5 bg-blue-500 rounded-full shrink-0"></span>
                   <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">Job Description</h4>
                 </div>
-                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
                   {renderRichText(separateDescription)}
                 </div>
               </div>
             )}
 
             {/* 7. Dedicated Company Details Frame */}
-            <div className="bg-gray-50/80 rounded-2xl border border-gray-200 p-6 space-y-4">
+            <div className="bg-gray-50/80 rounded-2xl border border-gray-200 p-5 sm:p-6 space-y-4 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
               <div className="flex items-center gap-2 border-b border-gray-200/80 pb-3">
                 <svg className="w-5 h-5 text-green-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -3084,12 +3088,12 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 <h3 className="text-base font-bold text-gray-900">Company Details</h3>
               </div>
 
-              <div className="space-y-3 text-sm text-gray-800">
-                <div>
-                  <p><strong>Company Name:</strong> {employer.companyName || companyName}</p>
+              <div className="space-y-3 text-sm text-gray-800 min-w-0">
+                <div className="min-w-0">
+                  <p className="break-words [overflow-wrap:anywhere]"><strong>Company Name:</strong> {employer.companyName || companyName}</p>
                 </div>
-                <div>
-                  <p className="flex items-center gap-1.5 flex-wrap">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 flex-wrap min-w-0">
                     <strong>Hiring Type:</strong>{' '}
                     {employer.isConsultant === true ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -3101,42 +3105,42 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </p>
                 </div>
                 {employer.employees && (
-                  <div>
-                    <p><strong>Company Size:</strong> {employer.employees.toLowerCase().includes('employee') ? employer.employees : `${employer.employees} Employees`}</p>
+                  <div className="min-w-0">
+                    <p className="break-words [overflow-wrap:anywhere]"><strong>Company Size:</strong> {employer.employees.toLowerCase().includes('employee') ? employer.employees : `${employer.employees} Employees`}</p>
                   </div>
                 )}
                 {(employer.industry || jobCategory) && (
-                  <div>
-                    <p><strong>Industry:</strong> {employer.industry || jobCategory}</p>
+                  <div className="min-w-0">
+                    <p className="break-words [overflow-wrap:anywhere]"><strong>Industry:</strong> {employer.industry || jobCategory}</p>
                   </div>
                 )}
                 {(employer.location || location) && (
-                  <div>
-                    <p><strong>Location:</strong> {employer.location || location}</p>
+                  <div className="min-w-0">
+                    <p className="break-words [overflow-wrap:anywhere]"><strong>Location:</strong> {employer.location || location}</p>
                   </div>
                 )}
                 {employer.website && (
-                  <div>
-                    <p className="flex items-center gap-1.5">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 flex-wrap min-w-0">
                       <strong>Website:</strong>
                       <a 
                         href={employer.website.startsWith('http') ? employer.website : `https://${employer.website}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                        className="text-blue-600 hover:underline inline-flex items-center gap-1 break-all max-w-full"
                       >
-                        {employer.website}
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <span className="break-all">{employer.website}</span>
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
                       </a>
                     </p>
                   </div>
                 )}
                 {employer.aboutCompany && (
-                  <div className="pt-2 border-t border-gray-200">
+                  <div className="pt-2 border-t border-gray-200 min-w-0">
                     <p className="font-semibold text-gray-900 mb-1">About Company:</p>
-                    <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">{employer.aboutCompany}</p>
+                    <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{employer.aboutCompany}</p>
                   </div>
                 )}
               </div>
@@ -3254,14 +3258,18 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
         const renderRichText = (content) => {
           if (!content) return null;
-          if (typeof content !== 'string') return <div>{String(content)}</div>;
+          if (typeof content !== 'string') return <div className="break-words [overflow-wrap:anywhere]">{String(content)}</div>;
           
           const hasHtml = /<[a-z][\s\S]*>/i.test(content);
           const textOnly = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').trim();
           if (!textOnly && !hasHtml) return null;
 
           if (!hasHtml) {
-            return <div className="text-gray-700 leading-relaxed whitespace-pre-line text-xs font-normal">{content}</div>;
+            return (
+              <div className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-xs font-normal max-w-full min-w-0">
+                {content}
+              </div>
+            );
           }
 
           const sanitized = content
@@ -3272,7 +3280,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
           return (
             <div 
-              className="text-gray-700 leading-relaxed text-xs font-normal space-y-2 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-2 [&>li]:mb-1 [&>strong]:font-bold [&>strong]:text-gray-900 [&>b]:font-bold [&>b]:text-gray-900 [&_a]:text-emerald-600 [&_a]:underline"
+              className="text-gray-700 leading-relaxed text-xs font-normal space-y-2 break-words [overflow-wrap:anywhere] max-w-full min-w-0 overflow-hidden [&>p]:mb-2 [&>p:last-child]:mb-0 [&>p]:break-words [&>p]:[overflow-wrap:anywhere] [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:my-2 [&>ul]:max-w-full [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:my-2 [&>ol]:max-w-full [&>li]:mb-1 [&>li]:break-words [&>li]:[overflow-wrap:anywhere] [&>strong]:font-bold [&>strong]:text-gray-900 [&>b]:font-bold [&>b]:text-gray-900 [&_a]:text-emerald-600 [&_a]:underline [&_a]:break-all"
               dangerouslySetInnerHTML={{ __html: sanitized }}
             />
           );
@@ -3454,7 +3462,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                     </h4>
                   </div>
                   {aboutRoleContent && renderRichText(aboutRoleContent) ? (
-                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
                       {renderRichText(aboutRoleContent)}
                     </div>
                   ) : (
@@ -3473,7 +3481,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                     </h4>
                   </div>
                   {responsibilitiesContent && renderRichText(responsibilitiesContent) ? (
-                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
                       {renderRichText(responsibilitiesContent)}
                     </div>
                   ) : (
@@ -3492,7 +3500,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                         Job Description
                       </h4>
                     </div>
-                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 min-w-0 max-w-full overflow-hidden break-words [overflow-wrap:anywhere]">
                       {renderRichText(separateDescription)}
                     </div>
                   </div>

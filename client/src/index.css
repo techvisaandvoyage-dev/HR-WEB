@@ -40,7 +40,7 @@
 
   /* Custom smooth thin scrollbar for split view columns */
   .split-scroll-col::-webkit-scrollbar {
-    width: 5px;
+    width: 6px;
   }
   .split-scroll-col::-webkit-scrollbar-track {
     background: transparent;
