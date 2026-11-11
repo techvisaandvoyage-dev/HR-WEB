@@ -386,6 +386,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
               role="dialog"
               aria-modal="true"
               aria-label="Job details"
+              data-right-drawer="true"
               className="fixed inset-y-0 right-0 w-full min-[620px]:w-[620px] max-w-full bg-white z-50 flex flex-col h-full border-l border-[#eaecf0] shadow-[-16px_0_48px_rgba(16,24,40,0.08)] animate-in slide-in-from-right duration-[280ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] overflow-hidden"
             >
               

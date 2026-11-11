@@ -466,6 +466,7 @@ exports.getAllEmployers = async (req, res) => {
       const stats = jobStatsMap[String(employer._id)] || { totalJobs: 0, activeJobs: 0, closedJobs: 0 };
       return {
         ...employer,
+        canViewCandidateVideo: Boolean(employer.canViewCandidateVideo),
         account: { ...(employer.account || {}), status: employer.account?.status || 'active' },
         id: employer._id,
         totalJobs: stats.totalJobs,
@@ -567,12 +568,12 @@ exports.updateJobStatusAdmin = async (req, res) => {
   }
 };
 
-// @desc    Update Employer Display Controls (Hide 'Posted by' card, Hide analytics)
+// @desc    Update Employer Display Controls (Hide 'Posted by' card, Hide analytics, Candidate Video Access)
 // @route   PUT /api/admin/employers/:id/controls
 // @access  Admin
 exports.updateEmployerControls = async (req, res) => {
   try {
-    const { hidePostedByCard, hideJobAnalytics } = req.body;
+    const { hidePostedByCard, hideJobAnalytics, canViewCandidateVideo } = req.body;
     const employer = await Employer.findById(req.params.id);
 
     if (!employer) {
@@ -585,16 +586,20 @@ exports.updateEmployerControls = async (req, res) => {
     if (typeof hideJobAnalytics !== 'undefined') {
       employer.hideJobAnalytics = Boolean(hideJobAnalytics);
     }
+    if (typeof canViewCandidateVideo !== 'undefined') {
+      employer.canViewCandidateVideo = Boolean(canViewCandidateVideo);
+    }
 
     await employer.save();
 
     res.json({
       success: true,
-      message: 'Employer display controls updated successfully',
+      message: 'Employer controls updated successfully',
       data: {
         id: employer._id,
         hidePostedByCard: employer.hidePostedByCard,
-        hideJobAnalytics: employer.hideJobAnalytics
+        hideJobAnalytics: employer.hideJobAnalytics,
+        canViewCandidateVideo: employer.canViewCandidateVideo
       }
     });
   } catch (error) {

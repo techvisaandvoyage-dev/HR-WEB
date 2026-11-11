@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import VideoPlayer from '../../common/VideoPlayer';
+import CandidateVideoCard from '../../common/CandidateVideoCard';
 import CustomDropdown from '../../common/CustomDropdown';
 import { socket } from '../../../utils/socket';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 
-const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, updateCandidateStatus }) => {
+const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, updateCandidateStatus, employerProfile = null }) => {
   const location = useLocation();
   const initialEmployeeData = location.state?.initialEmployee;
   const initialApplicationData = location.state?.initialApplication;
@@ -938,32 +939,16 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
                       <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents & Media</h4>
                       <div className="space-y-3">
                         {/* Introductory Video Card */}
-                        {(selectedApplication?.introVideo || selectedEmployee.introVideo || selectedEmployee.documents?.introVideo) && (
-                          <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-bold text-gray-900">Introductory Video</p>
-                                  <p className="text-xs text-gray-500">Public Video Introduction</p>
-                                </div>
-                              </div>
-                              <a 
-                                href={selectedApplication?.introVideo || selectedEmployee.introVideo || selectedEmployee.documents?.introVideo} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="px-3 py-1.5 bg-[#0c7844] hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1 shadow-2xs"
-                              >
-                                Watch Video
-                              </a>
-                            </div>
-                            <VideoPlayer url={selectedApplication?.introVideo || selectedEmployee.introVideo || selectedEmployee.documents?.introVideo} maxPlayerHeight="220px" className="mt-2" />
-                          </div>
-                        )}
+                        <CandidateVideoCard
+                          videoUrl={selectedApplication?.introVideo || selectedEmployee.introVideo || selectedEmployee.documents?.introVideo}
+                          hasVideo={Boolean(selectedApplication?.hasIntroVideo || selectedEmployee.hasIntroVideo || selectedApplication?.introVideo || selectedEmployee.introVideo || selectedEmployee.documents?.introVideo || selectedApplication?.isVideoLocked || selectedEmployee.isVideoLocked)}
+                          isVideoLocked={Boolean(selectedApplication?.isVideoLocked || selectedEmployee.isVideoLocked)}
+                          videoVisibility={selectedEmployee.videoVisibility || selectedEmployee.documents?.videoVisibility || 'everyone'}
+                          appliedToYou={true}
+                          employerProfile={employerProfile}
+                          candidateName={selectedEmployee.fullName || selectedEmployee.name}
+                          maxPlayerHeight="220px"
+                        />
 
                         {/* Resume Card */}
                         {(selectedApplication?.resume || selectedEmployee.resume || selectedEmployee.documents?.resume) && (

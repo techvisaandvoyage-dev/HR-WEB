@@ -261,6 +261,45 @@ export default function SupportWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('new'); // 'new' | 'upd'
 
+  // Dynamic offset to sit just to the left of any open right-side drawer/sidebar
+  const [drawerOffset, setDrawerOffset] = useState(0);
+
+  useEffect(() => {
+    const checkRightDrawer = () => {
+      if (typeof document === 'undefined') return;
+      const rightDrawer = document.querySelector(
+        '[data-right-drawer="true"], .fixed.inset-y-0.right-0, [class*="right-0"][class*="inset-y-0"]'
+      );
+      if (rightDrawer && window.innerWidth >= 640) {
+        const rect = rightDrawer.getBoundingClientRect();
+        const drawerWidth = Math.round(window.innerWidth - rect.left);
+        // Only offset if the drawer is on the right side and doesn't take 100% of the screen
+        if (drawerWidth > 150 && rect.left > 60) {
+          setDrawerOffset(drawerWidth + 16);
+          return;
+        }
+      }
+      setDrawerOffset(0);
+    };
+
+    checkRightDrawer();
+    window.addEventListener('resize', checkRightDrawer);
+
+    const observer = new MutationObserver(() => {
+      checkRightDrawer();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      window.removeEventListener('resize', checkRightDrawer);
+      observer.disconnect();
+    };
+  }, []);
+
   // Guest flow state: Step 1 (contact form), Step 2 (role & issue selection)
   const [guestStep, setGuestStep] = useState(1);
   const [guestRole, setGuestRole] = useState('candidate'); // 'candidate' | 'employer' | 'consultant'
@@ -527,15 +566,37 @@ export default function SupportWidget() {
     }
   }, [isOpen, activeTab, fetchProblems, fetchQuickReplies, fetchUserRequests, fetchRequestDetails, selectedRequestId, activeRequest?.id]);
 
-  // Close panel on Escape key
+  // Close panel on Escape key or open on custom event
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
         setIsOpen(false);
       }
     };
+    const handleOpenWidget = (e) => {
+      setIsOpen(true);
+      const rightDrawer = document.querySelector('[data-right-drawer="true"], .fixed.inset-y-0.right-0, [class*="right-0"][class*="inset-y-0"]');
+      if (rightDrawer && window.innerWidth >= 640) {
+        const rect = rightDrawer.getBoundingClientRect();
+        const drawerWidth = Math.round(window.innerWidth - rect.left);
+        if (drawerWidth > 150 && rect.left > 60) {
+          setDrawerOffset(drawerWidth + 16);
+        }
+      }
+      if (e?.detail?.tab) {
+        setActiveTab(e.detail.tab);
+      }
+      if (e?.detail?.prefillMessage) {
+        setProblemDescription(e.detail.prefillMessage);
+        setIsProblemDescriptionOpen(true);
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-support-widget', handleOpenWidget);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-support-widget', handleOpenWidget);
+    };
   }, [isOpen]);
 
   // Scroll messages ONLY when a genuine new message is added (never repeatedly on background polling)
@@ -1061,6 +1122,7 @@ export default function SupportWidget() {
         id="sjFab"
         type="button"
         className="sj-fab"
+        style={drawerOffset ? { right: `${drawerOffset}px` } : undefined}
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-controls="sjPanel"
@@ -1089,6 +1151,14 @@ export default function SupportWidget() {
       <section
         id="sjPanel"
         className="sj-panel"
+        style={
+          drawerOffset
+            ? {
+                right: `${drawerOffset}px`,
+                maxWidth: `calc(100vw - ${drawerOffset + 16}px)`
+              }
+            : undefined
+        }
         role="dialog"
         aria-label="SahiJob Support"
         hidden={!isOpen}

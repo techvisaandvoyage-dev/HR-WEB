@@ -21,6 +21,8 @@ exports.getAllEmployees = async (req, res) => {
 
     const employees = await Employee.find().select('-password').sort({ createdAt: -1 });
 
+    const canViewCandidateVideo = Boolean(req.user?.canViewCandidateVideo || req.employer?.canViewCandidateVideo);
+
     const sanitizedEmployees = employees.map(emp => {
       const e = emp.toObject ? emp.toObject() : { ...emp };
       const empIdStr = (e._id || '').toString();
@@ -31,8 +33,27 @@ exports.getAllEmployees = async (req, res) => {
         return null;
       }
 
+      const rawVideo = e.introVideo || e.documents?.introVideo;
+      const hasVideo = Boolean(rawVideo);
+
       if (e.videoVisibility === 'applied' && !hasApplied) {
         e.introVideo = '';
+        if (e.documents) e.documents.introVideo = '';
+        e.hasIntroVideo = false;
+        e.isVideoLocked = false;
+      } else if (hasVideo) {
+        e.hasIntroVideo = true;
+        if (!canViewCandidateVideo) {
+          e.isVideoLocked = true;
+          e.introVideo = ''; // Strip video URL if employer has not been granted access by admin
+          if (e.documents) e.documents.introVideo = '';
+        } else {
+          e.isVideoLocked = false;
+          e.introVideo = rawVideo;
+        }
+      } else {
+        e.hasIntroVideo = false;
+        e.isVideoLocked = false;
       }
 
       e.isPrivate = false;
