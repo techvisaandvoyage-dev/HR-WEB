@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import JobApplicationModal from './JobApplicationModal';
 import EmployeeNavbar from '../common/EmployeeNavbar';
 import CustomDropdown from '../common/CustomDropdown';
@@ -8,6 +9,26 @@ import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/empl
 import { isLocationMatch, getJobLocationBadges, formatJobLocation } from '../../data/preferredLocations';
 import LocationAutocomplete from '../common/LocationAutocomplete';
 import { isExperienceMatch } from '../../utils/experienceMatcher';
+
+const formatAndSanitizeJobHtml = (html) => {
+  if (!html) return '';
+  if (typeof html !== 'string') return String(html);
+
+  // 1. Convert non-breaking spaces (\u00A0 and &nbsp;) into normal spaces so mobile browser wraps lines gracefully
+  const withNormalSpaces = html
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\u00A0/g, ' ');
+
+  // 2. Sanitize HTML and strip inline styles (which often contain fixed widths or white-space: nowrap from pasted content)
+  return DOMPurify.sanitize(withNormalSpaces, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's',
+      'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'span', 'div'
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class']
+  });
+};
 
 const parseProfileData = (profile) => {
   if (!profile || typeof profile !== 'object') return null;
@@ -1501,9 +1522,9 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                     })()}
                   </div>
 
-                  <div className="p-6 space-y-6">
+                  <div className="p-4 sm:p-6 space-y-6 w-full max-w-full min-w-0 overflow-hidden">
                     {/* Job Details Section */}
-                    <div className="space-y-4 text-sm text-gray-800 leading-relaxed">
+                    <div className="space-y-4 text-sm text-gray-800 leading-relaxed w-full max-w-full min-w-0 break-words">
                       {selectedJob.details?.employmentType && <p><strong>Employment Type:</strong> {selectedJob.details.employmentType}</p>}
                       {selectedJob.details?.experience && <p><strong>Experience:</strong> {selectedJob.details.experience}</p>}
                       {(selectedJob.details?.openings || selectedJob.openings) && <p><strong>Openings:</strong> {selectedJob.details?.openings || selectedJob.openings}</p>}
@@ -1511,20 +1532,20 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                       {selectedJob.details?.stream && <p><strong>Stream:</strong> {selectedJob.details.stream}</p>}
                       {selectedJob.details?.jobCategory && <p><strong>Job Category:</strong> {selectedJob.details.jobCategory}</p>}
                       {selectedJob.details?.aboutRole && (
-                        <div className="pt-2">
+                        <div className="pt-2 w-full max-w-full min-w-0 overflow-hidden">
                           <strong>About Role:</strong>
                           <div 
-                            className="mt-1 prose prose-sm max-w-none text-gray-800 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>p]:mb-1.5"
-                            dangerouslySetInnerHTML={{ __html: selectedJob.details.aboutRole }}
+                            className="rich-text-content w-full max-w-full min-w-0 break-words [overflow-wrap:anywhere] overflow-hidden text-gray-800 text-sm leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: formatAndSanitizeJobHtml(selectedJob.details.aboutRole) }}
                           />
                         </div>
                       )}
                       {selectedJob.details?.responsibilities && (
-                        <div className="pt-2">
+                        <div className="pt-2 w-full max-w-full min-w-0 overflow-hidden">
                           <strong>Responsibilities:</strong>
                           <div 
-                            className="mt-1 prose prose-sm max-w-none text-gray-800 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5 [&>p]:mb-1.5"
-                            dangerouslySetInnerHTML={{ __html: selectedJob.details.responsibilities }}
+                            className="rich-text-content w-full max-w-full min-w-0 break-words [overflow-wrap:anywhere] overflow-hidden text-gray-800 text-sm leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: formatAndSanitizeJobHtml(selectedJob.details.responsibilities) }}
                           />
                         </div>
                       )}

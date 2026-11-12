@@ -96,33 +96,43 @@
   color: var(--text);
   max-width: 100%;
   width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  word-wrap: break-word;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  word-wrap: break-word !important;
   overflow-x: hidden;
+  box-sizing: border-box;
 }
 .rich-text-content * {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  box-sizing: border-box;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
 }
 .rich-text-content p {
   margin: 0 0 6px 0;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 .rich-text-content ul, .rich-text-content ol {
   margin: 4px 0 6px 0;
-  padding-left: 22px;
+  padding-left: 20px;
   max-width: 100%;
+  box-sizing: border-box;
 }
 .rich-text-content ul {
   list-style-type: disc;
 }
 .rich-text-content ol {
   list-style-type: decimal;
+}
+.rich-text-content li {
+  margin-bottom: 4px;
+  max-width: 100%;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  box-sizing: border-box;
 }
 .rich-text-content blockquote {
   border-left: 3px solid var(--line);
@@ -135,16 +145,16 @@
 .rich-text-content a {
   color: var(--brand);
   text-decoration: underline;
-  overflow-wrap: anywhere;
-  word-break: break-all;
+  overflow-wrap: anywhere !important;
+  word-break: break-all !important;
 }
 .rich-text-content pre, .rich-text-content code {
   background: var(--soft);
   border-radius: 4px;
   padding: 2px 4px;
   font-size: 13px;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
   max-width: 100%;
 }
 .rich-text-content table {

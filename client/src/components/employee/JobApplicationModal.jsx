@@ -2072,7 +2072,7 @@ const p = formData.professionalDetails || {};
                     <div>
                       <h4 className="font-bold text-gray-900 text-sm mb-1.5">About Role</h4>
                       <div 
-                        className="text-gray-600 text-xs leading-relaxed prose prose-sm max-w-none whitespace-pre-line [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-1"
+                        className="rich-text-content w-full max-w-full min-w-0 break-words [overflow-wrap:anywhere] overflow-hidden text-gray-600 text-xs leading-relaxed"
                         dangerouslySetInnerHTML={{ __html: aboutRoleContent }}
                       />
                     </div>
@@ -2082,7 +2082,7 @@ const p = formData.professionalDetails || {};
                     <div>
                       <h4 className="font-bold text-gray-900 text-sm mb-1.5">Role & Responsibilities</h4>
                       <div 
-                        className="text-gray-600 text-xs leading-relaxed prose prose-sm max-w-none whitespace-pre-line [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>p]:mb-1"
+                        className="rich-text-content w-full max-w-full min-w-0 break-words [overflow-wrap:anywhere] overflow-hidden text-gray-600 text-xs leading-relaxed"
                         dangerouslySetInnerHTML={{ __html: responsibilitiesContent }}
                       />
                     </div>

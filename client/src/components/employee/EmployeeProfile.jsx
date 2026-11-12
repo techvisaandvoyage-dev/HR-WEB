@@ -96,8 +96,8 @@ const calculateCompanyDuration = (co) => {
   let res = '';
   if (years > 0) res += `${years} yr${years > 1 ? 's' : ''}`;
   if (years > 0 && months > 0) res += ' ';
-  if (months > 0) res += `${months} mo${months > 1 ? 's' : ''}`;
-  return res || '1 mo';
+  if (months > 0) res += `${months} month${months > 1 ? 's' : ''}`;
+  return res || '1 month';
 };
 
 const calculateRoleDuration = (joiningDate, leavingDate, isCurrent) => {
@@ -120,8 +120,8 @@ const calculateRoleDuration = (joiningDate, leavingDate, isCurrent) => {
   let res = '';
   if (years > 0) res += `${years} yr${years > 1 ? 's' : ''}`;
   if (years > 0 && months > 0) res += ' ';
-  if (months > 0) res += `${months} mo${months > 1 ? 's' : ''}`;
-  return res || '1 mo';
+  if (months > 0) res += `${months} month${months > 1 ? 's' : ''}`;
+  return res || '1 month';
 };
 
 const EmployeeProfile = () => {
@@ -1581,7 +1581,7 @@ const EmployeeProfile = () => {
                           </div>
 
                           {/* Introductory Video Card in Profile */}
-                          <div className="col-span-1 md:col-span-2 p-6 border border-emerald-100 rounded-2xl bg-white shadow-xs space-y-4">
+                          <div className="col-span-1 md:col-span-2 p-3.5 sm:p-6 border border-emerald-100 rounded-2xl bg-white shadow-xs space-y-4">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                               <div>
                                 <label className="block text-base font-bold text-gray-900 flex items-center gap-2">
@@ -1595,22 +1595,24 @@ const EmployeeProfile = () => {
                                   {videoSectionSubtitle}
                                 </p>
                               </div>
-                              <div className="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold self-start border border-gray-200">
-                                <button
-                                  type="button"
-                                  onClick={() => setVideoProfileMode('upload')}
-                                  className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${videoProfileMode === 'upload' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'}`}
-                                >
-                                  {uploadTabLabel}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setVideoProfileMode('link')}
-                                  className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${videoProfileMode === 'link' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'}`}
-                                >
-                                  {linkTabLabel}
-                                </button>
-                              </div>
+                              {!docs.introVideo && (
+                                <div className="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold self-start sm:self-auto border border-gray-200 w-full sm:w-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => setVideoProfileMode('upload')}
+                                    className={`flex-1 sm:flex-initial text-center px-4 py-2 sm:py-1.5 rounded-lg transition-all cursor-pointer ${videoProfileMode === 'upload' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                                  >
+                                    {uploadTabLabel}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setVideoProfileMode('link')}
+                                    className={`flex-1 sm:flex-initial text-center px-4 py-2 sm:py-1.5 rounded-lg transition-all cursor-pointer ${videoProfileMode === 'link' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900'}`}
+                                  >
+                                    {linkTabLabel}
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             {videoProfileMode === 'upload' && !docs.introVideo && (
@@ -1703,27 +1705,27 @@ const EmployeeProfile = () => {
                             )}
 
                             {docs.introVideo && (
-                              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                      Video Attached
+                              <div className="space-y-4 pt-1">
+                                <div className="flex items-center justify-between gap-2.5 pb-0.5">
+                                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shadow-xs shrink-0">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                      <span>Video Attached</span>
                                     </span>
-                                    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border shadow-xs shrink-0 ${
                                       (formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone'
                                         ? 'bg-blue-50 text-blue-700 border-blue-200'
                                         : 'bg-amber-50 text-amber-700 border-amber-200'
                                     }`}>
                                       {(formData.videoVisibility || formData.documents?.videoVisibility || 'everyone') === 'everyone' ? (
                                         <>
-                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                          Visible to All Employers
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                          <span>Visible to All Employers</span>
                                         </>
                                       ) : (
                                         <>
-                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                          Applied Job Only
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                          <span>Applied Job Only</span>
                                         </>
                                       )}
                                     </span>
@@ -1731,13 +1733,19 @@ const EmployeeProfile = () => {
                                   <button
                                     type="button"
                                     onClick={() => setDoc('introVideo', '')}
-                                    className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100/90 px-2.5 py-1 rounded-lg border border-red-200 transition-colors cursor-pointer shrink-0"
+                                    title="Remove attached video"
                                   >
-                                    Remove
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span>Remove</span>
                                   </button>
                                 </div>
 
-                                <VideoPlayer url={docs.introVideo} />
+                                <div className="w-full rounded-2xl overflow-hidden shadow-xs border border-gray-100 bg-black">
+                                  <VideoPlayer url={docs.introVideo} />
+                                </div>
 
                                 {/* Visibility / Sharing Options */}
                                 <div className="pt-3 border-t border-gray-100 space-y-2">
