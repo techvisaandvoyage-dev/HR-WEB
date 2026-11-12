@@ -270,7 +270,7 @@ export default function SupportWidget() {
       const rightDrawer = document.querySelector(
         '[data-right-drawer="true"], .fixed.inset-y-0.right-0, [class*="right-0"][class*="inset-y-0"]'
       );
-      if (rightDrawer && window.innerWidth >= 640) {
+      if (rightDrawer && window.innerWidth > 768) {
         const rect = rightDrawer.getBoundingClientRect();
         const drawerWidth = Math.round(window.innerWidth - rect.left);
         // Only offset if the drawer is on the right side and doesn't take 100% of the screen
@@ -576,7 +576,7 @@ export default function SupportWidget() {
     const handleOpenWidget = (e) => {
       setIsOpen(true);
       const rightDrawer = document.querySelector('[data-right-drawer="true"], .fixed.inset-y-0.right-0, [class*="right-0"][class*="inset-y-0"]');
-      if (rightDrawer && window.innerWidth >= 640) {
+      if (rightDrawer && window.innerWidth > 768) {
         const rect = rightDrawer.getBoundingClientRect();
         const drawerWidth = Math.round(window.innerWidth - rect.left);
         if (drawerWidth > 150 && rect.left > 60) {
@@ -1121,7 +1121,7 @@ export default function SupportWidget() {
       <button
         id="sjFab"
         type="button"
-        className="sj-fab"
+        className={`sj-fab ${isOpen ? 'is-open' : ''}`}
         style={drawerOffset ? { right: `${drawerOffset}px` } : undefined}
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
