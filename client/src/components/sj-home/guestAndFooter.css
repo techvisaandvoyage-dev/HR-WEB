@@ -55,8 +55,8 @@
 .sj-hero h1 em {
   font-style: normal;
   color: var(--sj-ink);
-  background: linear-gradient(transparent 55%, var(--sj-mk, #a7f3d0) 55%);
-  padding: 0 4px;
+  background: linear-gradient(transparent 55%, #a7f3d0 55%);
+  padding: 0 6px;
   border-radius: 4px;
 }
 

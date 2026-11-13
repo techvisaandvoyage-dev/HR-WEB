@@ -168,8 +168,37 @@ export default function SjLoggedInHeader({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onOpenSearch]);
 
-  const userEmail = userProfile?.email || localStorage.getItem('employeeUser') || '';
-  const userName = userProfile?.name || [userProfile?.firstName, userProfile?.lastName].filter(Boolean).join(' ') || 'User';
+  let parsedEmployeeUser = null;
+  try {
+    const rawEmp = localStorage.getItem('employeeUser');
+    if (rawEmp) parsedEmployeeUser = JSON.parse(rawEmp);
+  } catch (e) {
+    parsedEmployeeUser = null;
+  }
+
+  const userEmail = 
+    userProfile?.email || 
+    parsedEmployeeUser?.email || 
+    parsedEmployeeUser?.profile?.email || 
+    parsedEmployeeUser?.user?.email || 
+    localStorage.getItem('employeeEmail') || 
+    '';
+
+  const userName = 
+    userProfile?.fullName ||
+    userProfile?.name || 
+    [userProfile?.firstName, userProfile?.lastName].filter(Boolean).join(' ') || 
+    parsedEmployeeUser?.name || 
+    [parsedEmployeeUser?.profile?.firstName, parsedEmployeeUser?.profile?.lastName].filter(Boolean).join(' ') || 
+    parsedEmployeeUser?.profile?.name || 
+    (userEmail ? userEmail.split('@')[0] : 'User');
+
+  const avatarUrl = 
+    userProfile?.avatar || 
+    parsedEmployeeUser?.avatar || 
+    parsedEmployeeUser?.profile?.avatar || 
+    '';
+
   const initial = (userName.charAt(0) || 'U').toUpperCase();
 
   const isImage = logoConfig?.type === 'image' && Boolean(logoConfig.imageUrl);
@@ -344,11 +373,11 @@ export default function SjLoggedInHeader({
             aria-haspopup="menu"
             aria-expanded={isDropdownOpen}
             aria-label="Profile Account Menu"
-            title="Account"
+            title={userName || 'Account'}
           >
-            {userProfile?.avatar ? (
+            {avatarUrl ? (
               <img
-                src={userProfile.avatar}
+                src={avatarUrl}
                 alt={userName}
                 className="w-8 h-8 rounded-full object-cover border border-[var(--sj-line)]"
               />
@@ -364,6 +393,7 @@ export default function SjLoggedInHeader({
             isOpen={isDropdownOpen}
             onClose={() => setIsDropdownOpen(false)}
             email={userEmail}
+            name={userName}
             onNavigateProfile={onNavigateProfile}
             onNavigateSaved={onNavigateSaved}
             onNavigateApplied={onNavigateApplied}

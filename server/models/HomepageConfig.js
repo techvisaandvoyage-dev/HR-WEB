@@ -39,7 +39,7 @@ const homepageConfigSchema = new mongoose.Schema({
     accS: { type: String, default: '#fff1e5' },
     accL: { type: String, default: '#ff9433' },
     onacc: { type: String, default: '#ffffff' },
-    mk: { type: String, default: '#ffd3c7' },
+    mk: { type: String, default: '#a7f3d0' },
     ink: { type: String, default: '#111111' },
     mute: { type: String, default: '#6b7280' },
     line: { type: String, default: '#e6e7ea' },

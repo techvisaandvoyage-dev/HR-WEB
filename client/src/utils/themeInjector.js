@@ -18,7 +18,12 @@ export function injectThemeTokens(tokens) {
   }
   if (tokens.accL) root.style.setProperty('--sj-accL', tokens.accL || tokens.acc);
   if (tokens.onacc) root.style.setProperty('--sj-onacc', tokens.onacc);
-  if (tokens.mk) root.style.setProperty('--sj-mk', tokens.mk);
+  if (tokens.mk) {
+    const isLegacyOrange = ['#ffd3c7', '#ffe5dd', '#fff1e5', '#ff9433', '#ff7a00'].includes(tokens.mk.toLowerCase());
+    root.style.setProperty('--sj-mk', isLegacyOrange ? '#a7f3d0' : tokens.mk);
+  } else {
+    root.style.setProperty('--sj-mk', '#a7f3d0');
+  }
   if (tokens.ink) root.style.setProperty('--sj-ink', tokens.ink);
   if (tokens.mute) root.style.setProperty('--sj-mute', tokens.mute);
   if (tokens.line) root.style.setProperty('--sj-line', tokens.line);

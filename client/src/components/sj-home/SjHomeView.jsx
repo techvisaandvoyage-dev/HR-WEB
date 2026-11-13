@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './guestAndFooter.css';
 import './jobFeed.css';
 
@@ -33,9 +33,29 @@ import { isExperienceMatch } from '../../utils/experienceMatcher';
  */
 function getCandidateProfile() {
   try {
+    let profile = null;
     const raw = localStorage.getItem('userProfile');
-    if (!raw) return null;
-    const profile = JSON.parse(raw);
+    if (raw) {
+      try {
+        profile = JSON.parse(raw);
+      } catch (_) {}
+    }
+
+    if (!profile) {
+      const empRaw = localStorage.getItem('employeeUser');
+      if (empRaw) {
+        try {
+          const empParsed = JSON.parse(empRaw);
+          profile = empParsed?.profile || empParsed;
+          if (profile && empParsed?.name && !profile.name) profile.name = empParsed.name;
+          if (profile && empParsed?.email && !profile.email) profile.email = empParsed.email;
+          if (profile && empParsed?.avatar && !profile.avatar) profile.avatar = empParsed.avatar;
+        } catch (_) {}
+      }
+    }
+
+    if (!profile) return null;
+
     const designation = (
       profile.designation ||
       profile.currentDesignation ||
@@ -59,12 +79,15 @@ function getCandidateProfile() {
       [profile.firstName, profile.lastName].filter(Boolean).join(' ') ||
       profile.name ||
       profile.fullName ||
-      email.split('@')[0] ||
+      (email ? email.split('@')[0] : '') ||
       'Candidate';
+
+    const avatar = profile.avatar || profile.photoURL || '';
 
     return {
       fullName,
       email,
+      avatar,
       designation: designation || 'Software Engineer',
       skills,
       location,
@@ -490,8 +513,13 @@ export default function SjHomeView({
     return 'Search jobs here';
   }, [searchQuery, searchLocation]);
 
-  // Determine view mode
-  const showLoggedInFeed = isLoggedIn && userRole === 'employee';
+  const location = useLocation();
+
+  // Determine view mode:
+  // Candidate feed is rendered when on the /employee route and authenticated as employee.
+  // The root homepage ('/') always renders the public guest landing view.
+  const isEmployeeRoute = location.pathname.startsWith('/employee');
+  const showLoggedInFeed = isEmployeeRoute && isLoggedIn && userRole === 'employee';
 
   return (
     <div className="sj-theme min-h-screen bg-white text-[var(--sj-ink)] font-sjsans selection:bg-[var(--sj-accS)] selection:text-[var(--sj-ink)]">

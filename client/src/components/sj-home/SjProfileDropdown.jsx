@@ -5,6 +5,7 @@ export default function SjProfileDropdown({
   isOpen,
   onClose,
   email = '',
+  name = '',
   onNavigateProfile,
   onNavigateSaved,
   onNavigateApplied,
@@ -12,6 +13,28 @@ export default function SjProfileDropdown({
   onSignOut,
 }) {
   const ref = useRef(null);
+
+  // Sanitize email and name in case a raw JSON string or object was passed
+  let displayEmail = email;
+  let displayName = name || '';
+
+  if (typeof displayEmail === 'string' && displayEmail.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(displayEmail);
+      displayEmail = parsed?.email || parsed?.profile?.email || '';
+      if (!displayName) {
+        displayName = parsed?.name || [parsed?.profile?.firstName, parsed?.profile?.lastName].filter(Boolean).join(' ') || '';
+      }
+    } catch (_) {
+      displayEmail = '';
+    }
+  } else if (typeof displayEmail === 'object' && displayEmail !== null) {
+    const obj = displayEmail;
+    displayEmail = obj?.email || obj?.profile?.email || '';
+    if (!displayName) {
+      displayName = obj?.name || [obj?.profile?.firstName, obj?.profile?.lastName].filter(Boolean).join(' ') || '';
+    }
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -41,7 +64,12 @@ export default function SjProfileDropdown({
 
   return (
     <div ref={ref} className="sj-dropdown-menu" role="menu" aria-label="User Account Menu">
-      {email && <div className="sj-dm-email">{email}</div>}
+      {(displayName || displayEmail) && (
+        <div className="sj-dm-header-info">
+          {displayName && <div className="sj-dm-user-name">{displayName}</div>}
+          {displayEmail && <div className="sj-dm-email" title={displayEmail}>{displayEmail}</div>}
+        </div>
+      )}
 
       <button
         type="button"
