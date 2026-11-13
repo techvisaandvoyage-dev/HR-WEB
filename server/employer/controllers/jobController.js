@@ -409,8 +409,41 @@ exports.getApplicationsForEmployer = async (req, res) => {
       .populate('jobId')
       .sort({ createdAt: -1 });
 
-    // Filter out orphaned records where candidate or job is null
-    const validApplications = applications.filter(app => app.employeeId && app.jobId);
+    // Filter out orphaned records where candidate or job is null and gate video access
+    const canViewCandidateVideo = Boolean(req.user?.canViewCandidateVideo);
+
+    const validApplications = applications
+      .filter(app => app.employeeId && app.jobId)
+      .map(app => {
+        const a = app.toObject ? app.toObject() : { ...app };
+        const cand = a.employeeId;
+        if (cand) {
+          const rawVideo = cand.introVideo || cand.documents?.introVideo || a.introVideo;
+          const hasVideo = Boolean(rawVideo);
+          if (hasVideo) {
+            cand.hasIntroVideo = true;
+            a.hasIntroVideo = true;
+            if (!canViewCandidateVideo) {
+              cand.isVideoLocked = true;
+              cand.introVideo = '';
+              if (cand.documents) cand.documents.introVideo = '';
+              a.isVideoLocked = true;
+              a.introVideo = '';
+            } else {
+              cand.isVideoLocked = false;
+              a.isVideoLocked = false;
+              cand.introVideo = rawVideo;
+              a.introVideo = rawVideo;
+            }
+          } else {
+            cand.hasIntroVideo = false;
+            cand.isVideoLocked = false;
+            a.hasIntroVideo = false;
+            a.isVideoLocked = false;
+          }
+        }
+        return a;
+      });
       
     res.status(200).json({ success: true, data: validApplications });
   } catch (error) {

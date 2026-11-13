@@ -578,11 +578,11 @@ const ExperienceModal = ({
                         </div>
 
                         {/* Roles & responsibilities */}
-                        <div className="sj-fld sj-full">
+                        <div className="sj-fld sj-full w-full max-w-full">
                           <label className="sj-lb">{roleDescription.label}</label>
                           <textarea
                             rows={3}
-                            className="sj-in"
+                            className="sj-in w-full max-w-full box-border"
                             style={{ minHeight: 88, paddingTop: 10 }}
                             placeholder={roleDescription.placeholder}
                             value={role.roleDescription}

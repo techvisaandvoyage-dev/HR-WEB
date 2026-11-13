@@ -320,11 +320,14 @@ function App() {
                   preferredLocation: emp.preferredLocation || (emp.professionalDetails && emp.professionalDetails.preferredLocation) || 'N/A',
                   resume: emp.resume || emp.documents?.resume || '',
                   coverLetter: emp.coverLetter || emp.documents?.coverLetter || '',
-                  introVideo: emp.introVideo || emp.documents?.introVideo || '',
+                  hasIntroVideo: Boolean(emp.hasIntroVideo || app.hasIntroVideo || emp.introVideo || app.introVideo),
+                  isVideoLocked: Boolean(emp.isVideoLocked || app.isVideoLocked),
+                  videoVisibility: emp.videoVisibility || app.videoVisibility || emp.documents?.videoVisibility || 'everyone',
+                  introVideo: emp.introVideo || app.introVideo || emp.documents?.introVideo || '',
                   documents: emp.documents || {
                     resume: emp.resume || '',
                     coverLetter: emp.coverLetter || '',
-                    introVideo: emp.introVideo || '',
+                    introVideo: emp.introVideo || app.introVideo || '',
                   },
                   qualifications: emp.qualifications || [],
                   isFresher: emp.isFresher ?? (emp.totalExperience === '0' || emp.totalExperience === 'Fresher'),
@@ -347,6 +350,9 @@ function App() {
                 sourceLink: app.sourceLink || app.utmSource || 'Direct',
                 resume: app.resume || emp.resume || emp.documents?.resume || '',
                 coverLetter: app.coverLetter || emp.coverLetter || emp.documents?.coverLetter || '',
+                hasIntroVideo: Boolean(app.hasIntroVideo || emp.hasIntroVideo || app.introVideo || emp.introVideo),
+                isVideoLocked: Boolean(app.isVideoLocked || emp.isVideoLocked),
+                videoVisibility: app.videoVisibility || emp.videoVisibility || emp.documents?.videoVisibility || 'everyone',
                 introVideo: app.introVideo || emp.introVideo || emp.documents?.introVideo || '',
               });
               

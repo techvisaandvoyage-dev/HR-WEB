@@ -97,6 +97,10 @@ const EmployerSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  canViewCandidateVideo: {
+    type: Boolean,
+    default: false
+  },
   googleSheetId: {
     type: String,
     default: ''

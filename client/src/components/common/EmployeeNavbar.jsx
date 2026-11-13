@@ -213,7 +213,7 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shrink-0">
+      <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-50 shrink-0">
       <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
         
         {/* Logo / Brand */}
@@ -499,6 +499,9 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
         </div>
       </div>
       </header>
+
+      {/* FIXED NAVBAR SPACER */}
+      <div className="h-20 w-full shrink-0 pointer-events-none" aria-hidden="true" />
 
       {/* MOBILE BOTTOM NAVIGATION */}
       {!hideBottomNav && (

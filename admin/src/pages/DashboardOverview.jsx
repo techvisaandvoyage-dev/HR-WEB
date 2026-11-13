@@ -654,7 +654,14 @@ export default function DashboardOverview({ onNavigateTab }) {
         if (selectedEmployer && (selectedEmployer._id || selectedEmployer.id) === employerId) {
           setSelectedEmployer(prev => ({ ...prev, [field]: newValue }));
         }
-        showToast(newValue ? 'Recruiter Card HIDDEN for this employer' : 'Recruiter Card VISIBLE for this employer');
+        if (detailEmployer && (detailEmployer._id || detailEmployer.id) === employerId) {
+          setDetailEmployer(prev => ({ ...prev, [field]: newValue }));
+        }
+        if (field === 'canViewCandidateVideo') {
+          showToast(newValue ? 'Candidate video access ENABLED for this employer' : 'Candidate video access DISABLED (Locked) for this employer');
+        } else {
+          showToast(newValue ? 'Recruiter Card HIDDEN for this employer' : 'Recruiter Card VISIBLE for this employer');
+        }
       } else {
         alert(data.message || 'Failed to update control');
       }
@@ -1142,7 +1149,8 @@ export default function DashboardOverview({ onNavigateTab }) {
     joinedOn: 'All',
     lastUpdate: 'All',
     docsSubmitted: 'All',
-    verification: 'All'
+    verification: 'All',
+    videoAccess: 'All'
   });
 
   const [emprSort, setEmprSort] = useState({ column: 'joinedOn', direction: 'desc' });
@@ -1257,6 +1265,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (emprColFilters.lastUpdate !== 'All') count++;
     if (emprColFilters.docsSubmitted !== 'All') count++;
     if (emprColFilters.verification !== 'All') count++;
+    if (emprColFilters.videoAccess && emprColFilters.videoAccess !== 'All') count++;
     return count;
   }, [employerSearch, employerTypeFilter, employerAccountStatusFilter, employerIndustryFilter, emprColFilters]);
 
@@ -1391,6 +1400,13 @@ export default function DashboardOverview({ onNavigateTab }) {
           if (vStatus !== emprColFilters.verification.toLowerCase()) return false;
         }
 
+        // Column Filter 10: Candidate Video Access
+        if (emprColFilters.videoAccess && emprColFilters.videoAccess !== 'All') {
+          const isEnabled = Boolean(empr.canViewCandidateVideo);
+          if (emprColFilters.videoAccess === 'enabled' && !isEnabled) return false;
+          if (emprColFilters.videoAccess === 'disabled' && isEnabled) return false;
+        }
+
         return true;
       })
       .sort((a, b) => {
@@ -1422,6 +1438,11 @@ export default function DashboardOverview({ onNavigateTab }) {
             const vA = a.verification?.status || 'unverified';
             const vB = b.verification?.status || 'unverified';
             return vA.localeCompare(vB) * dir;
+          }
+          case 'videoAccess': {
+            const vA = a.canViewCandidateVideo ? 1 : 0;
+            const vB = b.canViewCandidateVideo ? 1 : 0;
+            return (vA - vB) * dir;
           }
           case 'jobPosted': {
             const jA = a.totalJobs !== undefined ? a.totalJobs : (a.jobs?.length || a.activeJobs || 0);
@@ -3896,6 +3917,20 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </div>
                         </th>
 
+                        <th 
+                          onClick={() => handleEmployerSort('videoAccess')}
+                          className="px-4 py-3 cursor-pointer select-none hover:bg-gray-100 transition-colors whitespace-nowrap text-center"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span>Video Access</span>
+                            {emprSort.column === 'videoAccess' ? (
+                              emprSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 text-gray-300 opacity-60" />
+                            )}
+                          </div>
+                        </th>
+
                         <th className="px-4 py-3 text-center whitespace-nowrap">Account Status</th>
                         <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                       </tr>
@@ -4059,6 +4094,19 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </select>
                         </th>
 
+                        {/* Video Access Filter */}
+                        <th className="p-2">
+                          <select
+                            value={emprColFilters.videoAccess || 'All'}
+                            onChange={(e) => setEmprColFilters(prev => ({ ...prev, videoAccess: e.target.value }))}
+                            className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                          >
+                            <option value="All">All Video</option>
+                            <option value="enabled">Enabled</option>
+                            <option value="disabled">Disabled (Default)</option>
+                          </select>
+                        </th>
+
                         {/* Account Status Filter */}
                         <th className="p-2">
                           <select
@@ -4090,14 +4138,14 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
                       {loadingEmployers ? (
                         <tr>
-                          <td colSpan="14" className="py-16 text-center text-gray-400">
+                          <td colSpan="15" className="py-16 text-center text-gray-400">
                             <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-600 mb-2" />
                             Loading employer records...
                           </td>
                         </tr>
                       ) : filteredAndSortedEmployers.length === 0 ? (
                         <tr>
-                          <td colSpan="14" className="py-16 text-center text-gray-400">
+                          <td colSpan="15" className="py-16 text-center text-gray-400">
                             No employer records found matching your filters.
                           </td>
                         </tr>
@@ -4262,6 +4310,34 @@ export default function DashboardOverview({ onNavigateTab }) {
                                     </span>
                                   );
                                 })()}
+                              </td>
+
+                              {/* Video Access Toggle */}
+                              <td className="px-4 py-3.5 whitespace-nowrap align-middle text-center">
+                                <div className="inline-flex flex-col items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={updatingControlId === (empr._id || empr.id)}
+                                    onClick={() => handleToggleEmployerControl(empr._id || empr.id, 'canViewCandidateVideo', empr.canViewCandidateVideo)}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                                      empr.canViewCandidateVideo ? 'bg-emerald-600' : 'bg-gray-300 hover:bg-gray-400'
+                                    }`}
+                                    title={empr.canViewCandidateVideo ? 'Candidate video access is ON. Click to revoke access.' : 'Candidate video access is OFF (Default). Click to grant access.'}
+                                  >
+                                    <span className="sr-only">Toggle video access</span>
+                                    <span
+                                      aria-hidden="true"
+                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                        empr.canViewCandidateVideo ? 'translate-x-5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                  <span className={`text-[10px] font-black uppercase tracking-wider ${
+                                    empr.canViewCandidateVideo ? 'text-emerald-700' : 'text-gray-400'
+                                  }`}>
+                                    {empr.canViewCandidateVideo ? 'Active' : 'Off'}
+                                  </span>
+                                </div>
                               </td>
 
                               {/* Account Status */}
@@ -5784,6 +5860,36 @@ export default function DashboardOverview({ onNavigateTab }) {
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                       !selectedEmployer.hidePostedByCard ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Candidate Introductory Video Access Toggle */}
+              <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200/80 flex items-center justify-between">
+                <div className="pr-4">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-gray-900 text-xs">Candidate Video Access (Premium)</p>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      selectedEmployer.canViewCandidateVideo ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200'
+                    }`}>
+                      {selectedEmployer.canViewCandidateVideo ? 'Active' : 'Off (Default)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-600 mt-0.5">Allow this employer to watch candidate introductory profile videos across applicants and talent directory.</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={updatingControlId === (selectedEmployer._id || selectedEmployer.id)}
+                  onClick={() => handleToggleEmployerControl(selectedEmployer._id || selectedEmployer.id, 'canViewCandidateVideo', selectedEmployer.canViewCandidateVideo)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                    selectedEmployer.canViewCandidateVideo ? 'bg-emerald-600' : 'bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  title={selectedEmployer.canViewCandidateVideo ? 'Candidate video access is ON. Click to revoke access.' : 'Candidate video access is OFF (Default). Click to grant access.'}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      selectedEmployer.canViewCandidateVideo ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>

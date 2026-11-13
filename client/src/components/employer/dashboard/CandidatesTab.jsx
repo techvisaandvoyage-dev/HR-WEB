@@ -5,13 +5,14 @@ import * as XLSX from 'xlsx';
 import DateRangePicker from '../../common/DateRangePicker';
 import VideoPlayer from '../../common/VideoPlayer';
 import CustomDropdown from '../../common/CustomDropdown';
+import CandidateVideoCard from '../../common/CandidateVideoCard';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 import { 
   exportCandidateProfileAsPdf, 
   exportCandidateProfileAsDoc 
 } from '../../../utils/candidateProfileExporter';
 
-const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus }) => {
+const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus, employerProfile = null }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const initialJob = location.state?.jobTitle || 'All';
@@ -287,6 +288,8 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           resume: cand.resume || cand.documents?.resume || '',
           coverLetter: cand.coverLetter || cand.documents?.coverLetter || '',
           introVideo: cand.introVideo || cand.documents?.introVideo || '',
+          hasIntroVideo: Boolean(cand.hasIntroVideo || cand.introVideo || cand.documents?.introVideo),
+          isVideoLocked: Boolean(cand.isVideoLocked),
           candidate: cand
         });
       } else {
@@ -304,6 +307,8 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             resume: app.resume || cand.resume || cand.documents?.resume || '',
             coverLetter: app.coverLetter || cand.coverLetter || cand.documents?.coverLetter || '',
             introVideo: app.introVideo || cand.introVideo || cand.documents?.introVideo || '',
+            hasIntroVideo: Boolean(app.hasIntroVideo || cand.hasIntroVideo || app.introVideo || cand.introVideo || cand.documents?.introVideo),
+            isVideoLocked: Boolean(app.isVideoLocked || cand.isVideoLocked),
             candidate: cand
           });
         });
@@ -1510,7 +1515,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
             onClick={() => { setSelectedCandidate(null); setSelectedApplication(null); }}
           ></div>
-          <div className="fixed inset-y-0 right-0 w-full sm:w-[580px] bg-white shadow-2xl z-[10000] p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-gray-200">
+          <div data-right-drawer="true" className="fixed inset-y-0 right-0 w-full sm:w-[580px] bg-white shadow-2xl z-[10000] p-6 sm:p-8 animate-in slide-in-from-right duration-300 flex flex-col h-full border-l border-gray-200">
             
             {/* Drawer Header */}
             <div className="flex justify-between items-start mb-5 shrink-0 border-b border-gray-100 pb-4">
@@ -1788,7 +1793,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               )}
 
               {/* SECTION 5: DOCUMENTS & MEDIA */}
-              {(selectedCandidate.resume || selectedApplication?.resume || selectedCandidate.introVideo || selectedApplication?.introVideo || selectedCandidate.coverLetter || selectedCandidate.documents) && (
+              {(selectedCandidate.resume || selectedApplication?.resume || selectedCandidate.introVideo || selectedApplication?.introVideo || selectedCandidate.hasIntroVideo || selectedApplication?.hasIntroVideo || selectedCandidate.isVideoLocked || selectedApplication?.isVideoLocked || selectedCandidate.coverLetter || selectedCandidate.documents) && (
                 <div className="bg-white p-5 rounded-2xl border border-gray-200/80 space-y-4">
                   <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2">
                     <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1799,35 +1804,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   
                   <div className="space-y-3">
                     
-                    {/* Introductory Video - Only if candidate shared it (not hidden) */}
-                    {(() => {
-                      const videoSrc = selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo;
-                      const videoVis = selectedCandidate.videoVisibility || selectedCandidate.documents?.videoVisibility || 'everyone';
-                      const canShowVideo = videoSrc && (videoVis === 'everyone' || videoVis === 'applied');
-                      if (!canShowVideo) return null;
-
-                      return (
-                        <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-gray-900">Introductory Video</p>
-                                <p className="text-[10px] text-gray-500">Candidate Video Introduction</p>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                              Shared by Candidate
-                            </span>
-                          </div>
-                          <VideoPlayer url={videoSrc} maxPlayerHeight="240px" className="mt-2" />
-                        </div>
-                      );
-                    })()}
+                    {/* Introductory Video (Gated by Admin Permission) */}
+                    <CandidateVideoCard
+                      videoUrl={selectedApplication?.introVideo || selectedCandidate.introVideo || selectedCandidate.documents?.introVideo}
+                      hasVideo={Boolean(selectedApplication?.hasIntroVideo || selectedCandidate.hasIntroVideo || selectedApplication?.introVideo || selectedCandidate.introVideo || selectedApplication?.isVideoLocked || selectedCandidate.isVideoLocked)}
+                      isVideoLocked={Boolean(selectedApplication?.isVideoLocked || selectedCandidate.isVideoLocked)}
+                      videoVisibility={selectedCandidate.videoVisibility || selectedCandidate.documents?.videoVisibility || 'everyone'}
+                      appliedToYou={true}
+                      employerProfile={employerProfile}
+                      candidateName={selectedCandidate.fullName || selectedCandidate.name}
+                      maxPlayerHeight="240px"
+                    />
 
                     {/* Resume */}
                     {(selectedApplication?.resume || selectedCandidate.resume || selectedCandidate.documents?.resume) && (
