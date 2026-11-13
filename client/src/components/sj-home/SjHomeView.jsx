@@ -23,8 +23,10 @@ import SjSupportPanel from './SjSupportPanel';
 // Existing Job Application Modal for full screening workflow
 import JobApplicationModal from '../employee/JobApplicationModal';
 
-// Storage utilities
+// Storage & theme utilities
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
+import { injectThemeTokens } from '../../utils/themeInjector';
+import { isExperienceMatch } from '../../utils/experienceMatcher';
 
 /**
  * Helper to parse candidate profile from localStorage.
@@ -83,12 +85,48 @@ export default function SjHomeView({
   userRole = '',
   jobs = [],
   applyToJob,
+  homepageConfig: propHomepageConfig,
   onOpenEmployeeLogin,
   onOpenEmployerLogin,
   onOpenConsultantLogin,
   onSignOut,
 }) {
   const navigate = useNavigate();
+
+  // ---------------- State: Dynamic Homepage CMS ----------------
+  const [homepageConfig, setHomepageConfig] = useState(propHomepageConfig || null);
+
+  useEffect(() => {
+    if (propHomepageConfig) {
+      setHomepageConfig(propHomepageConfig);
+    } else {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      fetch(`${apiUrl}/api/homepage`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          if (json?.success && json?.data) {
+            setHomepageConfig(json.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [propHomepageConfig]);
+
+  useEffect(() => {
+    if (homepageConfig?.themeTokens) {
+      injectThemeTokens(homepageConfig.themeTokens);
+    }
+  }, [homepageConfig?.themeTokens]);
+
+  const initialJobCount = homepageConfig?.jobCards?.initialCount || 6;
+  const showMoreJobCount = homepageConfig?.jobCards?.showMoreCount || 6;
+  const [visibleJobsCount, setVisibleJobsCount] = useState(initialJobCount);
+
+  useEffect(() => {
+    if (homepageConfig?.jobCards?.initialCount) {
+      setVisibleJobsCount(homepageConfig.jobCards.initialCount);
+    }
+  }, [homepageConfig?.jobCards?.initialCount]);
 
   // ---------------- State: Profile & Authentication ----------------
   const [candidateProfile, setCandidateProfile] = useState(() => getCandidateProfile());
@@ -98,7 +136,8 @@ export default function SjHomeView({
   // ---------------- State: Search & Filters ----------------
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLocation, setSearchLocation] = useState('');
-  const [searchExperience, setSearchExperience] = useState('');
+  const [searchExperience, setSearchExperience] = useState('All');
+  const [searchPostingDate, setSearchPostingDate] = useState('Any time');
   const [activeFilters, setActiveFilters] = useState([]);
 
   // ---------------- State: Modals, Drawer & UI ----------------
@@ -256,12 +295,18 @@ export default function SjHomeView({
       }
 
       // 3. Experience Filter
-      if (searchExperience.trim()) {
-        const exp = searchExperience.toLowerCase().trim();
-        const jobExp = (job.experience || job.details?.experience || '').toLowerCase();
-        if (exp !== 'any' && !jobExp.includes(exp)) {
-          // Soft match if exp text exists
+      if (searchExperience && searchExperience !== 'All') {
+        const jobExp = job.details?.experience || job.experience || '';
+        if (!isExperienceMatch(jobExp, searchExperience)) {
+          return false;
         }
+      }
+
+      // 3b. Posting Date Filter
+      if (searchPostingDate && searchPostingDate !== 'Any time') {
+        const ageDays = searchPostingDate.includes('24') ? 1 : searchPostingDate.includes('3') ? 3 : searchPostingDate.toLowerCase().includes('week') ? 7 : 30;
+        const postedAt = new Date(job.createdAt || job.date || 0).getTime();
+        if (!postedAt || Date.now() - postedAt > ageDays * 24 * 60 * 60 * 1000) return false;
       }
 
       // 4. Remote Filter
@@ -298,6 +343,7 @@ export default function SjHomeView({
     searchQuery,
     searchLocation,
     searchExperience,
+    searchPostingDate,
     activeFilters,
     matchedFilterLabel,
     checkJobRoleMatch,
@@ -399,7 +445,7 @@ export default function SjHomeView({
   }, [isSearchModalOpen, isDrawerOpen, hasPreviousJob, hasNextJob, currentJobIndex, filteredJobs]);
 
   // ---------------- Apply Flow ----------------
-  const handleApplyToJob = async (job) => {
+  const handleApplyToJob = (job) => {
     if (!isLoggedIn) {
       if (onOpenEmployeeLogin) onOpenEmployeeLogin();
       return;
@@ -413,33 +459,9 @@ export default function SjHomeView({
       return;
     }
 
-    // Check if job has screening questions
-    const hasScreening =
-      Array.isArray(job.screeningQuestions) && job.screeningQuestions.length > 0;
-    const hasDetailsScreening =
-      Array.isArray(job.details?.screeningQuestions) &&
-      job.details.screeningQuestions.length > 0;
-
-    if (hasScreening || hasDetailsScreening) {
-      // Open full application modal
-      setApplicationTargetJob(job);
-      setIsApplicationModalOpen(true);
-      return;
-    }
-
-    // Direct apply if no questions
-    if (applyToJob) {
-      const res = await applyToJob(jId, {});
-      if (res?.success) {
-        setAppliedJobs((prev) => [...prev, String(jId)]);
-        setEmployeeStoredValue('appliedJobs', [...appliedJobs, String(jId)]);
-        showToast('Application submitted successfully!');
-      } else {
-        showToast(res?.message || 'Failed to submit application', true);
-      }
-    } else {
-      showToast('Application submitted successfully!');
-    }
+    // Always open full application modal flow so candidate can review experience, resume & submit
+    setApplicationTargetJob(job);
+    setIsApplicationModalOpen(true);
   };
 
   // ---------------- Search Modal Submissions ----------------
@@ -452,8 +474,9 @@ export default function SjHomeView({
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    setSearchExperience('');
+    setSearchExperience('All');
     setSearchLocation('');
+    setSearchPostingDate('Any time');
     setActiveFilters([]);
     setIsSearchModalOpen(false);
   };
@@ -475,20 +498,35 @@ export default function SjHomeView({
       {/* 1. Header */}
       {showLoggedInFeed ? (
         <SjLoggedInHeader
+          logoConfig={homepageConfig?.logo}
           searchLabel={headerSearchLabel}
+          searchTerm={searchQuery}
+          onSearchTermChange={setSearchQuery}
+          searchLocation={searchLocation}
+          onSearchLocationChange={setSearchLocation}
+          experience={searchExperience || 'All'}
+          onExperienceChange={setSearchExperience}
+          postingDate={searchPostingDate || 'Any time'}
+          onPostingDateChange={setSearchPostingDate}
+          jobs={jobs}
           onOpenSearch={() => setIsSearchModalOpen(true)}
           userProfile={candidateProfile}
           hasUnreadMessages={false}
           savedCount={savedJobs.length}
           onNavigateSaved={() => navigate('/my-jobs?tab=saved')}
+          onNavigateApplied={() => navigate('/my-jobs?tab=applied')}
           onNavigateMessages={() => navigate('/employee/messages')}
           onNavigateProfile={() => navigate('/employee/profile')}
           onNavigateSecurity={() => navigate('/employee/profile?tab=security')}
           onSignOut={onSignOut}
-          onLogoClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          onLogoClick={() => {
+            handleClearSearch();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
         />
       ) : (
         <SjGuestHeader
+          logoConfig={homepageConfig?.logo}
           onOpenEmployeeLogin={onOpenEmployeeLogin}
           onOpenEmployerLogin={onOpenEmployerLogin}
           onOpenConsultantLogin={onOpenConsultantLogin}
@@ -500,15 +538,6 @@ export default function SjHomeView({
       <main id="sj-main-content">
         {showLoggedInFeed ? (
           <div className="max-w-[1200px] mx-auto px-6 py-6">
-            {/* Filter Bar */}
-            <SjJobFilterBar
-              filters={filterOptions}
-              activeFilters={activeFilters}
-              onToggleFilter={handleToggleFilter}
-              showingCount={filteredJobs.length}
-              totalCount={jobs.length}
-            />
-
             {/* Job List Feed */}
             <SjJobList
               jobs={filteredJobs}
@@ -525,8 +554,11 @@ export default function SjHomeView({
           <>
             {/* Guest Hero with Search */}
             <SjGuestHero
+              heroConfig={homepageConfig?.hero}
+              searchBarConfig={homepageConfig?.searchBar}
               query={searchQuery}
               location={searchLocation}
+              jobs={jobs}
               onQueryChange={setSearchQuery}
               onLocationChange={setSearchLocation}
               onSearch={() => {
@@ -537,7 +569,11 @@ export default function SjHomeView({
 
             {/* Guest Grid */}
             <SjGuestGrid
-              jobs={filteredJobs}
+              jobs={filteredJobs.slice(0, visibleJobsCount)}
+              totalJobsCount={filteredJobs.length}
+              jobCardsConfig={homepageConfig?.jobCards}
+              hasMore={filteredJobs.length > visibleJobsCount}
+              onShowMore={() => setVisibleJobsCount((prev) => prev + showMoreJobCount)}
               onJobClick={() => {
                 if (onOpenEmployeeLogin) onOpenEmployeeLogin();
               }}
@@ -553,7 +589,7 @@ export default function SjHomeView({
       </main>
 
       {/* 3. Footer */}
-      <SjFooter />
+      <SjFooter customConfig={homepageConfig?.logo ? { logoText: homepageConfig.logo.text } : undefined} />
 
       {/* 4. Search Modal */}
       <SjSearchModal

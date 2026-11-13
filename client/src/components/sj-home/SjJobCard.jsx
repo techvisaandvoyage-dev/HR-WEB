@@ -86,8 +86,6 @@ export default function SjJobCard({
 
           <span className="truncate">{location}</span>
 
-          <SjPill variant="default">Easily apply</SjPill>
-
           {isMatched && matchedRole && (
             <SjPill variant="accent">
               ◎ Matched for {matchedRole}

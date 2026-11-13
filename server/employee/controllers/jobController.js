@@ -25,18 +25,26 @@ exports.getAllJobs = async (req, res) => {
     const actionsByJob = {};
     const passive = ['new', 'viewed', 'applied'];
 
+    // Explicitly initialize every job with 0 counts so stale numbers are never returned
+    jobIds.forEach(id => {
+      const sId = String(id);
+      appsByJob[sId] = 0;
+      actionsByJob[sId] = 0;
+    });
+
     applications.forEach(a => {
       const jId = String(a.jobId);
       appsByJob[jId] = (appsByJob[jId] || 0) + 1;
-      if (a.status && !passive.includes(a.status.toLowerCase())) {
+      const statusStr = a.status ? String(a.status).toLowerCase().trim() : '';
+      if (statusStr && !passive.includes(statusStr)) {
         actionsByJob[jId] = (actionsByJob[jId] || 0) + 1;
       }
     });
 
     const enriched = jobs.map(j => {
       const jId = String(j._id);
-      const liveApps = appsByJob[jId] !== undefined ? appsByJob[jId] : (j.applications || 0);
-      const liveActions = actionsByJob[jId] !== undefined ? actionsByJob[jId] : (j.recruiterActions || 0);
+      const liveApps = appsByJob[jId] !== undefined ? appsByJob[jId] : 0;
+      const liveActions = actionsByJob[jId] !== undefined ? actionsByJob[jId] : 0;
       const liveViews = Math.max(j.views || 0, Array.isArray(j.viewedBy) ? j.viewedBy.length : 0, liveApps);
       return {
         ...j,
@@ -73,7 +81,10 @@ exports.getJobById = async (req, res) => {
     const apps = await Application.find({ jobId: job._id }).select('status').lean();
     const liveApps = apps.length;
     const passive = ['new', 'viewed', 'applied'];
-    const liveActions = apps.filter(a => a.status && !passive.includes(a.status.toLowerCase())).length;
+    const liveActions = apps.filter(a => {
+      const s = a.status ? String(a.status).toLowerCase().trim() : '';
+      return s && !passive.includes(s);
+    }).length;
 
     const liveViews = Math.max(job.views || 0, Array.isArray(job.viewedBy) ? job.viewedBy.length : 0, liveApps);
 

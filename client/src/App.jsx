@@ -697,6 +697,7 @@ function App() {
               userRole={userRole}
               jobs={homepageJobs.length > 0 ? homepageJobs : jobs}
               applyToJob={applyToJob}
+              homepageConfig={homepageConfig}
               onOpenEmployeeLogin={() => setIsEmployeeLoginOpen(true)}
               onOpenEmployerLogin={() => { setIsConsultantMode(false); setIsEmployerLoginOpen(true); }}
               onOpenConsultantLogin={() => { setIsConsultantMode(true); setIsEmployerLoginOpen(true); }}
@@ -716,19 +717,19 @@ function App() {
         <div className="hidden md:flex items-center gap-3">
           <button 
             onClick={() => setIsEmployeeLoginOpen(true)}
-            className="px-5 py-2.5 rounded-full font-medium text-palette-900 hover:text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
+            className="px-5 py-2.5 rounded-full font-bold text-palette-900 hover:text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
           >
             Employee Login
           </button>
           <button 
             onClick={() => { setIsConsultantMode(false); setIsEmployerLoginOpen(true); }}
-            className="px-5 py-2.5 rounded-full font-medium text-palette-900 border border-palette-200 hover:border-palette-400 hover:bg-palette-50 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
+            className="px-5 py-2.5 rounded-full font-bold text-palette-900 border border-palette-200 hover:border-palette-400 hover:bg-palette-50 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-palette-400 focus:ring-offset-2"
           >
             Employer Login
           </button>
           <button 
             onClick={() => { setIsConsultantMode(true); setIsEmployerLoginOpen(true); }}
-            className="px-5 py-2.5 rounded-full font-medium bg-palette-900 text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-900 focus:ring-offset-2 flex items-center gap-1.5"
+            className="px-5 py-2.5 rounded-full font-bold bg-palette-900 text-white hover:bg-palette-400 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg hover:shadow-palette-200 focus:outline-none focus:ring-2 focus:ring-palette-900 focus:ring-offset-2 flex items-center gap-1.5"
           >
             Consultant Login
           </button>
@@ -1035,6 +1036,7 @@ function App() {
                   userRole={userRole}
                   jobs={homepageJobs.length > 0 ? homepageJobs : jobs}
                   applyToJob={applyToJob}
+                  homepageConfig={homepageConfig}
                   onOpenEmployeeLogin={() => setIsEmployeeLoginOpen(true)}
                   onOpenEmployerLogin={() => { setIsConsultantMode(false); setIsEmployerLoginOpen(true); }}
                   onOpenConsultantLogin={() => { setIsConsultantMode(true); setIsEmployerLoginOpen(true); }}

@@ -60,33 +60,45 @@ function getJobLocation(job) {
  */
 export default function SjGuestGrid({
   jobs = [],
+  totalJobsCount = 0,
+  jobCardsConfig,
+  hasMore = false,
+  onShowMore,
   onJobClick,
   onApplyClick,
   onBookmarkClick,
 }) {
+  const heading = jobCardsConfig?.heading || 'Latest Opportunities';
+  const showSparkle = jobCardsConfig?.showSparkleIcon !== false;
+  const countToDisplay = totalJobsCount || jobs.length;
+  const subtextTemplate =
+    jobCardsConfig?.subtextTemplate || 'Showing {count} jobs';
+  const subtext = subtextTemplate.replace('{count}', countToDisplay);
+  const viewAllText = jobCardsConfig?.viewAllButtonText || 'View All Jobs';
+
   return (
     <section className="sj-gw" id="sj-opportunities">
       <div className="sj-gw-head">
         <h2 className="sj-lo">
-          Latest Opportunities
-          <span className="sj-sparkle-box" aria-hidden="true">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" />
-            </svg>
-          </span>
+          <span>{heading}</span>
+          {showSparkle && (
+            <span className="sj-sparkle-box" aria-hidden="true">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" />
+              </svg>
+            </span>
+          )}
         </h2>
-        <p className="sj-gw-sub">
-          Showing {jobs.length} job{jobs.length === 1 ? '' : 's'}
-        </p>
+        <p className="sj-gw-sub">{subtext}</p>
       </div>
 
       <div className="sj-gg">
@@ -256,6 +268,18 @@ export default function SjGuestGrid({
           </div>
         )}
       </div>
+
+      {hasMore && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '36px' }}>
+          <button
+            type="button"
+            className="sj-guest-btn-pill font-bold"
+            onClick={onShowMore}
+          >
+            {viewAllText} &rarr;
+          </button>
+        </div>
+      )}
     </section>
   );
 }

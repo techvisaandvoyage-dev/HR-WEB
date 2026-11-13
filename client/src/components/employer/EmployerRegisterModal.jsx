@@ -821,42 +821,31 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
   };
 
   return (
-    <div className={`fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm overflow-y-auto ${isClosing ? 'sj-modal-closing' : ''}`}>
-      <div className="flex min-h-full items-center justify-center p-4 py-10">
-        <div className="w-full max-w-lg">
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 ${isClosing ? 'sj-modal-closing' : ''}`}>
+      {/* Form Card */}
+      <div className={`relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] overflow-y-auto ${isClosing ? 'sj-modal-closing' : ''}`}>
+        
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors z-20 p-2 rounded-full hover:bg-gray-100"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
 
-        {/* Form Card */}
-        <div className={`relative w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 ${isClosing ? 'sj-modal-closing' : ''}`}>
-          
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors z-20 p-2 rounded-full hover:bg-gray-100"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Stepper Header (Step 1 and 2) - inside card */}
+          {/* Stepper Header (Step 1 and 2) */}
           {step >= 1 && step <= 2 && (
-            <div className="flex items-center justify-center gap-3 pt-6 pb-0 w-full">
-              <div className="flex items-center gap-2">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= 1 ? 'bg-palette-400 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                  1
-                </div>
-                <span className={`text-sm ${step === 1 ? 'font-bold text-palette-900' : 'font-medium text-gray-400'}`}>
-                  Account &amp; Email
-                </span>
+            <div className="sj-auth-stepper stp">
+              <div className={`flex items-center gap-2 ${step >= 1 ? 'on' : ''}`}>
+                <div className="n">1</div>
+                <span>Account &amp; Email</span>
               </div>
-              <div className={`h-0.5 w-12 ${step >= 2 ? 'bg-palette-400' : 'bg-gray-300'}`}></div>
-              <div className="flex items-center gap-2">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= 2 ? 'bg-palette-400 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                  2
-                </div>
-                <span className={`text-sm ${step === 2 ? 'font-bold text-palette-900' : 'font-medium text-gray-400'}`}>
-                  Company Details
-                </span>
+              <i />
+              <div className={`flex items-center gap-2 ${step >= 2 ? 'on' : ''}`}>
+                <div className="n">2</div>
+                <span>Company Details</span>
               </div>
             </div>
           )}
@@ -1803,9 +1792,7 @@ const EmployerRegisterModal = ({ isOpen, isConsultant = false, initialData, onCl
             )}
           </div>
         </div>
-        </div>
       </div>
-    </div>
   );
 };
 

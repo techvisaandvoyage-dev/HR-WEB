@@ -4,6 +4,7 @@ import BrandLogo from './BrandLogo';
 import LocationAutocomplete from './LocationAutocomplete';
 import { isLocationMatch } from '../../data/preferredLocations';
 import { isExperienceMatch } from '../../utils/experienceMatcher';
+import '../sj-home/headers.css';
 
 const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,18 +29,26 @@ const NavbarDropdown = ({ options, value, onChange, placeholder }) => {
         <svg className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
       </button>
       {isOpen && (
-        <div className="absolute top-[120%] left-0 w-52 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 z-[110] animate-in fade-in duration-150">
+        <div className="sj-search-dropdown-menu">
+          <div className="sj-search-dropdown-header">
+            {placeholder} ({options.length})
+          </div>
           {options.map(opt => {
             const isSelected = opt.value === value;
             return (
               <div 
                 key={opt.value} 
                 onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                className={`px-4 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
-                  isSelected ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`sj-search-dropdown-item ${isSelected ? 'is-selected' : ''}`}
               >
-                <span>{opt.label}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="sj-search-dropdown-icon">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="truncate">{opt.label}</span>
+                </div>
                 {isSelected && (
                   <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -212,8 +221,8 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
           <BrandLogo onClick={() => navigate('/employee')} />
         </div>
 
-        {/* Search Bar */}
-        <div className="flex-1 max-w-4xl flex items-center bg-gray-100 rounded-full focus-within:ring-2 focus-within:ring-palette-400 focus-within:bg-white transition-all hidden lg:flex relative h-[44px]" ref={searchRef}>
+        {/* Search Bar (3D on hover only) */}
+        <div className="sj-topbar-search flex-1 max-w-4xl flex items-center hidden lg:flex relative h-[44px]" ref={searchRef}>
           
           <NavbarDropdown 
             placeholder="Experience"
@@ -406,6 +415,56 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
                       <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
                     </svg>
                     <span className="text-sm font-medium text-gray-800">Profile</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      navigate('/my-jobs?tab=saved', { state: { tab: 'saved', ts: Date.now() } });
+                    }}
+                    className="w-full text-left px-5 py-2.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-800">Saved Jobs</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      navigate('/my-jobs?tab=applied', { state: { tab: 'applied', ts: Date.now() } });
+                    }}
+                    className="w-full text-left px-5 py-2.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-800">Applied Jobs</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      navigate('/my-jobs?tab=saved', { state: { tab: 'saved', ts: Date.now() } });
+                    }}
+                    className="w-full text-left px-5 py-2.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-800">Saved Jobs</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      navigate('/my-jobs?tab=applied', { state: { tab: 'applied', ts: Date.now() } });
+                    }}
+                    className="w-full text-left px-5 py-2.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                    </svg>
+                    <span className="text-sm font-medium text-gray-800">Applied Jobs</span>
                   </button>
                   <button 
                     onClick={() => {

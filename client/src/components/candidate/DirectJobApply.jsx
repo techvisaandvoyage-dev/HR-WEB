@@ -14,6 +14,7 @@ import {
   getScreeningTextMaxLength,
   validateScreeningAnswer
 } from '../../utils/screeningQuestions';
+import SjJobDetailsContent from '../sj-home/SjJobDetailsContent';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India (+91)' },
@@ -1374,23 +1375,21 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col bg-[#f8fafc] text-slate-800 font-sans">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col bg-[#fafaf9] text-slate-800 font-sans">
       
       {/* Top Navigation Bar */}
-      <header className="bg-white border-b border-gray-200/80 z-40 shadow-xs shrink-0">
+      <header className="bg-white border-b-[1.5px] border-[#0f172a] z-40 shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-green-700 to-emerald-500 flex items-center justify-center text-white font-black text-lg shadow-sm">
-              S
-            </div>
-            <span className="text-xl font-black tracking-tight text-gray-900 group-hover:text-green-700 transition-colors">
-              sahijob<span className="text-[#29953f]">.com</span>
+            <span className="font-extrabold text-2xl tracking-tight text-[#0f172a]">
+              SahiJob<span className="text-[#059669]">.com</span>
             </span>
           </Link>
 
           <div className="flex items-center gap-3 text-xs font-semibold text-gray-500">
-            <span className="hidden sm:inline">{general.portalBadgeText || 'Direct Application Portal'}</span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-50 text-green-700 border border-green-200">
+            <span className="hidden sm:inline font-bold text-[#0f172a]">{general.portalBadgeText || 'Direct Application Portal'}</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-800 border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-pulse"></span>
               {general.verifiedJobBadgeText || 'Verified Job'}
             </span>
             {user && (
@@ -1404,7 +1403,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   setToken('');
                   setStep(1);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-white text-red-600 border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a] hover:bg-red-50 transition-colors cursor-pointer"
                 title="Sign out of your candidate account"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1461,12 +1460,12 @@ const DirectJobApply = ({ onAuthSuccess }) => {
       )}
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 flex-1 w-full lg:overflow-hidden min-h-0 flex flex-col">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-4 sm:pt-6 sm:pb-6 flex-1 w-full lg:overflow-hidden min-h-0 flex flex-col">
         
         {/* Mobile Header Banner */}
-        <div className="lg:hidden bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs mb-6 flex items-center justify-between gap-4">
+        <div className="lg:hidden bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-extrabold text-xl shrink-0 overflow-hidden shadow-xs">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#0f172a] font-extrabold text-xl shrink-0 overflow-hidden shadow-xs">
               {companyLogo ? (
                 <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
               ) : (
@@ -1474,13 +1473,13 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               )}
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-[#29953f] uppercase tracking-wider block">{general.applyingForLabel || 'Applying For'}</span>
-              <h2 className="text-base font-bold text-gray-900 truncate">{title}</h2>
-              <div className="flex items-center gap-2 text-xs text-gray-500 font-medium truncate">
-                <span className="flex items-center gap-1">
+              <span className="text-[10px] font-black text-[#059669] uppercase tracking-wider block">{general.applyingForLabel || 'Applying For'}</span>
+              <h2 className="text-base font-extrabold text-[#0f172a] truncate">{title}</h2>
+              <div className="flex items-center gap-2 text-xs text-[#64748b] font-medium truncate">
+                <span className="flex items-center gap-1 font-bold text-[#0f172a]">
                   {companyName}
                   {(job?.employerId?.verification?.status === 'verified' || job?.isVerified) && (
-                    <span className="inline-flex items-center text-emerald-600" title="Verified Employer">
+                    <span className="inline-flex items-center text-[#0284c7]" title="Verified Employer">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                         <path fillRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" clipRule="evenodd" />
                       </svg>
@@ -1492,7 +1491,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 {salary && (
                   <>
                     <span>•</span>
-                    <span className="text-emerald-700 font-bold">{salary}</span>
+                    <span className="text-[#059669] font-bold">{salary}</span>
                   </>
                 )}
               </div>
@@ -1500,49 +1499,56 @@ const DirectJobApply = ({ onAuthSuccess }) => {
           </div>
           <a
             href="#job-details-column"
-            className="shrink-0 px-3 py-1.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200"
+            className="shrink-0 px-3.5 py-1.5 bg-[#059669] text-white text-xs font-bold rounded-full border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a] hover:brightness-105 transition-all"
           >
             Job Details ↓
           </a>
         </div>
 
         {/* 2-Column Responsive Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start lg:items-stretch lg:flex-1 lg:min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 xl:gap-8 items-start lg:items-stretch lg:flex-1 lg:min-h-0">
           
-          {/* LEFT COLUMN: Apply Flow (Independent scroll on desktop) */}
-          <div className="lg:col-span-6 xl:col-span-5 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-2 pb-8">
+          {/* LEFT COLUMN: Permanent Full Job Details Card (Takes generous space, smooth scroll) */}
+          <div id="job-details-column" className="lg:col-span-6 xl:col-span-7 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-1 sm:pr-2 pb-8 order-2 lg:order-1">
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 xl:p-8 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)]">
+              <SjJobDetailsContent job={job} showActions={false} />
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Apply Flow / Login (Comfortable width, smooth scroll) */}
+          <div id="apply-flow-column" className="lg:col-span-6 xl:col-span-5 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-1 sm:pr-2 pb-8 order-1 lg:order-2">
 
             {/* ========================================================================= */}
             {/* STEP 1: AUTHENTICATION (LOGIN OR REGISTER)                                 */}
             {/* ========================================================================= */}
         {step === 1 && (
-          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-6">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 xl:p-8 border border-slate-200/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)] space-y-6">
             
             {/* If user is already logged in */}
             {user && token ? (
               <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold border border-green-100">
+                <div className="w-16 h-16 bg-emerald-50 text-[#059669] rounded-full flex items-center justify-center mx-auto text-2xl font-bold border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a]">
                   ✓
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-gray-900">
+                  <h3 className="text-xl font-extrabold text-[#0f172a]">
                     {s1.loggedInWelcomeTitle || 'Welcome back'}, {user.name || user.firstName || 'Candidate'}!
                   </h3>
-                  <p className="text-sm text-gray-500">
-                    Logged in with <span className="font-semibold text-gray-800">{user.email}</span>
+                  <p className="text-sm text-[#64748b]">
+                    Logged in with <span className="font-bold text-[#0f172a]">{user.email}</span>
                   </p>
                 </div>
 
                 <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={handleContinueAsLoggedIn}
-                    className="w-full sm:w-auto px-8 py-3 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-3 bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-sm rounded-full border-[1.5px] border-[#0f172a] shadow-[3px_3px_0_#0f172a] hover:shadow-[4.5px_4.5px_0_#0f172a] hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer"
                   >
                     {(s1.continueAsBtnText || 'Continue Application →').replace('{name}', user.name || user.firstName || 'Candidate')}
                   </button>
                   <button
                     onClick={handleSwitchAccount}
-                    className="w-full sm:w-auto px-5 py-3 text-gray-500 hover:text-gray-700 font-semibold text-xs transition-colors cursor-pointer"
+                    className="w-full sm:w-auto px-5 py-3 bg-white hover:bg-slate-50 text-[#0f172a] font-bold text-xs rounded-full border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a] transition-all cursor-pointer"
                   >
                     {s1.switchAccountBtnText || 'Switch Account / Logout'}
                   </button>
@@ -1598,7 +1604,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                         autoFocus={index === 0}
-                        className="w-10 h-12 sm:w-14 sm:h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
+                        className="w-10 h-12 sm:w-14 sm:h-14 text-center text-2xl font-black text-[#0f172a] rounded-xl border-[1.5px] border-slate-300 focus:border-[#0f172a] focus:ring-1 focus:ring-[#0f172a] outline-none transition-all shadow-[2px_2px_0_#0f172a] bg-white"
                       />
                     ))}
                   </div>
@@ -1607,7 +1613,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                     <button
                       type="submit"
                       disabled={authLoading}
-                      className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                      className="w-full h-12 inline-flex items-center justify-center gap-2 bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-[15px] rounded-full border-[1.5px] border-[#0f172a] shadow-[3px_3px_0_#0f172a] hover:shadow-[4.5px_4.5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer disabled:opacity-60"
                     >
                       {authLoading ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -1655,47 +1661,49 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             ) : (
               <div>
                 <div className="text-center space-y-1 mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">{s1.heading || 'Candidate Login / Registration'}</h2>
-                  <p className="text-xs sm:text-sm text-gray-500">
+                  <h2 className="text-2xl font-black text-[#0f172a] tracking-tight">{s1.heading || 'Candidate Login / Registration'}</h2>
+                  <p className="text-xs sm:text-sm text-[#64748b] font-medium">
                     {s1.subtitle || 'Please log in or create a free candidate profile to proceed with your application.'}
                   </p>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex bg-gray-100 p-1 rounded-full mb-6 max-w-sm mx-auto">
+                <div className="flex bg-slate-100 p-1 rounded-full mb-6 max-w-md mx-auto border border-slate-200/70">
                   <button
                     type="button"
                     onClick={() => { setAuthTab('login'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); setLoginMode('password'); setIsLoginOtpSent(false); }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
+                    className={`flex-1 py-2 px-2.5 sm:px-3 text-xs sm:text-[13px] font-bold rounded-full transition-all cursor-pointer whitespace-nowrap text-center ${
                       authTab === 'login' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
                     }`}
                   >
-                    {s1.tabLoginText || 'Already Registered? Login'}
+                    <span className="inline lg:hidden xl:inline">{s1.tabLoginText || 'Already Registered? Login'}</span>
+                    <span className="hidden lg:inline xl:hidden">Login</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => { setAuthTab('register'); setAuthError(''); setAuthFieldErrors({}); setIsOtpStep(false); setLoginMode('password'); setIsLoginOtpSent(false); }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
+                    className={`flex-1 py-2 px-2.5 sm:px-3 text-xs sm:text-[13px] font-bold rounded-full transition-all cursor-pointer whitespace-nowrap text-center ${
                       authTab === 'register' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-800'
                     }`}
                   >
-                    {s1.tabRegisterText || 'New Candidate? Register'}
+                    <span className="inline lg:hidden xl:inline">{s1.tabRegisterText || 'New Candidate? Register'}</span>
+                    <span className="hidden lg:inline xl:hidden">Register</span>
                   </button>
                 </div>
 
                 {authError && (
-                  <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-2xl flex items-center gap-2 max-w-md mx-auto animate-in fade-in duration-200">
+                  <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl flex items-center gap-2 max-w-md mx-auto animate-in fade-in duration-200">
                     <span className="font-bold text-red-500">⚠️</span> {authError}
                   </div>
                 )}
 
-                {/* Google One-Click Login / Register */}
+                {/* Google One-Click Login / Register (matching Image 2) */}
                 <div className="max-w-md mx-auto mb-6 space-y-4">
                   <button
                     type="button"
                     onClick={handleGoogleLogin}
                     disabled={authLoading}
-                    className="w-full py-3.5 px-4 flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-800 font-bold text-sm border border-gray-300 rounded-full transition-all shadow-xs cursor-pointer disabled:opacity-60 hover:shadow-sm"
+                    className="w-full h-12 px-4 flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-gray-800 font-bold text-sm border border-slate-200/90 rounded-full transition-all shadow-none hover:border-slate-300 cursor-pointer disabled:opacity-60"
                   >
                     <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -1707,9 +1715,9 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                   </button>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <div className="flex-1 h-px bg-slate-200"></div>
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{s1.dividerText || 'OR WITH EMAIL'}</span>
-                    <div className="flex-1 h-px bg-gray-200"></div>
+                    <div className="flex-1 h-px bg-slate-200"></div>
                   </div>
                 </div>
 
@@ -1998,7 +2006,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                       <button
                         type="submit"
                         disabled={authLoading}
-                        className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full h-[52px] bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-base rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {authLoading ? (
                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -2007,6 +2015,24 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                         )}
                       </button>
                     </div>
+
+                    <p className="text-xs text-gray-500 text-center pt-2">
+                      Already have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthTab('login');
+                          setAuthError('');
+                          setAuthFieldErrors({});
+                          setIsOtpStep(false);
+                          setLoginMode('password');
+                          setIsLoginOtpSent(false);
+                        }}
+                        className="text-xs font-bold text-[#0f172a] bg-gradient-to-t from-[#a7f3d0] to-transparent from-45% to-45% hover:bg-[#a7f3d0] px-1 py-0.5 cursor-pointer transition-colors"
+                      >
+                        Login here
+                      </button>
+                    </p>
                   </form>
                 )}
 
@@ -2084,13 +2110,24 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               <span>{authFieldErrors.password}</span>
                             </div>
                           )}
+                          {/* "Forgot Password?" Right-Aligned with Theme Marker */}
+                          <div className="flex justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={() => navigate('/forgot-password')}
+                              className="text-xs font-bold text-[#0f172a] bg-gradient-to-t from-[#a7f3d0] to-transparent from-45% to-45% hover:bg-[#a7f3d0] px-1.5 py-0.5 cursor-pointer transition-colors"
+                            >
+                              Forgot Password?
+                            </button>
+                          </div>
                         </div>
 
+                        {/* Primary Submit Button with 3D Offset Shadow (matching Image 2) */}
                         <div className="pt-2">
                           <button
                             type="submit"
                             disabled={authLoading}
-                            className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full h-[52px] bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-base rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                           >
                             {authLoading ? (
                               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -2100,7 +2137,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                           </button>
                         </div>
 
-                        {/* Switch to OTP Login Link */}
+                        {/* Switch to OTP Login Link with Theme Marker (matching Image 2) */}
                         <div className="pt-3 text-center">
                           <button
                             type="button"
@@ -2111,14 +2148,30 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               setAuthFieldErrors({});
                               setOtp(['', '', '', '']);
                             }}
-                            className="text-[#29953f] hover:text-green-800 text-xs font-bold transition-colors py-1.5 px-4 rounded-full hover:bg-green-50 inline-flex items-center gap-1.5 cursor-pointer"
+                            className="text-sm font-bold text-[#0f172a] bg-gradient-to-t from-[#a7f3d0] to-transparent from-45% to-45% hover:bg-[#a7f3d0] px-2 py-0.5 cursor-pointer transition-colors"
                           >
-                            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            <span>Login with OTP instead</span>
+                            Use OTP to Login
                           </button>
                         </div>
+
+                        {/* "Don't have an account? Register for free" with Theme Marker */}
+                        <p className="text-xs text-gray-500 text-center pt-2">
+                          Don't have an account?{' '}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuthTab('register');
+                              setAuthError('');
+                              setAuthFieldErrors({});
+                              setIsOtpStep(false);
+                              setLoginMode('password');
+                              setIsLoginOtpSent(false);
+                            }}
+                            className="text-xs font-bold text-[#0f172a] bg-gradient-to-t from-[#a7f3d0] to-transparent from-45% to-45% hover:bg-[#a7f3d0] px-1 py-0.5 cursor-pointer transition-colors"
+                          >
+                            Register for free
+                          </button>
+                        </p>
                       </form>
                     )}
 
@@ -2158,7 +2211,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                           <button
                             type="submit"
                             disabled={authLoading}
-                            className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full h-[52px] bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-base rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                           >
                             {authLoading ? (
                               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -2176,7 +2229,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               setAuthError('');
                               setAuthFieldErrors({});
                             }}
-                            className="text-gray-500 hover:text-gray-800 text-xs font-semibold transition-colors py-1.5 px-4 rounded-full hover:bg-gray-100 inline-block cursor-pointer"
+                            className="text-xs font-bold text-[#0f172a] bg-gradient-to-t from-[#a7f3d0] to-transparent from-45% to-45% hover:bg-[#a7f3d0] px-1.5 py-0.5 cursor-pointer transition-colors"
                           >
                             ← Login with Password instead
                           </button>
@@ -2207,7 +2260,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               onChange={(e) => handleOtpChange(index, e.target.value)}
                               onKeyDown={(e) => handleOtpKeyDown(index, e)}
                               autoFocus={index === 0}
-                              className="w-10 h-12 sm:w-14 sm:h-14 text-center text-2xl font-black text-gray-900 rounded-2xl border border-gray-300 focus:border-green-600 focus:ring-2 focus:ring-green-600/20 outline-none transition-all shadow-xs"
+                              className="w-10 h-12 sm:w-14 sm:h-14 text-center text-2xl font-black text-[#0f172a] rounded-xl border-[1.5px] border-slate-300 focus:border-[#0f172a] focus:ring-1 focus:ring-[#0f172a] outline-none transition-all shadow-[2px_2px_0_#0f172a] bg-white"
                             />
                           ))}
                         </div>
@@ -2216,7 +2269,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                           <button
                             type="submit"
                             disabled={authLoading}
-                            className="w-full py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-full transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full h-[52px] bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-base rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                           >
                             {authLoading ? (
                               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -2246,7 +2299,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               type="button"
                               onClick={handleResendLoginOtp}
                               disabled={authLoading}
-                              className="text-[#29953f] hover:underline font-bold cursor-pointer"
+                              className="text-[#059669] hover:underline font-bold cursor-pointer"
                             >
                               Resend OTP
                             </button>
@@ -2262,7 +2315,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                               setOtp(['', '', '', '']);
                               setAuthError('');
                             }}
-                            className="text-gray-500 hover:text-gray-800 text-xs font-semibold py-1 px-4 rounded-full hover:bg-gray-100 inline-block cursor-pointer"
+                            className="text-xs font-bold text-[#0f172a] bg-gradient-to-t from-[#a7f3d0] to-transparent from-45% to-45% hover:bg-[#a7f3d0] px-1.5 py-0.5 cursor-pointer transition-colors"
                           >
                             ← Login with Password instead
                           </button>
@@ -2283,7 +2336,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         {/* STEP 2: QUESTIONS & CV UPLOAD                                             */}
         {/* ========================================================================= */}
         {step === 2 && (
-          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-8">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)] space-y-8">
             <div>
               <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 2 of 3</span>
               <h2 className="text-xl font-bold text-gray-900 mt-1">
@@ -2667,7 +2720,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="px-5 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                className="px-6 py-2.5 bg-white hover:bg-slate-50 text-[#0f172a] font-bold text-xs rounded-full border-[1.5px] border-[#0f172a] shadow-[2.5px_2.5px_0_#0f172a] hover:shadow-[3.5px_3.5px_0_#0f172a] hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer"
               >
                 {s2.backBtnText || '← Back'}
               </button>
@@ -2675,7 +2728,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 type="button"
                 onClick={handleStep2Submit}
                 disabled={uploadingResume}
-                className="px-7 py-2.5 bg-[#29953f] hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                className="px-8 py-3 bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-sm rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer disabled:opacity-50"
               >
                 {s2.continueBtnText || s3.continueBtnText || 'Continue to Review →'}
               </button>
@@ -2687,7 +2740,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         {/* STEP 3: REVIEW & SUBMIT APPLICATION                                        */}
         {/* ========================================================================= */}
         {step === 3 && (
-          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200/80 shadow-xs space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)] space-y-6">
             <div>
               <span className="text-xs font-bold text-[#29953f] uppercase tracking-wider">Step 3 of 3</span>
               <h2 className="text-xl font-bold text-gray-900 mt-1">{s4.heading || 'Review Your Application'}</h2>
@@ -2807,7 +2860,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="px-5 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                className="px-6 py-2.5 bg-white hover:bg-slate-50 text-[#0f172a] font-bold text-xs rounded-full border-[1.5px] border-[#0f172a] shadow-[2.5px_2.5px_0_#0f172a] hover:shadow-[3.5px_3.5px_0_#0f172a] hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer"
               >
                 {s4.backBtnText || '← Back'}
               </button>
@@ -2815,7 +2868,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 type="button"
                 onClick={handleSubmitFinalApplication}
                 disabled={submitting}
-                className="px-8 py-3 bg-[#29953f] hover:bg-green-700 text-white text-sm font-bold rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                className="px-8 py-3 bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-sm rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
               >
                 {submitting ? (
                   <>
@@ -2834,7 +2887,7 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         {/* STEP 4: SUCCESS CONFIRMATION & PORTAL INVITATION                          */}
         {/* ========================================================================= */}
         {step === 4 && (
-          <div className="bg-white rounded-3xl p-8 sm:p-10 border border-gray-200/80 shadow-md text-center space-y-6">
+          <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)] text-center space-y-6">
             
             <div className={`w-20 h-20 ${alreadyApplied ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'} rounded-full flex items-center justify-center mx-auto text-4xl font-black shadow-inner`}>
               ✓
@@ -2869,14 +2922,14 @@ const DirectJobApply = ({ onAuthSuccess }) => {
               <button
                 type="button"
                 onClick={() => navigate('/my-jobs?tab=applied', { state: { tab: 'applied' } })}
-                className="w-full sm:w-auto px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-slate-50 text-[#0f172a] font-bold text-xs sm:text-sm rounded-full border-[1.5px] border-[#0f172a] shadow-[2.5px_2.5px_0_#0f172a] hover:shadow-[3.5px_3.5px_0_#0f172a] hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Track My Applications</span>
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/employee', { state: { showOnboardingPrompt: true, loggedIn: true } })}
-                className="w-full sm:w-auto px-6 py-3.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3 bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-sm sm:text-base rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>{s5?.exploreMoreJobsBtnText || "Explore More Jobs →"}</span>
               </button>
@@ -2896,251 +2949,6 @@ const DirectJobApply = ({ onAuthSuccess }) => {
 
           </div>
         )}
-
-          </div>
-
-          {/* RIGHT COLUMN: Permanent Full Job Details Card (Independent scroll on desktop) */}
-          <div id="job-details-column" className="lg:col-span-6 xl:col-span-7 space-y-6 lg:h-full lg:max-h-full lg:overflow-y-auto split-scroll-col pr-2 pb-8">
-            
-            {/* 1. Job Header Card */}
-            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 font-extrabold text-2xl shrink-0 overflow-hidden shadow-xs">
-                  {companyLogo ? (
-                    <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
-                  ) : (
-                    companyInitial
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap text-sm font-semibold text-gray-600 mb-0.5">
-                    <span className="flex items-center gap-1">
-                      {companyName}
-                    </span>
-                    {(job?.employerId?.verification?.status === 'verified' || job?.isVerified) && (
-                      <span className="inline-flex items-center text-emerald-600" title="Verified Employer">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                          <path fillRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-tight">
-                    {title}
-                  </h1>
-                  
-                  {/* Badges Row */}
-                  <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
-                    {experience && (
-                      <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-700 font-medium border border-gray-200/60">
-                        {experience}
-                      </span>
-                    )}
-                    {workLocation && (
-                      <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80">
-                        {workLocation}
-                      </span>
-                    )}
-                    {openings && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200/80">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span>{openings} Openings</span>
-                      </span>
-                    )}
-                    {salary && salary !== 'Not specified' && (
-                      <span className="px-3 py-1 rounded-lg bg-gray-50 text-gray-900 font-extrabold border border-gray-200/80">
-                        {salary}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Skills Section */}
-            {(skillsList.length > 0 || extraQualifications.length > 0) && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
-                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                  <span>Skills</span>
-                  <span className="text-xs font-normal text-gray-500">
-                    (Matching for {job.role || title})
-                  </span>
-                </h3>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {skillsList.map((skill, idx) => (
-                    <span 
-                      key={idx} 
-                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#137333] border border-emerald-200/80 shadow-2xs"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                  {extraQualifications.map((q, idx) => (
-                    <span 
-                      key={`extra-${idx}`} 
-                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200/80 shadow-2xs"
-                    >
-                      {q.name.replace(/[;,]+$/, '').trim()}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 4. Key Job Overview Specs Grid */}
-            <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-4">
-              <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider flex items-center gap-2">
-                <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
-                <span>Job Overview & Details</span>
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Role / Category</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{jobCategory}</span>
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Industry</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{industry}</span>
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Salary</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{salary}</span>
-                  {salaryType && <span className="text-[10px] text-gray-500 block">{salaryType} pay</span>}
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Job Type</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{jobType}</span>
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Experience</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{experience}</span>
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Work Mode</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{workLocation}</span>
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Openings</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{openings} Position(s)</span>
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Education</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{educationText}</span>
-                </div>
-                <div className="p-3 bg-gray-50/90 rounded-xl border border-gray-100">
-                  <span className="text-gray-400 font-bold block text-[10px] uppercase mb-0.5">Posted Date</span>
-                  <span className="font-bold text-gray-900 text-xs block break-words">{postedDate}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 5. Role Overview / About the Role */}
-            {aboutRoleContent && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full"></span>
-                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">About the Role</h4>
-                </div>
-                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
-                  {renderRichText(aboutRoleContent)}
-                </div>
-              </div>
-            )}
-
-            {/* 6. Key Responsibilities */}
-            {responsibilitiesContent && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full"></span>
-                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">Responsibilities</h4>
-                </div>
-                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
-                  {renderRichText(responsibilitiesContent)}
-                </div>
-              </div>
-            )}
-
-            {/* 6. Additional Description (if separate) */}
-            {separateDescription && (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 sm:p-6 shadow-xs space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-3.5 bg-blue-500 rounded-full"></span>
-                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-wider">Job Description</h4>
-                </div>
-                <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100">
-                  {renderRichText(separateDescription)}
-                </div>
-              </div>
-            )}
-
-            {/* 7. Dedicated Company Details Frame */}
-            <div className="bg-gray-50/80 rounded-2xl border border-gray-200 p-6 space-y-4">
-              <div className="flex items-center gap-2 border-b border-gray-200/80 pb-3">
-                <svg className="w-5 h-5 text-green-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <h3 className="text-base font-bold text-gray-900">Company Details</h3>
-              </div>
-
-              <div className="space-y-3 text-sm text-gray-800">
-                <div>
-                  <p><strong>Company Name:</strong> {employer.companyName || companyName}</p>
-                </div>
-                <div>
-                  <p className="flex items-center gap-1.5 flex-wrap">
-                    <strong>Hiring Type:</strong>{' '}
-                    {employer.isConsultant === true ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        Consultant
-                      </span>
-                    ) : (
-                      'Company / Business'
-                    )}
-                  </p>
-                </div>
-                {employer.employees && (
-                  <div>
-                    <p><strong>Company Size:</strong> {employer.employees.toLowerCase().includes('employee') ? employer.employees : `${employer.employees} Employees`}</p>
-                  </div>
-                )}
-                {(employer.industry || jobCategory) && (
-                  <div>
-                    <p><strong>Industry:</strong> {employer.industry || jobCategory}</p>
-                  </div>
-                )}
-                {(employer.location || location) && (
-                  <div>
-                    <p><strong>Location:</strong> {employer.location || location}</p>
-                  </div>
-                )}
-                {employer.website && (
-                  <div>
-                    <p className="flex items-center gap-1.5">
-                      <strong>Website:</strong>
-                      <a 
-                        href={employer.website.startsWith('http') ? employer.website : `https://${employer.website}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 hover:underline inline-flex items-center gap-1"
-                      >
-                        {employer.website}
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    </p>
-                  </div>
-                )}
-                {employer.aboutCompany && (
-                  <div className="pt-2 border-t border-gray-200">
-                    <p className="font-semibold text-gray-900 mb-1">About Company:</p>
-                    <p className="text-gray-600 text-xs leading-relaxed whitespace-pre-line">{employer.aboutCompany}</p>
-                  </div>
-                )}
-              </div>
-            </div>
 
           </div>
 

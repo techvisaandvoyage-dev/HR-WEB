@@ -994,16 +994,6 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                   {/* Top Badges & Right Actions Row */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setSelectedJobId(job.id); 
-                          setIsApplicationModalOpen(true); 
-                        }} 
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 transition-colors cursor-pointer active:scale-95"
-                      >
-                        Easily apply
-                      </button>
                       {isJobNew(job) && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
                           New

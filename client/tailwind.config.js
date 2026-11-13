@@ -16,11 +16,11 @@ export default {
       },
       colors: {
         palette: {
-          50: 'var(--palette-50, #fff5f0)',
+          50: 'var(--palette-50, #f0fdf4)',
           100: 'var(--palette-100, #ffffff)',
-          200: 'var(--palette-200, #fff0ec)', 
-          400: 'var(--palette-400, #ff4f2b)',
-          900: 'var(--palette-900, #ff4f2b)',
+          200: 'var(--palette-200, #ecfdf5)', 
+          400: 'var(--palette-400, #059669)',
+          900: 'var(--palette-900, #047857)',
         },
         sj: {
           ink: 'var(--sj-ink)',

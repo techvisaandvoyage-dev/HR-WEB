@@ -1,11 +1,14 @@
 /* =====================================================================
    SahiJob Modern Auth Modals Theme
-   Pixel-matched to mockup: SahiJob.com – Orange
+   Pixel-matched to mockup: SahiJob.com.html (#gm .gcard, .gb, .pf2, .pwf, .gp, .lk)
    Features:
-   - Modern pill inputs with pure white background & soft peach focus halo
-   - Jet-black primary CTAs transitioning to vibrant Orange on hover
-   - Underline peach marker highlights (.lk) for text action links
-   - Smooth, relaxing (lax) pop-in and pop-out animations
+   - Modern pill inputs with pure white background & soft accent focus halo
+   - Clean mobile number pill group with integrated country code dropdown
+   - Jet-black primary CTAs transitioning to accent on hover (.gp)
+   - Underline marker highlights (.lk) for text action links
+   - Full width Google Sign-In button with centered icon & single-line text (.gb)
+   - Isolated eye toggle button strictly inside password input field (.pwf)
+   - Smooth, relaxing pop-in and pop-out animations
    ===================================================================== */
 
 /* ---------------- Keyframe Animations ---------------- */
@@ -74,38 +77,82 @@
   animation: sjBackdropFadeOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
-/* ---------------- Modal Dialog Card ---------------- */
-.sj-auth-modals .relative.bg-white,
-.sj-auth-modals [role="dialog"],
+/* ---------------- Modal Dialog Card (#gm .gcard) ---------------- */
+/* STRICT SELECTOR: only direct child of backdrop container, NEVER nested divs */
+.sj-auth-modals .fixed.inset-0 > div.relative,
+.sj-auth-modals .fixed > div.relative,
+.sj-auth-modals [role="dialog"].relative,
 .sj-auth-modals .sj-auth-card {
-  border-radius: 28px !important;
-  width: min(480px, 100%) !important;
-  max-width: 480px !important;
-  max-height: 94vh !important;
-  overflow-y: auto !important;
-  padding: 38px 40px 34px !important;
   background: #ffffff !important;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24) !important;
-  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  border-radius: 28px !important;
+  width: min(480px, calc(100vw - 32px)) !important;
+  max-width: 480px !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  padding: 32px 36px 28px !important;
+  position: relative !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22) !important;
+  box-sizing: border-box !important;
+  font-family: var(--sj-f), "Manrope", system-ui, -apple-system, sans-serif !important;
   color: var(--sj-ink, #111111) !important;
   animation: sjPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  box-sizing: border-box !important;
 }
 
-.sj-auth-modals .sj-modal-closing .relative.bg-white,
-.sj-auth-modals .sj-modal-closing [role="dialog"],
+/* Elegant slim scrollbar for modal cards */
+.sj-auth-modals .fixed.inset-0 > div.relative::-webkit-scrollbar,
+.sj-auth-modals .fixed > div.relative::-webkit-scrollbar,
+.sj-auth-modals [role="dialog"].relative::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sj-auth-modals .fixed.inset-0 > div.relative::-webkit-scrollbar-track,
+.sj-auth-modals .fixed > div.relative::-webkit-scrollbar-track,
+.sj-auth-modals [role="dialog"].relative::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sj-auth-modals .fixed.inset-0 > div.relative::-webkit-scrollbar-thumb,
+.sj-auth-modals .fixed > div.relative::-webkit-scrollbar-thumb,
+.sj-auth-modals [role="dialog"].relative::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 999px;
+}
+
+.sj-auth-modals .fixed.inset-0 > div.relative::-webkit-scrollbar-thumb:hover,
+.sj-auth-modals .fixed > div.relative::-webkit-scrollbar-thumb:hover,
+.sj-auth-modals [role="dialog"].relative::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.sj-auth-modals .sj-modal-closing .fixed.inset-0 > div.relative,
+.sj-auth-modals .fixed.inset-0.sj-modal-closing > div.relative,
 .sj-auth-modals .relative.bg-white.sj-modal-closing {
   animation: sjPopOut 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
-/* Strip inner extra padding wrapper if present */
-.sj-auth-modals .relative.bg-white > .p-8 {
+/* Wider card for employer multi-step register if needed */
+.sj-auth-modals .fixed.inset-0 > div.max-w-2xl.relative {
+  max-width: 680px !important;
+  width: min(680px, calc(100vw - 32px)) !important;
+}
+
+/* Strip inner extra padding wrapper */
+.sj-auth-modals .fixed.inset-0 > div.relative > .p-8 {
   padding: 0 !important;
 }
 
-/* ---------------- Close Button ---------------- */
+@media (max-width: 640px) {
+  .sj-auth-modals .fixed.inset-0 > div.relative,
+  .sj-auth-modals .sj-auth-card {
+    padding: 26px 20px 24px !important;
+    border-radius: 24px !important;
+  }
+}
+
+/* ---------------- Close Button (#gm .x) ---------------- */
 .sj-auth-modals button.absolute.top-4.right-4,
 .sj-auth-modals .sj-auth-close {
+  position: absolute !important;
   top: 18px !important;
   right: 18px !important;
   width: 40px !important;
@@ -115,9 +162,10 @@
   background: transparent !important;
   display: grid !important;
   place-items: center !important;
-  color: var(--sj-ink, #111111) !important;
+  color: var(--sj-mute, #6b7280) !important;
   cursor: pointer !important;
-  transition: background 0.18s ease, color 0.18s ease !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+  z-index: 20 !important;
 }
 
 .sj-auth-modals button.absolute.top-4.right-4:hover,
@@ -126,22 +174,22 @@
   color: var(--sj-ink, #111111) !important;
 }
 
-/* ---------------- Titles: Bold Dark Ink ---------------- */
+/* ---------------- Titles: Bold Dark Ink (#gm .gcard > h2) ---------------- */
 .sj-auth-modals h2,
 .sj-auth-modals h2.text-palette-900,
 .sj-auth-modals h2.text-2xl,
-.sj-auth-modals h3.text-palette-900 {
-  font-family: var(--sj-fh), "Manrope", system-ui, sans-serif !important;
+.sj-auth-modals .sj-auth-title {
+  font-family: var(--sj-fh), var(--sj-f), "Manrope", system-ui, sans-serif !important;
   font-weight: 800 !important;
-  font-size: clamp(24px, 5vw, 30px) !important;
+  font-size: clamp(24px, 5.5vw, 28px) !important;
   letter-spacing: -0.025em !important;
   color: var(--sj-ink, #111111) !important;
-  margin: 0 0 20px 0 !important;
-  line-height: 1.2 !important;
+  margin: 0 0 16px 0 !important;
+  line-height: 1.15 !important;
 }
 
 .sj-auth-modals h3 {
-  font-family: var(--sj-fh), "Manrope", system-ui, sans-serif !important;
+  font-family: var(--sj-fh), var(--sj-f), "Manrope", system-ui, sans-serif !important;
   font-weight: 700 !important;
   color: var(--sj-ink, #111111) !important;
 }
@@ -151,57 +199,79 @@
 .sj-auth-modals p.text-gray-600,
 .sj-auth-modals p.text-sm {
   color: var(--sj-mute, #6b7280) !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
+  font-size: 13.5px !important;
+  line-height: 1.4 !important;
 }
 
 /* ---------------- Google Sign-in Button (.gb) ---------------- */
 .sj-auth-modals button:has(svg path[fill="#4285F4"]),
-.sj-auth-modals .sj-auth-gb {
-  height: 52px !important;
-  border: 1.5px solid var(--sj-line, #e6e7ea) !important;
+.sj-auth-modals button:has(svg path[fill="#34A853"]),
+.sj-auth-modals .sj-auth-gb,
+.sj-auth-modals button.gb {
+  position: static !important;
+  width: 100% !important;
+  height: 50px !important;
+  border: 1px solid var(--sj-line, #e6e7ea) !important;
   border-radius: 999px !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
   font-weight: 700 !important;
   font-size: 15px !important;
   color: var(--sj-ink, #111111) !important;
   background: #ffffff !important;
-  box-shadow: none !important;
   display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
   gap: 10px !important;
-  width: 100% !important;
-  margin-bottom: 0 !important;
-  transition: border-color 0.15s ease, background 0.15s ease !important;
+  justify-content: center !important;
+  align-items: center !important;
   cursor: pointer !important;
+  transition: border-color 0.15s ease, background 0.15s ease !important;
+  padding: 0 20px !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .sj-auth-modals button:has(svg path[fill="#4285F4"]):hover,
-.sj-auth-modals .sj-auth-gb:hover {
+.sj-auth-modals button:has(svg path[fill="#34A853"]):hover,
+.sj-auth-modals .sj-auth-gb:hover,
+.sj-auth-modals button.gb:hover {
   border-color: var(--sj-ink, #111111) !important;
   background: var(--sj-soft, #f4f5f7) !important;
 }
 
-/* ---------------- Divider ("OR WITH EMAIL" / "OR") ---------------- */
+/* ---------------- Divider ("OR WITH EMAIL" / "OR") (.dv2) ---------------- */
 .sj-auth-modals .flex.items-center.my-5,
 .sj-auth-modals .flex.items-center.gap-4.my-5,
+.sj-auth-modals .flex.items-center.gap-4.mb-5,
+.sj-auth-modals .flex.items-center.gap-4.mb-6,
+.sj-auth-modals .dv2,
 .sj-auth-modals .sj-auth-divider {
-  margin: 20px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin: 16px 0 !important;
   color: var(--sj-mute, #6b7280) !important;
-  font-size: 12px !important;
+  font-size: 11.5px !important;
   font-weight: 700 !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase !important;
+  width: 100% !important;
 }
 
 .sj-auth-modals .flex.items-center.my-5 .h-px,
-.sj-auth-modals .flex.items-center.gap-4.my-5 .h-px {
+.sj-auth-modals .flex.items-center.gap-4.my-5 .h-px,
+.sj-auth-modals .flex.items-center.gap-4.mb-5 .h-px,
+.sj-auth-modals .flex.items-center.gap-4.mb-6 .h-px {
   background: var(--sj-line, #e6e7ea) !important;
+  height: 1px !important;
 }
 
 .sj-auth-modals .flex.items-center.my-5 span,
-.sj-auth-modals .flex.items-center.gap-4.my-5 span {
+.sj-auth-modals .flex.items-center.gap-4.my-5 span,
+.sj-auth-modals .flex.items-center.gap-4.mb-5 span,
+.sj-auth-modals .flex.items-center.gap-4.mb-6 span {
   color: var(--sj-mute, #6b7280) !important;
+  font-size: 11.5px !important;
   font-weight: 700 !important;
   letter-spacing: 0.1em !important;
 }
@@ -209,10 +279,12 @@
 /* ---------------- Form Fields & Labels (.pf2) ---------------- */
 .sj-auth-modals label.block,
 .sj-auth-modals label.text-sm {
-  font-size: 14px !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-size: 13.5px !important;
   font-weight: 700 !important;
   color: var(--sj-ink, #111111) !important;
-  margin-bottom: 7px !important;
+  margin-bottom: 6px !important;
+  display: block !important;
 }
 
 .sj-auth-modals label span.text-red-500,
@@ -221,40 +293,76 @@
   font-style: normal !important;
 }
 
-/* Inputs & Selects: Pure White Pill Shape (.pf2 input) */
+/* Tight vertical spacing between fields */
+.sj-auth-modals form.space-y-6 > :not([hidden]) ~ :not([hidden]),
+.sj-auth-modals form.space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 14px !important;
+}
+
+.sj-auth-modals .space-y-1\.5 {
+  margin-bottom: 2px !important;
+}
+
+/* Standard Inputs & Selects: Pure White Pill Shape (.pf2 input) */
 .sj-auth-modals input[type="text"],
 .sj-auth-modals input[type="email"],
 .sj-auth-modals input[type="password"],
-.sj-auth-modals input[type="tel"],
-.sj-auth-modals input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.sj-auth-modals input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="tel"]),
 .sj-auth-modals select {
-  height: 52px !important;
-  border: 1.5px solid var(--sj-line, #e6e7ea) !important;
+  height: 50px !important;
+  border: 1px solid var(--sj-line, #e6e7ea) !important;
   border-radius: 999px !important;
-  padding: 0 20px !important;
+  padding: 0 18px !important;
   font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
   font-weight: 500 !important;
-  font-size: 15px !important;
+  font-size: 14.5px !important;
+  width: 100% !important;
   background: #ffffff !important;
   color: var(--sj-ink, #111111) !important;
-  outline: none !important;
+  outline: 0 !important;
   box-shadow: none !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
-  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.sj-auth-modals input::placeholder {
+.sj-auth-modals textarea {
+  border: 1px solid var(--sj-line, #e6e7ea) !important;
+  border-radius: 20px !important;
+  padding: 14px 18px !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 14.5px !important;
+  width: 100% !important;
+  background: #ffffff !important;
+  color: var(--sj-ink, #111111) !important;
+  outline: 0 !important;
+}
+
+.sj-auth-modals input::placeholder,
+.sj-auth-modals textarea::placeholder {
   color: #a0a4ac !important;
   font-weight: 400 !important;
 }
 
-/* Focus: Dark ink border with peach accent glow */
+/* Focus: Dark ink border with accent glow (Identical to mobile number pill) */
 .sj-auth-modals input:focus,
 .sj-auth-modals select:focus,
+.sj-auth-modals textarea:focus,
 .sj-auth-modals input:focus-visible,
 .sj-auth-modals select:focus-visible {
-  border-color: var(--sj-ink, #111111) !important;
-  box-shadow: 0 0 0 4px var(--sj-accS, #fff0ec) !important;
+  outline: 0 !important;
+  border-color: var(--sj-ink, #0f172a) !important;
+  box-shadow: 0 0 0 4px #d1fae5, inset 0 0 0 30px #ffffff !important;
+  -webkit-box-shadow: 0 0 0 4px #d1fae5, inset 0 0 0 30px #ffffff !important;
+}
+
+/* Hover: Subtle dark border + soft mint glow */
+.sj-auth-modals input:hover:not(:focus),
+.sj-auth-modals select:hover:not(:focus),
+.sj-auth-modals textarea:hover:not(:focus) {
+  border-color: var(--sj-ink, #0f172a) !important;
+  box-shadow: 0 0 0 2.5px #ecfdf5, inset 0 0 0 30px #ffffff !important;
+  -webkit-box-shadow: 0 0 0 2.5px #ecfdf5, inset 0 0 0 30px #ffffff !important;
 }
 
 /* Error state */
@@ -264,96 +372,362 @@
   border-color: #d92d20 !important;
 }
 
-/* Password Eye Button */
-.sj-auth-modals .relative button[type="button"] {
-  width: 40px !important;
-  height: 40px !important;
+.sj-auth-modals input[aria-invalid="true"]:focus,
+.sj-auth-modals input.border-red-600:focus,
+.sj-auth-modals .border-red-600:focus-within {
+  border-color: #d92d20 !important;
+  box-shadow: 0 0 0 4px #fee2e2, inset 0 0 0 30px #ffffff !important;
+  -webkit-box-shadow: 0 0 0 4px #fee2e2, inset 0 0 0 30px #ffffff !important;
+}
+
+/* ---------------- Mobile Number Field Group ---------------- */
+/* Prevent outer wrapper from matching dialog or card styles */
+.sj-auth-modals .flex.items-center.rounded-full:has(input[type="tel"]),
+.sj-auth-modals .flex.items-center.rounded-full:has(input[name*="mobile"]),
+.sj-auth-modals .flex.items-center.rounded-full:has(input[placeholder*="mobile" i]) {
+  height: 50px !important;
+  border: 1px solid var(--sj-line, #e6e7ea) !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  padding: 0 16px !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  max-height: 50px !important;
+  overflow: visible !important;
+  position: relative !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.sj-auth-modals .flex.items-center.rounded-full:has(input[type="tel"]):hover:not(:focus-within),
+.sj-auth-modals .flex.items-center.rounded-full:has(input[name*="mobile"]):hover:not(:focus-within),
+.sj-auth-modals .flex.items-center.rounded-full:has(input[placeholder*="mobile" i]):hover:not(:focus-within) {
+  border-color: var(--sj-ink, #0f172a) !important;
+  box-shadow: 0 0 0 2.5px #ecfdf5 !important;
+  -webkit-box-shadow: 0 0 0 2.5px #ecfdf5 !important;
+}
+
+.sj-auth-modals .flex.items-center.rounded-full:has(input[type="tel"]):focus-within,
+.sj-auth-modals .flex.items-center.rounded-full:has(input[name*="mobile"]):focus-within,
+.sj-auth-modals .flex.items-center.rounded-full:has(input[placeholder*="mobile" i]):focus-within {
+  border-color: var(--sj-ink, #0f172a) !important;
+  box-shadow: 0 0 0 4px #d1fae5 !important;
+  -webkit-box-shadow: 0 0 0 4px #d1fae5 !important;
+}
+
+/* Inner tel input inside mobile pill container: clean & borderless */
+.sj-auth-modals .flex.items-center.rounded-full input[type="tel"],
+.sj-auth-modals .flex.items-center.rounded-full input {
+  height: 46px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  outline: 0 !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-size: 14.5px !important;
+  font-weight: 500 !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+.sj-auth-modals .flex.items-center.rounded-full input:focus,
+.sj-auth-modals .flex.items-center.rounded-full input:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  outline: 0 !important;
+}
+
+/* Country code dropdown toggle inside mobile pill */
+.sj-auth-modals .flex.items-center.rounded-full [ref="countryDropdownRef"] > button,
+.sj-auth-modals .flex.items-center.rounded-full div.shrink-0 > button {
+  height: 46px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  padding: 0 6px 0 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: var(--sj-ink, #111111) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+/* Country code dropdown popup menu */
+.sj-auth-modals [ref="countryDropdownRef"] .absolute,
+.sj-auth-modals div.shrink-0 .absolute {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  left: 0 !important;
+  width: 270px !important;
+  max-width: 90vw !important;
+  background: #ffffff !important;
+  border-radius: 18px !important;
+  border: 1px solid var(--sj-line, #e6e7ea) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16) !important;
+  z-index: 60 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+.sj-auth-modals [ref="countryDropdownRef"] .absolute input {
+  height: 36px !important;
+  border: 1px solid var(--sj-line, #e6e7ea) !important;
+  border-radius: 10px !important;
+  padding: 0 10px !important;
+  font-size: 12.5px !important;
+  background: #ffffff !important;
+}
+
+.sj-auth-modals [ref="countryDropdownRef"] .absolute button {
+  height: auto !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 8px 12px !important;
+  display: flex !important;
+  width: 100% !important;
+  justify-content: space-between !important;
+}
+
+.sj-auth-modals [ref="countryDropdownRef"] .absolute button:hover {
+  background: var(--sj-soft, #f4f5f7) !important;
+}
+
+/* ---------------- Password Eye Button ONLY (.pwf button) ---------------- */
+/* Target eye toggle strictly inside input field container, NOT general buttons */
+.sj-auth-modals div.relative > input ~ button[type="button"],
+.sj-auth-modals div.relative > input + button[type="button"],
+.sj-auth-modals .pwf button {
+  position: absolute !important;
+  right: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 38px !important;
+  height: 38px !important;
   border-radius: 50% !important;
   display: grid !important;
   place-items: center !important;
   color: var(--sj-mute, #6b7280) !important;
-  transition: background 0.15s ease, color 0.15s ease !important;
   background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+  z-index: 5 !important;
 }
 
-.sj-auth-modals .relative button[type="button"]:hover {
+.sj-auth-modals div.relative > input ~ button[type="button"]:hover,
+.sj-auth-modals div.relative > input + button[type="button"]:hover,
+.sj-auth-modals .pwf button:hover {
   background: var(--sj-soft, #f4f5f7) !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+/* Inputs with eye toggle button get extra right padding */
+.sj-auth-modals div.relative > input[type="password"],
+.sj-auth-modals div.relative > input[type="text"]:has(~ button),
+.sj-auth-modals .pwf input {
+  padding-right: 52px !important;
+}
+
+/* ---------------- "Forgot Password?" Link (.lk right-aligned) ---------------- */
+.sj-auth-modals .flex.justify-end {
+  display: flex !important;
+  justify-content: flex-end !important;
+  text-align: right !important;
+  margin: 4px 0 16px 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+.sj-auth-modals .flex.justify-end button {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline-block !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  color: var(--sj-ink, #111111) !important;
+  background: linear-gradient(transparent 62%, var(--sj-mk, #a7f3d0) 62%) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  line-height: 1.3 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  transition: background 0.15s ease !important;
+}
+
+.sj-auth-modals .flex.justify-end button:hover {
+  background: var(--sj-mk, #a7f3d0) !important;
   color: var(--sj-ink, #111111) !important;
 }
 
 /* ---------------- Primary Action Buttons (.gp) ---------------- */
 /* Submit buttons: "Login", "Register now", "Verify & Login", "Get OTP", "Update Password" */
+/* Styled with Emerald Green, 1.5px Dark Border & 3D Offset Hard Shadow */
 .sj-auth-modals button[type="submit"],
 .sj-auth-modals button.bg-palette-900,
+.sj-auth-modals button.bg-palette-400,
+.sj-auth-modals .gp,
 .sj-auth-modals .sj-auth-btn-primary {
   width: 100% !important;
-  height: 54px !important;
+  height: 52px !important;
   border-radius: 999px !important;
-  background-color: var(--sj-ink, #111111) !important;
+  background-color: var(--sj-acc, #059669) !important;
   color: #ffffff !important;
   font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
-  font-weight: 700 !important;
+  font-weight: 750 !important;
   font-size: 16px !important;
-  border: 1.5px solid var(--sj-ink, #111111) !important;
-  box-shadow: none !important;
+  border: 1.5px solid var(--sj-ink, #0f172a) !important;
   display: inline-flex !important;
   gap: 8px !important;
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
-  transition: background 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
-              border-color 0.18s ease,
-              transform 0.15s ease,
-              box-shadow 0.18s ease !important;
+  margin-top: 6px !important;
+  box-shadow: 3.5px 3.5px 0 var(--sj-ink, #0f172a) !important;
+  transform: none !important;
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 0.15s ease,
+              filter 0.15s ease !important;
 }
 
 .sj-auth-modals button[type="submit"]:hover:not(:disabled),
 .sj-auth-modals button.bg-palette-900:hover:not(:disabled),
+.sj-auth-modals button.bg-palette-400:hover:not(:disabled),
+.sj-auth-modals .gp:hover:not(:disabled),
 .sj-auth-modals .sj-auth-btn-primary:hover:not(:disabled) {
-  background-color: var(--sj-acc, #ff4f2b) !important;
-  border-color: var(--sj-acc, #ff4f2b) !important;
+  background-color: var(--sj-acc, #059669) !important;
   color: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(255, 79, 43, 0.35) !important;
-  transform: translateY(-1.5px) !important;
+  transform: translate(-1.5px, -1.5px) !important;
+  box-shadow: 5px 5px 0 var(--sj-ink, #0f172a) !important;
+  filter: brightness(1.04) !important;
 }
 
 .sj-auth-modals button[type="submit"]:active:not(:disabled),
-.sj-auth-modals button.bg-palette-900:active:not(:disabled) {
-  transform: translateY(1px) !important;
+.sj-auth-modals button.bg-palette-900:active:not(:disabled),
+.sj-auth-modals button.bg-palette-400:active:not(:disabled),
+.sj-auth-modals .gp:active:not(:disabled),
+.sj-auth-modals .sj-auth-btn-primary:active:not(:disabled) {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 1px 1px 0 var(--sj-ink, #0f172a) !important;
 }
 
 .sj-auth-modals button[type="submit"]:disabled,
-.sj-auth-modals button.bg-palette-900:disabled {
+.sj-auth-modals button.bg-palette-900:disabled,
+.sj-auth-modals button.bg-palette-400:disabled {
   opacity: 0.55 !important;
   cursor: not-allowed !important;
+  box-shadow: 2px 2px 0 var(--sj-ink, #0f172a) !important;
+  transform: none !important;
 }
 
-/* ---------------- Underline Highlight Links (.lk) ---------------- */
-/* "Forgot Password?", "Use OTP to Login", "Register for free", "Login", "Back to Login" */
-.sj-auth-modals .flex.justify-end button,
-.sj-auth-modals button.text-palette-400,
-.sj-auth-modals button.text-palette-900,
-.sj-auth-modals a.text-palette-900,
-.sj-auth-modals .sj-auth-link {
+/* ---------------- "Use OTP to Login" (.lk centered) ---------------- */
+.sj-auth-modals .mt-5.text-center,
+.sj-auth-modals .mt-6.text-center {
+  display: block !important;
+  text-align: center !important;
+  margin: 16px 0 !important;
+  width: 100% !important;
+}
+
+.sj-auth-modals .mt-5.text-center button:not(.w-full),
+.sj-auth-modals .mt-6.text-center button:not(.w-full) {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline-block !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
   font-weight: 700 !important;
   font-size: 14px !important;
   color: var(--sj-ink, #111111) !important;
-  background: linear-gradient(transparent 62%, var(--sj-mk, #ffd3c7) 62%) !important;
+  background: linear-gradient(transparent 62%, var(--sj-mk, #a7f3d0) 62%) !important;
   border: none !important;
   border-radius: 0 !important;
-  padding: 0 3px !important;
-  margin: 0 !important;
+  padding: 0 2px !important;
+  margin: 0 auto !important;
   cursor: pointer !important;
-  display: inline-block !important;
-  text-decoration: none !important;
+  white-space: nowrap !important;
+  line-height: 1.3 !important;
+  transform: none !important;
+  box-shadow: none !important;
   transition: background 0.15s ease !important;
 }
 
-.sj-auth-modals .flex.justify-end button:hover,
-.sj-auth-modals button.text-palette-400:hover,
-.sj-auth-modals button.text-palette-900:hover,
-.sj-auth-modals .sj-auth-link:hover {
-  background: var(--sj-mk, #ffd3c7) !important;
+.sj-auth-modals .mt-5.text-center button:not(.w-full):hover,
+.sj-auth-modals .mt-6.text-center button:not(.w-full):hover {
+  background: var(--sj-mk, #a7f3d0) !important;
+  color: var(--sj-ink, #111111) !important;
+}
+
+/* ---------------- Bottom Text & "Register for free" / "Login" (.gn2 & .lk) ---------------- */
+.sj-auth-modals .mt-8.text-center,
+.sj-auth-modals .mt-8.text-center p,
+.sj-auth-modals .gn2 {
+  display: block !important;
+  text-align: center !important;
+  color: var(--sj-mute, #6b7280) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  margin: 16px 0 0 0 !important;
+  line-height: 1.5 !important;
+}
+
+.sj-auth-modals .mt-8.text-center p button,
+.sj-auth-modals .mt-6.text-center p button,
+.sj-auth-modals p button.text-palette-400,
+.sj-auth-modals .gn2 button,
+.sj-auth-modals .lk {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline-block !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  color: var(--sj-ink, #111111) !important;
+  background: linear-gradient(transparent 62%, var(--sj-mk, #a7f3d0) 62%) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 2px !important;
+  margin: 0 0 0 4px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  line-height: 1.3 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  transition: background 0.15s ease !important;
+}
+
+.sj-auth-modals .mt-8.text-center p button:hover,
+.sj-auth-modals .mt-6.text-center p button:hover,
+.sj-auth-modals p button.text-palette-400:hover,
+.sj-auth-modals .gn2 button:hover,
+.sj-auth-modals .lk:hover {
+  background: var(--sj-mk, #a7f3d0) !important;
   color: var(--sj-ink, #111111) !important;
 }
 
@@ -361,86 +735,134 @@
 /* "Use Password to Login" */
 .sj-auth-modals button.border-palette-400,
 .sj-auth-modals .border-palette-400 {
+  width: 100% !important;
   height: 50px !important;
-  border: 1.5px solid var(--sj-line, #e6e7ea) !important;
+  border: 1.5px solid var(--sj-ink, #0f172a) !important;
   border-radius: 999px !important;
-  font-weight: 700 !important;
-  font-size: 15px !important;
+  font-weight: 750 !important;
+  font-size: 14.5px !important;
   background: #ffffff !important;
   color: var(--sj-ink, #111111) !important;
-  transition: border-color 0.15s, background 0.15s !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 3.5px 3.5px 0 var(--sj-ink, #0f172a) !important;
+  transition: all 0.16s ease !important;
 }
 
 .sj-auth-modals button.border-palette-400:hover,
 .sj-auth-modals .border-palette-400:hover {
-  border-color: var(--sj-ink, #111111) !important;
   background: var(--sj-soft, #f4f5f7) !important;
+  transform: translate(-1.5px, -1.5px) !important;
+  box-shadow: 5px 5px 0 var(--sj-ink, #0f172a) !important;
 }
 
-/* ---------------- Footer Text ("Don't have an account?") ---------------- */
-.sj-auth-modals .mt-8.text-center p,
-.sj-auth-modals .mt-6.text-center p,
-.sj-auth-modals .sj-auth-footer-text {
-  color: var(--sj-mute, #6b7280) !important;
-  font-size: 14px !important;
-  margin: 20px 0 0 0 !important;
+.sj-auth-modals button.border-palette-400:active,
+.sj-auth-modals .border-palette-400:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 1px 1px 0 var(--sj-ink, #0f172a) !important;
 }
 
-/* ---------------- Stepper for Employer Multi-Step ---------------- */
-.sj-auth-modals .sj-auth-stepper {
+/* ---------------- Stepper for Employer Multi-Step (.stp) ---------------- */
+.sj-auth-modals .sj-auth-stepper,
+.sj-auth-modals .stp {
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
   justify-content: center !important;
-  margin: 0 0 22px !important;
+  margin: 0 auto 20px !important;
+  padding: 0 !important;
+  font-family: var(--sj-f), "Manrope", system-ui, sans-serif !important;
   font-weight: 700 !important;
-  font-size: 14px !important;
-  color: var(--sj-mute, #6b7280) !important;
+  font-size: 13.5px !important;
+  color: #64748b !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.sj-auth-modals .sj-auth-stepper .n {
-  width: 26px !important;
-  height: 26px !important;
+.sj-auth-modals .sj-auth-stepper > div,
+.sj-auth-modals .stp > div {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: auto !important;
+  width: auto !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.sj-auth-modals .sj-auth-stepper .n,
+.sj-auth-modals .stp .n {
+  width: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
   border-radius: 50% !important;
-  background: var(--sj-line, #e6e7ea) !important;
-  display: inline-grid !important;
-  place-items: center !important;
-  font-size: 12px !important;
-  margin-right: 6px !important;
-  color: var(--sj-ink, #111111) !important;
+  background: #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  line-height: 1 !important;
 }
 
-.sj-auth-modals .sj-auth-stepper .on {
-  color: var(--sj-ink, #111111) !important;
+.sj-auth-modals .sj-auth-stepper .on,
+.sj-auth-modals .stp .on {
+  color: #0f172a !important;
+  font-weight: 800 !important;
 }
 
-.sj-auth-modals .sj-auth-stepper .on .n {
-  background: var(--sj-acc, #ff4f2b) !important;
+.sj-auth-modals .sj-auth-stepper .on .n,
+.sj-auth-modals .stp .on .n {
+  background: var(--sj-acc, #059669) !important;
   color: #ffffff !important;
 }
 
-.sj-auth-modals .sj-auth-stepper i {
-  width: 56px !important;
+.sj-auth-modals .sj-auth-stepper i,
+.sj-auth-modals .stp i {
+  width: 40px !important;
   height: 2px !important;
-  background: var(--sj-line, #e6e7ea) !important;
+  background: #cbd5e1 !important;
+  display: block !important;
+  border: none !important;
+  border-radius: 999px !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
 }
 
 /* ---------------- OTP Verification Inputs ---------------- */
 .sj-auth-modals input[maxlength="1"],
 .sj-auth-modals .flex.justify-center input {
   width: 52px !important;
-  height: 54px !important;
+  height: 52px !important;
   border-radius: 16px !important;
   text-align: center !important;
   font-size: 22px !important;
   font-weight: 700 !important;
   padding: 0 !important;
+  border: 1.5px solid var(--sj-line, #e6e7ea) !important;
+  background: #ffffff !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
 }
 
-/* Country code dropdowns */
-.sj-auth-modals button:has(svg) + input[type="tel"],
-.sj-auth-modals select.w-28,
-.sj-auth-modals select.w-24 {
-  height: 52px !important;
-  border-radius: 999px !important;
+.sj-auth-modals input[maxlength="1"]:focus,
+.sj-auth-modals .flex.justify-center input:focus {
+  border-color: var(--sj-ink, #0f172a) !important;
+  box-shadow: 0 0 0 4px #d1fae5, inset 0 0 0 30px #ffffff !important;
+  -webkit-box-shadow: 0 0 0 4px #d1fae5, inset 0 0 0 30px #ffffff !important;
+  outline: 0 !important;
 }

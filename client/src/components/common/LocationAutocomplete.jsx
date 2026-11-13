@@ -5,6 +5,8 @@ const LocationAutocomplete = ({
   value, 
   onChange, 
   onSelect,
+  onKeyDown,
+  id,
   placeholder = "City, state", 
   className = "w-full bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-500"
 }) => {
@@ -136,10 +138,12 @@ const LocationAutocomplete = ({
     <div className="relative w-full" ref={wrapperRef}>
       <div className="relative flex items-center w-full">
         <input
+          id={id}
           type="text"
           value={query}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={onKeyDown}
           placeholder={placeholder}
           className={`${className || ''} outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent shadow-none ring-0`}
           autoComplete="off"
@@ -154,7 +158,7 @@ const LocationAutocomplete = ({
               if (onChange) onChange('');
               setIsOpen(true);
             }}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-full transition-colors mr-1"
+            className="p-1 text-gray-400 hover:text-gray-600 rounded-full transition-colors mr-1 shrink-0"
             title="Clear location"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,9 +173,9 @@ const LocationAutocomplete = ({
       </div>
 
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 right-0 w-full min-w-[260px] max-w-full bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[200] max-h-64 overflow-y-auto animate-in fade-in duration-150">
+        <div className="sj-location-menu">
           {!query && (
-            <div className="px-3.5 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+            <div className="sj-location-header">
               Locations ({preferredLocationOptions.length})
             </div>
           )}
@@ -183,16 +187,16 @@ const LocationAutocomplete = ({
                 <div
                   key={`loc-${idx}`}
                   onClick={() => handleSelectValue(loc.value)}
-                  className="px-3.5 py-2.5 hover:bg-emerald-50/70 cursor-pointer flex items-center gap-2.5 transition-colors border-b border-gray-50 last:border-0"
+                  className="sj-location-item"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-emerald-100/70 text-emerald-700 flex items-center justify-center shrink-0">
+                  <div className="sj-location-icon">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-gray-900 truncate">{loc.label}</p>
+                    <div className="sj-location-title">{loc.label}</div>
                   </div>
                 </div>
               ))}
@@ -202,7 +206,7 @@ const LocationAutocomplete = ({
           {/* API Realtime Suggestions if typing something outside curated list */}
           {apiSuggestions.length > 0 && (
             <div>
-              <div className="px-3.5 py-1.5 text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/70 border-t border-gray-100">
+              <div className="sj-location-header">
                 Other Matching Places
               </div>
               {apiSuggestions.map((item) => {
@@ -212,17 +216,17 @@ const LocationAutocomplete = ({
                   <div
                     key={item.place_id}
                     onClick={() => handleSelectValue(formatted)}
-                    className="px-3.5 py-2.5 hover:bg-emerald-50/60 cursor-pointer flex items-center gap-2.5 transition-colors border-b border-gray-50 last:border-0"
+                    className="sj-location-item"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
+                    <div className="sj-location-icon" style={{ background: '#f1f5f9', color: '#64748b' }}>
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-gray-900 truncate">{title}</p>
-                      <p className="text-[11px] text-gray-500 truncate">{formatted}</p>
+                      <div className="sj-location-title">{title}</div>
+                      <div className="sj-location-subtitle">{formatted}</div>
                     </div>
                   </div>
                 );
@@ -231,7 +235,7 @@ const LocationAutocomplete = ({
           )}
 
           {query && filteredOptions.length === 0 && apiSuggestions.length === 0 && !isLoading && (
-            <div className="px-4 py-3 text-xs text-gray-500 text-center">
+            <div className="px-4 py-3 text-xs text-gray-500 text-center font-medium">
               Press Enter or type your custom city: <span className="font-semibold text-gray-800">"{query}"</span>
             </div>
           )}

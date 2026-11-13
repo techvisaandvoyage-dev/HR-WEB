@@ -30,3 +30,7 @@ dist-ssr
 *.sw?
 server/backups/
 server/uploads/
+
+# Agent runtime artifacts
+.agents/
+skills-lock.json

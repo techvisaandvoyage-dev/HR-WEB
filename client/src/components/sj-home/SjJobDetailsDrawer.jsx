@@ -1,8 +1,100 @@
 import React, { useEffect, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import './drawerAndSupport.css';
 import SjAvatar from './primitives/SjAvatar';
 import SjPill from './primitives/SjPill';
 import SjButton from './primitives/SjButton';
+import SjJobDetailsContent from './SjJobDetailsContent';
+
+const sanitizeHtml = (html) => {
+  if (!html) return '';
+  // Replace non-breaking spaces with standard space so sentences wrap naturally
+  const normalized = html
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\u00A0/g, ' ');
+
+  return DOMPurify.sanitize(normalized, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike',
+      'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'a'
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style']
+  });
+};
+
+const getInitials = (str) => {
+  if (!str) return 'HR';
+  const parts = str.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return str.slice(0, 2).toUpperCase();
+};
+
+const renderFormattedContent = (content, isListPreferred = false) => {
+  if (!content) return null;
+
+  // If array of items (like job.resp)
+  if (Array.isArray(content)) {
+    if (content.length === 0) return null;
+    return (
+      <ul className="sj-rich-text list-disc pl-5 space-y-2 m-0 max-w-full">
+        {content.map((item, idx) => (
+          <li key={idx} className="text-[15px] leading-relaxed text-[#2a2a2a] break-words">
+            {typeof item === 'string'
+              ? item.replace(/&nbsp;/gi, ' ').replace(/\u00A0/g, ' ')
+              : item}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (typeof content === 'string') {
+    const normalized = content.replace(/&nbsp;/gi, ' ').replace(/\u00A0/g, ' ');
+    const trimmed = normalized.trim();
+    if (!trimmed) return null;
+
+    const hasHtmlTags = /<[a-z][\s\S]*>/i.test(trimmed);
+    if (hasHtmlTags) {
+      return (
+        <div
+          className="sj-rich-text text-[15px] leading-relaxed text-[#2a2a2a] break-words max-w-full"
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(trimmed) }}
+        />
+      );
+    }
+
+    // If plain text and multiple lines
+    if (isListPreferred) {
+      const lines = trimmed
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length > 1) {
+        return (
+          <ul className="sj-rich-text list-disc pl-5 space-y-2 m-0 max-w-full">
+            {lines.map((line, idx) => (
+              <li key={idx} className="text-[15px] leading-relaxed text-[#2a2a2a] break-words">
+                {line.replace(/^[•\-\*]\s*/, '')}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+    }
+
+    // Plain text preserving whitespace and linebreaks
+    return (
+      <div className="sj-rich-text text-[15px] leading-relaxed text-[#2a2a2a] whitespace-pre-line break-words max-w-full">
+        {trimmed}
+      </div>
+    );
+  }
+
+  return null;
+};
 
 export default function SjJobDetailsDrawer({
   job,
@@ -18,6 +110,20 @@ export default function SjJobDetailsDrawer({
   onToggleSave,
 }) {
   const panelRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = React.useState(73);
+
+  // Dynamically measure navbar height so the view starts seamlessly right underneath the navbar
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      const header = document.querySelector('.sj-header') || document.querySelector('header');
+      if (header) {
+        setHeaderHeight(header.offsetHeight);
+      }
+    };
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+    return () => window.removeEventListener('resize', updateHeaderHeight);
+  }, [isOpen]);
 
   // Keyboard navigation & scroll lock
   useEffect(() => {
@@ -78,235 +184,136 @@ export default function SjJobDetailsDrawer({
     ? job.details.skillsRequired.split(',').map((s) => s.trim())
     : [];
 
-  const responsibilities = Array.isArray(job.resp)
-    ? job.resp
-    : job.details?.responsibilities
-    ? job.details.responsibilities
-        .split('\n')
-        .map((s) => s.replace(/^[•\-\*]\s*/, '').trim())
-        .filter(Boolean)
-    : [];
+  const rawResponsibilities =
+    job.details?.responsibilities ||
+    job.responsibilities ||
+    job.resp ||
+    null;
 
-  const aboutRole = job.about || job.details?.aboutRole || job.description || '';
+  const rawAboutRole =
+    job.details?.aboutRole ||
+    job.aboutRole ||
+    job.about ||
+    job.details?.description ||
+    job.description ||
+    null;
 
-  const poster = job.poster || (job.employerId ? {
-    name: job.employerId.name || job.employerId.contactPerson || companyName,
-    role: job.employerId.designation || `Recruiter at ${companyName}`,
-    type: job.employerId.industry || 'Company / Business',
-    size: job.employerId.companySize || 'Growing Team',
-    active: 'Recently active',
-    stats: [job.views || 12, job.applications || 4, 2],
-  } : null);
+  // Company Details for the bottom frame
+  const employer = job.employerId || {};
+  const compName = employer.companyName || job.company || employer.fullName || companyName;
+  const isConsultant = employer.isConsultant === true;
+  const hiringType = isConsultant ? 'Consultant' : (employer.hiringType || 'Company / Business');
+  const compSizeRaw = employer.employees || employer.companySize || job.details?.companySize || '';
+  const compSize = compSizeRaw
+    ? (compSizeRaw.toLowerCase().includes('employee') ? compSizeRaw : `${compSizeRaw} employees`)
+    : '';
+  const compIndustry = employer.industry || job.details?.jobCategory || job.jobCategory || '';
+  const compLocation = employer.location || job.location || job.details?.workLocation || 'India';
+  const compWebsite = employer.website || '';
+  const compAbout = employer.aboutCompany || employer.companyDescription || '';
+
+  // Recruiter / Person who actually posted the job (matches Image 2 ref)
+  const posterName =
+    employer.fullName ||
+    employer.name ||
+    job.contactPerson ||
+    employer.contactPerson ||
+    'Recruiter';
+  const posterDesignation = employer.designation || 'Recruiter';
+  const posterRole = compName ? `${posterDesignation} at ${compName}` : posterDesignation;
+  const posterLogo = employer.photo || employer.avatar || employer.profilePicture || '';
+
+  // Real job analytics from database (no mock/fake data)
+  const realViews = typeof job.views === 'number' ? job.views : (Array.isArray(job.viewedBy) ? job.viewedBy.length : 0);
+  const realApplications = typeof job.applications === 'number' ? job.applications : (Array.isArray(job.appliedCandidates) ? job.appliedCandidates.length : 0);
+  const realActions = typeof job.recruiterActions === 'number' ? job.recruiterActions : 0;
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop (starts under navbar) */}
       <div
         className={`sj-drawer-backdrop ${isOpen ? 'sj-open' : ''}`}
+        style={{ top: `${headerHeight}px` }}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Drawer */}
+      {/* Full Screen Job Details View (starts under navbar) */}
       <aside
         ref={panelRef}
         className={`sj-drawer-panel ${isOpen ? 'sj-open' : ''}`}
+        style={{
+          top: `${headerHeight}px`,
+          height: `calc(100vh - ${headerHeight}px)`,
+        }}
         aria-label="Job details"
         aria-hidden={!isOpen}
         role="dialog"
       >
         {/* Sticky Toolbar */}
         <div className="sj-drawer-topbar">
-          <span className="sj-pagination-info">Job Details</span>
+          <div className="sj-drawer-topbar-inner">
+            <button
+              type="button"
+              className="sj-drawer-back-btn"
+              onClick={onClose}
+              aria-label="Back to jobs"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              <span>Back to jobs</span>
+            </button>
 
-          <button
-            type="button"
-            className="sj-drawer-icon-btn"
-            onClick={onPrevious}
-            disabled={!hasPrevious}
-            aria-label="Previous job"
-            title="Previous job (↑)"
-          >
-            &uarr;
-          </button>
+            <span className="sj-pagination-info">Job Details</span>
 
-          <button
-            type="button"
-            className="sj-drawer-icon-btn"
-            onClick={onNext}
-            disabled={!hasNext}
-            aria-label="Next job"
-            title="Next job (↓)"
-          >
-            &darr;
-          </button>
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button
+                type="button"
+                className="sj-drawer-icon-btn"
+                onClick={onPrevious}
+                disabled={!hasPrevious}
+                aria-label="Previous job"
+                title="Previous job (↑)"
+              >
+                &uarr;
+              </button>
 
-          <button
-            type="button"
-            className="sj-drawer-icon-btn"
-            onClick={onClose}
-            aria-label="Close details"
-            title="Close (Esc)"
-          >
-            &times;
-          </button>
+              <button
+                type="button"
+                className="sj-drawer-icon-btn"
+                onClick={onNext}
+                disabled={!hasNext}
+                aria-label="Next job"
+                title="Next job (↓)"
+              >
+                &darr;
+              </button>
+
+              <button
+                type="button"
+                className="sj-drawer-icon-btn sj-drawer-close-btn"
+                onClick={onClose}
+                aria-label="Close details"
+                title="Close (Esc)"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Drawer Body */}
         <div className="sj-drawer-body">
-          {/* Company branding */}
-          <div className="sj-drawer-company">
-            <SjAvatar
-              src={logoUrl}
-              name={companyName}
-              size="lg"
-              alt={companyName}
-            />
-            <span>{companyName}</span>
-          </div>
-
-          {/* Title */}
-          <h2 className="sj-drawer-title">{title}</h2>
-
-          {/* Tag Pills */}
-          <div className="sj-drawer-tags">
-            <SjPill variant="default">{employmentType}</SjPill>
-            <SjPill variant="default">{workplaceMode} &bull; {location}</SjPill>
-            <SjPill variant="accent">{openings} Opening{openings > 1 ? 's' : ''}</SjPill>
-            <SjPill variant="default" className="font-bold border-[var(--sj-ink)]">
-              {salaryDisplay}
-            </SjPill>
-            {salaryNote && (
-              <span className="text-xs text-[var(--sj-mute)]">({salaryNote})</span>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="sj-drawer-actions">
-            {isApplied ? (
-              <SjButton variant="applied" disabled>
-                &check; Already applied
-              </SjButton>
-            ) : (
-              <SjButton
-                variant="primary"
-                onClick={() => onApply && onApply(id)}
-              >
-                Apply now
-              </SjButton>
-            )}
-
-            <SjButton
-              variant="outline"
-              onClick={() => onToggleSave && onToggleSave(id)}
-            >
-              {isSaved ? 'Saved \u2713' : 'Save'}
-            </SjButton>
-          </div>
-
-          {/* Recruiter / Posted by */}
-          {poster && (
-            <div className="sj-drawer-section">
-              <h3>Posted by</h3>
-              <div className="sj-recruiter-card">
-                <SjAvatar
-                  name={poster.name}
-                  size="md"
-                  isCircle={true}
-                  className="bg-[var(--sj-accS)] text-[var(--sj-ink)]"
-                />
-                <div>
-                  <b className="text-base text-[var(--sj-ink)]">{poster.name}</b>
-                  <div className="text-sm text-[var(--sj-mute)]">{poster.role}</div>
-                  <div className="flex gap-2 items-center text-xs text-[var(--sj-mute)] mt-1">
-                    <span className="font-semibold text-[var(--sj-ink)]">{poster.type}</span>
-                    <span>&bull;</span>
-                    <span>{poster.size}</span>
-                  </div>
-                </div>
-              </div>
-
-              {Array.isArray(poster.stats) && (
-                <div className="sj-stats-grid">
-                  <div>
-                    <b>{poster.stats[0] || 0}</b>
-                    <small>Job views</small>
-                  </div>
-                  <div>
-                    <b>{poster.stats[1] || 0}</b>
-                    <small>Applications</small>
-                  </div>
-                  <div>
-                    <b>{poster.stats[2] || 0}</b>
-                    <small>Recruiter actions</small>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Skills Required */}
-          {skills.length > 0 && (
-            <div className="sj-drawer-section">
-              <h3>Required Skills</h3>
-              <div className="sj-skills-wrap">
-                {skills.map((skill, idx) => (
-                  <span key={idx}>{skill}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Overview Key-Value Details */}
-          <div className="sj-drawer-section">
-            <h3>Job Details</h3>
-            <dl className="sj-kv-table">
-              <dt>Employment Type</dt>
-              <dd>{employmentType}</dd>
-              <dt>Workplace Mode</dt>
-              <dd>{workplaceMode}</dd>
-              <dt>Location</dt>
-              <dd>{location}</dd>
-              <dt>Openings</dt>
-              <dd>{openings}</dd>
-              {job.details?.experience && (
-                <>
-                  <dt>Experience</dt>
-                  <dd>{job.details.experience}</dd>
-                </>
-              )}
-              {job.details?.qualification && (
-                <>
-                  <dt>Qualification</dt>
-                  <dd>{job.details.qualification}</dd>
-                </>
-              )}
-            </dl>
-          </div>
-
-          {/* About Role */}
-          {aboutRole && (
-            <div className="sj-drawer-section">
-              <h3>About Role</h3>
-              <p className="text-[15px] leading-relaxed text-[#2a2a2a] whitespace-pre-line m-0">
-                {aboutRole}
-              </p>
-            </div>
-          )}
-
-          {/* Key Responsibilities */}
-          {responsibilities.length > 0 && (
-            <div className="sj-drawer-section">
-              <h3>Key Responsibilities</h3>
-              <ol className="sj-resp-list">
-                {responsibilities.map((resp, idx) => (
-                  <li key={idx}>
-                    <span>{resp}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
+          <SjJobDetailsContent
+            job={job}
+            showActions={true}
+            isApplied={isApplied}
+            isSaved={isSaved}
+            onApply={onApply}
+            onToggleSave={onToggleSave}
+          />
         </div>
       </aside>
     </>
