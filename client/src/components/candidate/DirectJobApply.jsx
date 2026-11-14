@@ -2887,51 +2887,75 @@ const DirectJobApply = ({ onAuthSuccess }) => {
         {/* STEP 4: SUCCESS CONFIRMATION & PORTAL INVITATION                          */}
         {/* ========================================================================= */}
         {step === 4 && (
-          <div className="bg-white rounded-3xl p-8 sm:p-10 border border-slate-200/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)] text-center space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)] text-center space-y-6">
             
-            <div className={`w-20 h-20 ${alreadyApplied ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'} rounded-full flex items-center justify-center mx-auto text-4xl font-black shadow-inner`}>
-              ✓
+            {/* Status Pill */}
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-50 text-[#059669] border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a] uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-[#059669]"></span>
+                {alreadyApplied ? "Application On Record" : "Application Received"}
+              </span>
             </div>
 
+            {/* 3D Checkmark Icon Badge */}
+            <div className="w-20 h-20 rounded-full bg-emerald-50 border-[2px] border-[#0f172a] shadow-[4px_4px_0_#0f172a] flex items-center justify-center mx-auto text-[#059669]">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+
+            {/* Heading & Subtitle */}
             <div className="space-y-2 max-w-md mx-auto">
-              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-black text-[#0f172a] tracking-tight">
                 {alreadyApplied ? (s5?.alreadyAppliedHeading || "Already Applied!") : (s5?.successHeading || "Application Submitted!")}
               </h2>
-              <p className="text-sm text-gray-600 leading-relaxed">
-                {alreadyApplied
-                  ? (s5?.alreadyAppliedSubtitle || "You have already applied for {title} at {company}. The hiring team is reviewing your profile.")
-                      .replace('{title}', job?.title || 'this role')
-                      .replace('{company}', job?.company || 'the hiring company')
-                  : (s5?.successSubtitle || "Your application for {title} at {company} has been received successfully by the hiring team.")
-                      .replace('{title}', job?.title || 'this role')
-                      .replace('{company}', job?.company || 'the hiring company')}
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                {alreadyApplied ? (
+                  <>
+                    You have already applied for{' '}
+                    <strong className="text-[#0f172a] font-bold">{job?.title || 'this role'}</strong> at{' '}
+                    <strong className="text-[#0f172a] font-bold">{job?.company || 'the hiring company'}</strong>. The hiring team is reviewing your profile.
+                  </>
+                ) : (
+                  <>
+                    Your application for{' '}
+                    <strong className="text-[#0f172a] font-bold">{job?.title || 'this role'}</strong> at{' '}
+                    <strong className="text-[#0f172a] font-bold">{job?.company || 'the hiring company'}</strong> has been received successfully by the hiring team.
+                  </>
+                )}
               </p>
             </div>
 
             {/* Special Highlighted Message */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-left space-y-2 shadow-xs max-w-lg mx-auto">
-              <div className="flex items-center gap-2 font-bold text-emerald-900 text-sm">
-                <span>{s5?.promoMessageTitle || "📢 Important Information:"}</span>
+            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/70 border-[1.5px] border-[#0f172a] shadow-[2.5px_2.5px_0_#0f172a] text-left space-y-1.5 max-w-lg mx-auto">
+              <div className="flex items-center gap-2 font-black text-[#0f172a] text-sm sm:text-base">
+                <span className="text-base">📢</span>
+                <span>{s5?.promoMessageTitle || "Important Information:"}</span>
               </div>
-              <p className="text-xs sm:text-sm font-medium text-emerald-800 leading-relaxed">
-                {s5?.promoMessageText || "Aap sahijob.com ke candidate portal me login karke hazaron verified companies ki jobs explore aur apply kar sakte hain!"}
+              <p className="text-xs sm:text-sm font-semibold text-slate-700 leading-relaxed">
+                {s5?.promoMessageText || "You can log in to your SahiJob candidate portal anytime to explore and apply for thousands of verified companies!"}
               </p>
             </div>
 
-            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+            {/* 3D Neo-Brutalist CTA Buttons */}
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3.5 max-w-lg mx-auto w-full">
               <button
                 type="button"
                 onClick={() => navigate('/my-jobs?tab=applied', { state: { tab: 'applied' } })}
-                className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-slate-50 text-[#0f172a] font-bold text-xs sm:text-sm rounded-full border-[1.5px] border-[#0f172a] shadow-[2.5px_2.5px_0_#0f172a] hover:shadow-[3.5px_3.5px_0_#0f172a] hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:flex-1 px-6 py-3.5 bg-white hover:bg-slate-50 text-[#0f172a] font-extrabold text-xs sm:text-sm rounded-full border-[1.5px] border-[#0f172a] shadow-[2.5px_2.5px_0_#0f172a] hover:shadow-[3.5px_3.5px_0_#0f172a] hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer flex items-center justify-center gap-2"
               >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
                 <span>Track My Applications</span>
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/employee', { state: { showOnboardingPrompt: true, loggedIn: true } })}
-                className="w-full sm:w-auto px-8 py-3 bg-[#059669] hover:brightness-105 active:brightness-95 text-white font-extrabold text-sm sm:text-base rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:flex-1 px-6 py-3.5 bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-xs sm:text-sm rounded-full border-[1.5px] border-[#0f172a] shadow-[3.5px_3.5px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a] hover:-translate-x-[1.5px] hover:-translate-y-[1.5px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#0f172a] transition-all cursor-pointer flex items-center justify-center gap-2 text-center"
               >
-                <span>{s5?.exploreMoreJobsBtnText || "Explore More Jobs →"}</span>
+                <span>{s5?.exploreMoreJobsBtnText || "Explore More Jobs on SahiJob →"}</span>
               </button>
             </div>
 
@@ -2940,9 +2964,11 @@ const DirectJobApply = ({ onAuthSuccess }) => {
                 <button
                   type="button"
                   onClick={handleSwitchAccount}
-                  className="text-xs text-gray-500 hover:text-gray-700 font-semibold underline cursor-pointer"
+                  className="inline-block text-xs sm:text-sm font-bold text-[#0f172a] cursor-pointer group"
                 >
-                  Sign in with a different candidate account
+                  <span className="bg-linear-to-b from-transparent 55% to-[#a7f3d0] 55% px-2.5 py-1 rounded-sm group-hover:to-[#6ee7b7] transition-colors">
+                    Sign in with a different candidate account →
+                  </span>
                 </button>
               </div>
             )}
