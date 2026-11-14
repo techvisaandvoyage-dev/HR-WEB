@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
+import SjJobDetailsDrawer from '../../sj-home/SjJobDetailsDrawer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
 import { formatJobLocation } from '../../../data/preferredLocations';
 import './MyJobs.css';
@@ -31,6 +32,10 @@ const MyJobs = ({ jobs = [] }) => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
+  // Right sidebar drawer preview state
+  const [selectedDrawerJob, setSelectedDrawerJob] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   const [internalJobs, setInternalJobs] = useState(jobs);
 
   useEffect(() => {
@@ -57,7 +62,13 @@ const MyJobs = ({ jobs = [] }) => {
   const [savedJobs, setSavedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
 
   const handleToggleSave = (jobId) => {
-    const updated = savedJobs.filter(id => String(id) !== String(jobId));
+    const isSaved = savedJobs.some(id => String(id) === String(jobId));
+    let updated;
+    if (isSaved) {
+      updated = savedJobs.filter(id => String(id) !== String(jobId));
+    } else {
+      updated = [...savedJobs, jobId];
+    }
     setSavedJobs(updated);
     setEmployeeStoredValue('savedJobs', updated);
   };
@@ -115,10 +126,67 @@ const MyJobs = ({ jobs = [] }) => {
 
   const savedList = effectiveJobs.filter(j => savedJobs.some(id => String(id) === String(j.id || j._id)));
 
-  // SVG Verified Icon
+  // Drawer handlers & keyboard cycling
+  const currentJobList = activeTab === 'saved'
+    ? savedList
+    : appliedJobs.map(a => {
+        const tId = String(a.id || a._id || '');
+        return effectiveJobs.find(j => String(j.id || j._id) === tId) || a.jobDetails || a;
+      });
+
+  const handleOpenDrawer = (job) => {
+    setSelectedDrawerJob(job);
+    setIsDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedDrawerJob(null);
+  };
+
+  const currentDrawerIndex = selectedDrawerJob
+    ? currentJobList.findIndex(j => String(j.id || j._id) === String(selectedDrawerJob.id || selectedDrawerJob._id))
+    : -1;
+
+  const hasPreviousJob = currentDrawerIndex > 0;
+  const hasNextJob = currentDrawerIndex >= 0 && currentDrawerIndex < currentJobList.length - 1;
+
+  const handlePreviousJob = () => {
+    if (hasPreviousJob) {
+      setSelectedDrawerJob(currentJobList[currentDrawerIndex - 1]);
+    }
+  };
+
+  const handleNextJob = () => {
+    if (hasNextJob) {
+      setSelectedDrawerJob(currentJobList[currentDrawerIndex + 1]);
+    }
+  };
+
+  const isDrawerJobApplied = selectedDrawerJob
+    ? appliedJobs.some(a => String(a.id || a._id) === String(selectedDrawerJob.id || selectedDrawerJob._id))
+    : false;
+
+  const isDrawerJobSaved = selectedDrawerJob
+    ? savedJobs.some(sId => String(sId) === String(selectedDrawerJob.id || selectedDrawerJob._id))
+    : false;
+
+  const handleApplyFromDrawer = (jobToApply) => {
+    setSelectedJob(jobToApply || selectedDrawerJob);
+    setIsApplicationModalOpen(true);
+  };
+
+  const handleToggleSaveFromDrawer = (jobToSave) => {
+    const target = jobToSave || selectedDrawerJob;
+    if (target) {
+      handleToggleSave(target.id || target._id);
+    }
+  };
+
+  // SVG Verified Icon - Scalloped verified badge matching prototype exactly
   const verifiedIcon = (
-    <svg className="myjobs-ver" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+    <svg className="myjobs-ver" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-label="Verified">
+      <path d="M12 2l2.4 2 3.1-.3.9 3 2.7 1.6-1 3 1 3-2.7 1.6-.9 3-3.1-.3L12 22l-2.4-2-3.1.3-.9-3L2.9 15.7l1-3-1-3 2.7-1.6.9-3 3.1.3Zm-1 13 5-5-1.4-1.4L11 12.2 9.4 10.6 8 12Z" />
     </svg>
   );
 
@@ -190,7 +258,7 @@ const MyJobs = ({ jobs = [] }) => {
               </div>
             ) : (
               <div className="myjobs-list">
-                {savedList.map((job, index) => {
+                {savedList.map((job) => {
                   const appliedData = appliedJobs.find(a => String(a.id) === String(job.id || job._id));
                   const displaySalary = job.salary || job.salaryNote || job.details?.salaryNote;
 
@@ -200,10 +268,10 @@ const MyJobs = ({ jobs = [] }) => {
                       className="myjobs-jc"
                       role="button"
                       tabIndex={0}
-                      onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
+                      onClick={() => handleOpenDrawer(job)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
-                          job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } });
+                          handleOpenDrawer(job);
                         }
                       }}
                     >
@@ -233,11 +301,11 @@ const MyJobs = ({ jobs = [] }) => {
 
                       {/* Company & Location */}
                       <div className="myjobs-sub">
-                        <span className="co">
+                        <span className="myjobs-company">
                           {job.company}
                           {verifiedIcon}
                         </span>
-                        <span>{formatJobLocation(job)}</span>
+                        <span className="myjobs-loc">{formatJobLocation(job) || 'Remote'}</span>
                       </div>
 
                       {/* Salary Tag */}
@@ -256,12 +324,7 @@ const MyJobs = ({ jobs = [] }) => {
                         </span>
 
                         {appliedData ? (
-                          <b>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            Submitted
-                          </b>
+                          <b>✓ Submitted</b>
                         ) : job.status !== 'Closed' && (
                           <button
                             onClick={(e) => { 
@@ -328,10 +391,10 @@ const MyJobs = ({ jobs = [] }) => {
                       className="myjobs-jc"
                       role="button"
                       tabIndex={0}
-                      onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
+                      onClick={() => handleOpenDrawer(job)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
-                          job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } });
+                          handleOpenDrawer(job);
                         }
                       }}
                     >
@@ -351,11 +414,11 @@ const MyJobs = ({ jobs = [] }) => {
 
                       {/* Company & Location */}
                       <div className="myjobs-sub">
-                        <span className="co">
+                        <span className="myjobs-company">
                           {job.company || 'amazone'}
                           {verifiedIcon}
                         </span>
-                        <span>{formatJobLocation(job) || 'Remote'}</span>
+                        <span className="myjobs-loc">{formatJobLocation(job) || 'Remote'}</span>
                       </div>
 
                       {/* Salary Tag */}
@@ -370,12 +433,7 @@ const MyJobs = ({ jobs = [] }) => {
                       {/* Footer Row */}
                       <div className="ft">
                         <span>Applied on sahijob.com</span>
-                        <b>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                          Submitted
-                        </b>
+                        <b>✓ Submitted</b>
                       </div>
                     </div>
                   );
@@ -386,6 +444,21 @@ const MyJobs = ({ jobs = [] }) => {
         )}
 
       </main>
+
+      {/* Right Sidebar Job Details Drawer Preview */}
+      <SjJobDetailsDrawer
+        job={selectedDrawerJob}
+        isOpen={isDrawerOpen}
+        onClose={handleCloseDrawer}
+        onPrevious={handlePreviousJob}
+        onNext={handleNextJob}
+        hasPrevious={hasPreviousJob}
+        hasNext={hasNextJob}
+        isApplied={isDrawerJobApplied}
+        isSaved={isDrawerJobSaved}
+        onApply={() => handleApplyFromDrawer(selectedDrawerJob)}
+        onToggleSave={() => handleToggleSaveFromDrawer(selectedDrawerJob)}
+      />
 
       {/* Application Modal */}
       <JobApplicationModal 
