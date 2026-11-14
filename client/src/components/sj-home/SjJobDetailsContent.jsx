@@ -162,10 +162,12 @@ export default function SjJobDetailsContent({
   const posterName =
     employer.fullName ||
     employer.name ||
+    job.recruiterName ||
     job.contactPerson ||
     employer.contactPerson ||
-    job.recruiterName ||
     job.details?.recruiterName ||
+    job.details?.contactPerson ||
+    job.postedBy ||
     '';
   const posterDesignation =
     employer.designation ||
@@ -173,11 +175,38 @@ export default function SjJobDetailsContent({
     employer.role ||
     job.recruiterDesignation ||
     job.details?.recruiterDesignation ||
+    job.details?.role ||
     '';
   const posterRole = compName
     ? (posterDesignation ? `${posterDesignation} at ${compName}` : compName)
     : (posterDesignation || 'Recruiter');
   const posterLogo = employer.photo || employer.avatar || employer.profilePicture || '';
+
+  // Sub-header under company name: Posted by person name and designation at company
+  const recruiterLine = (() => {
+    const targetComp = compName || companyName || '';
+    let roleText = '';
+    if (posterDesignation) {
+      if (posterDesignation.toLowerCase().includes(' at ')) {
+        roleText = posterDesignation;
+      } else if (targetComp) {
+        roleText = `${posterDesignation} at ${targetComp}`;
+      } else {
+        roleText = posterDesignation;
+      }
+    }
+
+    if (posterName && roleText) {
+      return `Posted by ${posterName} • ${roleText}`;
+    }
+    if (posterName) {
+      return targetComp ? `Posted by ${posterName} at ${targetComp}` : `Posted by ${posterName}`;
+    }
+    if (roleText) {
+      return roleText;
+    }
+    return location || 'Remote';
+  })();
 
   // Real job analytics from database (no mock/fake data)
   const realViews = typeof job.views === 'number' ? job.views : (Array.isArray(job.viewedBy) ? job.viewedBy.length : 0);
@@ -214,23 +243,10 @@ export default function SjJobDetailsContent({
               />
             </svg>
           </div>
-          {location && (
-            <span className="sj-drawer-company-sub">{location}</span>
+          {recruiterLine && (
+            <span className="sj-drawer-company-sub">{recruiterLine}</span>
           )}
         </div>
-      </div>
-
-      {/* 3. Tag Pills */}
-      <div className="sj-drawer-tags">
-        <SjPill variant="default">{employmentType}</SjPill>
-        <SjPill variant="default">{workplaceMode} &bull; {location}</SjPill>
-        <SjPill variant="accent">{openings} Opening{openings > 1 ? 's' : ''}</SjPill>
-        <SjPill variant="default" className="font-bold border-[var(--sj-ink)]">
-          {salaryDisplay}
-        </SjPill>
-        {salaryNote && (
-          <span className="text-xs text-[var(--sj-mute)]">({salaryNote})</span>
-        )}
       </div>
 
       {/* Optional Action Buttons */}
@@ -330,6 +346,17 @@ export default function SjJobDetailsContent({
           <dd>{workplaceMode}</dd>
           <dt>Location</dt>
           <dd>{location}</dd>
+          {salaryDisplay && (
+            <>
+              <dt>Salary</dt>
+              <dd>
+                <span className="font-semibold text-[var(--sj-ink)]">{salaryDisplay}</span>
+                {salaryNote && !salaryDisplay.toLowerCase().includes(salaryNote.toLowerCase()) && (
+                  <span className="text-xs text-[var(--sj-mute)] ml-1.5 font-normal">({salaryNote})</span>
+                )}
+              </dd>
+            </>
+          )}
           <dt>Openings</dt>
           <dd>{openings}</dd>
           {job.details?.experience && (
