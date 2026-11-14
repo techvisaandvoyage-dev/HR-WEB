@@ -49,6 +49,38 @@
   pointer-events: auto;
 }
 
+/* ---------------- Right Sidebar Job Details Drawer (used specifically for My Jobs) ---------------- */
+.sj-drawer-backdrop.sj-drawer-sidebar {
+  top: 0;
+  z-index: 90;
+}
+
+.sj-drawer-panel.sj-drawer-sidebar {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: min(720px, 100%);
+  height: 100vh;
+  z-index: 95;
+  opacity: 1;
+  transform: translateX(104%);
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.16);
+}
+
+.sj-drawer-panel.sj-drawer-sidebar.sj-open {
+  transform: translateX(0);
+}
+
+.sj-drawer-panel.sj-drawer-sidebar .sj-drawer-body {
+  padding: 28px 24px 60px;
+}
+
+.sj-drawer-panel.sj-drawer-sidebar .sj-drawer-topbar {
+  padding: 10px 20px;
+}
+
 /* Sticky top toolbar */
 .sj-drawer-topbar {
   position: sticky;

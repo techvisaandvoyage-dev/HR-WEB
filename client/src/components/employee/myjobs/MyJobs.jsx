@@ -202,7 +202,22 @@ const MyJobs = ({ jobs = [] }) => {
 
   const savedList = effectiveJobs.filter(j => savedJobs.some(id => String(id) === String(j.id || j._id)));
 
-  // Drawer handlers (only used for saved jobs)
+  const appliedList = appliedJobs.map((applied) => {
+    const targetId = String(applied.id || applied._id || '');
+    const foundJob = effectiveJobs.find(j => String(j.id || j._id) === targetId);
+    return foundJob || applied.jobDetails || {
+      id: targetId,
+      _id: targetId,
+      title: applied.title || 'Applied Position',
+      company: applied.company || 'amazone',
+      location: applied.location || 'Remote',
+      details: {}
+    };
+  });
+
+  const activeDrawerList = activeTab === 'applied' ? appliedList : savedList;
+
+  // Drawer handlers (opens right sidebar preview for saved and applied jobs)
   const handleOpenDrawer = (job) => {
     setSelectedDrawerJob(job);
     setIsDrawerOpen(true);
@@ -214,21 +229,21 @@ const MyJobs = ({ jobs = [] }) => {
   };
 
   const currentDrawerIndex = selectedDrawerJob
-    ? savedList.findIndex(j => String(j.id || j._id) === String(selectedDrawerJob.id || selectedDrawerJob._id))
+    ? activeDrawerList.findIndex(j => String(j.id || j._id) === String(selectedDrawerJob.id || selectedDrawerJob._id))
     : -1;
 
   const hasPreviousJob = currentDrawerIndex > 0;
-  const hasNextJob = currentDrawerIndex >= 0 && currentDrawerIndex < savedList.length - 1;
+  const hasNextJob = currentDrawerIndex >= 0 && currentDrawerIndex < activeDrawerList.length - 1;
 
   const handlePreviousJob = () => {
     if (hasPreviousJob) {
-      setSelectedDrawerJob(savedList[currentDrawerIndex - 1]);
+      setSelectedDrawerJob(activeDrawerList[currentDrawerIndex - 1]);
     }
   };
 
   const handleNextJob = () => {
     if (hasNextJob) {
-      setSelectedDrawerJob(savedList[currentDrawerIndex + 1]);
+      setSelectedDrawerJob(activeDrawerList[currentDrawerIndex + 1]);
     }
   };
 
@@ -522,6 +537,14 @@ const MyJobs = ({ jobs = [] }) => {
                     <div 
                       key={targetId || index} 
                       className="myjobs-jc applied-card"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleOpenDrawer(job)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          handleOpenDrawer(job);
+                        }
+                      }}
                     >
                       {/* Top Row: Status pill on left, Date on right */}
                       <div className="r1">
@@ -570,7 +593,7 @@ const MyJobs = ({ jobs = [] }) => {
 
       </main>
 
-      {/* Right Sidebar Job Details Drawer Preview (for Saved jobs) */}
+      {/* Right Sidebar Job Details Drawer Preview (specifically for My Jobs) */}
       <SjJobDetailsDrawer
         job={selectedDrawerJob}
         isOpen={isDrawerOpen}
@@ -583,6 +606,8 @@ const MyJobs = ({ jobs = [] }) => {
         isSaved={isDrawerJobSaved}
         onApply={() => handleApplyFromDrawer(selectedDrawerJob)}
         onToggleSave={() => handleToggleSaveFromDrawer(selectedDrawerJob)}
+        variant="sidebar"
+        backLabel="Jobs"
       />
 
       {/* Application Modal */}

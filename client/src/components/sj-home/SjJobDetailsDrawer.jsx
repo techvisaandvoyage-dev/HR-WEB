@@ -108,12 +108,16 @@ export default function SjJobDetailsDrawer({
   isSaved = false,
   onApply,
   onToggleSave,
+  variant = 'fullscreen', // 'fullscreen' (default for homepage) or 'sidebar' (for My Jobs)
+  backLabel,
 }) {
   const panelRef = useRef(null);
   const [headerHeight, setHeaderHeight] = React.useState(73);
+  const isSidebar = variant === 'sidebar';
 
-  // Dynamically measure navbar height so the view starts seamlessly right underneath the navbar
+  // Dynamically measure navbar height so the fullscreen view starts seamlessly right underneath the navbar
   useEffect(() => {
+    if (isSidebar) return;
     const updateHeaderHeight = () => {
       const header = document.querySelector('.sj-header') || document.querySelector('header');
       if (header) {
@@ -123,7 +127,7 @@ export default function SjJobDetailsDrawer({
     updateHeaderHeight();
     window.addEventListener('resize', updateHeaderHeight);
     return () => window.removeEventListener('resize', updateHeaderHeight);
-  }, [isOpen]);
+  }, [isOpen, isSidebar]);
 
   // Keyboard navigation & scroll lock
   useEffect(() => {
@@ -230,22 +234,22 @@ export default function SjJobDetailsDrawer({
 
   return (
     <>
-      {/* Backdrop (starts under navbar) */}
+      {/* Backdrop */}
       <div
-        className={`sj-drawer-backdrop ${isOpen ? 'sj-open' : ''}`}
-        style={{ top: `${headerHeight}px` }}
+        className={`sj-drawer-backdrop ${isSidebar ? 'sj-drawer-sidebar' : ''} ${isOpen ? 'sj-open' : ''}`}
+        style={!isSidebar ? { top: `${headerHeight}px` } : undefined}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Full Screen Job Details View (starts under navbar) */}
+      {/* Drawer / Full-Screen Job Details View */}
       <aside
         ref={panelRef}
-        className={`sj-drawer-panel ${isOpen ? 'sj-open' : ''}`}
-        style={{
+        className={`sj-drawer-panel ${isSidebar ? 'sj-drawer-sidebar' : ''} ${isOpen ? 'sj-open' : ''}`}
+        style={!isSidebar ? {
           top: `${headerHeight}px`,
           height: `calc(100vh - ${headerHeight}px)`,
-        }}
+        } : undefined}
         aria-label="Job details"
         aria-hidden={!isOpen}
         role="dialog"
@@ -257,13 +261,13 @@ export default function SjJobDetailsDrawer({
               type="button"
               className="sj-drawer-back-btn"
               onClick={onClose}
-              aria-label="Home"
+              aria-label={backLabel || (isSidebar ? 'Jobs' : 'Home')}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
               </svg>
-              <span>Home</span>
+              <span>{backLabel || (isSidebar ? 'Jobs' : 'Home')}</span>
             </button>
 
             <span className="sj-pagination-info">Job Details</span>
