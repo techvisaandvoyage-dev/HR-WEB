@@ -4,6 +4,7 @@ import JobApplicationModal from '../JobApplicationModal';
 import EmployeeNavbar from '../../common/EmployeeNavbar';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
 import { formatJobLocation } from '../../../data/preferredLocations';
+import './MyJobs.css';
 
 const MyJobs = ({ jobs = [] }) => {
   const navigate = useNavigate();
@@ -26,9 +27,7 @@ const MyJobs = ({ jobs = [] }) => {
       setActiveTab(targetTab);
     }
   }, [location.search, location.state]);
-  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [statusUpdateJobId, setStatusUpdateJobId] = useState(null);
-  
+
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
@@ -83,11 +82,12 @@ const MyJobs = ({ jobs = [] }) => {
         const apiAppliedJobs = sortedData.map(app => {
           const populated = typeof app.jobId === 'object' && app.jobId !== null ? app.jobId : null;
           const jId = populated?._id || populated?.id || app.jobId;
+          const rawDate = app.createdAt ? new Date(app.createdAt) : new Date();
           return {
             id: jId,
             _id: jId,
             status: app.status || 'Applied',
-            date: new Date(app.createdAt).toLocaleDateString(),
+            date: `${rawDate.getMonth() + 1}/${rawDate.getDate()}/${rawDate.getFullYear()}`,
             jobDetails: populated
           };
         });
@@ -115,273 +115,272 @@ const MyJobs = ({ jobs = [] }) => {
 
   const savedList = effectiveJobs.filter(j => savedJobs.some(id => String(id) === String(j.id || j._id)));
 
+  // SVG Verified Icon
+  const verifiedIcon = (
+    <svg className="myjobs-ver" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+    </svg>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50/60 font-sans flex flex-col pb-24 md:pb-12">
-      {/* Navbar */}
+    <div className="myjobs-container">
+      {/* Navbar kept exactly as on homepage */}
       <EmployeeNavbar />
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 pt-4 md:pt-8">
+      {/* Main Container */}
+      <main className="myjobs-pw">
         
-        {/* Top Back & Header */}
-        <div className="mb-4">
+        {/* Back Button */}
+        <button 
+          onClick={() => navigate('/employee')}
+          className="myjobs-back"
+          aria-label="Back to jobs"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>Back to jobs</span>
+        </button>
+
+        {/* Title */}
+        <h1 className="myjobs-title">My jobs</h1>
+
+        {/* Big Segmented Tab Buttons */}
+        <div className="myjobs-jt" role="tablist">
           <button 
-            onClick={() => navigate('/employee')}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-emerald-800 mb-3 bg-white px-3 py-1.5 rounded-full border border-gray-200/90 shadow-2xs transition-colors cursor-pointer"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            Back to jobs
-          </button>
-          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">My jobs</h1>
-        </div>
-        
-        {/* Modern Segmented Tabs */}
-        <div className="flex items-center p-1 bg-gray-200/70 rounded-2xl mb-5 max-w-xs border border-gray-200/60">
-          <button 
+            role="tab"
+            aria-selected={activeTab === 'saved'}
             onClick={() => setActiveTab('saved')} 
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'saved' 
-                ? 'bg-white text-gray-900 shadow-xs' 
-                : 'text-gray-500 hover:text-gray-800'
-            }`}
+            className={activeTab === 'saved' ? 'on' : ''}
           >
             <span>Saved</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-              activeTab === 'saved' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-300/80 text-gray-700'
-            }`}>
-              {savedList.length}
-            </span>
+            <small>{savedList.length}</small>
           </button>
           
           <button 
+            role="tab"
+            aria-selected={activeTab === 'applied'}
             onClick={() => setActiveTab('applied')} 
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'applied' 
-                ? 'bg-white text-gray-900 shadow-xs' 
-                : 'text-gray-500 hover:text-gray-800'
-            }`}
+            className={activeTab === 'applied' ? 'on' : ''}
           >
             <span>Applied</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-              activeTab === 'applied' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-300/80 text-gray-700'
-            }`}>
-              {appliedJobs.length}
-            </span>
+            <small>{appliedJobs.length}</small>
           </button>
         </div>
 
         {/* Tab 1: Saved Jobs */}
         {activeTab === 'saved' && (
-          <div className="space-y-3">
+          <div>
             {savedList.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto text-xl">
-                  🔖
-                </div>
-                <h3 className="text-base font-bold text-gray-900">No saved jobs</h3>
-                <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                  Jobs you bookmark will appear here so you can easily review and apply later.
-                </p>
+              <div className="myjobs-empt">
+                <span className="ic2">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                </span>
+                <h2>No saved jobs</h2>
+                <p>Jobs you bookmark will appear here so you can easily review and apply later.</p>
                 <button
                   onClick={() => navigate('/employee')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1b5e20] hover:bg-[#15541b] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  className="myjobs-go"
                 >
                   Browse jobs
                 </button>
               </div>
             ) : (
-              savedList.map(job => {
-                const appliedData = appliedJobs.find(a => String(a.id) === String(job.id || job._id));
-                return (
-                  <div 
-                    key={job.id || job._id} 
-                    onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })} 
-                    className={`bg-white rounded-2xl border border-gray-200/90 p-4 shadow-2xs hover:shadow-xs transition-all relative ${
-                      job.status === 'Closed' ? 'cursor-default opacity-85' : 'cursor-pointer hover:border-gray-300'
-                    }`}
-                  >
-                    {/* Top Row: Left Status / Badges + Right Bookmark Icon */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {appliedData ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                            {appliedData.status === 'New' ? 'Applied' : (appliedData.status || 'Applied')}
+              <div className="myjobs-list">
+                {savedList.map((job, index) => {
+                  const appliedData = appliedJobs.find(a => String(a.id) === String(job.id || job._id));
+                  const displaySalary = job.salary || job.salaryNote || job.details?.salaryNote;
+
+                  return (
+                    <div 
+                      key={job.id || job._id} 
+                      className={`myjobs-jc ${index === 0 ? 'highlighted' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } });
+                        }
+                      }}
+                    >
+                      {/* Top Row: Status badge & Unsave bookmark */}
+                      <div className="r1">
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span className={`myjobs-pill ${job.status === 'Closed' ? 'closed' : 'a'}`}>
+                            {job.status === 'Closed' ? 'Closed' : (appliedData ? (appliedData.status === 'New' ? 'Applied' : (appliedData.status || 'Applied')) : 'Saved')}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                            Saved
-                          </span>
-                        )}
-                        {job.status === 'Closed' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-stone-100 text-stone-600 border border-stone-200">
-                            Closed
-                          </span>
-                        )}
-                      </div>
+                        </div>
 
-                      {/* Bookmark button pinned at top-right */}
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleToggleSave(job.id || job._id); }}
-                        title="Remove from saved jobs"
-                        className="p-1.5 text-emerald-700 hover:text-emerald-800 cursor-pointer shrink-0 transition-transform active:scale-90"
-                      >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Job Title */}
-                    <h2 className="text-[17px] font-black text-gray-900 hover:text-emerald-800 leading-snug mt-1.5">
-                      {job.title}
-                    </h2>
-
-                    {/* Company & Location */}
-                    <div className="mt-1">
-                      <p className="text-sm font-semibold text-gray-800">{job.company}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{formatJobLocation(job)}</p>
-                    </div>
-
-                    {/* Salary & Mode Badges */}
-                    {(job.salary || job.workplaceMode) && (
-                      <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-                        {job.salary && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-md text-xs font-semibold">
-                            ✓ {job.salary}
-                          </span>
-                        )}
-                        {job.workplaceMode && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-50 text-stone-700 border border-stone-200/80 rounded-md text-xs font-medium">
-                            ✓ {job.workplaceMode}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Footer Row: Timestamp / Status + Action */}
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                      <span className="text-xs text-gray-400 font-medium truncate">
-                        {appliedData ? `Applied on ${appliedData.date}` : (job.postedAt ? `Posted ${job.postedAt}` : 'Saved')}
-                      </span>
-
-                      {!appliedData && job.status !== 'Closed' && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedJob(job); setIsApplicationModalOpen(true); }}
-                          className="px-4 py-1.5 bg-[#1b5e20] hover:bg-[#15541b] text-white text-xs font-bold rounded-lg transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            handleToggleSave(job.id || job._id); 
+                          }}
+                          title="Remove bookmark"
+                          className="myjobs-b2 sm"
+                          style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}
                         >
-                          Apply now
+                          Remove
                         </button>
+                      </div>
+
+                      {/* Job Title */}
+                      <h2>{job.title}</h2>
+
+                      {/* Company & Location */}
+                      <div className="myjobs-sub">
+                        <span className="co">
+                          {job.company}
+                          {verifiedIcon}
+                        </span>
+                        <span>{formatJobLocation(job)}</span>
+                      </div>
+
+                      {/* Salary Tag */}
+                      {displaySalary && (
+                        <div className="myjobs-tags-row">
+                          <span className="myjobs-pill">
+                            ✓ {displaySalary}
+                          </span>
+                        </div>
                       )}
 
-                      {appliedData && (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 shrink-0">
-                          <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                          Applied
+                      {/* Footer Row */}
+                      <div className="ft">
+                        <span>
+                          {appliedData ? `Applied on sahijob.com` : 'Saved on sahijob.com'}
                         </span>
-                      )}
+
+                        {appliedData ? (
+                          <b>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            Submitted
+                          </b>
+                        ) : job.status !== 'Closed' && (
+                          <button
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setSelectedJob(job); 
+                              setIsApplicationModalOpen(true); 
+                            }}
+                            className="myjobs-b2 sm primary"
+                          >
+                            Apply now
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
 
         {/* Tab 2: Applied Jobs */}
         {activeTab === 'applied' && (
-          <div className="space-y-3">
+          <div>
             {appliedJobs.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-200/90 p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto text-xl">
-                  📄
-                </div>
-                <h3 className="text-base font-bold text-gray-900">No applications yet</h3>
-                <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                  When you apply for jobs, you will be able to track your application status right here.
-                </p>
+              <div className="myjobs-empt">
+                <span className="ic2">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                </span>
+                <h2>No applied jobs</h2>
+                <p>Jobs you apply to will appear here.</p>
                 <button
                   onClick={() => navigate('/employee')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1b5e20] hover:bg-[#15541b] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  className="myjobs-go"
                 >
                   Browse jobs
                 </button>
               </div>
             ) : (
-              appliedJobs.map(applied => {
-                const targetId = String(applied.id || applied._id || '');
-                const foundJob = effectiveJobs.find(j => String(j.id || j._id) === targetId);
-                const job = foundJob || applied.jobDetails || {
-                  id: targetId,
-                  _id: targetId,
-                  title: applied.title || 'Applied Position',
-                  company: applied.company || 'Company',
-                  location: applied.location || 'Remote',
-                  details: {}
-                };
+              <div className="myjobs-list">
+                {appliedJobs.map((applied, index) => {
+                  const targetId = String(applied.id || applied._id || '');
+                  const foundJob = effectiveJobs.find(j => String(j.id || j._id) === targetId);
+                  const job = foundJob || applied.jobDetails || {
+                    id: targetId,
+                    _id: targetId,
+                    title: applied.title || 'Applied Position',
+                    company: applied.company || 'amazone',
+                    location: applied.location || 'Remote',
+                    details: {}
+                  };
 
-                return (
-                  <div 
-                    key={targetId || Math.random()} 
-                    onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
-                    className={`bg-white rounded-2xl border border-gray-200/90 p-4 shadow-2xs hover:shadow-xs transition-all relative ${
-                      job.status === 'Closed' ? 'cursor-default opacity-85' : 'cursor-pointer hover:border-gray-300'
-                    }`}
-                  >
-                    {/* Top Row: Left Status Pill */}
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
-                        job.status === 'Closed' 
-                          ? 'bg-stone-100 text-stone-600 border border-stone-200' 
-                          : (applied.status === 'Hired' || applied.status?.toLowerCase() === 'shortlisted')
-                            ? 'bg-teal-50 text-teal-800 border border-teal-200/80'
-                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
-                      }`}>
-                        {job.status === 'Closed' ? 'Closed' : (applied.status === 'New' ? 'Applied' : applied.status || 'Applied')}
-                      </span>
+                  const displaySalary = job.salary || job.salaryNote || job.details?.salaryNote;
 
-                      <span className="text-xs text-gray-400 font-medium">
-                        {applied.date || 'Recently'}
-                      </span>
-                    </div>
+                  return (
+                    <div 
+                      key={targetId || index} 
+                      className={`myjobs-jc ${index === 0 ? 'highlighted' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } });
+                        }
+                      }}
+                    >
+                      {/* Top Row: Status pill on left, Date on right */}
+                      <div className="r1">
+                        <span className={`myjobs-pill ${job.status === 'Closed' ? 'closed' : 'a'}`}>
+                          {job.status === 'Closed' 
+                            ? 'Closed' 
+                            : (applied.status === 'New' ? 'Applied' : (applied.status || 'Applied'))}
+                        </span>
 
-                    {/* Job Title */}
-                    <h2 className="text-[17px] font-black text-gray-900 hover:text-emerald-800 leading-snug mt-1.5">
-                      {job.title}
-                    </h2>
-
-                    {/* Company & Location */}
-                    <div className="mt-1">
-                      <p className="text-sm font-semibold text-gray-800">{job.company}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{formatJobLocation(job)}</p>
-                    </div>
-
-                    {/* Salary & Mode Badges */}
-                    {(job.salary || job.workplaceMode) && (
-                      <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-                        {job.salary && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-md text-xs font-semibold">
-                            ✓ {job.salary}
-                          </span>
-                        )}
-                        {job.workplaceMode && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-50 text-stone-700 border border-stone-200/80 rounded-md text-xs font-medium">
-                            ✓ {job.workplaceMode}
-                          </span>
-                        )}
+                        <span>{applied.date || '11/3/2026'}</span>
                       </div>
-                    )}
 
-                    {/* Footer */}
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                      <span>Applied on sahijob.com</span>
-                      <span className="inline-flex items-center gap-1 font-bold text-emerald-800">
-                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                        Submitted
-                      </span>
+                      {/* Job Title */}
+                      <h2>{job.title}</h2>
+
+                      {/* Company & Location */}
+                      <div className="myjobs-sub">
+                        <span className="co">
+                          {job.company || 'amazone'}
+                          {verifiedIcon}
+                        </span>
+                        <span>{formatJobLocation(job) || 'Remote'}</span>
+                      </div>
+
+                      {/* Salary Tag */}
+                      {displaySalary && (
+                        <div className="myjobs-tags-row">
+                          <span className="myjobs-pill">
+                            ✓ {displaySalary}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Footer Row */}
+                      <div className="ft">
+                        <span>Applied on sahijob.com</span>
+                        <b>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          Submitted
+                        </b>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

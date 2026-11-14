@@ -1,0 +1,344 @@
+/* MyJobs styling matching SahiJob modern Orange / Ink theme */
+.myjobs-container {
+  --ink: #111111;
+  --mute: #6b7280;
+  --line: #e6e7ea;
+  --soft: #f7f7f4;
+  --acc: #ff4f2b;
+  --acc-orange: #ea580c;
+  --accS: #fff0ec;
+  --ok: #059669;
+  min-height: 100vh;
+  background: #ffffff;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.myjobs-pw {
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+  flex: 1;
+}
+
+/* Back button */
+.myjobs-back {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  height: 42px;
+  padding: 0 18px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 22px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.myjobs-back:hover {
+  box-shadow: 3px 3px 0 var(--ink);
+  transform: translate(-2px, -2px);
+}
+
+/* Main title */
+.myjobs-title {
+  font-size: clamp(34px, 6vw, 56px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 20px;
+  color: var(--ink);
+  line-height: 1.05;
+}
+
+/* Big segmented tabs */
+.myjobs-jt {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 3px;
+  margin: 20px 0 28px;
+  width: min(400px, 100%);
+  background: #ffffff;
+}
+
+.myjobs-jt button {
+  height: 42px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--mute);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.myjobs-jt button.on {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.myjobs-jt small {
+  background: var(--accS);
+  color: var(--acc-orange);
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin-left: 4px;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1.4;
+  transition: all 0.15s ease;
+}
+
+.myjobs-jt button.on small {
+  background: var(--acc-orange);
+  color: #ffffff;
+}
+
+/* Job cards list */
+.myjobs-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.myjobs-jc {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  padding: 22px 14px;
+  border-radius: 18px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.myjobs-jc:hover,
+.myjobs-jc.highlighted {
+  background: var(--soft);
+  padding-left: 20px;
+}
+
+.myjobs-jc .r1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: var(--mute);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.myjobs-jc h2 {
+  margin: 0 0 6px;
+  font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.myjobs-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  color: var(--mute);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.myjobs-sub .co {
+  color: var(--ink);
+  font-weight: 700;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.myjobs-ver {
+  color: var(--ok);
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Badges and pills */
+.myjobs-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.myjobs-pill.a {
+  background: var(--accS);
+  border-color: transparent;
+  color: var(--acc-orange);
+  font-weight: 700;
+}
+
+.myjobs-pill.closed {
+  background: #f3f4f6;
+  border-color: transparent;
+  color: #6b7280;
+}
+
+.myjobs-tags-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Footer row inside job card */
+.myjobs-jc .ft {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  color: var(--mute);
+  font-size: 14px;
+  gap: 10px;
+}
+
+.myjobs-jc .ft b {
+  color: var(--ok);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Secondary pill button */
+.myjobs-b2 {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.myjobs-b2:hover {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.myjobs-b2.sm {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.myjobs-b2.primary {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.myjobs-b2.primary:hover {
+  background: var(--acc-orange);
+  border-color: var(--acc-orange);
+}
+
+/* Empty state */
+.myjobs-empt {
+  text-align: center;
+  padding: 56px 20px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  color: var(--mute);
+}
+
+.myjobs-empt h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.myjobs-empt p {
+  margin: 0;
+  max-width: 380px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mute);
+}
+
+.myjobs-empt .ic2 {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--accS);
+  color: var(--acc-orange);
+  display: grid;
+  place-items: center;
+}
+
+.myjobs-go {
+  background: var(--ink);
+  color: #ffffff;
+  border-radius: 999px;
+  height: 50px;
+  padding: 0 32px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  margin-top: 8px;
+}
+
+.myjobs-go:hover {
+  background: var(--acc-orange);
+  color: #ffffff;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .myjobs-pw {
+    padding: 20px 16px 60px;
+  }
+  .myjobs-jc {
+    padding: 18px 10px;
+  }
+  .myjobs-jc:hover,
+  .myjobs-jc.highlighted {
+    padding-left: 14px;
+  }
+  .myjobs-jc h2 {
+    font-size: 20px;
+  }
+  .myjobs-jt {
+    width: 100%;
+  }
+}
