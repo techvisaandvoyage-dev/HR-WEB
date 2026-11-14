@@ -46,6 +46,62 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
   const emailConfig = getFieldConfig('email', 'Email ID', 'Enter your active Email ID');
   const passwordConfig = getFieldConfig('password', 'Password', 'Enter your password');
 
+  const getCandidateGreeting = () => {
+    try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const usersMap = JSON.parse(localStorage.getItem('sahijob_candidate_users') || '{}');
+      if (cleanEmail && usersMap[cleanEmail]) {
+        return usersMap[cleanEmail];
+      }
+      const lastName = localStorage.getItem('lastCandidateName');
+      const lastEmail = (localStorage.getItem('lastCandidateEmail') || '').toLowerCase().trim();
+      if (lastName && (!cleanEmail || cleanEmail === lastEmail)) {
+        return lastName;
+      }
+      const prof = localStorage.getItem('userProfile');
+      if (prof) {
+        const parsed = JSON.parse(prof);
+        if (parsed?.name || parsed?.firstName) {
+          if (!cleanEmail || cleanEmail === (parsed.email || '').toLowerCase().trim()) {
+            return parsed.firstName || parsed.name;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  };
+
+  const hasCandidateLoggedInBefore = (() => {
+    try {
+      return localStorage.getItem('hasCandidateLoggedInBefore') === 'true' || Boolean(localStorage.getItem('lastCandidateName'));
+    } catch (_) {
+      return false;
+    }
+  })();
+
+  const candidateGreeting = getCandidateGreeting();
+
+  const handleCandidateAuthSuccess = (data, userProfile) => {
+    try {
+      const name = userProfile?.firstName || userProfile?.name || data?.name || '';
+      const userEmail = data?.email || userProfile?.email || email || '';
+      if (name) {
+        localStorage.setItem('lastCandidateName', name);
+      }
+      if (userEmail) {
+        localStorage.setItem('lastCandidateEmail', userEmail);
+        const usersMap = JSON.parse(localStorage.getItem('sahijob_candidate_users') || '{}');
+        usersMap[userEmail.trim().toLowerCase()] = name;
+        localStorage.setItem('sahijob_candidate_users', JSON.stringify(usersMap));
+      }
+      localStorage.setItem('hasCandidateLoggedInBefore', 'true');
+    } catch (_) {}
+
+    setRenderModal(false);
+    setIsClosing(false);
+    onLoginSuccess?.(data);
+  };
+
   const handleGoogleLogin = async () => {
     setIsGoogleAuthenticating(true);
     setErrors({});
@@ -104,8 +160,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
         }
 
         localStorage.setItem('userProfile', JSON.stringify(newProfile));
-
-        onLoginSuccess?.(data);
+        handleCandidateAuthSuccess(data, newProfile);
       } else {
         alert(data.message || 'Google login failed');
       }
@@ -206,7 +261,10 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setEmail('');
+      const savedEmail = (() => {
+        try { return localStorage.getItem('lastCandidateEmail') || ''; } catch (_) { return ''; }
+      })();
+      setEmail(savedEmail);
       setPassword('');
       setMobile('');
       setOtpSent(false);
@@ -314,8 +372,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
         }
         
         localStorage.setItem('userProfile', JSON.stringify(newProfile));
-        
-        onLoginSuccess?.(data);
+        handleCandidateAuthSuccess(data, newProfile);
       }
     } catch (err) {
       setErrors({ general: 'Server error, please try again later' });
@@ -462,7 +519,7 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
         }
 
         localStorage.setItem('userProfile', JSON.stringify(newProfile));
-        onLoginSuccess?.(data);
+        handleCandidateAuthSuccess(data, newProfile);
       }
     } catch (err) {
       setErrors({ otp: 'Failed to verify OTP. Please try again.' });
@@ -630,15 +687,12 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
     if (isOpen) {
       setRenderModal(true);
       setIsClosing(false);
-    } else if (renderModal) {
-      setIsClosing(true);
-      const timer = setTimeout(() => {
-        setRenderModal(false);
-        setIsClosing(false);
-      }, 230);
-      return () => clearTimeout(timer);
+    } else {
+      // Direct close without any exit animation delay
+      setRenderModal(false);
+      setIsClosing(false);
     }
-  }, [isOpen, renderModal]);
+  }, [isOpen]);
 
   if (!renderModal) return null;
 
@@ -660,7 +714,13 @@ const EmployeeLoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }
           {/* Header */}
           {!isGoogleAuthenticating && (
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-palette-900">{cmsConfig?.modalTitle || 'Candidate Login'}</h2>
+              <h2 className="text-2xl font-bold text-palette-900">
+                {candidateGreeting
+                  ? `Welcome back, ${candidateGreeting}`
+                  : hasCandidateLoggedInBefore
+                  ? 'Welcome back'
+                  : (cmsConfig?.modalTitle || 'Candidate Login')}
+              </h2>
             </div>
           )}
 

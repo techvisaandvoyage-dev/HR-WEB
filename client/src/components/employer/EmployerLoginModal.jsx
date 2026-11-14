@@ -33,15 +33,12 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
     if (isOpen) {
       setRenderModal(true);
       setIsClosing(false);
-    } else if (renderModal) {
-      setIsClosing(true);
-      const timer = setTimeout(() => {
-        setRenderModal(false);
-        setIsClosing(false);
-      }, 230);
-      return () => clearTimeout(timer);
+    } else {
+      // Direct close without any exit animation delay
+      setRenderModal(false);
+      setIsClosing(false);
     }
-  }, [isOpen, renderModal]);
+  }, [isOpen]);
 
   const isOtpLocked = Boolean(
     isLocked ||
@@ -127,7 +124,10 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
 
   useEffect(() => {
     if (isOpen) {
-      setEmail('');
+      const savedEmail = (() => {
+        try { return localStorage.getItem('lastEmployerEmail') || ''; } catch (_) { return ''; }
+      })();
+      setEmail(savedEmail);
       setPassword('');
       setMobile('');
       setOtpSent(false);
@@ -181,6 +181,71 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
 
   // OTP helpers and Google login
 
+  const getGreetingName = () => {
+    try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const usersMap = JSON.parse(localStorage.getItem('sahijob_employer_users') || '{}');
+      if (cleanEmail && usersMap[cleanEmail]) {
+        return usersMap[cleanEmail];
+      }
+      const lastName = localStorage.getItem('lastEmployerName');
+      const lastEmail = (localStorage.getItem('lastEmployerEmail') || '').toLowerCase().trim();
+      if (lastName && (!cleanEmail || cleanEmail === lastEmail)) {
+        return lastName;
+      }
+      const info = localStorage.getItem('employerInfo');
+      if (info) {
+        const parsed = JSON.parse(info);
+        if (parsed?.fullName || parsed?.companyName) {
+          if (!cleanEmail || cleanEmail === (parsed.email || '').toLowerCase().trim()) {
+            return parsed.fullName || parsed.companyName;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  };
+
+  const hasLoggedInBefore = (() => {
+    try {
+      return localStorage.getItem('hasEmployerLoggedInBefore') === 'true' || Boolean(localStorage.getItem('lastEmployerName'));
+    } catch (_) {
+      return false;
+    }
+  })();
+
+  const greetingName = getGreetingName();
+
+  const handleAuthSuccess = (data) => {
+    localStorage.setItem('employerToken', data.token);
+    try {
+      const profileData = {
+        _id: data._id,
+        fullName: data.fullName,
+        companyName: data.companyName,
+        email: data.email,
+        isConsultant: Boolean(data.isConsultant !== undefined ? data.isConsultant : isConsultant)
+      };
+      localStorage.setItem('employerInfo', JSON.stringify(profileData));
+      if (data.fullName || data.companyName) {
+        localStorage.setItem('lastEmployerName', data.fullName || data.companyName);
+      }
+      if (data.email) {
+        localStorage.setItem('lastEmployerEmail', data.email);
+        const usersMap = JSON.parse(localStorage.getItem('sahijob_employer_users') || '{}');
+        usersMap[data.email.trim().toLowerCase()] = data.fullName || data.companyName || '';
+        localStorage.setItem('sahijob_employer_users', JSON.stringify(usersMap));
+      }
+      localStorage.setItem('hasEmployerLoggedInBefore', 'true');
+    } catch (_) {}
+
+    // Direct synchronous close with no animation lag
+    setRenderModal(false);
+    setIsClosing(false);
+    onClose?.();
+    onLoginSuccess?.(data);
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setErrors({});
@@ -217,8 +282,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
             });
           }
         } else {
-          onClose?.();
-          onLoginSuccess?.(data);
+          handleAuthSuccess(data);
         }
       } else {
         const errorMsg = data.message || 'Google login failed';
@@ -267,8 +331,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
       const data = await response.json();
 
       if (data.success) {
-        localStorage.setItem('employerToken', data.token);
-        onLoginSuccess?.(data);
+        handleAuthSuccess(data);
       } else {
         const errorState = {};
         if (data.isGoogleAccount || (data.message && data.message.toLowerCase().includes('google'))) {
@@ -390,8 +453,7 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
         setErrors({ otp: data.message || 'Invalid or expired OTP' });
       } else {
         setIsLocked(false);
-        localStorage.setItem('employerToken', data.token);
-        onLoginSuccess?.(data);
+        handleAuthSuccess(data);
       }
     } catch (err) {
       setErrors({ otp: 'Failed to verify OTP. Please try again.' });
@@ -579,7 +641,11 @@ const EmployerLoginModal = ({ isOpen, isConsultant = false, onClose, onRegisterC
           {/* Header */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-palette-900">
-              {cmsConfig?.modalTitle || (isConsultant ? 'Welcome to Consultant Portal' : 'Welcome to Employer Portal')}
+              {greetingName
+                ? `Welcome back, ${greetingName}`
+                : hasLoggedInBefore
+                ? 'Welcome back'
+                : (cmsConfig?.modalTitle || (isConsultant ? 'Welcome to Consultant Portal' : 'Welcome to Employer Portal'))}
             </h2>
             <p className="text-xs text-gray-500 mt-1">
               {cmsConfig?.modalSubtitle || (isConsultant 

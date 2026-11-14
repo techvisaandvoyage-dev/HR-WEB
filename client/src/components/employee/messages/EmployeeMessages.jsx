@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SjLoggedInHeader from '../../sj-home/SjLoggedInHeader';
 import SjGuestHeader from '../../sj-home/SjGuestHeader';
-import { getEmployeeStoredValue } from '../../../utils/employeeStorage';
+import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
+import SjJobDetailsDrawer from '../../sj-home/SjJobDetailsDrawer';
 import { socket } from '../../../utils/socket';
 
 function getCandidateProfile() {
@@ -39,7 +40,8 @@ const EmployeeMessages = () => {
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isJobDetailsOpen, setIsJobDetailsOpen] = useState(false);
+  const [isJobDrawerOpen, setIsJobDrawerOpen] = useState(false);
+  const [savedJobs, setSavedJobs] = useState(() => getEmployeeStoredValue('savedJobs', []));
   const [isLoading, setIsLoading] = useState(true);
   const [refreshNav, setRefreshNav] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -531,20 +533,44 @@ const EmployeeMessages = () => {
     return gradients[code % gradients.length];
   };
 
-  const currentActiveJob = selectedChat ? (
-    applicationsMap[selectedChat.applicationId] ||
-    selectedChat.job ||
-    allJobsList.find(j => {
-      const chatJid = String(selectedChat.jobId?._id || selectedChat.jobId || '');
-      const matchId = chatJid && (String(j._id) === chatJid || String(j.id) === chatJid);
-      const matchTitleCompany = j.title?.trim().toLowerCase() === selectedChat.jobTitle?.trim().toLowerCase() && 
-                                j.company?.trim().toLowerCase() === selectedChat.companyName?.trim().toLowerCase();
-      return matchId || matchTitleCompany;
-    }) ||
-    selectedChat
-  ) : null;
+  const currentActiveJob = React.useMemo(() => {
+    if (!selectedChat) return null;
+    const directAppJob = applicationsMap[selectedChat.applicationId] || selectedChat.job;
+    const chatJid = String(directAppJob?._id || directAppJob?.id || selectedChat.jobId?._id || selectedChat.jobId || '');
+    
+    const matchedFullJob = allJobsList.find(j => {
+      if (chatJid && (String(j._id) === chatJid || String(j.id) === chatJid)) return true;
+      const titleMatch = j.title?.trim().toLowerCase() === selectedChat.jobTitle?.trim().toLowerCase();
+      const compMatch = j.company?.trim().toLowerCase() === selectedChat.companyName?.trim().toLowerCase();
+      return titleMatch && compMatch;
+    });
+
+    if (matchedFullJob) return matchedFullJob;
+    if (directAppJob && typeof directAppJob === 'object') return directAppJob;
+    return selectedChat;
+  }, [selectedChat, applicationsMap, allJobsList]);
 
   const currentJobId = currentActiveJob?._id || currentActiveJob?.id || selectedChat?.jobId?._id || selectedChat?.jobId;
+
+  const isJobSaved = (job) => {
+    if (!job) return false;
+    const targetId = String(job._id || job.id || '');
+    return savedJobs.some(s => String(s?._id || s?.id || s) === targetId);
+  };
+
+  const handleToggleSaveJob = (job) => {
+    if (!job) return;
+    const targetId = String(job._id || job.id || '');
+    setSavedJobs(prev => {
+      const exists = prev.some(s => String(s?._id || s?.id || s) === targetId);
+      const next = exists
+        ? prev.filter(s => String(s?._id || s?.id || s) !== targetId)
+        : [...prev, targetId];
+      setEmployeeStoredValue('savedJobs', next);
+      return next;
+    });
+  };
+
 
   const getJobTypeDisplay = (job, chat) => {
     if (job?.details?.employmentType) return job.details.employmentType;
@@ -812,7 +838,7 @@ const EmployeeMessages = () => {
                   <div className="flex items-center gap-2 shrink-0">
                     <button 
                       type="button"
-                      onClick={handleViewJob}
+                      onClick={() => setIsJobDrawerOpen(true)}
                       className="px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
                       title="View Job"
                     >
@@ -820,20 +846,6 @@ const EmployeeMessages = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                       <span>View Job</span>
-                    </button>
-
-                    <button 
-                      type="button"
-                      onClick={() => setIsJobDetailsOpen(true)}
-                      className="px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-                      title="Job Details"
-                    >
-                      <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="9" strokeWidth="2" />
-                        <line x1="12" y1="8" x2="12" y2="8.01" strokeWidth="2.5" strokeLinecap="round" />
-                        <line x1="12" y1="11" x2="12" y2="16" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
-                      <span>Job Details</span>
                     </button>
 
                     {selectedChat.isBlocked ? (
@@ -1082,140 +1094,18 @@ const EmployeeMessages = () => {
         </div>
       )}
 
-      {/* ========================================================
-          MODAL / DRAWER FOR FULL JOB DETAILS
-         ======================================================== */}
-      {isJobDetailsOpen && selectedChat && (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div 
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
-            onClick={() => setIsJobDetailsOpen(false)}
-          ></div>
-          
-          <div className="relative bg-white w-full sm:max-w-lg max-h-[88vh] rounded-t-3xl sm:rounded-3xl shadow-2xl z-[210] overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 sm:zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-white shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">Job Details</h2>
-              </div>
-              <button 
-                onClick={() => setIsJobDetailsOpen(false)}
-                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-xl transition-colors"
-                title="Close"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-              </button>
-            </div>
-            
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 bg-slate-50/50">
-              {/* Job Summary Card */}
-              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs">
-                <div className="flex items-start gap-3.5 mb-3.5">
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${getCompanyGradient(selectedChat.companyName)} flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0`}>
-                    {selectedChat.companyName?.charAt(0)?.toUpperCase() || 'C'}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                      {selectedChat.jobTitle || currentActiveJob?.title || 'Job Title'}
-                    </h3>
-                    <p className="text-xs sm:text-sm font-semibold text-emerald-700 mt-0.5">
-                      {selectedChat.companyName || currentActiveJob?.company}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Basic Details 2x2 Grid */}
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
-                  {/* Location */}
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Location</span>
-                    <span className="font-semibold text-slate-800 flex items-center gap-1 truncate">
-                      <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
-                      {currentActiveJob?.location || selectedChat.location || 'Abu Dhabi'}
-                    </span>
-                  </div>
-
-                  {/* Salary */}
-                  <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/70">
-                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block mb-0.5">Salary</span>
-                    <span className="font-bold text-emerald-900 truncate block">
-                      {currentActiveJob?.salary || currentActiveJob?.details?.salary || selectedChat.salary || 'Competitive'}
-                    </span>
-                  </div>
-
-                  {/* Job Type */}
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Job Type</span>
-                    <span className="font-semibold text-slate-800 truncate block">
-                      {getJobTypeDisplay(currentActiveJob, selectedChat)}
-                    </span>
-                  </div>
-
-                  {/* Experience */}
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Experience</span>
-                    <span className="font-semibold text-slate-800 truncate block">
-                      {currentActiveJob?.details?.experience || 'Any experience'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Role Overview */}
-              <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2">About The Role</h4>
-                <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
-                  {cleanHtmlText(currentActiveJob?.details?.aboutRole || currentActiveJob?.description) || `You have applied for the ${selectedChat.jobTitle} position at ${selectedChat.companyName}. You can discuss details, schedule interviews, or ask questions directly with the recruiter.`}
-                </p>
-              </div>
-
-              {/* Skills Required if available */}
-              {(currentActiveJob?.details?.skillsRequired || currentActiveJob?.skills) && (
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2">Skills & Requirements</h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    {cleanHtmlText(currentActiveJob?.details?.skillsRequired || currentActiveJob?.skills)}
-                  </p>
-                </div>
-              )}
-
-              {/* Recruiter channel banner */}
-              <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3.5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
-                  <h4 className="font-bold text-emerald-900 text-xs">Direct Recruiter Conversation</h4>
-                </div>
-                <p className="text-xs text-emerald-800 leading-relaxed">
-                  You are chatting directly with the recruitment team at <strong>{selectedChat.companyName}</strong>.
-                </p>
-              </div>
-            </div>
-            
-            {/* Modal Footer Buttons */}
-            <div className="p-3.5 sm:p-4 border-t border-slate-100 bg-white shrink-0 flex items-center gap-3">
-              <button 
-                type="button"
-                onClick={handleViewJob} 
-                className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 rounded-xl text-sm transition-all shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                <span>View Job</span>
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => setIsJobDetailsOpen(false)} 
-                className="flex-1 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 rounded-xl text-sm transition-colors flex items-center justify-center text-center cursor-pointer active:scale-95"
-              >
-                Back to Chat
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Right Sidebar Job Details Drawer Preview */}
+      {currentActiveJob && (
+        <SjJobDetailsDrawer
+          job={currentActiveJob}
+          isOpen={isJobDrawerOpen}
+          onClose={() => setIsJobDrawerOpen(false)}
+          isApplied={true}
+          isSaved={isJobSaved(currentActiveJob)}
+          onToggleSave={() => handleToggleSaveJob(currentActiveJob)}
+          variant="sidebar"
+          backLabel="Home"
+        />
       )}
     </div>
   );

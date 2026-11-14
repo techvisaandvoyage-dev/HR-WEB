@@ -148,6 +148,14 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
   const displayCompany = employerProfile?.companyName || 'Employer';
   const displayInitial = ((employerProfile?.fullName || employerProfile?.companyName || displayName || 'C')[0] || 'C').toUpperCase();
 
+  const isReturningEmployer = (() => {
+    try {
+      return localStorage.getItem('hasEmployerLoggedInBefore') === 'true';
+    } catch (_) {
+      return false;
+    }
+  })();
+
   return (
     <div className="min-h-screen bg-white flex font-sans text-[#101828]">
       {/* Mobile Drawer Overlay / Scrim */}
@@ -255,7 +263,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
 
             <div>
               <h1 className="text-[22px] sm:text-[25px] lg:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2] flex items-center gap-2.5 flex-wrap">
-                <span>{portalConfig?.dashboard?.welcomePrefix || 'Welcome back,'} {displayName}</span>
+                <span>{portalConfig?.dashboard?.welcomePrefix || (isReturningEmployer ? 'Welcome back,' : 'Welcome,')} {displayName}</span>
                 {employerProfile?.isConsultant === true && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#ecfdf3] text-[#15803d] border border-[#eaecf0]">
                     Consultant
