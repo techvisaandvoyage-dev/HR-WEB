@@ -6,6 +6,7 @@ import SjGuestHeader from '../../sj-home/SjGuestHeader';
 import SjJobDetailsDrawer from '../../sj-home/SjJobDetailsDrawer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
 import { formatJobLocation } from '../../../data/preferredLocations';
+import { formatSalary } from '../../../utils/salaryUtils';
 import './MyJobs.css';
 
 function getCandidateProfile() {
@@ -408,7 +409,7 @@ const MyJobs = ({ jobs = [] }) => {
               <div className="myjobs-list">
                 {savedList.map((job) => {
                   const appliedData = appliedJobs.find(a => String(a.id) === String(job.id || job._id));
-                  const displaySalary = job.salary || job.salaryNote || job.details?.salaryNote;
+                  const displaySalary = formatSalary(job.salary, job.salaryNote || job.details?.salaryNote);
 
                   return (
                     <div 
@@ -531,7 +532,7 @@ const MyJobs = ({ jobs = [] }) => {
                     details: {}
                   };
 
-                  const displaySalary = job.salary || job.salaryNote || job.details?.salaryNote;
+                  const displaySalary = formatSalary(job.salary, job.salaryNote || job.details?.salaryNote);
 
                   return (
                     <div 

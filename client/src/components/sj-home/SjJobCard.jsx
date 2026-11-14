@@ -2,6 +2,7 @@ import React from 'react';
 import './jobFeed.css';
 import SjAvatar from './primitives/SjAvatar';
 import SjPill from './primitives/SjPill';
+import { formatSalary } from '../../utils/salaryUtils';
 
 export default function SjJobCard({
   job,
@@ -20,18 +21,10 @@ export default function SjJobCard({
   const openings = job.openings || job.details?.openings || job.n || 1;
   const title = job.title || job.t || 'Job Title';
 
-  const formatSalary = (val) => {
-    if (!val) return 'As per industry standards';
-    return String(val)
-      .replace(/lacs\s*pa/gi, 'PA')
-      .replace(/lac\s*pa/gi, 'PA')
-      .replace(/lpa/gi, 'PA')
-      .replace(/per\s*month/gi, 'PM')
-      .replace(/per\s*hour/gi, 'PH')
-      .trim();
-  };
-
-  const salaryDisplay = formatSalary(job.salary || job.pay || job.details?.salary);
+  const salaryDisplay = formatSalary(
+    job.salary || job.pay || job.details?.salary,
+    job.salaryNote || job.payNote || job.details?.salaryNote
+  );
 
   const handleRowClick = () => {
     if (onSelectJob) onSelectJob(job);

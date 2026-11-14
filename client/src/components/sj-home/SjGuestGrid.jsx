@@ -1,12 +1,14 @@
 import React from 'react';
 import './guestAndFooter.css';
+import { formatSalary as formatCleanSalary } from '../../utils/salaryUtils';
 
 /**
  * Format salary from various job schema structures into a clean string.
  */
 function formatSalary(job) {
-  if (job?.salary) return job.salary;
-  if (job?.pay) return job.pay;
+  if (job?.salary || job?.pay || job?.salaryNote) {
+    return formatCleanSalary(job?.salary || job?.pay, job?.salaryNote);
+  }
   const min = job?.minSalary || job?.salaryMin;
   const max = job?.maxSalary || job?.salaryMax;
   if (min && max) {

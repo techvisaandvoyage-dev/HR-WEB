@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import EmployeeNavbar from '../common/EmployeeNavbar';
+import SjLoggedInHeader from '../sj-home/SjLoggedInHeader';
+import SjGuestHeader from '../sj-home/SjGuestHeader';
 import ImageCropperModal from '../common/ImageCropperModal';
 import VideoPlayer from '../common/VideoPlayer';
 import AccountSecuritySection from './AccountSecuritySection';
@@ -208,6 +209,44 @@ const EmployeeProfile = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [cmsConfig, setCmsConfig] = useState(null);
 
+  // Profile and login state for header matching Homepage, MyJobs and Messages
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => Boolean(localStorage.getItem('employeeToken') || localStorage.getItem('token'))
+  );
+  const [homepageConfig, setHomepageConfig] = useState(null);
+  const [effectiveJobs, setEffectiveJobs] = useState([]);
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+
+  // Header search state (navigates to /employee on search)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
+  const [searchExperience, setSearchExperience] = useState('All');
+  const [searchPostingDate, setSearchPostingDate] = useState('Any time');
+
+  const handleHeaderSearch = (q, loc, exp, date) => {
+    navigate('/employee', {
+      state: {
+        searchFilters: {
+          keyword: q !== undefined ? q : searchQuery,
+          location: loc !== undefined ? loc : searchLocation,
+          experience: exp !== undefined ? exp : searchExperience,
+          postingDate: date !== undefined ? date : searchPostingDate,
+        }
+      }
+    });
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('employeeToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('employeeUser');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('userRole');
+    setIsLoggedIn(false);
+    navigate('/employee');
+  };
+
   const showToast = (text) => {
     setToastMessage(text);
     setTimeout(() => {
@@ -250,14 +289,18 @@ const EmployeeProfile = () => {
     }
   }, [location.state, location.search, location.hash]);
 
-  // Fetch CMS config
+  // Fetch CMS config and navbar data
   useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const fetchCms = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/homepage`);
+        const res = await fetch(`${apiUrl}/api/homepage`);
         const data = await res.json();
-        if (data.success && data.data?.employeeOnboarding) {
-          setCmsConfig(data.data.employeeOnboarding);
+        if (data.success && data.data) {
+          setHomepageConfig(data.data);
+          if (data.data.employeeOnboarding) {
+            setCmsConfig(data.data.employeeOnboarding);
+          }
         } else if (data?.employeeOnboarding) {
           setCmsConfig(data.employeeOnboarding);
         }
@@ -266,6 +309,36 @@ const EmployeeProfile = () => {
       }
     };
     fetchCms();
+
+    // Saved jobs count
+    try {
+      const saved = JSON.parse(localStorage.getItem('savedJobs') || '[]');
+      if (Array.isArray(saved)) setSavedJobsCount(saved.length);
+    } catch (_) {}
+
+    // Jobs for autocomplete
+    fetch(`${apiUrl}/api/jobs`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const jList = Array.isArray(json) ? json : json?.jobs || json?.data || [];
+        setEffectiveJobs(jList);
+      })
+      .catch(() => {});
+
+    // Unread messages count
+    const token = localStorage.getItem('employeeToken');
+    if (token) {
+      fetch(`${apiUrl}/api/messages/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          if (json?.count > 0 || json?.unreadCount > 0) {
+            setHasUnreadMessages(true);
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // Profile edit controls use the same config as onboarding. Update an open
@@ -917,21 +990,57 @@ const EmployeeProfile = () => {
     : [];
 
   return (
-    <div className="min-h-screen sj-profile flex flex-col pb-16">
-      {/* Navbar */}
-      <EmployeeNavbar />
+    <div className="min-h-screen sj-profile sj-theme flex flex-col pb-16 bg-[#f8fafc] text-[var(--sj-ink)] font-sjsans selection:bg-[var(--sj-accS)] selection:text-[var(--sj-ink)]">
+      {/* Modern Navbar matching Homepage, MyJobs and Messages */}
+      {isLoggedIn ? (
+        <SjLoggedInHeader
+          logoConfig={homepageConfig?.logo}
+          searchTerm={searchQuery}
+          onSearchTermChange={(val) => {
+            setSearchQuery(val);
+            handleHeaderSearch(val, searchLocation, searchExperience, searchPostingDate);
+          }}
+          searchLocation={searchLocation}
+          onSearchLocationChange={(val) => {
+            setSearchLocation(val);
+            handleHeaderSearch(searchQuery, val, searchExperience, searchPostingDate);
+          }}
+          experience={searchExperience}
+          onExperienceChange={(val) => {
+            setSearchExperience(val);
+            handleHeaderSearch(searchQuery, searchLocation, val, searchPostingDate);
+          }}
+          postingDate={searchPostingDate}
+          onPostingDateChange={(val) => {
+            setSearchPostingDate(val);
+            handleHeaderSearch(searchQuery, searchLocation, searchExperience, val);
+          }}
+          jobs={effectiveJobs}
+          userProfile={formData}
+          savedCount={savedJobsCount}
+          hasUnreadMessages={hasUnreadMessages}
+          onNavigateSaved={() => navigate('/employee/myjobs?tab=saved')}
+          onNavigateApplied={() => navigate('/employee/myjobs?tab=applied')}
+          onNavigateMessages={() => navigate('/employee/messages')}
+          onNavigateProfile={() => {
+            setActiveTab('basic');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onNavigateSecurity={() => handleTabClick('security')}
+          onSignOut={handleSignOut}
+          onLogoClick={() => navigate('/employee')}
+        />
+      ) : (
+        <SjGuestHeader
+          logoConfig={homepageConfig?.logo}
+          onOpenEmployeeLogin={() => navigate('/employee')}
+          onOpenEmployerLogin={() => navigate('/employer')}
+          onLogoClick={() => navigate('/employee')}
+        />
+      )}
 
       {/* Main Wrap Container */}
-      <main className="max-w-[1180px] w-full mx-auto px-4 sm:px-6 pt-5">
-        {/* Back to Home Link */}
-        <button
-          type="button"
-          onClick={() => navigate('/employee')}
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 font-semibold text-sm transition-colors mb-4 cursor-pointer"
-        >
-          <IconBack className="w-4 h-4" />
-          <span>Back to Home</span>
-        </button>
+      <main className="max-w-[1180px] w-full mx-auto px-4 sm:px-6 pt-6">
 
         {/* Hero Banner Component (Circular Avatar as requested) */}
         <ProfileHero

@@ -5,6 +5,7 @@ import SjAvatar from './primitives/SjAvatar';
 import SjPill from './primitives/SjPill';
 import SjButton from './primitives/SjButton';
 import SjJobDetailsContent from './SjJobDetailsContent';
+import { formatSalary } from '../../utils/salaryUtils';
 
 const sanitizeHtml = (html) => {
   if (!html) return '';
@@ -168,19 +169,8 @@ export default function SjJobDetailsDrawer({
   const employmentType = job.employmentType || job.details?.employmentType || job.type || 'Full-time';
   const workplaceMode = job.workplaceMode || job.details?.workplaceMode || job.wp || 'On-site';
 
-  const formatSalary = (val) => {
-    if (!val) return 'As per industry standards';
-    return String(val)
-      .replace(/lacs\s*pa/gi, 'PA')
-      .replace(/lac\s*pa/gi, 'PA')
-      .replace(/lpa/gi, 'PA')
-      .replace(/per\s*month/gi, 'PM')
-      .replace(/per\s*hour/gi, 'PH')
-      .trim();
-  };
-
-  const salaryDisplay = formatSalary(job.salary || job.pay || job.details?.salary);
   const salaryNote = job.salaryNote || job.payNote || job.details?.salaryNote || '';
+  const salaryDisplay = formatSalary(job.salary || job.pay || job.details?.salary, salaryNote);
 
   const skills = Array.isArray(job.skills)
     ? job.skills

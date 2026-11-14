@@ -57,29 +57,43 @@ export const isExperienceMatch = (jobExp, filterExp) => {
   if (!filterExp || filterExp === 'All' || filterExp === 'Any' || filterExp === 'Any Experience') {
     return true;
   }
+  const filterList = Array.isArray(filterExp)
+    ? filterExp.filter(Boolean)
+    : (typeof filterExp === 'string' && filterExp.trim()
+        ? filterExp.split(',').map((s) => s.trim()).filter(Boolean)
+        : []);
+
+  if (filterList.length === 0 || filterList.includes('All') || filterList.includes('Any Experience') || filterList.includes('Any')) {
+    return true;
+  }
   if (!jobExp) return false;
 
   const jobExpStr = String(jobExp).trim();
-  const filterExpStr = String(filterExp).trim();
 
-  // Direct substring / equality match check
-  if (jobExpStr.toLowerCase().includes(filterExpStr.toLowerCase())) {
-    return true;
-  }
-
-  const fRange = parseExperienceRange(filterExpStr);
-  const jRange = parseExperienceRange(jobExpStr);
-
-  if (!fRange) return true;
-
-  if (!jRange) {
-    // If job experience is 'Not specified' or 'Any'
-    if (jobExpStr.toLowerCase().includes('any') || jobExpStr.toLowerCase().includes('not specified')) {
+  return filterList.some((singleFilter) => {
+    const singleFilterStr = String(singleFilter).trim();
+    if (!singleFilterStr || singleFilterStr === 'All' || singleFilterStr === 'Any' || singleFilterStr === 'Any Experience') {
       return true;
     }
-    return false;
-  }
+    // Direct substring / equality match check
+    if (jobExpStr.toLowerCase().includes(singleFilterStr.toLowerCase())) {
+      return true;
+    }
 
-  // Two ranges [A, B] and [C, D] overlap if max(A, C) <= min(B, D)
-  return Math.max(fRange.min, jRange.min) <= Math.min(fRange.max, jRange.max);
+    const fRange = parseExperienceRange(singleFilterStr);
+    const jRange = parseExperienceRange(jobExpStr);
+
+    if (!fRange) return true;
+
+    if (!jRange) {
+      // If job experience is 'Not specified' or 'Any'
+      if (jobExpStr.toLowerCase().includes('any') || jobExpStr.toLowerCase().includes('not specified')) {
+        return true;
+      }
+      return false;
+    }
+
+    // Two ranges [A, B] and [C, D] overlap if max(A, C) <= min(B, D)
+    return Math.max(fRange.min, jRange.min) <= Math.min(fRange.max, jRange.max);
+  });
 };

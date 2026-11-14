@@ -3,6 +3,7 @@ import './headers.css';
 import SjProfileDropdown from './SjProfileDropdown';
 import LocationAutocomplete from '../common/LocationAutocomplete';
 import BrandLogo from '../common/BrandLogo';
+import { preferredLocationOptions } from '../../data/preferredLocations';
 
 const EXPERIENCE_OPTIONS = [
   { label: 'Any Experience', value: 'All' },
@@ -37,17 +38,80 @@ function TopbarDropdown({
   isOpen,
   onToggle,
   onClose,
+  multiple = true,
 }) {
-  const displayLabel = value === 'All' || value === 'Any time' ? placeholder : value;
+  const selectedValues = useMemo(() => {
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === 'string' && value && value !== 'All' && value !== 'Any time') {
+      return value.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [value]);
+
+  const displayLabel = useMemo(() => {
+    if (!multiple) {
+      return value === 'All' || value === 'Any time' ? placeholder : value;
+    }
+    if (selectedValues.length === 0) return placeholder;
+    if (selectedValues.length === 1) return selectedValues[0];
+    return `${selectedValues[0]} +${selectedValues.length - 1}`;
+  }, [multiple, value, selectedValues, placeholder]);
+
+  const isAllOption = (optVal) => optVal === 'All' || optVal === 'Any time';
+
+  const isSelected = (optVal) => {
+    if (isAllOption(optVal)) {
+      return selectedValues.length === 0 || selectedValues.includes(optVal);
+    }
+    return selectedValues.includes(optVal);
+  };
+
+  const handleSelectOption = (optVal) => {
+    if (!multiple) {
+      onChange?.(optVal);
+      onClose();
+      return;
+    }
+
+    if (isAllOption(optVal)) {
+      onChange?.(optVal === 'All' ? 'All' : 'Any time');
+      return;
+    }
+
+    let next;
+    if (selectedValues.includes(optVal)) {
+      next = selectedValues.filter((v) => v !== optVal);
+    } else {
+      next = [...selectedValues, optVal];
+    }
+
+    if (next.length === 0) {
+      onChange?.(options[0]?.value || (placeholder === 'Date Posted' ? 'Any time' : 'All'));
+    } else {
+      onChange?.(next.join(', '));
+    }
+  };
+
+  const handleClearAll = (e) => {
+    e.stopPropagation();
+    onChange?.(options[0]?.value || (placeholder === 'Date Posted' ? 'Any time' : 'All'));
+  };
 
   return (
     <div className="relative font-sans h-full flex items-center border-r border-gray-300 shrink-0">
       <button
         type="button"
         onClick={onToggle}
-        className="px-3.5 py-1.5 h-full flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900 bg-transparent cursor-pointer font-medium"
+        className={`px-3.5 py-1.5 h-full flex items-center gap-1.5 text-sm bg-transparent cursor-pointer font-medium transition-colors ${
+          selectedValues.length > 0 ? 'text-emerald-700 font-bold' : 'text-gray-700 hover:text-gray-900'
+        }`}
       >
         <span className="truncate max-w-[125px] text-left">{displayLabel}</span>
+        {selectedValues.length > 1 && (
+          <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold flex items-center justify-center shrink-0">
+            {selectedValues.length}
+          </span>
+        )}
         <svg
           className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
@@ -59,39 +123,315 @@ function TopbarDropdown({
       </button>
 
       {isOpen && (
-        <div className="sj-search-dropdown-menu">
-          <div className="sj-search-dropdown-header">
-            {headerTitle || placeholder} ({options.length})
-          </div>
-          {options.map((opt) => {
-            const isSelected = opt.value === value;
-            return (
-              <div
-                key={opt.value}
-                onClick={() => {
-                  onChange?.(opt.value);
-                  onClose();
-                }}
-                className={`sj-search-dropdown-item ${isSelected ? 'is-selected' : ''}`}
+        <div className="sj-search-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+          <div className="sj-search-dropdown-header flex items-center justify-between">
+            <span>
+              {headerTitle || placeholder} ({options.length})
+            </span>
+            {multiple && selectedValues.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-transparent cursor-pointer normal-case tracking-normal hover:underline"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="sj-search-dropdown-icon">
-                    {icon || (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
+                Clear all
+              </button>
+            )}
+          </div>
+          <div className="max-h-[220px] overflow-y-auto">
+            {options.map((opt) => {
+              const selected = isSelected(opt.value);
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => handleSelectOption(opt.value)}
+                  className={`sj-search-dropdown-item ${selected ? 'is-selected' : ''}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="sj-search-dropdown-icon">
+                      {icon || (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="truncate">{opt.label}</span>
                   </div>
-                  <span className="truncate">{opt.label}</span>
+                  {selected && (
+                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
                 </div>
-                {isSelected && (
-                  <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          {multiple && (
+            <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-500 pl-2">
+                {selectedValues.length === 0 ? 'All included' : `${selectedValues.length} selected`}
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                Apply
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopbarLocationDropdown({
+  value,
+  onChange,
+  isOpen,
+  onToggle,
+  onClose,
+}) {
+  const [query, setQuery] = useState('');
+  const [apiSuggestions, setApiSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const selectedLocations = useMemo(() => {
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === 'string' && value.trim() && value.trim().toLowerCase() !== 'all') {
+      return value.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [value]);
+
+  useEffect(() => {
+    if (!query || query.trim().length < 2) {
+      setApiSuggestions([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const fetchLocations = async () => {
+      try {
+        const res = await fetch(
+          `https://api.locationiq.com/v1/autocomplete.php?key=pk.7314b93604200f3007d3b610030e6f1b&q=${encodeURIComponent(
+            query
+          )}&limit=10&tag=place:city,place:town,place:village,place:state,place:suburb,place:hamlet&countrycodes=in`
+        );
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setApiSuggestions(data);
+        } else {
+          setApiSuggestions([]);
+        }
+      } catch {
+        setApiSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    const timer = setTimeout(fetchLocations, 200);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const defaultLocations = [
+    'Remote',
+    'Anywhere in India',
+    'Delhi NCR',
+    'Bangalore',
+    'Mumbai',
+    'Hyderabad',
+    'Pune',
+    'Chennai',
+    'Kolkata',
+    'Noida',
+    'Gurugram',
+    'Ahmedabad',
+    'Jaipur',
+    'Chandigarh',
+  ];
+
+  const displayedOptions = useMemo(() => {
+    if (query.trim().length >= 2 && apiSuggestions.length > 0) {
+      return apiSuggestions.map((item) => {
+        const address = item.address || {};
+        const main = address.city || address.town || address.village || address.suburb || address.state_district || item.display_name.split(',')[0];
+        const state = address.state || '';
+        const label = state && main !== state ? `${main}, ${state}` : main;
+        return { label, value: label };
+      });
+    }
+    if (query.trim().length > 0) {
+      return (preferredLocationOptions || [])
+        .filter((opt) => opt.label.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 15);
+    }
+    return defaultLocations.map((loc) => ({ label: loc, value: loc }));
+  }, [query, apiSuggestions]);
+
+  const handleToggleLoc = (locName) => {
+    const isIndia = (v) => v.toLowerCase().includes('anywhere in india');
+    let next;
+    if (selectedLocations.some((l) => l.toLowerCase() === locName.toLowerCase())) {
+      next = selectedLocations.filter((l) => l.toLowerCase() !== locName.toLowerCase());
+    } else {
+      if (isIndia(locName)) {
+        next = [locName];
+      } else {
+        next = [...selectedLocations.filter((l) => !isIndia(l)), locName];
+      }
+    }
+    onChange?.(next.length === 0 ? '' : next.join(', '));
+  };
+
+  const handleRemovePill = (e, locName) => {
+    e.stopPropagation();
+    const next = selectedLocations.filter((l) => l.toLowerCase() !== locName.toLowerCase());
+    onChange?.(next.length === 0 ? '' : next.join(', '));
+  };
+
+  const handleClearAll = (e) => {
+    e.stopPropagation();
+    onChange?.('');
+    setQuery('');
+  };
+
+  return (
+    <div className="flex-1 flex items-center px-3 h-full min-w-0 relative">
+      <svg className="w-5 h-5 text-gray-400 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+
+      {/* Trigger Area */}
+      <div
+        className="flex-1 flex items-center gap-1.5 min-w-0 cursor-pointer h-full"
+        onClick={onToggle}
+      >
+        {selectedLocations.length === 0 ? (
+          <span className="text-sm text-gray-500 truncate">City, state</span>
+        ) : selectedLocations.length === 1 ? (
+          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-200 shrink-0 max-w-[130px] truncate">
+            <span className="truncate">{selectedLocations[0]}</span>
+            <button
+              type="button"
+              onClick={(e) => handleRemovePill(e, selectedLocations[0])}
+              className="text-emerald-600 hover:text-emerald-900 ml-0.5 cursor-pointer"
+            >
+              &times;
+            </button>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-200 shrink-0 max-w-[150px] truncate">
+            <span className="truncate">{selectedLocations[0]}</span>
+            <span className="bg-emerald-200/80 text-emerald-900 rounded-full px-1 text-[10px]">
+              +{selectedLocations.length - 1}
+            </span>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-emerald-600 hover:text-emerald-900 ml-0.5 cursor-pointer"
+              title="Clear all locations"
+            >
+              &times;
+            </button>
+          </span>
+        )}
+      </div>
+
+      {/* Popover Dropdown Menu */}
+      {isOpen && (
+        <div className="sj-search-dropdown-menu w-[310px] left-0" onClick={(e) => e.stopPropagation()}>
+          <div className="sj-search-dropdown-header flex items-center justify-between">
+            <span>Location ({selectedLocations.length > 0 ? `${selectedLocations.length} selected` : 'Multi-select'})</span>
+            {selectedLocations.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-transparent cursor-pointer normal-case tracking-normal hover:underline"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          {/* Search box inside popover */}
+          <div className="p-2 border-b border-gray-100 bg-gray-50/50">
+            <div className="relative flex items-center">
+              <svg className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search city, state or remote..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && query.trim()) {
+                    e.preventDefault();
+                    handleToggleLoc(query.trim());
+                    setQuery('');
+                  }
+                }}
+                className="w-full pl-8 pr-7 py-1.5 bg-white border border-gray-200 rounded-lg text-xs outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-medium"
+                autoFocus
+              />
+              {isLoading && (
+                <div className="w-3 h-3 border-2 border-gray-300 border-t-emerald-500 rounded-full animate-spin absolute right-2.5" />
+              )}
+            </div>
+          </div>
+
+          {/* Options List */}
+          <div className="max-h-[200px] overflow-y-auto">
+            {displayedOptions.map((opt) => {
+              const optVal = opt.value || opt.label;
+              const isChecked = selectedLocations.some(
+                (l) => l.toLowerCase() === optVal.toLowerCase()
+              );
+              return (
+                <div
+                  key={optVal}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleLoc(optVal);
+                  }}
+                  className={`sj-search-dropdown-item ${isChecked ? 'is-selected' : ''}`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="sj-search-dropdown-icon">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <span className="truncate text-xs">{opt.label}</span>
+                  </div>
+                  {isChecked && (
+                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer with Apply button */}
+          <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-500 pl-2">
+              {selectedLocations.length === 0 ? 'All locations' : `${selectedLocations.length} selected`}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            >
+              Apply
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -312,28 +652,15 @@ export default function SjLoggedInHeader({
             )}
           </div>
 
-          <div
-            className="flex-1 flex items-center px-3 h-full min-w-0"
-            onClick={() => setOpenDropdown(null)}
-          >
-            <svg className="w-5 h-5 text-gray-400 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <LocationAutocomplete
-              value={searchLocation}
-              onChange={(val) => {
-                setOpenDropdown(null);
-                onSearchLocationChange?.(typeof val === 'object' && val !== null ? (val.label || val.value || '') : (val || ''));
-              }}
-              onSelect={(val) => {
-                setOpenDropdown(null);
-                onSearchLocationChange?.(val);
-              }}
-              placeholder="City, state"
-              className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm text-gray-900 placeholder-gray-500 shadow-none ring-0"
-            />
-          </div>
+          <TopbarLocationDropdown
+            value={searchLocation}
+            onChange={(val) => {
+              onSearchLocationChange?.(val);
+            }}
+            isOpen={openDropdown === 'location'}
+            onToggle={() => setOpenDropdown((prev) => (prev === 'location' ? null : 'location'))}
+            onClose={() => setOpenDropdown(null)}
+          />
         </div>
 
         {/* Action Buttons */}

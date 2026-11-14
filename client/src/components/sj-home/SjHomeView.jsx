@@ -27,6 +27,7 @@ import JobApplicationModal from '../employee/JobApplicationModal';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/employeeStorage';
 import { injectThemeTokens } from '../../utils/themeInjector';
 import { isExperienceMatch } from '../../utils/experienceMatcher';
+import { isLocationMatch } from '../../data/preferredLocations';
 
 /**
  * Helper to parse candidate profile from localStorage.
@@ -310,26 +311,69 @@ export default function SjHomeView({
         if (!t.includes(q) && !c.includes(q) && !s.includes(q)) return false;
       }
 
-      // 2. Location Query
-      if (searchLocation.trim()) {
-        const loc = searchLocation.toLowerCase().trim();
-        const jobLoc = (job.location || job.details?.workLocation || job.workLocation || '').toLowerCase();
-        if (!jobLoc.includes(loc)) return false;
-      }
+      // 2. Location Query (supports single string, array, or comma-separated locations)
+      const locList = Array.isArray(searchLocation)
+        ? searchLocation.filter(Boolean)
+        : (typeof searchLocation === 'string' && searchLocation.trim()
+            ? searchLocation.split(',').map((s) => s.trim()).filter(Boolean)
+            : []);
 
-      // 3. Experience Filter
-      if (searchExperience && searchExperience !== 'All') {
-        const jobExp = job.details?.experience || job.experience || '';
-        if (!isExperienceMatch(jobExp, searchExperience)) {
-          return false;
+      if (locList.length > 0 && !locList.includes('All')) {
+        try {
+          const matchesAnyLoc = locList.some((singleLoc) =>
+            isLocationMatch(
+              job.location || job.employerId?.location,
+              singleLoc,
+              job.details?.workLocation,
+              job.workplaceMode || job.details?.workplaceMode,
+              job
+            )
+          );
+          if (!matchesAnyLoc) return false;
+        } catch (err) {
+          console.warn('Location filter check error:', err);
         }
       }
 
-      // 3b. Posting Date Filter
-      if (searchPostingDate && searchPostingDate !== 'Any time') {
-        const ageDays = searchPostingDate.includes('24') ? 1 : searchPostingDate.includes('3') ? 3 : searchPostingDate.toLowerCase().includes('week') ? 7 : 30;
-        const postedAt = new Date(job.createdAt || job.date || 0).getTime();
-        if (!postedAt || Date.now() - postedAt > ageDays * 24 * 60 * 60 * 1000) return false;
+      // 3. Experience Filter (supports single or multiple selected experience ranges)
+      if (searchExperience && searchExperience !== 'All') {
+        try {
+          const jobExp = job.details?.experience || job.experience || '';
+          if (!isExperienceMatch(jobExp, searchExperience)) {
+            return false;
+          }
+        } catch (err) {
+          console.warn('Experience filter check error:', err);
+        }
+      }
+
+      // 3b. Posting Date Filter (supports single or multiple selected dates)
+      const dateList = Array.isArray(searchPostingDate)
+        ? searchPostingDate.filter(Boolean)
+        : (typeof searchPostingDate === 'string' && searchPostingDate.trim() && searchPostingDate !== 'Any time'
+            ? searchPostingDate.split(',').map((s) => s.trim()).filter(Boolean)
+            : []);
+
+      if (dateList.length > 0 && !dateList.includes('Any time')) {
+        try {
+          const rawDate = job.createdAt || job.date || job.postedDate || job.updatedAt || 0;
+          const postedAt = new Date(rawDate).getTime();
+          if (postedAt && !isNaN(postedAt)) {
+            const getDays = (opt) => {
+              const str = String(opt).toLowerCase();
+              if (str.includes('24') || str.includes('1 day')) return 1;
+              if (str.includes('3')) return 3;
+              if (str.includes('week') || str.includes('7')) return 7;
+              if (str.includes('month') || str.includes('30')) return 30;
+              return 365;
+            };
+
+            const maxAllowedDays = Math.max(...dateList.map(getDays));
+            if (Date.now() - postedAt > maxAllowedDays * 24 * 60 * 60 * 1000) return false;
+          }
+        } catch (err) {
+          console.warn('Date filter check error:', err);
+        }
       }
 
       // 4. Remote Filter

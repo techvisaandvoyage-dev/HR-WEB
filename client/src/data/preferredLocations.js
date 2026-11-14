@@ -143,157 +143,7 @@ export const isEmployeePreferredLocationMatch = (emp, searchLocation = '') => {
   return cleanSearchParts.some(part => part.length > 2 && empPrefLoc.includes(part));
 };
 
-export const isLocationMatch = (jobLocation = '', searchLocation = '', workLocation = '', workplaceMode = '', job = null) => {
-  if (!searchLocation || !searchLocation.trim() || searchLocation.trim().toLowerCase() === 'all') return true;
-
-  // Handle object as first arg if passed
-  let jobObj = job;
-  let jobLoc = '';
-  let workLoc = '';
-  let wpMode = '';
-
-  if (typeof jobLocation === 'object' && jobLocation !== null) {
-    jobObj = jobLocation;
-    jobLoc = String(jobObj.location || jobObj.employerId?.location || '').trim();
-    workLoc = String(jobObj.details?.workLocation || '').trim();
-    wpMode = String(jobObj.workplaceMode || jobObj.details?.workplaceMode || '').trim();
-  } else {
-    jobLoc = String(jobLocation || '').trim();
-    workLoc = String(workLocation || '').trim();
-    wpMode = String(workplaceMode || (jobObj ? (jobObj.workplaceMode || jobObj.details?.workplaceMode) : '') || '').trim();
-  }
-
-  // Extract detected mode & display location from badges helper
-  const { displayLocation: badgeLoc, workplaceMode: detectedMode } = getJobLocationBadges(
-    jobObj || { location: jobLoc, details: { workLocation: workLoc }, workplaceMode: wpMode }
-  );
-
-  const finalMode = (detectedMode || wpMode).toLowerCase();
-  const fullLocText = `${jobLoc} ${workLoc} ${badgeLoc} ${finalMode} ${jobObj?.title || ''}`.toLowerCase();
-
-  const s = searchLocation.trim().toLowerCase();
-
-  if (isIndiaAnywhereQuery(s)) {
-    return isJobInIndia(jobLoc, workLoc);
-  }
-
-  // Workplace Mode Search Queries: "remote", "hybrid", "wfh", "on-site", "onsite", "office"
-  const isHybridQuery = s.includes('hybrid');
-  const isRemoteQuery = s.includes('remote') || s.includes('wfh') || s.includes('work from home');
-  const isOnsiteQuery = s.includes('on-site') || s.includes('onsite') || s.includes('in person') || s.includes('in-person') || s.includes('office');
-
-  if (isHybridQuery || isRemoteQuery || isOnsiteQuery) {
-    let modeMatched = false;
-    if (isHybridQuery && (finalMode.includes('hybrid') || fullLocText.includes('hybrid'))) {
-      modeMatched = true;
-    }
-    if (isRemoteQuery && (finalMode.includes('remote') || fullLocText.includes('remote') || fullLocText.includes('wfh') || fullLocText.includes('work from home'))) {
-      modeMatched = true;
-    }
-    if (isOnsiteQuery && (finalMode.includes('on-site') || finalMode.includes('onsite') || fullLocText.includes('on-site') || fullLocText.includes('onsite') || fullLocText.includes('office'))) {
-      modeMatched = true;
-    }
-
-    // Clean geo query by stripping mode keywords
-    const cleanGeoQuery = s
-      .replace(/\b(hybrid|remote|wfh|work from home|on-site|onsite|office|in person|in-person)\b/gi, '')
-      .replace(/[\/,\-\•]/g, ' ')
-      .trim();
-
-    if (!cleanGeoQuery) {
-      return modeMatched;
-    }
-
-    if (modeMatched) {
-      if (fullLocText.includes(cleanGeoQuery)) return true;
-      return true; // Match if workplace mode fits
-    }
-  }
-
-  // Standard location matching
-  const cleanSearch = s.split(',')[0].trim();
-
-  // Direct substring matches
-  if (
-    fullLocText.includes(s) || 
-    s.includes(jobLoc.toLowerCase()) || 
-    (workLoc && s.includes(workLoc.toLowerCase())) ||
-    (badgeLoc && s.includes(badgeLoc.toLowerCase())) ||
-    (cleanSearch && fullLocText.includes(cleanSearch)) ||
-    (cleanSearch && cleanSearch.includes(jobLoc.toLowerCase()))
-  ) {
-    return true;
-  }
-
-  // Token & component match (e.g., Allahabad/Prayagraj, Delhi NCR, Bangalore, Karnataka)
-  const searchParts = s.split(/[\/,\(\)\-]+/).map(p => p.trim()).filter(p => p.length > 2);
-  const jobParts = fullLocText.split(/[\/,\(\)\-]+/).map(p => p.trim()).filter(p => p.length > 2);
-
-  for (const sp of searchParts) {
-    if (jobParts.some(jp => jp.includes(sp) || sp.includes(jp))) {
-      return true;
-    }
-  }
-
-  const searchWords = s.split(/[\s\/,\(\)\-]+/).map(t => t.trim()).filter(t => t.length > 2);
-  const jobWords = fullLocText.split(/[\s\/,\(\)\-]+/).map(t => t.trim()).filter(t => t.length > 2);
-  for (const sw of searchWords) {
-    if (jobWords.includes(sw)) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-// IIMJobs-style locations used by the onboarding preferred-location selector + Workplace Modes
-const preferredLocations = [
-  'Anywhere in India',
-  'Remote', 'Hybrid', 'On-site',
-  'Abu Dhabi', 'Africa', 'Agra', 'Ahmedabad', 'Ajmer', 'Akola', 'Aligarh',
-  'Allahabad/Prayagraj', 'Alwar', 'Amritsar', 'Andhra Pradesh', 'Ankleshwar',
-  'Asansol', 'Aurangabad', 'Baddi', 'Bahrain', 'Bangalore', 'Bangladesh',
-  'Bareilly', 'Belgaum', 'Bhagalpur', 'Bharuch', 'Bhatinda', 'Bhilai',
-  'Bhiwadi', 'Bhopal', 'Bhubaneshwar', 'Bikaner', 'Bokaro', 'Burdwan',
-  'Calicut/Kozhikode', 'Chandigarh', 'Chennai', 'China', 'Cochin/Kochi',
-  'Coimbatore', 'Cuttack', 'Daman & Diu', 'Darjeeling', 'Dehradun', 'Delhi',
-  'Delhi NCR', 'Dhanbad', 'Dharwad', 'Doha', 'Dubai', 'Durgapur', 'Europe',
-  'Faridabad', 'Gandhidham', 'Gandhinagar', 'Gangtok', 'Ghaziabad', 'Goa',
-  'Gorakhpur', 'Greater Noida', 'Gujarat', 'Gulbarga', 'Guntur',
-  'Gurgaon/Gurugram', 'Guwahati', 'Gwalior', 'Haldia', 'Haridwar',
-  'Himachal Pradesh', 'Hong Kong', 'Hosur', 'Howrah', 'Hubli', 'Hyderabad',
-  'Indore', 'Indonesia', 'Jabalpur', 'Jaipur', 'Jalandhar', 'Jammu',
-  'Jamnagar', 'Jamshedpur', 'Japan', 'Jharkhand', 'Jodhpur', 'Kanpur',
-  'Karnal', 'Karnataka', 'Kharagpur', 'Kolhapur', 'Kolkata', 'Kota',
-  'Kottayam', 'Kuwait', 'London', 'Lucknow', 'Ludhiana', 'Madurai',
-  'Malaysia', 'Mangalore', 'Manipal', 'Mathura', 'Mauritius', 'Meerut',
-  'Middle East', 'Mohali', 'Moradabad', 'Mumbai', 'Mysore', 'Nagpur',
-  'Nashik', 'Navi Mumbai', 'Nellore', 'Nepal', 'New Zealand', 'Noida',
-  'North India', 'Oman', 'Palakkad', 'Panchkula', 'Panipat', 'Patiala',
-  'Patna', 'Philippines', 'Pondicherry', 'Pune', 'Punjab', 'Qatar', 'Raipur',
-  'Rajahmundry', 'Rajkot', 'Rajasthan', 'Ranchi', 'Rewa', 'Rohtak', 'Roorkee',
-  'Rourkela', 'Rudrapur', 'Russia', 'Saharanpur', 'Salem', 'Sangli', 'Satara',
-  'Saudi Arabia', 'Shillong', 'Shimla', 'Siliguri', 'Singapore', 'Solapur',
-  'South Africa', 'South India', 'Sri Lanka', 'Srinagar', 'Surat', 'Thane',
-  'Thailand', 'Thanjavur', 'Thrissur', 'Tiruchirappalli', 'Tirunelveli',
-  'Tirupati', 'Trivandrum/Thiruvananthapuram', 'UAE', 'Udaipur', 'Udupi',
-  'Ujjain', 'UK', 'USA', 'Uttar Pradesh', 'Uttarakhand', 'Vadodara/Baroda',
-  'Vapi', 'Varanasi/Banaras', 'Vellore', 'Vijayawada',
-  'Vishakhapatnam/Vizag', 'Warangal', 'West Bengal', 'Zambia', 'Zimbabwe',
-];
-
-export const preferredLocationOptions = preferredLocations.map((location) => ({
-  label: location,
-  value: location,
-  displayName: location,
-}));
-
-// A current location must be one specific place, unlike a job preference.
-export const currentLocationOptions = preferredLocationOptions.filter(
-  ({ value }) => value !== 'Anywhere in India' && value !== 'Anywhere in India/Multiple Locations'
-);
-
-export const getJobLocationBadges = (job) => {
+export function getJobLocationBadges(job) {
   if (!job) return { displayLocation: '', workplaceMode: '' };
   
   let loc = String(job.location || '').trim();
@@ -352,7 +202,7 @@ export const getJobLocationBadges = (job) => {
     displayLocation: loc || 'Not specified',
     workplaceMode: finalMode
   };
-};
+}
 
 export const formatJobLocation = (job) => {
   const { displayLocation, workplaceMode } = getJobLocationBadges(job);
@@ -360,4 +210,185 @@ export const formatJobLocation = (job) => {
   if (!displayLocation || displayLocation === 'Not specified') return workplaceMode;
   return `${displayLocation} • ${workplaceMode}`;
 };
+
+export const isLocationMatch = (jobLocation = '', searchLocation = '', workLocation = '', workplaceMode = '', job = null) => {
+  try {
+    if (!searchLocation) return true;
+
+    const locList = Array.isArray(searchLocation)
+      ? searchLocation.filter(Boolean)
+      : (typeof searchLocation === 'string' && searchLocation.trim()
+          ? searchLocation.split(',').map((s) => s.trim()).filter(Boolean)
+          : []);
+
+    if (locList.length === 0) return true;
+    if (locList.length === 1 && (locList[0].toLowerCase() === 'all' || !locList[0])) return true;
+
+    if (locList.length > 1) {
+      return locList.some((singleLoc) =>
+        matchSingleLocation(jobLocation, singleLoc, workLocation, workplaceMode, job)
+      );
+    }
+
+    return matchSingleLocation(jobLocation, locList[0], workLocation, workplaceMode, job);
+  } catch (err) {
+    console.warn('isLocationMatch error:', err);
+    return true;
+  }
+};
+
+const matchSingleLocation = (jobLocation = '', searchLocation = '', workLocation = '', workplaceMode = '', job = null) => {
+  try {
+    if (!searchLocation || !searchLocation.trim() || searchLocation.trim().toLowerCase() === 'all') return true;
+
+    // Handle object as first arg if passed
+    let jobObj = job;
+    let jobLoc = '';
+    let workLoc = '';
+    let wpMode = '';
+
+    if (typeof jobLocation === 'object' && jobLocation !== null) {
+      jobObj = jobLocation;
+      jobLoc = String(jobObj.location || jobObj.employerId?.location || '').trim();
+      workLoc = String(jobObj.details?.workLocation || '').trim();
+      wpMode = String(jobObj.workplaceMode || jobObj.details?.workplaceMode || '').trim();
+    } else {
+      jobLoc = String(jobLocation || '').trim();
+      workLoc = String(workLocation || '').trim();
+      wpMode = String(workplaceMode || (jobObj ? (jobObj.workplaceMode || jobObj.details?.workplaceMode) : '') || '').trim();
+    }
+
+    // Extract detected mode & display location from badges helper
+    const { displayLocation: badgeLoc, workplaceMode: detectedMode } = getJobLocationBadges(
+      jobObj || { location: jobLoc, details: { workLocation: workLoc }, workplaceMode: wpMode }
+    );
+
+    const finalMode = (detectedMode || wpMode).toLowerCase();
+    const fullLocText = `${jobLoc} ${workLoc} ${badgeLoc} ${finalMode} ${jobObj?.title || ''}`.toLowerCase();
+
+    const s = searchLocation.trim().toLowerCase();
+
+    if (isIndiaAnywhereQuery(s)) {
+      return isJobInIndia(jobLoc, workLoc);
+    }
+
+    // Workplace Mode Search Queries: "remote", "hybrid", "wfh", "on-site", "onsite", "office"
+    const isHybridQuery = s.includes('hybrid');
+    const isRemoteQuery = s.includes('remote') || s.includes('wfh') || s.includes('work from home');
+    const isOnsiteQuery = s.includes('on-site') || s.includes('onsite') || s.includes('in person') || s.includes('in-person') || s.includes('office');
+
+    if (isHybridQuery || isRemoteQuery || isOnsiteQuery) {
+      let modeMatched = false;
+      if (isHybridQuery && (finalMode.includes('hybrid') || fullLocText.includes('hybrid'))) {
+        modeMatched = true;
+      }
+      if (isRemoteQuery && (finalMode.includes('remote') || fullLocText.includes('remote') || fullLocText.includes('wfh') || fullLocText.includes('work from home'))) {
+        modeMatched = true;
+      }
+      if (isOnsiteQuery && (finalMode.includes('on-site') || finalMode.includes('onsite') || fullLocText.includes('on-site') || fullLocText.includes('onsite') || fullLocText.includes('office'))) {
+        modeMatched = true;
+      }
+
+      // Clean geo query by stripping mode keywords
+      const cleanGeoQuery = s
+        .replace(/\b(hybrid|remote|wfh|work from home|on-site|onsite|office|in person|in-person)\b/gi, '')
+        .replace(/[\/,\-\•]/g, ' ')
+        .trim();
+
+      if (!cleanGeoQuery) {
+        return modeMatched;
+      }
+
+      if (modeMatched) {
+        if (fullLocText.includes(cleanGeoQuery)) return true;
+        return true; // Match if workplace mode fits
+      }
+    }
+
+    // Standard location matching
+    const cleanSearch = s.split(',')[0].trim();
+
+    // Direct substring matches
+    if (
+      fullLocText.includes(s) || 
+      s.includes(jobLoc.toLowerCase()) || 
+      (workLoc && s.includes(workLoc.toLowerCase())) ||
+      (badgeLoc && s.includes(badgeLoc.toLowerCase())) ||
+      (cleanSearch && fullLocText.includes(cleanSearch)) ||
+      (cleanSearch && cleanSearch.includes(jobLoc.toLowerCase()))
+    ) {
+      return true;
+    }
+
+    // Token & component match (e.g., Allahabad/Prayagraj, Delhi NCR, Bangalore, Karnataka)
+    const searchParts = s.split(/[\/,\(\)\-]+/).map(p => p.trim()).filter(p => p.length > 2);
+    const jobParts = fullLocText.split(/[\/,\(\)\-]+/).map(p => p.trim()).filter(p => p.length > 2);
+
+    for (const sp of searchParts) {
+      if (jobParts.some(jp => jp.includes(sp) || sp.includes(jp))) {
+        return true;
+      }
+    }
+
+    const searchWords = s.split(/[\s\/,\(\)\-]+/).map(t => t.trim()).filter(t => t.length > 2);
+    const jobWords = fullLocText.split(/[\s\/,\(\)\-]+/).map(t => t.trim()).filter(t => t.length > 2);
+    for (const sw of searchWords) {
+      if (jobWords.includes(sw)) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch (err) {
+    console.warn('matchSingleLocation error:', err);
+    return true;
+  }
+};
+
+// IIMJobs-style locations used by the onboarding preferred-location selector + Workplace Modes
+const preferredLocations = [
+  'Anywhere in India',
+  'Remote', 'Hybrid', 'On-site',
+  'Abu Dhabi', 'Africa', 'Agra', 'Ahmedabad', 'Ajmer', 'Akola', 'Aligarh',
+  'Allahabad/Prayagraj', 'Alwar', 'Amritsar', 'Andhra Pradesh', 'Ankleshwar',
+  'Asansol', 'Aurangabad', 'Baddi', 'Bahrain', 'Bangalore', 'Bangladesh',
+  'Bareilly', 'Belgaum', 'Bhagalpur', 'Bharuch', 'Bhatinda', 'Bhilai',
+  'Bhiwadi', 'Bhopal', 'Bhubaneshwar', 'Bikaner', 'Bokaro', 'Burdwan',
+  'Calicut/Kozhikode', 'Chandigarh', 'Chennai', 'China', 'Cochin/Kochi',
+  'Coimbatore', 'Cuttack', 'Daman & Diu', 'Darjeeling', 'Dehradun', 'Delhi',
+  'Delhi NCR', 'Dhanbad', 'Dharwad', 'Doha', 'Dubai', 'Durgapur', 'Europe',
+  'Faridabad', 'Gandhidham', 'Gandhinagar', 'Gangtok', 'Ghaziabad', 'Goa',
+  'Gorakhpur', 'Greater Noida', 'Gujarat', 'Gulbarga', 'Guntur',
+  'Gurgaon/Gurugram', 'Guwahati', 'Gwalior', 'Haldia', 'Haridwar',
+  'Himachal Pradesh', 'Hong Kong', 'Hosur', 'Howrah', 'Hubli', 'Hyderabad',
+  'Indore', 'Indonesia', 'Jabalpur', 'Jaipur', 'Jalandhar', 'Jammu',
+  'Jamnagar', 'Jamshedpur', 'Japan', 'Jharkhand', 'Jodhpur', 'Kanpur',
+  'Karnal', 'Karnataka', 'Kharagpur', 'Kolhapur', 'Kolkata', 'Kota',
+  'Kottayam', 'Kuwait', 'London', 'Lucknow', 'Ludhiana', 'Madurai',
+  'Malaysia', 'Mangalore', 'Manipal', 'Mathura', 'Mauritius', 'Meerut',
+  'Middle East', 'Mohali', 'Moradabad', 'Mumbai', 'Mysore', 'Nagpur',
+  'Nashik', 'Navi Mumbai', 'Nellore', 'Nepal', 'New Zealand', 'Noida',
+  'North India', 'Oman', 'Palakkad', 'Panchkula', 'Panipat', 'Patiala',
+  'Patna', 'Philippines', 'Pondicherry', 'Pune', 'Punjab', 'Qatar', 'Raipur',
+  'Rajahmundry', 'Rajkot', 'Rajasthan', 'Ranchi', 'Rewa', 'Rohtak', 'Roorkee',
+  'Rourkela', 'Rudrapur', 'Russia', 'Saharanpur', 'Salem', 'Sangli', 'Satara',
+  'Saudi Arabia', 'Shillong', 'Shimla', 'Siliguri', 'Singapore', 'Solapur',
+  'South Africa', 'South India', 'Sri Lanka', 'Srinagar', 'Surat', 'Thane',
+  'Thailand', 'Thanjavur', 'Thrissur', 'Tiruchirappalli', 'Tirunelveli',
+  'Tirupati', 'Trivandrum/Thiruvananthapuram', 'UAE', 'Udaipur', 'Udupi',
+  'Ujjain', 'UK', 'USA', 'Uttar Pradesh', 'Uttarakhand', 'Vadodara/Baroda',
+  'Vapi', 'Varanasi/Banaras', 'Vellore', 'Vijayawada',
+  'Vishakhapatnam/Vizag', 'Warangal', 'West Bengal', 'Zambia', 'Zimbabwe',
+];
+
+export const preferredLocationOptions = preferredLocations.map((location) => ({
+  label: location,
+  value: location,
+  displayName: location,
+}));
+
+// A current location must be one specific place, unlike a job preference.
+export const currentLocationOptions = preferredLocationOptions.filter(
+  ({ value }) => value !== 'Anywhere in India' && value !== 'Anywhere in India/Multiple Locations'
+);
 

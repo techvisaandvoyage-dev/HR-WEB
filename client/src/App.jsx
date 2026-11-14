@@ -1073,7 +1073,15 @@ function App() {
 
         <Route 
           path="/my-jobs" 
-          element={isLoggedIn && userRole === 'employee' ? <MyJobs jobs={jobs} /> : <Navigate to="/" />} 
+          element={<MyJobs jobs={jobs} />} 
+        />
+        <Route 
+          path="/employee/myjobs" 
+          element={<MyJobs jobs={jobs} />} 
+        />
+        <Route 
+          path="/employee/my-jobs" 
+          element={<MyJobs jobs={jobs} />} 
         />
 
         <Route 
@@ -1097,6 +1105,7 @@ function App() {
             ) : <Navigate to="/" />
           } 
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       <div className={USE_NEW_HOME_UI ? 'sj-theme sj-auth-modals' : ''}>

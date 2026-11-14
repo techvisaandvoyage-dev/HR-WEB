@@ -9,6 +9,7 @@ import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../utils/empl
 import { isLocationMatch, getJobLocationBadges, formatJobLocation } from '../../data/preferredLocations';
 import LocationAutocomplete from '../common/LocationAutocomplete';
 import { isExperienceMatch } from '../../utils/experienceMatcher';
+import { formatSalary } from '../../utils/salaryUtils';
 
 const formatAndSanitizeJobHtml = (html) => {
   if (!html) return '';
@@ -1074,7 +1075,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                   {/* Salary & Workplace Mode Badges */}
                   <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-md text-xs font-semibold">
-                      ✓ {job.salary}
+                      ✓ {formatSalary(job.salary, job.salaryNote)}
                     </span>
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-50 text-stone-700 border border-stone-200/80 rounded-md text-xs font-medium">
                       ✓ {job.workplaceMode || (job.details?.openings ? `${job.details.openings} Openings` : 'Full-time')}
@@ -1183,7 +1184,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                               {(selectedJob.details?.openings || selectedJob.openings || '1')} {Number(selectedJob.details?.openings || selectedJob.openings || 1) === 1 ? 'Opening' : 'Openings'}
                             </span>
                             <span className="text-gray-900 font-semibold">
-                              {selectedJob.salary} {selectedJob.employerProvided && <span className="text-gray-500 font-normal">(Employer provided)</span>}
+                              {formatSalary(selectedJob.salary, selectedJob.salaryNote)} {selectedJob.employerProvided && <span className="text-gray-500 font-normal">(Employer provided)</span>}
                             </span>
                           </div>
                         );
@@ -1375,7 +1376,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
 
                       {/* Salary */}
                       <div className="mb-6">
-                        <span className="text-base font-bold text-gray-900">{selectedJob.salary}</span>
+                        <span className="text-base font-bold text-gray-900">{formatSalary(selectedJob.salary, selectedJob.salaryNote)}</span>
                         {selectedJob.employerProvided && <span className="text-gray-500 font-normal text-xs ml-1.5">(Employer provided)</span>}
                       </div>
 

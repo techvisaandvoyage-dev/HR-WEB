@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify';
 import './drawerAndSupport.css';
 import SjAvatar from './primitives/SjAvatar';
 import SjPill from './primitives/SjPill';
+import { formatSalary } from '../../utils/salaryUtils';
 
 const sanitizeHtml = (html) => {
   if (!html) return '';
@@ -109,20 +110,11 @@ export default function SjJobDetailsContent({
   const openings = job.openings || job.details?.openings || job.n || 1;
   const employmentType = job.employmentType || job.details?.employmentType || job.type || 'Full-time';
   const workplaceMode = job.workplaceMode || job.details?.workplaceMode || job.wp || 'On-site';
+  const experienceDisplay = job.details?.experience || job.experience || job.exp || '';
+  const qualificationDisplay = job.details?.qualification || job.qualification || job.education || '';
 
-  const formatSalary = (val) => {
-    if (!val) return 'As per industry standards';
-    return String(val)
-      .replace(/lacs\s*pa/gi, 'PA')
-      .replace(/lac\s*pa/gi, 'PA')
-      .replace(/lpa/gi, 'PA')
-      .replace(/per\s*month/gi, 'PM')
-      .replace(/per\s*hour/gi, 'PH')
-      .trim();
-  };
-
-  const salaryDisplay = formatSalary(job.salary || job.pay || job.details?.salary);
   const salaryNote = job.salaryNote || job.payNote || job.details?.salaryNote || '';
+  const salaryDisplay = formatSalary(job.salary || job.pay || job.details?.salary, salaryNote);
 
   const skills = Array.isArray(job.skills)
     ? job.skills
@@ -276,32 +268,82 @@ export default function SjJobDetailsContent({
         </div>
       )}
 
-      {/* Recruiter / Posted by (Shows real person who posted) */}
+      {/* Skills Required */}
+      {skills.length > 0 && (
+        <div className="sj-drawer-section">
+          <h3>Required Skills</h3>
+          <div className="sj-skills-wrap">
+            {skills.map((skill, idx) => (
+              <span key={idx}>{skill}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Overview Key-Value Details */}
+      <div className="sj-drawer-section">
+        <h3>Job Details</h3>
+        <dl className="sj-kv-table">
+          {experienceDisplay && (
+            <>
+              <dt>Experience</dt>
+              <dd>{experienceDisplay}</dd>
+            </>
+          )}
+          {salaryDisplay && (
+            <>
+              <dt>Salary</dt>
+              <dd>
+                <span className="font-semibold text-[var(--sj-ink)]">{salaryDisplay}</span>
+                {salaryNote && 
+                 !salaryDisplay.toLowerCase().includes(salaryNote.toLowerCase()) && 
+                 !salaryDisplay.toLowerCase().includes(salaryNote.toLowerCase().replace(/^ctc:?\s*/i, '')) && (
+                  <span className="text-xs text-[var(--sj-mute)] ml-1.5 font-normal">({salaryNote})</span>
+                )}
+              </dd>
+            </>
+          )}
+          <dt>Location</dt>
+          <dd>{location}</dd>
+          <dt>Workplace Mode</dt>
+          <dd>{workplaceMode}</dd>
+          <dt>Employment Type</dt>
+          <dd>{employmentType}</dd>
+          {qualificationDisplay && (
+            <>
+              <dt>Qualification</dt>
+              <dd>{qualificationDisplay}</dd>
+            </>
+          )}
+          <dt>Openings</dt>
+          <dd>{openings}</dd>
+        </dl>
+      </div>
+
+      {/* About Role */}
+      {rawAboutRole && (
+        <div className="sj-drawer-section">
+          <h3>About Role</h3>
+          {renderFormattedContent(rawAboutRole)}
+        </div>
+      )}
+
+      {/* Key Responsibilities */}
+      {rawResponsibilities && (
+        <div className="sj-drawer-section">
+          <h3>Key Responsibilities</h3>
+          {renderFormattedContent(rawResponsibilities, true)}
+        </div>
+      )}
+
+      {/* Recruiter / Posted by (Shows real person who posted - right above Company Details) */}
       {!employer.hidePostedByCard && !job.hidePostedByCard && (
         <div className="sj-drawer-section">
           <h3>Posted by</h3>
           <div className="sj-recruiter-card">
-            <div className="w-12 h-12 rounded-full border border-gray-200 bg-white flex items-center justify-center font-bold text-gray-700 shadow-sm shrink-0 overflow-hidden text-sm">
-              {posterLogo ? (
-                <img src={posterLogo} alt={posterName} className="w-full h-full object-cover" />
-              ) : (
-                <span>{getInitials(posterName)}</span>
-              )}
-            </div>
             <div>
-              <b className="text-base font-bold text-[var(--sj-ink)]">{posterName}</b>
-              <div className="text-sm text-[var(--sj-mute)] font-medium">{posterRole}</div>
-              <div className="flex gap-2 items-center text-xs text-[var(--sj-mute)] mt-1 flex-wrap">
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-full ${isConsultant ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
-                  {isConsultant ? 'Consultant' : (employer.industry || 'Company / Business')}
-                </span>
-                {compSize && (
-                  <>
-                    <span>&bull;</span>
-                    <span>{compSize}</span>
-                  </>
-                )}
-              </div>
+              <b className="text-base font-bold text-[var(--sj-ink)] block">{posterName}</b>
+              <div className="text-sm text-[var(--sj-mute)] font-medium mt-0.5">{posterRole}</div>
             </div>
           </div>
 
@@ -321,72 +363,6 @@ export default function SjJobDetailsContent({
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Skills Required */}
-      {skills.length > 0 && (
-        <div className="sj-drawer-section">
-          <h3>Required Skills</h3>
-          <div className="sj-skills-wrap">
-            {skills.map((skill, idx) => (
-              <span key={idx}>{skill}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Overview Key-Value Details */}
-      <div className="sj-drawer-section">
-        <h3>Job Details</h3>
-        <dl className="sj-kv-table">
-          <dt>Employment Type</dt>
-          <dd>{employmentType}</dd>
-          <dt>Workplace Mode</dt>
-          <dd>{workplaceMode}</dd>
-          <dt>Location</dt>
-          <dd>{location}</dd>
-          {salaryDisplay && (
-            <>
-              <dt>Salary</dt>
-              <dd>
-                <span className="font-semibold text-[var(--sj-ink)]">{salaryDisplay}</span>
-                {salaryNote && !salaryDisplay.toLowerCase().includes(salaryNote.toLowerCase()) && (
-                  <span className="text-xs text-[var(--sj-mute)] ml-1.5 font-normal">({salaryNote})</span>
-                )}
-              </dd>
-            </>
-          )}
-          <dt>Openings</dt>
-          <dd>{openings}</dd>
-          {job.details?.experience && (
-            <>
-              <dt>Experience</dt>
-              <dd>{job.details.experience}</dd>
-            </>
-          )}
-          {job.details?.qualification && (
-            <>
-              <dt>Qualification</dt>
-              <dd>{job.details.qualification}</dd>
-            </>
-          )}
-        </dl>
-      </div>
-
-      {/* About Role */}
-      {rawAboutRole && (
-        <div className="sj-drawer-section">
-          <h3>About Role</h3>
-          {renderFormattedContent(rawAboutRole)}
-        </div>
-      )}
-
-      {/* Key Responsibilities */}
-      {rawResponsibilities && (
-        <div className="sj-drawer-section">
-          <h3>Key Responsibilities</h3>
-          {renderFormattedContent(rawResponsibilities, true)}
         </div>
       )}
 
@@ -425,18 +401,6 @@ export default function SjJobDetailsContent({
             <span className="sj-company-label">Company Name:</span>
             <span className="sj-company-value font-semibold">{compName}</span>
           </div>
-
-          {posterName && (
-            <div className="sj-company-row">
-              <span className="sj-company-label">Posted By:</span>
-              <span className="sj-company-value font-semibold text-[var(--sj-ink)]">
-                {posterName}
-                {posterDesignation && (
-                  <span className="text-[var(--sj-mute)] font-medium ml-1">({posterDesignation})</span>
-                )}
-              </span>
-            </div>
-          )}
 
           <div className="sj-company-row">
             <span className="sj-company-label">Hiring Type:</span>
