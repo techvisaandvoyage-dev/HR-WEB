@@ -65,6 +65,29 @@ import AccountStatusControl from '../components/AccountStatusControl';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+export const isJobEmployerVerified = (job, employersList = []) => {
+  if (job?.isEmployerVerified !== undefined) return Boolean(job.isEmployerVerified);
+  const emp = job?.employerId;
+  if (emp && typeof emp === 'object') {
+    if (emp.verification?.status === 'verified' || emp.isVerified === true) return true;
+    if (emp.verification?.status && emp.verification.status !== 'verified') return false;
+  }
+  const empId = typeof emp === 'object' ? (emp?._id || emp?.id) : emp;
+  if (empId && Array.isArray(employersList) && employersList.length > 0) {
+    const matched = employersList.find(e => String(e._id || e.id) === String(empId));
+    if (matched) {
+      return matched.verification?.status === 'verified' || matched.isVerified === true;
+    }
+  }
+  return false;
+};
+
+export const getJobEffectiveStatus = (job, employersList = []) => {
+  if ((job?.status || 'Active') === 'Closed') return 'Closed';
+  if (!isJobEmployerVerified(job, employersList)) return 'Unverified';
+  return 'Active';
+};
+
 export default function DashboardOverview({ onNavigateTab }) {
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -815,9 +838,31 @@ export default function DashboardOverview({ onNavigateTab }) {
     totalEmployers: 0,
     totalJobs: 0,
     activeJobs: 0,
+    unverifiedJobs: 0,
     closedJobs: 0,
     totalApplications: 0
   };
+
+  const liveJobsCount = useMemo(() => {
+    if (jobs && jobs.length > 0) {
+      return jobs.filter(j => getJobEffectiveStatus(j) === 'Active').length;
+    }
+    return totals.activeJobs || 0;
+  }, [jobs, totals.activeJobs]);
+
+  const unverifiedJobsCount = useMemo(() => {
+    if (jobs && jobs.length > 0) {
+      return jobs.filter(j => getJobEffectiveStatus(j) === 'Unverified').length;
+    }
+    return totals.unverifiedJobs || 0;
+  }, [jobs, totals.unverifiedJobs]);
+
+  const closedJobsCount = useMemo(() => {
+    if (jobs && jobs.length > 0) {
+      return jobs.filter(j => (j.status || 'Active') === 'Closed').length;
+    }
+    return totals.closedJobs || 0;
+  }, [jobs, totals.closedJobs]);
 
   const clientOrigin = useMemo(() => {
     if (typeof window === 'undefined') return 'http://localhost:5173';
@@ -829,9 +874,12 @@ export default function DashboardOverview({ onNavigateTab }) {
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       // Status filter (top status filter or column status filter)
-      const effectiveStatus = jobColFilters.status !== 'All' ? jobColFilters.status : jobStatusFilter;
-      if (effectiveStatus !== 'All' && (job.status || 'Active') !== effectiveStatus) {
-        return false;
+      const effectiveFilter = jobColFilters.status !== 'All' ? jobColFilters.status : jobStatusFilter;
+      if (effectiveFilter !== 'All') {
+        const jobEffective = getJobEffectiveStatus(job);
+        if (effectiveFilter === 'Active' && jobEffective !== 'Active') return false;
+        if (effectiveFilter === 'Unverified' && jobEffective !== 'Unverified') return false;
+        if (effectiveFilter === 'Closed' && (job.status || 'Active') !== 'Closed') return false;
       }
 
       // Global Search Bar
@@ -2034,7 +2082,7 @@ export default function DashboardOverview({ onNavigateTab }) {
           }`}
         >
           <Briefcase className="w-4 h-4" />
-          Active Jobs ({totals.activeJobs})
+          Active Jobs ({liveJobsCount})
         </button>
 
         <button
@@ -4437,8 +4485,13 @@ export default function DashboardOverview({ onNavigateTab }) {
               <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-black text-gray-900 tracking-tight">Active Job Listings & Openings</h2>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">
-                  {totals.activeJobs} Live
+                  {liveJobsCount} Live
                 </span>
+                {unverifiedJobsCount > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">
+                    {unverifiedJobsCount} Unverified
+                  </span>
+                )}
               </div>
               <p className="text-gray-500 text-xs mt-1">
                 Browse, monitor and manage recruiter job postings and candidate application pipelines across sahijob.com.
@@ -4471,7 +4524,7 @@ export default function DashboardOverview({ onNavigateTab }) {
             <div className="bg-white p-5 rounded-2xl border border-gray-100/80 shadow-xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block mb-1">Active Vacancies</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-emerald-700">{totals.activeJobs}</span>
+                <span className="text-2xl font-black text-emerald-700">{liveJobsCount}</span>
                 <span className="text-[11px] font-semibold text-emerald-600">Accepting Applies</span>
               </div>
             </div>
@@ -4479,7 +4532,7 @@ export default function DashboardOverview({ onNavigateTab }) {
             <div className="bg-white p-5 rounded-2xl border border-gray-100/80 shadow-xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Closed Openings</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-gray-700">{totals.closedJobs || (totals.totalJobs - totals.activeJobs)}</span>
+                <span className="text-2xl font-black text-gray-700">{closedJobsCount}</span>
                 <span className="text-[11px] font-semibold text-gray-400">Archived</span>
               </div>
             </div>
@@ -4527,8 +4580,9 @@ export default function DashboardOverview({ onNavigateTab }) {
                   className="bg-transparent font-bold text-gray-800 focus:outline-none cursor-pointer text-xs"
                 >
                   <option value="All">All ({jobs.length})</option>
-                  <option value="Active">Active Only</option>
-                  <option value="Closed">Closed Only</option>
+                  <option value="Active">Active Only ({liveJobsCount})</option>
+                  <option value="Unverified">Unverified Only ({unverifiedJobsCount})</option>
+                  <option value="Closed">Closed Only ({closedJobsCount})</option>
                 </select>
               </div>
 
@@ -4645,6 +4699,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                       >
                         <option value="All">All Status</option>
                         <option value="Active">Active</option>
+                        <option value="Unverified">Unverified</option>
                         <option value="Closed">Closed</option>
                       </select>
                     </th>
@@ -4698,7 +4753,9 @@ export default function DashboardOverview({ onNavigateTab }) {
                     </tr>
                   ) : (
                     filteredJobs.map((job) => {
-                      const isActive = (job.status || 'Active') === 'Active';
+                      const effectiveStatus = getJobEffectiveStatus(job);
+                      const isUnverified = effectiveStatus === 'Unverified';
+                      const isActive = effectiveStatus === 'Active';
                       const publicJobUrl = `${clientOrigin}/apply-job/${job._id || job.id}`;
                       const isToggling = togglingJobId === (job._id || job.id);
 
@@ -4732,11 +4789,29 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </td>
 
                           <td className="py-4 px-5">
-                            <div className="font-bold text-gray-800 text-xs">
-                              {job.company || job.employerId?.companyName || 'N/A'}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-gray-800 text-xs">
+                                {job.company || job.employerId?.companyName || 'N/A'}
+                              </span>
+                              {isJobEmployerVerified(job, employers) ? (
+                                <span 
+                                  title="Verified Employer Account"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                                >
+                                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                                  <span>Verified</span>
+                                </span>
+                              ) : (
+                                <span 
+                                  title="Employer Account Unverified"
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200"
+                                >
+                                  Unverified
+                                </span>
+                              )}
                             </div>
                             {job.employerId?.fullName && (
-                              <span className="text-[11px] text-gray-400 block">
+                              <span className="text-[11px] text-gray-400 block mt-0.5">
                                 {job.employerId.fullName}
                               </span>
                             )}
@@ -4764,20 +4839,33 @@ export default function DashboardOverview({ onNavigateTab }) {
                           </td>
 
                           <td className="py-4 px-5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleJobStatus(job._id || job.id, job.status || 'Active')}
-                              disabled={isToggling}
-                              title="Click to toggle Active / Closed status"
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black transition-all cursor-pointer shadow-2xs ${
-                                isActive 
-                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
-                              } disabled:opacity-50`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-600 animate-pulse' : 'bg-gray-400'}`}></span>
-                              <span>{isToggling ? 'Updating...' : (job.status || 'Active')}</span>
-                            </button>
+                            {isUnverified ? (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleJobStatus(job._id || job.id, job.status || 'Active')}
+                                disabled={isToggling}
+                                title="Employer account unverified - job is not live for candidates. Click to toggle Closed/Active"
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                <span>{isToggling ? 'Updating...' : 'Unverified'}</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleJobStatus(job._id || job.id, job.status || 'Active')}
+                                disabled={isToggling}
+                                title="Click to toggle Active / Closed status"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black transition-all cursor-pointer shadow-2xs ${
+                                  isActive 
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                                } disabled:opacity-50`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-600 animate-pulse' : 'bg-gray-400'}`}></span>
+                                <span>{isToggling ? 'Updating...' : (job.status || 'Active')}</span>
+                              </button>
+                            )}
                           </td>
 
                           <td className="py-4 px-5 text-gray-500 font-medium text-[11px]">
@@ -5096,7 +5184,9 @@ export default function DashboardOverview({ onNavigateTab }) {
         const companyName = selectedJobDetail.company || selectedJobDetail.employerId?.companyName || 'Company';
         const location = selectedJobDetail.location || selectedJobDetail.details?.workLocation || 'Not specified';
         const status = selectedJobDetail.status || 'Active';
-        const isActive = status === 'Active';
+        const effectiveStatus = getJobEffectiveStatus(selectedJobDetail);
+        const isUnverified = effectiveStatus === 'Unverified';
+        const isActive = effectiveStatus === 'Active';
         const jobId = selectedJobDetail._id || selectedJobDetail.id;
 
         // Details object & fallbacks
@@ -5191,11 +5281,13 @@ export default function DashboardOverview({ onNavigateTab }) {
                         {title}
                       </h3>
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        isActive 
-                          ? 'bg-emerald-100 text-emerald-800' 
-                          : 'bg-rose-100 text-rose-800'
+                        isUnverified
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : isActive 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-rose-100 text-rose-800'
                       }`}>
-                        {status}
+                        {isUnverified ? 'Unverified' : status}
                       </span>
                       {workLocation && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
@@ -5229,6 +5321,18 @@ export default function DashboardOverview({ onNavigateTab }) {
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 text-xs divide-y divide-gray-100">
                 
+                {isUnverified && (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-900 shadow-2xs">
+                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <p className="font-bold text-xs">Employer Account Unverified</p>
+                      <p className="text-[11px] text-amber-700 mt-0.5">
+                        This job belongs to an unverified employer account ({companyName}) and is hidden from candidates until the employer is verified.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* 1. Key Overview Grid */}
                 <div>
                   <h4 className="font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-3">
@@ -5917,7 +6021,9 @@ export default function DashboardOverview({ onNavigateTab }) {
                         : empObj,
                       company: job.company || empObj?.companyName || 'Company'
                     };
-                    const isActive = (job.status || 'Active') === 'Active';
+                    const effectiveJobStatus = getJobEffectiveStatus(enrichedJob);
+                    const isJobUnverified = effectiveJobStatus === 'Unverified';
+                    const isActive = effectiveJobStatus === 'Active';
 
                     return (
                       <div 
@@ -5935,9 +6041,13 @@ export default function DashboardOverview({ onNavigateTab }) {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                            isJobUnverified
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : isActive 
+                                ? 'bg-emerald-100 text-emerald-700' 
+                                : 'bg-gray-100 text-gray-600'
                           }`}>
-                            {job.status || 'Active'}
+                            {isJobUnverified ? 'Unverified' : (job.status || 'Active')}
                           </span>
                           <button
                             type="button"

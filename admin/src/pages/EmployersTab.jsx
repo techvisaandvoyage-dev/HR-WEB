@@ -2683,19 +2683,30 @@ export default function EmployersTab() {
                 ) : !currentEmployer?.jobs || currentEmployer.jobs.length === 0 ? (
                   <div className="p-4 bg-gray-50 rounded-xl text-center text-gray-400">No jobs posted yet.</div>
                 ) : (
-                  currentEmployer.jobs.map(job => (
-                    <div key={job._id || job.id} className="p-3 bg-white border border-gray-200 rounded-xl flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-gray-800">{job.jobTitle || job.title}</p>
-                        <p className="text-[11px] text-gray-400">{job.location || 'Remote'} • {job.jobType || 'Full-time'}</p>
+                  currentEmployer.jobs.map(job => {
+                    const isEmpVerified = Boolean(
+                      currentEmployer?.verification?.status === 'verified' || currentEmployer?.isVerified === true
+                    );
+                    const effectiveStatus = (job.status || 'Active') === 'Closed' ? 'Closed' : (isEmpVerified ? 'Active' : 'Unverified');
+
+                    return (
+                      <div key={job._id || job.id} className="p-3 bg-white border border-gray-200 rounded-xl flex items-center justify-between">
+                        <div>
+                          <p className="font-bold text-gray-800">{job.jobTitle || job.title}</p>
+                          <p className="text-[11px] text-gray-400">{job.location || 'Remote'} • {job.jobType || 'Full-time'}</p>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          effectiveStatus === 'Unverified'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : effectiveStatus === 'Active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {effectiveStatus}
+                        </span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        job.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {job.status || 'Active'}
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

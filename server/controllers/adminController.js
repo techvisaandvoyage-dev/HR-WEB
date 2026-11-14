@@ -23,18 +23,27 @@ const applyAccountStatusFilter = (query, status) => {
 exports.getDashboardStats = async (req, res) => {
   try {
     const existingJobIds = await Job.distinct('_id');
+    const verifiedEmployerIds = await Employer.find({
+      $or: [
+        { 'verification.status': 'verified' },
+        { isVerified: true }
+      ]
+    }).distinct('_id');
+
     const [
       totalEmployees,
       totalEmployers,
       totalJobs,
       activeJobs,
+      unverifiedJobs,
       closedJobs,
       totalApplications
     ] = await Promise.all([
       Employee.countDocuments(),
       Employer.countDocuments(),
       Job.countDocuments(),
-      Job.countDocuments({ status: 'Active' }),
+      Job.countDocuments({ status: 'Active', employerId: { $in: verifiedEmployerIds } }),
+      Job.countDocuments({ status: 'Active', employerId: { $nin: verifiedEmployerIds } }),
       Job.countDocuments({ status: 'Closed' }),
       Application.countDocuments({ jobId: { $in: existingJobIds } })
     ]);
@@ -49,13 +58,13 @@ exports.getDashboardStats = async (req, res) => {
     const recentEmployers = await Employer.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('fullName email mobile companyName industry location createdAt lastLogin account isConsultant');
+      .select('fullName email mobile companyName industry location createdAt lastLogin account isConsultant verification isVerified');
 
     // Recent 5 Jobs
     const recentJobs = await Job.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant');
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant verification isVerified');
 
     // Recent 5 Applications
     const recentApplications = await Application.find()
@@ -120,6 +129,7 @@ exports.getDashboardStats = async (req, res) => {
           totalEmployers,
           totalJobs,
           activeJobs,
+          unverifiedJobs,
           closedJobs,
           totalApplications
         },
@@ -499,7 +509,7 @@ exports.getEmployerById = async (req, res) => {
     }
 
     const jobs = await Job.find({ employerId: employer._id })
-      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant')
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant verification isVerified')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -512,14 +522,26 @@ exports.getEmployerById = async (req, res) => {
       appCountMap[idStr] = (appCountMap[idStr] || 0) + 1;
     });
 
-    const enrichedJobs = jobs.map(j => ({
-      ...j,
-      id: j._id,
-      employerId: (j.employerId && typeof j.employerId === 'object') ? j.employerId : employer,
-      applicationsCount: appCountMap[String(j._id)] || 0
-    }));
+    const isEmpVerified = Boolean(employer.verification?.status === 'verified' || employer.isVerified === true);
 
-    const activeJobs = enrichedJobs.filter(j => (j.status || '').toLowerCase() === 'active').length;
+    const enrichedJobs = jobs.map(j => {
+      const isJobEmpVerified = (j.employerId && typeof j.employerId === 'object')
+        ? Boolean(j.employerId.verification?.status === 'verified' || j.employerId.isVerified === true)
+        : isEmpVerified;
+      const effectiveStatus = j.status === 'Closed' ? 'Closed' : (isJobEmpVerified ? 'Active' : 'Unverified');
+
+      return {
+        ...j,
+        id: j._id,
+        employerId: (j.employerId && typeof j.employerId === 'object') ? j.employerId : employer,
+        isEmployerVerified: isJobEmpVerified,
+        effectiveStatus,
+        applicationsCount: appCountMap[String(j._id)] || 0
+      };
+    });
+
+    const activeJobs = enrichedJobs.filter(j => j.effectiveStatus === 'Active').length;
+    const unverifiedJobs = enrichedJobs.filter(j => j.effectiveStatus === 'Unverified').length;
     const closedJobs = enrichedJobs.filter(j => (j.status || '').toLowerCase() === 'closed').length;
 
     res.json({
@@ -530,6 +552,7 @@ exports.getEmployerById = async (req, res) => {
         id: employer._id,
         totalJobs: enrichedJobs.length,
         activeJobs,
+        unverifiedJobs,
         closedJobs,
         jobs: enrichedJobs
       }
@@ -782,7 +805,11 @@ exports.getAllJobsAdmin = async (req, res) => {
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     let query = {};
     if (status && status !== 'All') {
-      query.status = status;
+      if (status === 'Closed') {
+        query.status = 'Closed';
+      } else if (status === 'Active' || status === 'Unverified') {
+        query.status = 'Active';
+      }
     }
     if (search) {
       const searchRegex = new RegExp(escapeRegex(search), 'i');
@@ -793,7 +820,7 @@ exports.getAllJobsAdmin = async (req, res) => {
       ];
     }
     const jobs = await Job.find(query)
-      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant')
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant verification isVerified')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -811,7 +838,7 @@ exports.getAllJobsAdmin = async (req, res) => {
       linkStatsMap[idStr][src] = (linkStatsMap[idStr][src] || 0) + 1;
     });
 
-    const enrichedJobs = jobs.map(j => {
+    let enrichedJobs = jobs.map(j => {
       const idStr = String(j._id);
       const linkStats = linkStatsMap[idStr] || {};
 
@@ -827,14 +854,30 @@ exports.getAllJobsAdmin = async (req, res) => {
         };
       });
 
+      const isEmployerVerified = Boolean(
+        j.employerId && (
+          j.employerId.verification?.status === 'verified' ||
+          j.employerId.isVerified === true
+        )
+      );
+      const effectiveStatus = j.status === 'Closed' ? 'Closed' : (isEmployerVerified ? 'Active' : 'Unverified');
+
       return {
         ...j,
         id: j._id,
+        isEmployerVerified,
+        effectiveStatus,
         applicationsCount: appCountMap[idStr] || 0,
         shareLinks: enrichedLinks,
         linkStats: linkStats
       };
     });
+
+    if (status === 'Active') {
+      enrichedJobs = enrichedJobs.filter(j => j.effectiveStatus === 'Active');
+    } else if (status === 'Unverified') {
+      enrichedJobs = enrichedJobs.filter(j => j.effectiveStatus === 'Unverified');
+    }
 
     res.json({ success: true, count: enrichedJobs.length, data: enrichedJobs });
   } catch (error) {
@@ -887,7 +930,7 @@ exports.getAllApplicationsAdmin = async (req, res) => {
 exports.getJobByIdAdmin = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
-      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant verification')
+      .populate('employerId', 'fullName companyName email mobile phone countryCode location isConsultant verification isVerified')
       .lean();
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
@@ -907,10 +950,20 @@ exports.getJobByIdAdmin = async (req, res) => {
       linkStats[src] = (linkStats[src] || 0) + 1;
     });
 
+    const isEmployerVerified = Boolean(
+      job.employerId && (
+        job.employerId.verification?.status === 'verified' ||
+        job.employerId.isVerified === true
+      )
+    );
+    const effectiveStatus = job.status === 'Closed' ? 'Closed' : (isEmployerVerified ? 'Active' : 'Unverified');
+
     res.json({
       success: true,
       data: {
         ...job,
+        isEmployerVerified,
+        effectiveStatus,
         applications: liveApps,
         applicationsCount: liveApps,
         totalApplicants: liveApps,
