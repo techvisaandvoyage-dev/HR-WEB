@@ -164,9 +164,19 @@ export default function SjJobDetailsContent({
     employer.name ||
     job.contactPerson ||
     employer.contactPerson ||
-    'Recruiter';
-  const posterDesignation = employer.designation || 'Recruiter';
-  const posterRole = compName ? `${posterDesignation} at ${compName}` : posterDesignation;
+    job.recruiterName ||
+    job.details?.recruiterName ||
+    '';
+  const posterDesignation =
+    employer.designation ||
+    employer.title ||
+    employer.role ||
+    job.recruiterDesignation ||
+    job.details?.recruiterDesignation ||
+    '';
+  const posterRole = compName
+    ? (posterDesignation ? `${posterDesignation} at ${compName}` : compName)
+    : (posterDesignation || 'Recruiter');
   const posterLogo = employer.photo || employer.avatar || employer.profilePicture || '';
 
   // Real job analytics from database (no mock/fake data)
@@ -388,6 +398,18 @@ export default function SjJobDetailsContent({
             <span className="sj-company-label">Company Name:</span>
             <span className="sj-company-value font-semibold">{compName}</span>
           </div>
+
+          {posterName && (
+            <div className="sj-company-row">
+              <span className="sj-company-label">Posted By:</span>
+              <span className="sj-company-value font-semibold text-[var(--sj-ink)]">
+                {posterName}
+                {posterDesignation && (
+                  <span className="text-[var(--sj-mute)] font-medium ml-1">({posterDesignation})</span>
+                )}
+              </span>
+            </div>
+          )}
 
           <div className="sj-company-row">
             <span className="sj-company-label">Hiring Type:</span>
