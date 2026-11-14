@@ -1198,17 +1198,29 @@ const EmployeeProfile = () => {
                       <h2>{cmsConfig?.step3?.title || 'Work Experience'}</h2>
                       <p>Add details of your previous and current employment</p>
                     </div>
-                    <div className="seg sj-seg" id="xseg">
+                    <div
+                      className="seg sj-seg inline-flex items-center rounded-full border border-slate-200 bg-white p-[3px] shrink-0"
+                      id="xseg"
+                      style={{ width: 'fit-content', maxWidth: 'fit-content', marginRight: 0 }}
+                    >
                       <button
                         type="button"
-                        className={formData.isFresher ? 'on sj-on' : ''}
+                        className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition-all ${
+                          formData.isFresher
+                            ? 'on sj-on bg-slate-900 text-white font-bold shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 bg-transparent'
+                        }`}
                         onClick={() => setFormData(prev => ({ ...prev, isFresher: true }))}
                       >
                         Fresher
                       </button>
                       <button
                         type="button"
-                        className={!formData.isFresher ? 'on sj-on' : ''}
+                        className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition-all ${
+                          !formData.isFresher
+                            ? 'on sj-on bg-slate-900 text-white font-bold shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 bg-transparent'
+                        }`}
                         onClick={() => setFormData(prev => ({ ...prev, isFresher: false }))}
                       >
                         Experienced

@@ -260,38 +260,46 @@
 }
 
 /* ── Segment Toggle: Fresher / Experienced (.seg) ──────────────── */
-.seg, .sj-seg {
-  display: inline-flex;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 9999px;
-  padding: 3px;
+.seg, .sj-seg, #xseg {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  max-width: fit-content !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+  background: #ffffff !important;
+  border: 1.5px solid #e2e8f0 !important;
+  border-radius: 9999px !important;
+  padding: 3px !important;
+  gap: 2px !important;
+  margin-right: 0 !important;
 }
-.seg button, .sj-seg button {
-  border: 0;
-  background: none;
-  border-radius: 9999px;
-  min-height: 32px;
-  padding: 0 16px;
-  font-weight: 700;
-  color: #64748b;
-  font-family: var(--sj-font);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all .15s ease;
+.seg button, .sj-seg button, #xseg button {
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 9999px !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 18px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  font-family: var(--sj-font) !important;
+  font-size: 13.5px !important;
+  cursor: pointer !important;
+  transition: all .15s ease !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
-.seg button.on, .seg button.sj-on, .sj-seg button.on, .sj-seg button.sj-on {
-  background: #0f172a;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+.seg button:hover, .sj-seg button:hover, #xseg button:hover {
+  color: #0f172a !important;
 }
-
-/* Keep the employment-state switch aligned with the reference card rather
-   than flush against the wide profile-card edge. */
-@media (min-width: 641px) {
-  #work .sj-seg {
-    margin-right: clamp(0px, 8vw, 96px);
-  }
+.seg button.on, .seg button.sj-on, .sj-seg button.on, .sj-seg button.sj-on, #xseg button.on, #xseg button.sj-on {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2) !important;
 }
 
 /* ── Timelines (.tl) & Education (.edl) ────────────────────────── */
