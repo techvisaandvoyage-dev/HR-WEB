@@ -9,7 +9,7 @@
   --acc: #059669;
   --accS: #ecfdf5;
   --ok: #059669;
-  --bg: #f8fafc;
+  --bg: #ffffff;
   min-height: 100vh;
   background: var(--bg);
   color: var(--ink);
@@ -137,9 +137,18 @@
 }
 
 .myjobs-jc:hover {
-  background: #ffffff;
+  background: #f8fafc;
   padding-left: 18px;
   border-radius: 16px;
+}
+
+.myjobs-jc.applied-card {
+  cursor: default;
+}
+
+.myjobs-jc.applied-card:hover {
+  background: transparent;
+  padding-left: 10px;
 }
 
 /* Row 1: Status badge & Date */

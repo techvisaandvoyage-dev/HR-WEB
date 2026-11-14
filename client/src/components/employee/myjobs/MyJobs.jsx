@@ -1,11 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
-import EmployeeNavbar from '../../common/EmployeeNavbar';
+import SjLoggedInHeader from '../../sj-home/SjLoggedInHeader';
+import SjGuestHeader from '../../sj-home/SjGuestHeader';
 import SjJobDetailsDrawer from '../../sj-home/SjJobDetailsDrawer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
 import { formatJobLocation } from '../../../data/preferredLocations';
 import './MyJobs.css';
+
+function getCandidateProfile() {
+  try {
+    let profile = null;
+    const raw = localStorage.getItem('userProfile');
+    if (raw) {
+      try {
+        profile = JSON.parse(raw);
+      } catch (_) {}
+    }
+
+    if (!profile) {
+      const empRaw = localStorage.getItem('employeeUser');
+      if (empRaw) {
+        try {
+          const empParsed = JSON.parse(empRaw);
+          profile = empParsed?.profile || empParsed;
+          if (profile && empParsed?.name && !profile.name) profile.name = empParsed.name;
+          if (profile && empParsed?.email && !profile.email) profile.email = empParsed.email;
+          if (profile && empParsed?.avatar && !profile.avatar) profile.avatar = empParsed.avatar;
+        } catch (_) {}
+      }
+    }
+    return profile;
+  } catch (e) {
+    return null;
+  }
+}
 
 const MyJobs = ({ jobs = [] }) => {
   const navigate = useNavigate();
@@ -32,11 +61,58 @@ const MyJobs = ({ jobs = [] }) => {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
-  // Right sidebar drawer preview state
+  // Profile and login state for header matching Homepage
+  const [candidateProfile, setCandidateProfile] = useState(() => getCandidateProfile());
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => Boolean(localStorage.getItem('employeeToken') || localStorage.getItem('token'))
+  );
+  const [homepageConfig, setHomepageConfig] = useState(null);
+
+  // Header search state (navigates to /employee on search)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
+  const [searchExperience, setSearchExperience] = useState('All');
+  const [searchPostingDate, setSearchPostingDate] = useState('Any time');
+
+  // Right sidebar drawer preview state (ONLY for saved jobs)
   const [selectedDrawerJob, setSelectedDrawerJob] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const [internalJobs, setInternalJobs] = useState(jobs);
+
+  // Fetch homepage config (for brand logo)
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    fetch(`${apiUrl}/api/homepage`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.success && json?.data) {
+          setHomepageConfig(json.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch candidate profile to ensure avatar is fresh
+  useEffect(() => {
+    const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+    if (!token) return;
+
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    fetch(`${apiUrl}/api/employee/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data?.data) {
+          setCandidateProfile(data.data);
+          try {
+            localStorage.setItem('userProfile', JSON.stringify(data.data));
+          } catch (_) {}
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (jobs && jobs.length > 0) {
@@ -126,14 +202,7 @@ const MyJobs = ({ jobs = [] }) => {
 
   const savedList = effectiveJobs.filter(j => savedJobs.some(id => String(id) === String(j.id || j._id)));
 
-  // Drawer handlers & keyboard cycling
-  const currentJobList = activeTab === 'saved'
-    ? savedList
-    : appliedJobs.map(a => {
-        const tId = String(a.id || a._id || '');
-        return effectiveJobs.find(j => String(j.id || j._id) === tId) || a.jobDetails || a;
-      });
-
+  // Drawer handlers (only used for saved jobs)
   const handleOpenDrawer = (job) => {
     setSelectedDrawerJob(job);
     setIsDrawerOpen(true);
@@ -145,21 +214,21 @@ const MyJobs = ({ jobs = [] }) => {
   };
 
   const currentDrawerIndex = selectedDrawerJob
-    ? currentJobList.findIndex(j => String(j.id || j._id) === String(selectedDrawerJob.id || selectedDrawerJob._id))
+    ? savedList.findIndex(j => String(j.id || j._id) === String(selectedDrawerJob.id || selectedDrawerJob._id))
     : -1;
 
   const hasPreviousJob = currentDrawerIndex > 0;
-  const hasNextJob = currentDrawerIndex >= 0 && currentDrawerIndex < currentJobList.length - 1;
+  const hasNextJob = currentDrawerIndex >= 0 && currentDrawerIndex < savedList.length - 1;
 
   const handlePreviousJob = () => {
     if (hasPreviousJob) {
-      setSelectedDrawerJob(currentJobList[currentDrawerIndex - 1]);
+      setSelectedDrawerJob(savedList[currentDrawerIndex - 1]);
     }
   };
 
   const handleNextJob = () => {
     if (hasNextJob) {
-      setSelectedDrawerJob(currentJobList[currentDrawerIndex + 1]);
+      setSelectedDrawerJob(savedList[currentDrawerIndex + 1]);
     }
   };
 
@@ -183,6 +252,29 @@ const MyJobs = ({ jobs = [] }) => {
     }
   };
 
+  const handleSignOut = () => {
+    localStorage.removeItem('employeeToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('employeeUser');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('userRole');
+    setIsLoggedIn(false);
+    navigate('/employee');
+  };
+
+  const handleHeaderSearch = (q, loc, exp, date) => {
+    navigate('/employee', {
+      state: {
+        searchFilters: {
+          keyword: q !== undefined ? q : searchQuery,
+          location: loc !== undefined ? loc : searchLocation,
+          experience: exp !== undefined ? exp : searchExperience,
+          postingDate: date !== undefined ? date : searchPostingDate,
+        }
+      }
+    });
+  };
+
   // SVG Verified Icon - Scalloped verified badge matching prototype exactly
   const verifiedIcon = (
     <svg className="myjobs-ver" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-label="Verified">
@@ -192,8 +284,49 @@ const MyJobs = ({ jobs = [] }) => {
 
   return (
     <div className="myjobs-container">
-      {/* Navbar kept exactly as on homepage */}
-      <EmployeeNavbar />
+      {/* Modern Navbar matching Homepage */}
+      {isLoggedIn ? (
+        <SjLoggedInHeader
+          logoConfig={homepageConfig?.logo}
+          searchTerm={searchQuery}
+          onSearchTermChange={(val) => {
+            setSearchQuery(val);
+            handleHeaderSearch(val, searchLocation, searchExperience, searchPostingDate);
+          }}
+          searchLocation={searchLocation}
+          onSearchLocationChange={(val) => {
+            setSearchLocation(val);
+            handleHeaderSearch(searchQuery, val, searchExperience, searchPostingDate);
+          }}
+          experience={searchExperience}
+          onExperienceChange={(val) => {
+            setSearchExperience(val);
+            handleHeaderSearch(searchQuery, searchLocation, val, searchPostingDate);
+          }}
+          postingDate={searchPostingDate}
+          onPostingDateChange={(val) => {
+            setSearchPostingDate(val);
+            handleHeaderSearch(searchQuery, searchLocation, searchExperience, val);
+          }}
+          jobs={effectiveJobs}
+          userProfile={candidateProfile}
+          savedCount={savedJobs.length}
+          onNavigateSaved={() => setActiveTab('saved')}
+          onNavigateApplied={() => setActiveTab('applied')}
+          onNavigateMessages={() => navigate('/employee/messages')}
+          onNavigateProfile={() => navigate('/employee/profile')}
+          onNavigateSecurity={() => navigate('/employee/profile?tab=security')}
+          onSignOut={handleSignOut}
+          onLogoClick={() => navigate('/employee')}
+        />
+      ) : (
+        <SjGuestHeader
+          logoConfig={homepageConfig?.logo}
+          onOpenEmployeeLogin={() => navigate('/employee')}
+          onOpenEmployerLogin={() => navigate('/employer')}
+          onLogoClick={() => navigate('/employee')}
+        />
+      )}
 
       {/* Main Container */}
       <main className="myjobs-pw">
@@ -237,7 +370,7 @@ const MyJobs = ({ jobs = [] }) => {
           </button>
         </div>
 
-        {/* Tab 1: Saved Jobs */}
+        {/* Tab 1: Saved Jobs (Click opens right sidebar drawer preview) */}
         {activeTab === 'saved' && (
           <div>
             {savedList.length === 0 ? (
@@ -346,7 +479,7 @@ const MyJobs = ({ jobs = [] }) => {
           </div>
         )}
 
-        {/* Tab 2: Applied Jobs */}
+        {/* Tab 2: Applied Jobs (Clean display without sidebar drawer opening) */}
         {activeTab === 'applied' && (
           <div>
             {appliedJobs.length === 0 ? (
@@ -388,15 +521,7 @@ const MyJobs = ({ jobs = [] }) => {
                   return (
                     <div 
                       key={targetId || index} 
-                      className="myjobs-jc"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleOpenDrawer(job)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          handleOpenDrawer(job);
-                        }
-                      }}
+                      className="myjobs-jc applied-card"
                     >
                       {/* Top Row: Status pill on left, Date on right */}
                       <div className="r1">
@@ -445,7 +570,7 @@ const MyJobs = ({ jobs = [] }) => {
 
       </main>
 
-      {/* Right Sidebar Job Details Drawer Preview */}
+      {/* Right Sidebar Job Details Drawer Preview (for Saved jobs) */}
       <SjJobDetailsDrawer
         job={selectedDrawerJob}
         isOpen={isDrawerOpen}
