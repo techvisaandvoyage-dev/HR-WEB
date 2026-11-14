@@ -338,19 +338,6 @@ export default function SjLoggedInHeader({
 
         {/* Action Buttons */}
         <div className="sj-actions-cluster">
-          {/* Saved Jobs Icon */}
-          <button
-            type="button"
-            className="sj-icon-btn sj-hide-mobile"
-            onClick={onNavigateSaved}
-            aria-label={`Saved jobs ${savedCount > 0 ? `(${savedCount})` : ''}`}
-            title="Saved Jobs"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M6 3h12v18l-6-4-6 4Z" />
-            </svg>
-          </button>
-
           {/* Messages Icon */}
           <button
             type="button"
@@ -359,7 +346,7 @@ export default function SjLoggedInHeader({
             aria-label="Messages"
             title="Messages"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4 4h16v12H8l-4 4Z" />
             </svg>
             {hasUnreadMessages && <span className="sj-ping-dot" />}
