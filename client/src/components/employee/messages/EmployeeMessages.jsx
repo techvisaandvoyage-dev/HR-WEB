@@ -1,7 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import EmployeeNavbar from '../../common/EmployeeNavbar';
+import SjLoggedInHeader from '../../sj-home/SjLoggedInHeader';
+import SjGuestHeader from '../../sj-home/SjGuestHeader';
+import { getEmployeeStoredValue } from '../../../utils/employeeStorage';
 import { socket } from '../../../utils/socket';
+
+function getCandidateProfile() {
+  try {
+    let profile = null;
+    const raw = localStorage.getItem('userProfile');
+    if (raw) {
+      try {
+        profile = JSON.parse(raw);
+      } catch (_) {}
+    }
+
+    if (!profile) {
+      const empRaw = localStorage.getItem('employeeUser');
+      if (empRaw) {
+        try {
+          const empParsed = JSON.parse(empRaw);
+          profile = empParsed?.profile || empParsed;
+          if (profile && empParsed?.name && !profile.name) profile.name = empParsed.name;
+          if (profile && empParsed?.email && !profile.email) profile.email = empParsed.email;
+          if (profile && empParsed?.avatar && !profile.avatar) profile.avatar = empParsed.avatar;
+        } catch (_) {}
+      }
+    }
+    return profile;
+  } catch (e) {
+    return null;
+  }
+}
 
 const EmployeeMessages = () => {
   const navigate = useNavigate();
@@ -19,6 +49,20 @@ const EmployeeMessages = () => {
   const [isBlockLoading, setIsBlockLoading] = useState(false);
   const [applicationsMap, setApplicationsMap] = useState({});
   const [allJobsList, setAllJobsList] = useState([]);
+
+  // Profile and login state for header matching Homepage
+  const [candidateProfile, setCandidateProfile] = useState(() => getCandidateProfile());
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => Boolean(localStorage.getItem('employeeToken') || localStorage.getItem('token'))
+  );
+  const [homepageConfig, setHomepageConfig] = useState(null);
+  const [savedJobsCount, setSavedJobsCount] = useState(() => getEmployeeStoredValue('savedJobs', []).length);
+
+  // Header search state (navigates to /employee on search)
+  const [navSearchKeyword, setNavSearchKeyword] = useState('');
+  const [navSearchLocation, setNavSearchLocation] = useState('');
+  const [navSearchExperience, setNavSearchExperience] = useState('All');
+  const [navSearchPostingDate, setNavSearchPostingDate] = useState('Any time');
 
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -38,6 +82,63 @@ const EmployeeMessages = () => {
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  // Fetch homepage config (for brand logo)
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    fetch(`${apiUrl}/api/homepage`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.success && json?.data) {
+          setHomepageConfig(json.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Fetch candidate profile to ensure avatar is fresh
+  useEffect(() => {
+    const token = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+    if (!token) return;
+
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    fetch(`${apiUrl}/api/employee/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data?.data) {
+          setCandidateProfile(data.data);
+          try {
+            localStorage.setItem('userProfile', JSON.stringify(data.data));
+          } catch (_) {}
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('employeeToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('employeeUser');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('userRole');
+    setIsLoggedIn(false);
+    navigate('/employee');
+  };
+
+  const handleHeaderSearch = (q, loc, exp, date) => {
+    navigate('/employee', {
+      state: {
+        searchFilters: {
+          keyword: q !== undefined ? q : navSearchKeyword,
+          location: loc !== undefined ? loc : navSearchLocation,
+          experience: exp !== undefined ? exp : navSearchExperience,
+          postingDate: date !== undefined ? date : navSearchPostingDate,
+        }
+      }
+    });
+  };
 
   // Global socket listener for conversation updates
   useEffect(() => {
@@ -412,10 +513,10 @@ const EmployeeMessages = () => {
   const totalUnreadCount = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
   const QUICK_REPLIES = [
-    "👋 Hi, thank you for reaching out!",
-    "📅 I am available for an interview.",
-    "📄 Please let me know the next steps.",
-    "💼 Could you share more details about the role?"
+    "Hi, thank you for reaching out!",
+    "I am available for an interview.",
+    "Please let me know the next steps.",
+    "Could you share more details about the role?"
   ];
 
   const getCompanyGradient = (name = '') => {
@@ -484,645 +585,437 @@ const EmployeeMessages = () => {
 
   return (
     <div className="h-screen max-h-screen overflow-hidden bg-[#F8FAFC] flex flex-col font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Top Navbar — hides mobile bottom nav when a chat is open */}
-      <EmployeeNavbar refreshUnread={refreshNav} hideBottomNav={!!selectedChat} />
+      {/* Modern Navbar matching Homepage */}
+      {isLoggedIn ? (
+        <SjLoggedInHeader
+          logoConfig={homepageConfig?.logo}
+          searchTerm={navSearchKeyword}
+          onSearchTermChange={(val) => {
+            setNavSearchKeyword(val);
+            handleHeaderSearch(val, navSearchLocation, navSearchExperience, navSearchPostingDate);
+          }}
+          searchLocation={navSearchLocation}
+          onSearchLocationChange={(val) => {
+            setNavSearchLocation(val);
+            handleHeaderSearch(navSearchKeyword, val, navSearchExperience, navSearchPostingDate);
+          }}
+          experience={navSearchExperience}
+          onExperienceChange={(val) => {
+            setNavSearchExperience(val);
+            handleHeaderSearch(navSearchKeyword, navSearchLocation, val, navSearchPostingDate);
+          }}
+          postingDate={navSearchPostingDate}
+          onPostingDateChange={(val) => {
+            setNavSearchPostingDate(val);
+            handleHeaderSearch(navSearchKeyword, navSearchLocation, navSearchExperience, val);
+          }}
+          jobs={allJobsList}
+          userProfile={candidateProfile}
+          savedCount={savedJobsCount}
+          hasUnreadMessages={totalUnreadCount > 0}
+          onNavigateSaved={() => navigate('/employee/myjobs?tab=saved')}
+          onNavigateApplied={() => navigate('/employee/myjobs?tab=applied')}
+          onNavigateMessages={() => {}}
+          onNavigateProfile={() => navigate('/employee/profile')}
+          onNavigateSecurity={() => navigate('/employee/profile?tab=security')}
+          onSignOut={handleSignOut}
+          onLogoClick={() => navigate('/employee')}
+        />
+      ) : (
+        <SjGuestHeader
+          logoConfig={homepageConfig?.logo}
+          onOpenEmployeeLogin={() => navigate('/employee')}
+          onOpenEmployerLogin={() => navigate('/employer')}
+          onLogoClick={() => navigate('/employee')}
+        />
+      )}
       
-      <div className="flex-1 min-h-0 w-full max-w-7xl mx-auto p-2 sm:p-3 md:px-6 md:py-3.5 flex gap-4 md:gap-5 overflow-hidden">
-        
-        {/* ========================================================
-            DESKTOP LEFT SIDEBAR / MOBILE INBOX LIST (WHEN NO CHAT SELECTED)
-           ======================================================== */}
-        <div className={`w-full md:w-[360px] lg:w-[380px] bg-white rounded-2xl shadow-sm border border-slate-200/90 flex flex-col h-full overflow-hidden shrink-0 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className="flex-1 min-h-0 w-full max-w-[1360px] mx-auto p-2 sm:p-4 md:p-6 flex overflow-hidden">
+        {/* Unified Card Container (matches screenshot) */}
+        <div className="w-full h-full bg-white rounded-3xl border border-slate-200/90 shadow-sm flex overflow-hidden">
           
-          {/* Header */}
-          <div className="p-4 md:p-5 border-b border-slate-100 bg-white">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Messages</h1>
-                {totalUnreadCount > 0 && (
-                  <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-xs">
-                    {totalUnreadCount} new
-                  </span>
-                )}
-              </div>
-            </div>
+          {/* Left Column: Messages List (visible on desktop or mobile when no chat is open) */}
+          <div className={`w-full md:w-[320px] lg:w-[350px] border-r border-slate-100 flex flex-col h-full overflow-hidden shrink-0 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
+            
+            {/* Header: Title, Pill Search, Tabs */}
+            <div className="p-5 border-b border-slate-100 bg-white shrink-0">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-3">Messages</h1>
 
-            {/* Search Input */}
-            <div className="relative mb-3">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by company or job title..."
-                className="w-full pl-9 pr-8 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-xs md:text-sm text-slate-900 placeholder-slate-400 rounded-xl border border-slate-200/80 focus:border-emerald-500 focus:outline-none transition-all"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setFilterTab('all')}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${filterTab === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-              >
-                All Messages ({conversations.length})
-              </button>
-              <button
-                onClick={() => setFilterTab('unread')}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${filterTab === 'unread' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-              >
-                <span>Unread</span>
-                {totalUnreadCount > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${filterTab === 'unread' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
-                    {totalUnreadCount}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
-          
-          {/* Conversation List */}
-          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 bg-slate-50/30">
-            {isLoading ? (
-              <div className="p-8 flex flex-col items-center justify-center text-center space-y-3">
-                <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xs text-slate-400 font-medium">Loading conversations...</p>
-              </div>
-            ) : filteredConversations.length === 0 ? (
-              <div className="p-8 text-center flex flex-col items-center justify-center space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shadow-xs">
-                  💬
-                </div>
-                <h3 className="font-bold text-slate-800 text-sm">
-                  {searchQuery || filterTab !== 'all' ? 'No matching conversations' : 'No messages yet'}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-[240px] leading-relaxed">
-                  {searchQuery || filterTab !== 'all'
-                    ? 'Try adjusting your search terms or filter tabs.'
-                    : 'When recruiters contact you about your job applications, their chats will show up here.'}
-                </p>
+              {/* Pill Search Input */}
+              <div className="relative mb-3.5">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by company or job title..."
+                  className="w-full px-4 py-2.5 bg-white text-xs text-slate-900 placeholder:text-slate-400 rounded-full border border-slate-300 focus:border-slate-800 focus:outline-none transition-all shadow-2xs"
+                />
                 {searchQuery && (
-                  <button
+                  <button 
+                    type="button"
                     onClick={() => setSearchQuery('')}
-                    className="text-xs font-bold text-emerald-700 hover:underline pt-1"
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
-                    Clear search
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 )}
               </div>
-            ) : (
-              filteredConversations.map(chat => {
-                const isSelected = selectedChat?.applicationId === chat.applicationId;
-                const gradient = getCompanyGradient(chat.companyName);
 
-                return (
-                  <div 
-                    key={chat.applicationId} 
-                    className={`p-3.5 sm:p-4 cursor-pointer transition-all flex gap-3.5 items-start group relative ${
-                      isSelected 
-                        ? 'bg-emerald-50/70 border-l-4 border-l-emerald-600 shadow-xs' 
-                        : 'bg-white hover:bg-slate-50/90 border-l-4 border-l-transparent'
-                    }`}
-                    onClick={() => setSelectedChat(chat)}
-                  >
-                    {/* Avatar */}
-                    <div className="relative shrink-0">
-                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${gradient} flex items-center justify-center text-white font-bold text-lg shadow-sm ring-2 ring-emerald-500/10`}>
-                        {chat.companyName?.charAt(0)?.toUpperCase() || 'C'}
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFilterTab('all')}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all cursor-pointer ${
+                    filterTab === 'all' 
+                      ? 'bg-[#0b1320] text-white shadow-2xs' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  All Messages ({conversations.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterTab('unread')}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
+                    filterTab === 'unread' 
+                      ? 'bg-[#0b1320] text-white shadow-2xs' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>Unread</span>
+                  {totalUnreadCount > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${filterTab === 'unread' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {totalUnreadCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            {/* Conversations List */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5 bg-white">
+              {isLoading ? (
+                <div className="p-8 flex flex-col items-center justify-center text-center space-y-3">
+                  <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs text-slate-400 font-medium">Loading conversations...</p>
+                </div>
+              ) : filteredConversations.length === 0 ? (
+                <div className="p-8 text-center flex flex-col items-center justify-center space-y-2">
+                  <p className="font-bold text-slate-700 text-sm">
+                    {searchQuery || filterTab !== 'all' ? 'No matching conversations' : 'No messages yet'}
+                  </p>
+                  <p className="text-xs text-slate-400 max-w-[200px]">
+                    {searchQuery || filterTab !== 'all'
+                      ? 'Try adjusting your search terms.'
+                      : 'When recruiters message you, their chats will show up here.'}
+                  </p>
+                </div>
+              ) : (
+                filteredConversations.map(chat => {
+                  const isSelected = selectedChat?.applicationId === chat.applicationId;
+                  const companyInitial = chat.companyName?.trim()?.charAt(0)?.toUpperCase() || 'C';
+
+                  return (
+                    <div 
+                      key={chat.applicationId} 
+                      className={`p-3 rounded-2xl cursor-pointer transition-all flex gap-3 items-start group ${
+                        isSelected 
+                          ? 'bg-[#ecfdf5] border border-emerald-200/60 shadow-2xs' 
+                          : 'bg-white hover:bg-slate-50 border border-transparent'
+                      }`}
+                      onClick={() => setSelectedChat(chat)}
+                    >
+                      {/* Dark Squircle Avatar */}
+                      <div className="w-10 h-10 rounded-xl bg-[#0b1320] text-white font-bold flex items-center justify-center text-sm shrink-0">
+                        {companyInitial}
                       </div>
-                      {/* Active green dot */}
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                    </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline mb-1">
-                        <h3 className={`font-bold text-sm truncate ${isSelected ? 'text-emerald-950 font-black' : 'text-slate-900'}`}>
-                          {chat.companyName}
-                        </h3>
-                        <span className="text-[11px] text-slate-400 font-medium shrink-0 ml-2">
-                          {formatConversationTime(chat.lastMessageTime)}
-                        </span>
-                      </div>
-
-                      {/* Job title pill */}
-                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md truncate max-w-[170px]">
-                          <svg className="w-3 h-3 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          <span className="truncate">{chat.jobTitle || 'Role'}</span>
-                        </span>
-
-                        {chat.isBlocked && (
-                          <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded shrink-0">
-                            Blocked
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Row 1: Company Name + Time */}
+                        <div className="flex justify-between items-baseline gap-2 mb-1">
+                          <h3 className="font-bold text-sm text-slate-900 truncate">
+                            {chat.companyName}
+                          </h3>
+                          <span className="text-[11px] font-semibold text-emerald-600 shrink-0">
+                            {formatConversationTime(chat.lastMessageTime)}
                           </span>
-                        )}
-                      </div>
+                        </div>
 
-                      {/* Last Message Preview */}
-                      <div className="flex items-center justify-between gap-2">
-                        <p className={`text-xs truncate leading-relaxed ${chat.unreadCount > 0 ? 'font-bold text-slate-900' : 'text-slate-500'}`}>
+                        {/* Row 2: Job Title Pill */}
+                        <div className="mb-1">
+                          <span className="inline-block bg-white border border-slate-200 text-[11px] font-medium text-slate-700 px-2.5 py-0.5 rounded-full truncate max-w-[170px] shadow-2xs">
+                            {chat.jobTitle || 'Role'}
+                          </span>
+                        </div>
+
+                        {/* Row 3: Last Message */}
+                        <p className="text-xs text-slate-500 truncate leading-tight">
                           {chat.lastMessage || 'No messages yet'}
                         </p>
-
-                        {chat.unreadCount > 0 && !chat.isBlocked && (
-                          <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs shrink-0 animate-pulse">
-                            {chat.unreadCount}
-                          </span>
-                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* ========================================================
-            RIGHT AREA (DESKTOP: ACTIVE CHAT OR EMPTY STATE)
-           ======================================================== */}
-        {selectedChat ? (
-          <div className="flex-1 hidden md:flex min-w-0 h-full min-h-0">
-            {/* Center Chat Box */}
-            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200/90 flex flex-col overflow-hidden min-w-0 h-full min-h-0">
-              
-              {/* Chat Header */}
-              <div className="px-6 py-4 border-b border-slate-100 bg-white flex justify-between items-center shrink-0 shadow-xs">
-                <div className="flex gap-3.5 items-center min-w-0">
-                  <div className="relative">
-                    <div className={`w-11 h-11 rounded-2xl bg-gradient-to-tr ${getCompanyGradient(selectedChat.companyName)} flex items-center justify-center text-white font-bold text-base shadow-sm ring-2 ring-emerald-500/10`}>
-                      {selectedChat.companyName?.charAt(0)?.toUpperCase() || 'C'}
-                    </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-bold text-slate-900 text-base truncate">{selectedChat.companyName}</h2>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Recruiter
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 truncate flex items-center gap-1 mt-0.5 font-medium">
-                      <span>{selectedChat.jobTitle}</span>
-                      {selectedChat.location && (
-                        <>
-                          <span>•</span>
-                          <span>{selectedChat.location}</span>
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button 
-                    type="button"
-                    onClick={handleViewJob}
-                    className="px-3.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-                    title="View Job"
-                  >
-                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    <span>View Job</span>
-                  </button>
-
-                  <button 
-                    type="button"
-                    onClick={() => setIsJobDetailsOpen(true)}
-                    className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-                    title="View Job Details"
-                  >
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Job Details</span>
-                  </button>
-
-                  {selectedChat.isBlocked ? (
-                    selectedChat.blockedBy === 'Employee' && (
-                      <button 
-                        onClick={openBlockModal}
-                        className="px-3.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
-                        Unblock
-                      </button>
-                    )
-                  ) : (
-                    <button 
-                      onClick={openBlockModal}
-                      className="px-3.5 py-1.5 text-xs font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
-                      title="Block this chat"
+          {/* Right Column: Chat Window */}
+          <div className={`flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden bg-[#f8fafc] ${!selectedChat ? 'hidden md:flex' : 'flex'}`}>
+            {selectedChat ? (
+              <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
+                
+                {/* Chat Top Header */}
+                <div className="px-5 md:px-7 py-4 bg-white border-b border-slate-100 flex justify-between items-center shrink-0">
+                  <div className="flex gap-3 items-center min-w-0">
+                    {/* Back arrow on mobile to return to inbox */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedChat(null)}
+                      className="md:hidden w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-700 transition-colors shrink-0 -ml-1 active:scale-95"
+                      title="Back to messages"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
-                      Block
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+                      </svg>
                     </button>
-                  )}
-                </div>
-              </div>
 
+                    {/* Dark Squircle Avatar */}
+                    <div className="w-11 h-11 rounded-xl bg-[#0b1320] text-white font-bold flex items-center justify-center text-base shrink-0 shadow-2xs">
+                      {selectedChat.companyName?.trim()?.charAt(0)?.toUpperCase() || 'C'}
+                    </div>
 
-
-              {/* Chat Messages History */}
-              <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 bg-slate-50/60 flex flex-col gap-4">
-                {groupedMessages.length > 0 ? (
-                  groupedMessages.map((group, groupIdx) => (
-                    <React.Fragment key={groupIdx}>
-                      {/* Date divider */}
-                      <div className="flex items-center justify-center my-2">
-                        <span className="bg-slate-200/80 text-slate-600 text-[11px] font-semibold px-3 py-1 rounded-full shadow-2xs">
-                          {group.label}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h2 className="font-bold text-slate-900 text-base leading-none">
+                          {selectedChat.companyName}
+                        </h2>
+                        <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                          <span>•</span>
+                          <span>Recruiter</span>
                         </span>
                       </div>
-
-                      {/* Messages in this date */}
-                      {group.messages.map(msg => {
-                        const isMe = msg.senderModel === 'Employee';
-
-                        return (
-                          <div key={msg._id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                            <div className="flex items-end gap-2 max-w-[80%]">
-                              {!isMe && (
-                                <div className={`w-7 h-7 rounded-lg bg-gradient-to-tr ${getCompanyGradient(selectedChat.companyName)} flex items-center justify-center text-white text-[11px] font-bold shadow-xs shrink-0 mb-1`}>
-                                  {selectedChat.companyName?.charAt(0) || 'C'}
-                                </div>
-                              )}
-
-                              <div className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                                isMe 
-                                  ? 'bg-gradient-to-br from-emerald-600 to-green-600 text-white rounded-br-xs shadow-sm font-normal' 
-                                  : 'bg-white border border-slate-200/80 text-slate-900 rounded-bl-xs shadow-xs'
-                              }`}>
-                                {msg.content}
-                              </div>
-                            </div>
-
-                            {/* Message metadata */}
-                            <div className={`flex items-center gap-1.5 mt-1 px-1 text-[11px] ${isMe ? 'text-slate-400 mr-2' : 'text-slate-400 ml-9'}`}>
-                              <span>{formatMessageTime(msg.createdAt)}</span>
-                              {isMe && (
-                                <span className={`inline-flex items-center ${msg.isRead ? 'text-emerald-600' : 'text-slate-300'}`} title={msg.isRead ? 'Read' : 'Delivered'}>
-                                  {/* Double check icon */}
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7m-14 4l4 4L19 7" />
-                                  </svg>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-3 opacity-90">
-                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-3xl">
-                      💬
-                    </div>
-                    <h3 className="text-slate-900 font-bold text-base">Start the Conversation</h3>
-                    <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                      Send a message to <strong>{selectedChat.companyName}</strong> to introduce yourself, ask questions, or discuss interview availability.
-                    </p>
-                  </div>
-                )}
-
-                {/* Real-time Typing Indicator */}
-                {isTyping && !selectedChat.isBlocked && (
-                  <div className="flex items-end gap-2 ml-1">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-[11px] font-bold shadow-xs">
-                      {selectedChat.companyName?.charAt(0) || 'C'}
-                    </div>
-                    <div className="bg-white border border-slate-200/80 rounded-2xl rounded-bl-xs px-4 py-3 shadow-xs flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                      <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                      <span className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                      <span className="text-xs text-slate-400 font-medium ml-1.5">{selectedChat.companyName} is typing...</span>
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Quick Replies Chips */}
-              {!selectedChat.isBlocked && (
-                <div className="px-6 py-2 bg-white border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
-                  <span className="text-[11px] text-slate-400 font-semibold shrink-0">Suggestions:</span>
-                  {QUICK_REPLIES.map((reply, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleQuickReply(reply)}
-                      className="px-3 py-1 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 rounded-full text-xs font-medium border border-slate-200/80 transition-all shrink-0 active:scale-95"
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Chat Composer / Blocked Banner */}
-              {selectedChat.isBlocked ? (
-                <div className="p-5 border-t border-red-100 bg-red-50/70 shrink-0 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-xl shrink-0">
-                      🚫
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-red-900">Conversation Blocked</h4>
-                      <p className="text-xs text-red-700 mt-0.5">
-                        {selectedChat.blockedBy === 'Employee' 
-                          ? 'You have blocked this employer. You cannot send or receive messages in this conversation.'
-                          : 'This conversation was closed or blocked by the employer.'}
+                      <p className="text-xs text-slate-500 truncate mt-1 font-medium">
+                        <span>{selectedChat.jobTitle}</span>
+                        {selectedChat.location && (
+                          <span> • {selectedChat.location}</span>
+                        )}
                       </p>
                     </div>
                   </div>
-                  {selectedChat.blockedBy === 'Employee' && (
-                    <button
-                      onClick={openBlockModal}
-                      className="px-4 py-2 bg-white hover:bg-slate-50 text-red-700 border border-red-300 rounded-xl text-xs font-bold shrink-0 transition-colors shadow-xs"
+
+                  {/* Top Action Buttons (Pill outlines) */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button 
+                      type="button"
+                      onClick={handleViewJob}
+                      className="px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                      title="View Job"
                     >
-                      Unblock
+                      <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      <span>View Job</span>
                     </button>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 border-t border-slate-100 bg-white shrink-0">
-                  <div className="flex items-end gap-3 bg-slate-50 border border-slate-200/90 rounded-2xl p-2.5 focus-within:border-emerald-500 focus-within:bg-white transition-all shadow-2xs">
-                    <textarea 
-                      ref={textareaRef}
-                      value={newMessage}
-                      onChange={handleInputChange}
-                      onKeyDown={(e) => { 
-                        if(e.key === 'Enter' && !e.shiftKey) { 
-                          e.preventDefault(); 
-                          sendMessage(); 
-                        } 
-                      }}
-                      rows="2"
-                      className="w-full resize-none bg-transparent outline-none text-sm text-slate-900 placeholder-slate-400 px-2 py-1 leading-relaxed"
-                      placeholder={`Write a message to ${selectedChat.companyName}... (Press Enter to send)`}
-                    ></textarea>
 
                     <button 
-                      onClick={sendMessage}
-                      disabled={!newMessage.trim()}
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
-                        !newMessage.trim() 
-                          ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
-                          : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/20 active:scale-95'
-                      }`}
-                      title="Send message"
+                      type="button"
+                      onClick={() => setIsJobDetailsOpen(true)}
+                      className="px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                      title="Job Details"
                     >
-                      <svg className="w-5 h-5 transform translate-x-0.5 -translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" strokeWidth="2" />
+                        <line x1="12" y1="8" x2="12" y2="8.01" strokeWidth="2.5" strokeLinecap="round" />
+                        <line x1="12" y1="11" x2="12" y2="16" strokeWidth="2" strokeLinecap="round" />
                       </svg>
+                      <span>Job Details</span>
                     </button>
+
+                    {selectedChat.isBlocked ? (
+                      selectedChat.blockedBy === 'Employee' && (
+                        <button 
+                          onClick={openBlockModal}
+                          className="px-3.5 py-1.5 text-xs font-bold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                          Unblock
+                        </button>
+                      )
+                    ) : (
+                      <button 
+                        onClick={openBlockModal}
+                        className="px-3.5 py-1.5 text-xs font-bold text-red-600 bg-white hover:bg-red-50 border border-red-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                        title="Block this chat"
+                      >
+                        <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" strokeWidth="2" />
+                        </svg>
+                        <span>Block</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* Empty desktop state when no conversation is selected */
-          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200/90 hidden md:flex flex-col items-center justify-center p-12 text-center relative overflow-hidden">
-            <div className="max-w-md w-full flex flex-col items-center relative z-10">
-              <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-4xl mb-6 shadow-sm border border-emerald-100 ring-8 ring-emerald-500/5">
-                💬
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2 tracking-tight">Your Messages</h2>
-              <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-xs">
-                Select a conversation from the left to read messages, reply, or view job details.
-              </p>
-            </div>
-          </div>
-        )}
 
-        {/* ========================================================
-            MOBILE FULL-SCREEN CHAT MODAL (WHEN A CONVERSATION IS OPENED)
-           ======================================================== */}
-        {selectedChat && (
-          <div className="md:hidden fixed inset-0 z-[120] bg-[#F8FAFC] flex flex-col h-[100dvh]">
-            
-            {/* Mobile Chat Header */}
-            <div className="px-3 py-2.5 bg-white border-b border-slate-200/90 flex items-center justify-between shrink-0 shadow-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                {/* Back button to return to conversation list */}
-                <button 
-                  onClick={() => setSelectedChat(null)}
-                  className="w-9 h-9 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-700 transition-colors shrink-0 active:scale-95"
-                  title="Back to messages"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-
-                {/* Company Avatar & Info */}
-                <div className="relative shrink-0">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${getCompanyGradient(selectedChat.companyName)} flex items-center justify-center text-white font-bold text-sm shadow-xs`}>
-                    {selectedChat.companyName?.charAt(0)?.toUpperCase() || 'C'}
-                  </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                </div>
-
-                <div className="min-w-0 cursor-pointer" onClick={() => setIsJobDetailsOpen(true)}>
-                  <h2 className="font-bold text-slate-900 text-sm truncate leading-tight hover:text-emerald-700 transition-colors">
-                    {selectedChat.companyName}
-                  </h2>
-                  <p className="text-[11px] text-emerald-700 font-semibold truncate leading-tight mt-0.5 flex items-center gap-1">
-                    <span>{selectedChat.jobTitle}</span>
-                    <span className="text-[9px] text-slate-400 font-normal">›</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* i (Job Details) Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsJobDetailsOpen(true)}
-                  className="w-8 h-8 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-200 transition-all active:scale-95 shadow-2xs"
-                  title="Job details"
-                >
-                  <svg className="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9" strokeWidth="2" />
-                    <line x1="12" y1="8" x2="12" y2="8.01" strokeWidth="2.5" strokeLinecap="round" />
-                    <line x1="12" y1="11" x2="12" y2="16" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
-
-                {selectedChat.isBlocked ? (
-                  selectedChat.blockedBy === 'Employee' && (
-                    <button
-                      onClick={openBlockModal}
-                      className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200"
-                    >
-                      Unblock
-                    </button>
-                  )
-                ) : (
-                  <button
-                    onClick={openBlockModal}
-                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-xl"
-                    title="Block employer"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Mobile Messages History Scroll */}
-            <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 bg-slate-50/70">
-              {groupedMessages.length > 0 ? (
-                groupedMessages.map((group, groupIdx) => (
-                  <React.Fragment key={groupIdx}>
-                    <div className="flex items-center justify-center my-1.5">
-                      <span className="bg-slate-200/80 text-slate-600 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">
-                        {group.label}
-                      </span>
-                    </div>
-
-                    {group.messages.map(msg => {
-                      const isMe = msg.senderModel === 'Employee';
-
-                      return (
-                        <div key={msg._id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                          <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap shadow-xs ${
-                            isMe 
-                              ? 'bg-gradient-to-br from-emerald-600 to-green-600 text-white rounded-br-xs font-normal' 
-                              : 'bg-white border border-slate-200/90 text-slate-900 rounded-bl-xs'
-                          }`}>
-                            {msg.content}
-                          </div>
-
-                          <div className="flex items-center gap-1 mt-1 px-1 text-[10px] text-slate-400">
-                            <span>{formatMessageTime(msg.createdAt)}</span>
-                            {isMe && (
-                              <span className={msg.isRead ? 'text-emerald-600' : 'text-slate-300'}>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7m-14 4l4 4L19 7" />
-                                </svg>
-                              </span>
-                            )}
-                          </div>
+                {/* Messages Body */}
+                <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 bg-[#f8fafc] flex flex-col gap-4">
+                  {groupedMessages.length > 0 ? (
+                    groupedMessages.map((group, groupIdx) => (
+                      <React.Fragment key={groupIdx}>
+                        {/* Centered Date Badge (e.g. "Today") */}
+                        <div className="flex items-center justify-center my-1.5">
+                          <span className="bg-white border border-slate-200/90 text-slate-600 text-[11px] font-semibold px-3 py-0.5 rounded-full shadow-2xs">
+                            {group.label}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </React.Fragment>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-2 opacity-80">
-                  <div className="w-12 h-12 rounded-2xl bg-white shadow-xs border border-slate-100 flex items-center justify-center text-2xl">
-                    💬
+
+                        {/* Messages */}
+                        {group.messages.map(msg => {
+                          const isMe = msg.senderModel === 'Employee';
+
+                          return (
+                            <div key={msg._id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                              {isMe ? (
+                                /* Outgoing Bubble (Candidate: Dark Navy/Black) */
+                                <div className="bg-[#0b1320] text-white rounded-2xl rounded-tr-xs px-4 py-2.5 shadow-2xs max-w-sm sm:max-w-md">
+                                  <div className="text-sm text-white leading-relaxed whitespace-pre-wrap">
+                                    {msg.content}
+                                  </div>
+                                  <div className="text-[10px] text-slate-300 mt-1 flex items-center justify-end gap-1">
+                                    <span>{formatMessageTime(msg.createdAt)}</span>
+                                    <span className={msg.isRead ? 'text-emerald-400 font-bold' : 'text-slate-400'}>✓</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* Incoming Bubble (Recruiter: White with border) */
+                                <div className="bg-white border border-slate-200/80 rounded-2xl rounded-tl-xs px-4 py-2.5 shadow-2xs max-w-sm sm:max-w-md">
+                                  <div className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap">
+                                    {msg.content}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 mt-1">
+                                    {formatMessageTime(msg.createdAt)}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-3">
+                      <div className="w-14 h-14 bg-white rounded-2xl shadow-2xs border border-slate-200 flex items-center justify-center text-2xl">
+                        💬
+                      </div>
+                      <h3 className="text-slate-900 font-bold text-base">Start the Conversation</h3>
+                      <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                        Send a message to <strong>{selectedChat.companyName}</strong> to introduce yourself or ask questions.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Typing Indicator */}
+                  {isTyping && !selectedChat.isBlocked && (
+                    <div className="flex items-start gap-2">
+                      <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-2xs flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        <span className="text-xs text-slate-400 font-medium ml-1">{selectedChat.companyName} is typing...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Suggestions / Quick Replies */}
+                {!selectedChat.isBlocked && (
+                  <div className="px-5 md:px-7 py-2.5 bg-white border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+                    <span className="text-xs text-slate-400 font-semibold shrink-0">Suggestions:</span>
+                    {QUICK_REPLIES.map((reply, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleQuickReply(reply)}
+                        className="px-3.5 py-1 bg-white hover:bg-slate-50 text-slate-800 rounded-full text-xs font-medium border border-slate-300 transition-all shrink-0 active:scale-95 shadow-2xs cursor-pointer whitespace-nowrap"
+                      >
+                        {reply}
+                      </button>
+                    ))}
                   </div>
-                  <h3 className="text-slate-900 font-bold text-sm">No messages yet</h3>
-                  <p className="text-xs text-slate-500 max-w-[220px]">
-                    Send a message to start conversation with {selectedChat.companyName}.
-                  </p>
-                </div>
-              )}
+                )}
 
-              {/* Mobile Typing indicator */}
-              {isTyping && !selectedChat.isBlocked && (
-                <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 py-2 w-max shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  <span className="text-[11px] text-slate-500 font-medium ml-1">{selectedChat.companyName} is typing...</span>
-                </div>
-              )}
+                {/* Bottom Input Composer */}
+                {!selectedChat.isBlocked ? (
+                  <div className="p-4 md:px-7 bg-white border-t border-slate-100 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <input
+                        ref={textareaRef}
+                        type="text"
+                        value={newMessage}
+                        onChange={handleInputChange}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            sendMessage();
+                          }
+                        }}
+                        placeholder={`Write a message to ${selectedChat.companyName}... (Press Enter to send)`}
+                        className="flex-1 bg-white border border-slate-300 rounded-full px-5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-800 transition-all shadow-2xs"
+                      />
 
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Quick Suggestions Chips */}
-            {!selectedChat.isBlocked && (
-              <div className="px-3 py-1.5 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-                {QUICK_REPLIES.map((reply, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleQuickReply(reply)}
-                    className="px-2.5 py-1 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 rounded-full text-[11px] font-medium border border-slate-200 shrink-0 active:scale-95"
-                  >
-                    {reply}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Mobile Bottom Input Dock */}
-            {selectedChat.isBlocked ? (
-              <div className="p-3 bg-red-50 border-t border-red-200 flex items-center justify-between gap-3 shrink-0">
-                <span className="text-xs text-red-700 font-medium">Conversation is blocked</span>
-                {selectedChat.blockedBy === 'Employee' && (
-                  <button 
-                    onClick={openBlockModal} 
-                    className="px-3 py-1 bg-white text-red-700 border border-red-300 rounded-lg text-xs font-bold"
-                  >
-                    Unblock
-                  </button>
+                      <button
+                        type="button"
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim()}
+                        className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-sm ${
+                          !newMessage.trim()
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-[#0b1320] text-white hover:bg-black active:scale-95'
+                        }`}
+                        title="Send message"
+                      >
+                        <svg className="w-5 h-5 transform rotate-45 -translate-y-0.5 -translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-red-50 border-t border-red-100 shrink-0 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-600 font-bold text-sm">Conversation Blocked</span>
+                    </div>
+                    {selectedChat.blockedBy === 'Employee' && (
+                      <button
+                        onClick={openBlockModal}
+                        className="px-4 py-1.5 bg-white text-red-700 border border-red-300 rounded-full text-xs font-bold shadow-2xs cursor-pointer"
+                      >
+                        Unblock
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
-              <div className="p-2.5 bg-white border-t border-slate-200 shrink-0 pb-safe">
-                <div className="flex items-center gap-2">
-                  <textarea
-                    ref={textareaRef}
-                    value={newMessage}
-                    onChange={handleInputChange}
-                    rows="1"
-                    placeholder="Type a message..."
-                    className="flex-1 bg-slate-100 focus:bg-white text-slate-900 text-sm px-3.5 py-2.5 rounded-2xl border border-transparent focus:border-emerald-500 outline-none resize-none max-h-24"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                  ></textarea>
-
-                  <button
-                    onClick={sendMessage}
-                    disabled={!newMessage.trim()}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                      !newMessage.trim()
-                        ? 'bg-slate-200 text-slate-400'
-                        : 'bg-emerald-600 text-white shadow-md active:scale-90'
-                    }`}
-                  >
-                    <svg className="w-5 h-5 transform translate-x-0.5 -translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </button>
+              /* Desktop Empty State */
+              <div className="flex-1 bg-white hidden md:flex flex-col items-center justify-center p-12 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center text-3xl mb-4 border border-slate-200/80 shadow-2xs">
+                  💬
                 </div>
+                <h2 className="text-xl font-bold text-slate-900 mb-1">Messages</h2>
+                <p className="text-slate-500 text-xs font-medium max-w-xs">
+                  Select a conversation from the left to read messages, reply, or view job details.
+                </p>
               </div>
             )}
           </div>
-        )}
-
+        </div>
       </div>
 
       {/* ========================================================
