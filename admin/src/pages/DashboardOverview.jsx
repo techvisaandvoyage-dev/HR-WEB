@@ -164,6 +164,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     jobId: '',
     title: '',
     company: '',
+    verified: 'All',
     location: '',
     salary: '',
     applications: 'All',
@@ -226,6 +227,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (jobColFilters.jobId) count++;
     if (jobColFilters.title) count++;
     if (jobColFilters.company) count++;
+    if (jobColFilters.verified && jobColFilters.verified !== 'All') count++;
     if (jobColFilters.location) count++;
     if (jobColFilters.salary) count++;
     if (jobColFilters.applications !== 'All') count++;
@@ -241,6 +243,7 @@ export default function DashboardOverview({ onNavigateTab }) {
       jobId: '',
       title: '',
       company: '',
+      verified: 'All',
       location: '',
       salary: '',
       applications: 'All',
@@ -876,7 +879,7 @@ export default function DashboardOverview({ onNavigateTab }) {
       // Status filter (top status filter or column status filter)
       const effectiveFilter = jobColFilters.status !== 'All' ? jobColFilters.status : jobStatusFilter;
       if (effectiveFilter !== 'All') {
-        const jobEffective = getJobEffectiveStatus(job);
+        const jobEffective = getJobEffectiveStatus(job, employers);
         if (effectiveFilter === 'Active' && jobEffective !== 'Active') return false;
         if (effectiveFilter === 'Unverified' && jobEffective !== 'Unverified') return false;
         if (effectiveFilter === 'Closed' && (job.status || 'Active') !== 'Closed') return false;
@@ -922,6 +925,13 @@ export default function DashboardOverview({ onNavigateTab }) {
         if (!company.includes(companyQuery) && !recruiter.includes(companyQuery)) {
           return false;
         }
+      }
+
+      // 3b. Column: Verified Filter
+      if (jobColFilters.verified && jobColFilters.verified !== 'All') {
+        const isVerified = isJobEmployerVerified(job, employers);
+        if (jobColFilters.verified === 'Verified' && !isVerified) return false;
+        if (jobColFilters.verified === 'Unverified' && isVerified) return false;
       }
 
       // 4. Column: Location & Type Filter
@@ -970,7 +980,7 @@ export default function DashboardOverview({ onNavigateTab }) {
 
       return true;
     });
-  }, [jobs, jobStatusFilter, jobSearch, jobColFilters]);
+  }, [jobs, jobStatusFilter, jobSearch, jobColFilters, employers]);
 
   const totalJobApplications = useMemo(() => {
     return jobs.reduce((sum, j) => sum + (j.applicationsCount !== undefined ? j.applicationsCount : (j.applications || 0)), 0);
@@ -4607,6 +4617,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                     <th className="py-3.5 px-4 w-[125px]">Job ID</th>
                     <th className="py-3.5 px-5">Job Opening</th>
                     <th className="py-3.5 px-5">Employer / Company</th>
+                    <th className="py-3.5 px-4 text-center">Verified</th>
                     <th className="py-3.5 px-5">Location & Type</th>
                     <th className="py-3.5 px-5">Salary Package</th>
                     <th className="py-3.5 px-5 text-center">Applications</th>
@@ -4648,6 +4659,19 @@ export default function DashboardOverview({ onNavigateTab }) {
                         placeholder="Filter company..."
                         className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 shadow-2xs"
                       />
+                    </th>
+
+                    {/* 2b. Verified Filter */}
+                    <th className="p-2 text-center">
+                      <select
+                        value={jobColFilters.verified}
+                        onChange={(e) => setJobColFilters(prev => ({ ...prev, verified: e.target.value }))}
+                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer"
+                      >
+                        <option value="All">All</option>
+                        <option value="Verified">Verified</option>
+                        <option value="Unverified">Unverified</option>
+                      </select>
                     </th>
 
                     {/* 3. Location & Type Filter */}
@@ -4738,14 +4762,14 @@ export default function DashboardOverview({ onNavigateTab }) {
                 <tbody className="divide-y divide-gray-100">
                   {loadingJobs ? (
                     <tr>
-                      <td colSpan="9" className="py-12 text-center text-gray-400">
+                      <td colSpan="10" className="py-12 text-center text-gray-400">
                         <RefreshCw className="w-5 h-5 animate-spin mx-auto text-emerald-600 mb-2" />
                         <span>Loading job openings...</span>
                       </td>
                     </tr>
                   ) : filteredJobs.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="py-12 text-center text-gray-400">
+                      <td colSpan="10" className="py-12 text-center text-gray-400">
                         <Briefcase className="w-8 h-8 mx-auto text-gray-300 mb-2" />
                         <p className="font-bold text-gray-700">No job openings found</p>
                         <p className="text-xs text-gray-400 mt-0.5">Try adjusting your search query or filter.</p>
@@ -4753,7 +4777,7 @@ export default function DashboardOverview({ onNavigateTab }) {
                     </tr>
                   ) : (
                     filteredJobs.map((job) => {
-                      const effectiveStatus = getJobEffectiveStatus(job);
+                      const effectiveStatus = getJobEffectiveStatus(job, employers);
                       const isUnverified = effectiveStatus === 'Unverified';
                       const isActive = effectiveStatus === 'Active';
                       const publicJobUrl = `${clientOrigin}/apply-job/${job._id || job.id}`;
@@ -4788,31 +4812,35 @@ export default function DashboardOverview({ onNavigateTab }) {
                             </div>
                           </td>
 
+                          {/* 2. Employer / Company */}
                           <td className="py-4 px-5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-gray-800 text-xs">
-                                {job.company || job.employerId?.companyName || 'N/A'}
-                              </span>
-                              {isJobEmployerVerified(job, employers) ? (
-                                <span 
-                                  title="Verified Employer Account"
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
-                                >
-                                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
-                                  <span>Verified</span>
-                                </span>
-                              ) : (
-                                <span 
-                                  title="Employer Account Unverified"
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-500 border border-gray-200"
-                                >
-                                  Unverified
-                                </span>
-                              )}
+                            <div className="font-bold text-gray-800 text-xs">
+                              {job.company || job.employerId?.companyName || 'N/A'}
                             </div>
                             {job.employerId?.fullName && (
                               <span className="text-[11px] text-gray-400 block mt-0.5">
                                 {job.employerId.fullName}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* 3. Verified */}
+                          <td className="py-4 px-4 text-center whitespace-nowrap">
+                            {isJobEmployerVerified(job, employers) ? (
+                              <span 
+                                title="Verified Employer Account"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Verified</span>
+                              </span>
+                            ) : (
+                              <span 
+                                title="Employer Account Unverified"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs"
+                              >
+                                <AlertCircle className="w-3 h-3 text-amber-600" />
+                                <span>Unverified</span>
                               </span>
                             )}
                           </td>

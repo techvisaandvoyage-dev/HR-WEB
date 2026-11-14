@@ -2,15 +2,15 @@
    SahiJob Details Drawer, Toast & Support Widget Stylesheet
    ===================================================================== */
 
-/* ---------------- Right Sidebar Job Details Drawer (matches prototype .dr) ---------------- */
+/* ---------------- Full-Screen Details View (starts right under navbar) ---------------- */
 .sj-drawer-backdrop {
   position: fixed;
-  top: 0;
+  top: var(--sj-header-height, 73px);
   left: 0;
   right: 0;
   bottom: 0;
   background: rgba(17, 17, 17, 0.45);
-  z-index: 90;
+  z-index: 50;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease;
@@ -23,28 +23,29 @@
 
 .sj-drawer-panel {
   position: fixed;
-  top: 0;
+  top: var(--sj-header-height, 73px);
+  left: 0;
   right: 0;
   bottom: 0;
-  left: auto;
-  width: min(720px, 100%);
-  height: 100vh;
+  width: 100%;
+  height: calc(100vh - var(--sj-header-height, 73px));
   background: #ffffff;
-  z-index: 95;
-  opacity: 1;
-  transform: translateX(104%);
+  z-index: 55;
+  opacity: 0;
+  transform: translateY(16px);
   pointer-events: none;
-  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
-  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
   color: var(--sj-ink);
   font-family: var(--sj-f);
 }
 
 .sj-drawer-panel.sj-open {
-  transform: translateX(0);
+  opacity: 1;
+  transform: translateY(0);
   pointer-events: auto;
 }
 

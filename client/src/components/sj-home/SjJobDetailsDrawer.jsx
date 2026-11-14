@@ -238,10 +238,14 @@ export default function SjJobDetailsDrawer({
         aria-hidden="true"
       />
 
-      {/* Right Sidebar Job Details Drawer */}
+      {/* Full Screen Job Details View (starts under navbar) */}
       <aside
         ref={panelRef}
         className={`sj-drawer-panel ${isOpen ? 'sj-open' : ''}`}
+        style={{
+          top: `${headerHeight}px`,
+          height: `calc(100vh - ${headerHeight}px)`,
+        }}
         aria-label="Job details"
         aria-hidden={!isOpen}
         role="dialog"
