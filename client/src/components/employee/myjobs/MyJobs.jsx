@@ -197,7 +197,7 @@ const MyJobs = ({ jobs = [] }) => {
                   return (
                     <div 
                       key={job.id || job._id} 
-                      className={`myjobs-jc ${index === 0 ? 'highlighted' : ''}`}
+                      className="myjobs-jc"
                       role="button"
                       tabIndex={0}
                       onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
@@ -325,7 +325,7 @@ const MyJobs = ({ jobs = [] }) => {
                   return (
                     <div 
                       key={targetId || index} 
-                      className={`myjobs-jc ${index === 0 ? 'highlighted' : ''}`}
+                      className="myjobs-jc"
                       role="button"
                       tabIndex={0}
                       onClick={() => job.status !== 'Closed' && navigate('/employee', { state: { selectedJobId: job.id || job._id } })}
