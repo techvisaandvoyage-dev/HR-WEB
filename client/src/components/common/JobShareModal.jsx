@@ -487,7 +487,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                     {appsCount > 0 && (
                       <Link
                         to="/employer/applications"
-                        state={{ jobTitle: jobTitle, sourceLink: link.name || link.linkId }}
+                        state={{ jobTitle: jobTitle, sourceLink: link.name || link.linkId, fromJobCandidates: true }}
                         onClick={onClose}
                         className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline inline-flex items-center gap-0.5"
                         title="View candidates who applied through this link"

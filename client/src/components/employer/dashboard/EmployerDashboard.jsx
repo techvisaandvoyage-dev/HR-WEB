@@ -200,6 +200,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               <Link
                 key={item.key}
                 to={item.path}
+                state={null}
                 onClick={() => setIsMobileNavOpen(false)}
                 className={`flex items-center gap-3 px-3 py-[9px] rounded-[8px] font-semibold text-[14.5px] transition-colors duration-150 ${
                   isActive

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -15,7 +15,11 @@ import {
 const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus, employerProfile = null }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const initialJob = location.state?.jobTitle || 'All';
+
+  // Mode: Job-specific Candidate View vs Generic Total Applications View
+  const isJobSpecificView = Boolean(location.state?.fromJobCandidates && location.state?.jobTitle);
+  const specificJobTitle = isJobSpecificView ? location.state.jobTitle : null;
+  const initialJob = isJobSpecificView ? specificJobTitle : (location.state?.jobTitle || 'All');
 
   // Modals & Drawer States
   const [selectedCandidate, setSelectedCandidate] = useState(null);
@@ -45,6 +49,23 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
 
   const [colFilters, setColFilters] = useState(initialFilters);
 
+  // Synchronize filter when navigating between job candidate view and general applications
+  useEffect(() => {
+    if (location.state?.fromJobCandidates && location.state?.jobTitle) {
+      setColFilters(prev => ({
+        ...prev,
+        job: location.state.jobTitle,
+        sourceLink: location.state?.sourceLink || 'All'
+      }));
+    } else if (!location.state?.fromJobCandidates && !location.state?.jobTitle) {
+      setColFilters(prev => ({
+        ...prev,
+        job: 'All',
+        sourceLink: 'All'
+      }));
+    }
+  }, [location.state?.fromJobCandidates, location.state?.jobTitle, location.state?.sourceLink]);
+
   const handleFilterChange = (key, value) => {
     setColFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
@@ -54,7 +75,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     setColFilters({
       appId: '',
       candidate: '',
-      job: 'All',
+      job: isJobSpecificView ? (specificJobTitle || 'All') : 'All',
       workExp: 'All',
       functionArea: 'All',
       designation: '',
@@ -69,9 +90,9 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   };
 
   const hasActiveFilters = 
-    colFilters.appId !== '' ||
+    (!isJobSpecificView && colFilters.appId !== '') ||
     colFilters.candidate !== '' ||
-    colFilters.job !== 'All' ||
+    (!isJobSpecificView && colFilters.job !== 'All') ||
     colFilters.workExp !== 'All' ||
     colFilters.functionArea !== 'All' ||
     colFilters.designation !== '' ||
@@ -993,24 +1014,77 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         </div>
       )}
 
+      {/* Back to Dashboard Pill Button when viewing job-specific candidates */}
+      {isJobSpecificView && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => navigate('/employer')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-900 bg-white text-slate-900 text-[13.5px] font-bold hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
+          >
+            <svg className="w-4 h-4 text-slate-900" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            <span>Back to Dashboard</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Header & Quick Status Filters */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-              {portalConfig?.title || 'Total Applications'}
-            </h1>
-            <span className="px-3 py-1 bg-emerald-50 text-emerald-800 font-extrabold text-xs rounded-full border border-emerald-200">
-              {filteredApplications.length} of {flattenedApplications.length} Applications
-            </span>
+      <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col gap-4">
+        {/* Row 1: Title, Badge, Subtitle & Export Button */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+                {isJobSpecificView ? specificJobTitle : (portalConfig?.title || 'Total Applications')}
+              </h1>
+              <span className="px-3 py-1 bg-emerald-50 text-emerald-800 font-extrabold text-xs rounded-full border border-emerald-200 whitespace-nowrap shrink-0 inline-flex items-center">
+                {isJobSpecificView 
+                  ? `${filteredApplications.length} Candidate${filteredApplications.length === 1 ? '' : 's'}`
+                  : `${filteredApplications.length} of ${flattenedApplications.length} Applications`
+                }
+              </span>
+            </div>
+            <p className="text-gray-500 text-xs mt-1">
+              {isJobSpecificView
+                ? `Reviewing candidate applications submitted specifically for ${specificJobTitle}.`
+                : (portalConfig?.subtitle || 'Direct overview of all candidate applications with individual column filters.')
+              }
+            </p>
           </div>
-          <p className="text-gray-500 text-xs mt-1">
-            {portalConfig?.subtitle || 'Direct overview of all candidate applications with individual column filters.'}
-          </p>
+
+          {/* Action Buttons: Export to Excel & Reset */}
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+            <button
+              onClick={handleExportExcel}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer whitespace-nowrap shrink-0"
+              title="Download native Excel file (.xlsx) with all candidate details"
+            >
+              <svg className="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>Export to Excel</span>
+            </button>
+
+            {hasActiveFilters && (
+              <button 
+                onClick={resetAllFilters} 
+                className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                title="Reset all applied filters"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Quick Status Buttons & Export Action */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Row 2: Quick Status Filter Pills */}
+        <div className="pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-gray-400 mr-1">Status:</span>
           <button 
             onClick={() => handleFilterChange('status', 'All')} 
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'All' ? 'bg-gray-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -1041,32 +1115,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
           >
             Rejected: {stats.rejectedCount}
           </button>
-
-          {/* Direct 1-Click Export to Excel (.xlsx) Button */}
-          <button
-            onClick={handleExportExcel}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer ml-1"
-            title="Download native Excel file (.xlsx) with all candidate details and Application ID in Column A"
-          >
-            <svg className="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            <span>Export to Excel</span>
-          </button>
-
-
-          {hasActiveFilters && (
-            <button 
-              onClick={resetAllFilters} 
-              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ml-1"
-              title="Reset all applied filters"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>Reset</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -1077,9 +1125,13 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             <thead>
               {/* Row 1: Main Column Headers */}
               <tr className="bg-gray-100/90 border-b border-gray-200 text-gray-800 font-black uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Application ID</th>
+                {!isJobSpecificView && (
+                  <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Application ID</th>
+                )}
                 <th className="py-3 px-3 min-w-[200px] whitespace-nowrap">Candidate Name</th>
-                <th className="py-3 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
+                {!isJobSpecificView && (
+                  <th className="py-3 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
+                )}
                 <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
                 <th className="py-3 px-3 min-w-[130px] whitespace-nowrap">Functional Area</th>
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
@@ -1095,15 +1147,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               <tr className="bg-gray-50/95 border-b border-gray-200">
                 
                 {/* 0. Application ID Filter */}
-                <th className="p-1.5">
-                  <input 
-                    type="text"
-                    value={colFilters.appId}
-                    onChange={(e) => handleFilterChange('appId', e.target.value)}
-                    placeholder="ID: 500101..."
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 font-mono shadow-2xs"
-                  />
-                </th>
+                {!isJobSpecificView && (
+                  <th className="p-1.5">
+                    <input 
+                      type="text"
+                      value={colFilters.appId}
+                      onChange={(e) => handleFilterChange('appId', e.target.value)}
+                      placeholder="ID: 500101..."
+                      className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 font-mono shadow-2xs"
+                    />
+                  </th>
+                )}
 
                 {/* 1. Candidate Filter */}
                 <th className="p-1.5">
@@ -1117,16 +1171,18 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 </th>
 
                 {/* 2. Job Applied Filter */}
-                <th className="p-1.5">
-                  <CustomDropdown
-                    options={uniqueJobs.map((jobTitle) => ({ value: jobTitle, label: jobTitle === 'All' ? 'All Jobs' : jobTitle }))}
-                    value={colFilters.job}
-                    onChange={(value) => handleFilterChange('job', value)}
-                    allowCustomValue={false}
-                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                    dropdownClassName="w-56"
-                  />
-                </th>
+                {!isJobSpecificView && (
+                  <th className="p-1.5">
+                    <CustomDropdown
+                      options={uniqueJobs.map((jobTitle) => ({ value: jobTitle, label: jobTitle === 'All' ? 'All Jobs' : jobTitle }))}
+                      value={colFilters.job}
+                      onChange={(value) => handleFilterChange('job', value)}
+                      allowCustomValue={false}
+                      className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                      dropdownClassName="w-56"
+                    />
+                  </th>
+                )}
 
                 {/* 3. Primary Qualification Filter (Education) */}
                 <th className="p-1.5">
@@ -1251,7 +1307,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             <tbody className="divide-y divide-gray-100">
               {filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="py-14 text-center">
+                  <td colSpan={isJobSpecificView ? 10 : 12} className="py-14 text-center">
                     <div className="max-w-md mx-auto flex flex-col items-center justify-center">
                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-400">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1287,11 +1343,13 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       onClick={() => handleOpenCandidate(cand, item)}
                     >
                       {/* 0. Application ID */}
-                      <td className="py-3.5 px-3 whitespace-nowrap">
-                        <span className="font-mono font-black text-gray-900 bg-gray-100/90 text-emerald-800 px-2.5 py-1 rounded-lg text-[12px] border border-gray-200/80 shadow-2xs">
-                          #{item.displayAppId}
-                        </span>
-                      </td>
+                      {!isJobSpecificView && (
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          <span className="font-mono font-black text-gray-900 bg-gray-100/90 text-emerald-800 px-2.5 py-1 rounded-lg text-[12px] border border-gray-200/80 shadow-2xs">
+                            #{item.displayAppId}
+                          </span>
+                        </td>
+                      )}
 
                       {/* 1. Candidate Name, Email & Avatar */}
                       <td className="py-3.5 px-3 font-medium text-gray-900">
@@ -1328,14 +1386,16 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                       </td>
 
                       {/* 2. Job Applied */}
-                      <td className="py-3.5 px-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
-                          <span className="font-bold text-gray-900 text-xs">
-                            {item.jobTitle}
-                          </span>
-                        </div>
-                      </td>
+                      {!isJobSpecificView && (
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></div>
+                            <span className="font-bold text-gray-900 text-xs">
+                              {item.jobTitle}
+                            </span>
+                          </div>
+                        </td>
+                      )}
 
                       {/* 3. Primary Qualification (Education) */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
@@ -1499,10 +1559,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         {filteredApplications.length > 0 && (
           <div className="p-3.5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs text-gray-500 font-medium">
             <p>
-              Showing all <span className="font-bold text-gray-900">{filteredApplications.length}</span> application{filteredApplications.length === 1 ? '' : 's'} (scroll down to view all)
+              Showing all <span className="font-bold text-gray-900">{filteredApplications.length}</span> {isJobSpecificView ? 'candidate' : 'application'}{filteredApplications.length === 1 ? '' : 's'} (scroll down to view all)
             </p>
             <span className="text-[11px] text-gray-400">
-              Total Database Records: {flattenedApplications.length}
+              {isJobSpecificView ? `Job: ${specificJobTitle}` : `Total Database Records: ${flattenedApplications.length}`}
             </span>
           </div>
         )}

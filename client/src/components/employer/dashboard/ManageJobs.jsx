@@ -333,7 +333,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
 
                   <Link 
                     to="/employer/applications" 
-                    state={{ jobTitle: job.title }} 
+                    state={{ jobTitle: job.title, fromJobCandidates: true }} 
                     className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
                     title="Applicants"
                     aria-label="Applicants"
@@ -625,7 +625,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                 </button>
                 <Link 
                   to="/employer/applications" 
-                  state={{ jobTitle: selectedJob.title }}
+                  state={{ jobTitle: selectedJob.title, fromJobCandidates: true }}
                   className="flex-1 py-2.5 px-4 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold text-[14px] rounded-[8px] transition-colors text-center cursor-pointer shadow-none"
                 >
                   View applications
