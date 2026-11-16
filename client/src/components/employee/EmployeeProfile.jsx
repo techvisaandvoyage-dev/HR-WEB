@@ -1042,6 +1042,20 @@ const EmployeeProfile = () => {
       {/* Main Wrap Container */}
       <main className="max-w-[1180px] w-full mx-auto px-4 sm:px-6 pt-6">
 
+        {/* Back to Home Pill Button */}
+        <div className="mb-5">
+          <button
+            type="button"
+            onClick={() => navigate('/employee')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-900 bg-white text-slate-900 text-[13.5px] font-bold hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
+          >
+            <svg className="w-4 h-4 text-slate-900" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            <span>Back to Home</span>
+          </button>
+        </div>
+
         {/* Hero Banner Component (Circular Avatar as requested) */}
         <ProfileHero
           formData={formData}

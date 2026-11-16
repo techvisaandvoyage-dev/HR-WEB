@@ -656,9 +656,23 @@ const EmployeeMessages = () => {
         />
       )}
       
-      <div className="flex-1 min-h-0 w-full max-w-[1360px] mx-auto p-2 sm:p-4 md:p-6 flex overflow-hidden">
+      <div className="flex-1 min-h-0 w-full max-w-[1360px] mx-auto p-2 sm:p-4 md:p-6 flex flex-col overflow-hidden">
+        {/* Back to Home Button */}
+        <div className="mb-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => navigate('/employee')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-900 bg-white text-slate-900 text-[13.5px] font-bold hover:bg-slate-50 transition-all cursor-pointer shadow-2xs"
+          >
+            <svg className="w-4 h-4 text-slate-900" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            <span>Back to Home</span>
+          </button>
+        </div>
+
         {/* Unified Card Container (matches screenshot) */}
-        <div className="w-full h-full bg-white rounded-3xl border border-slate-200/90 shadow-sm flex overflow-hidden">
+        <div className="w-full flex-1 min-h-0 bg-white rounded-3xl border border-slate-200/90 shadow-sm flex overflow-hidden">
           
           {/* Left Column: Messages List (visible on desktop or mobile when no chat is open) */}
           <div className={`w-full md:w-[320px] lg:w-[350px] border-r border-slate-100 flex flex-col h-full overflow-hidden shrink-0 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
