@@ -469,15 +469,18 @@ export default function SjLoggedInHeader({
   const [openDropdown, setOpenDropdown] = useState(null); // 'experience' | 'datePosted' | 'suggestions' | null
   const searchRef = useRef(null);
 
-  // Suggestions for job title input
+  // Suggestions for job title input (matching or suggested jobs)
   const matchingJobs = useMemo(() => {
-    if (!searchTerm || !searchTerm.trim() || !Array.isArray(jobs) || jobs.length === 0) return [];
+    if (!Array.isArray(jobs) || jobs.length === 0) return [];
+    if (!searchTerm || !searchTerm.trim()) {
+      return jobs.slice(0, 5);
+    }
     const q = searchTerm.toLowerCase().trim();
     return jobs.filter((j) => {
       const title = (j.title || j.t || '').toLowerCase();
       const comp = (j.company || j.companyName || j.c || '').toLowerCase();
       return title.includes(q) || comp.includes(q);
-    }).slice(0, 5);
+    }).slice(0, 6);
   }, [searchTerm, jobs]);
 
   // Click outside to close all search dropdowns
@@ -605,14 +608,10 @@ export default function SjLoggedInHeader({
               value={searchTerm}
               onChange={(e) => {
                 onSearchTermChange?.(e.target.value);
-                setOpenDropdown(e.target.value.trim() ? 'suggestions' : null);
+                setOpenDropdown('suggestions');
               }}
               onFocus={() => {
-                if (searchTerm && searchTerm.trim()) {
-                  setOpenDropdown('suggestions');
-                } else {
-                  setOpenDropdown(null);
-                }
+                setOpenDropdown('suggestions');
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -622,10 +621,10 @@ export default function SjLoggedInHeader({
               }}
               className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm text-gray-900 placeholder-gray-500 shadow-none ring-0"
             />
-            {openDropdown === 'suggestions' && searchTerm && searchTerm.trim() && (
+            {openDropdown === 'suggestions' && (
               <div className="sj-search-dropdown-menu w-[125%] min-w-[300px]">
                 <div className="sj-search-dropdown-header">
-                  Matching Jobs ({matchingJobs.length})
+                  {searchTerm && searchTerm.trim() ? `Matching Jobs (${matchingJobs.length})` : 'Suggested Jobs'}
                 </div>
                 {matchingJobs.length > 0 ? (
                   matchingJobs.map((job) => (

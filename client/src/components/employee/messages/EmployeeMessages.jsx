@@ -501,26 +501,13 @@ const EmployeeMessages = () => {
     return acc;
   }, []);
 
-  // Filter conversations
+  // Filter conversations (only by the dedicated messages search and unread tab - header filters do not affect messages)
   const filteredConversations = conversations.filter(c => {
-    const q = (navSearchKeyword || searchQuery || '').trim().toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
     const matchesSearch = !q || 
       c.companyName?.toLowerCase().includes(q) || 
       c.jobTitle?.toLowerCase().includes(q) ||
       c.lastMessage?.toLowerCase().includes(q);
-    
-    // Location filter
-    const locList = Array.isArray(navSearchLocation)
-      ? navSearchLocation.filter(Boolean)
-      : (typeof navSearchLocation === 'string' && navSearchLocation.trim()
-          ? navSearchLocation.split(',').map((s) => s.trim()).filter(Boolean)
-          : []);
-
-    if (locList.length > 0 && !locList.includes('All')) {
-      const chatLoc = (c.jobLocation || c.location || '').toLowerCase();
-      const matchesLoc = locList.some(l => chatLoc.includes(l.toLowerCase()));
-      if (!matchesLoc) return false;
-    }
 
     const matchesTab = filterTab === 'all' || (filterTab === 'unread' && (c.unreadCount || 0) > 0);
     return matchesSearch && matchesTab;
