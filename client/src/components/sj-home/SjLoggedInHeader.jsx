@@ -4,6 +4,7 @@ import SjProfileDropdown from './SjProfileDropdown';
 import LocationAutocomplete from '../common/LocationAutocomplete';
 import BrandLogo from '../common/BrandLogo';
 import { preferredLocationOptions } from '../../data/preferredLocations';
+import { socket } from '../../utils/socket';
 
 const EXPERIENCE_OPTIONS = [
   { label: 'Any Experience', value: 'All' },
@@ -453,6 +454,7 @@ export default function SjLoggedInHeader({
   jobs = [],
   userProfile = null,
   hasUnreadMessages = false,
+  unreadCount = undefined,
   savedCount = 0,
   onSubmitSearch,
   onSelectSuggestion,
@@ -521,6 +523,54 @@ export default function SjLoggedInHeader({
   } catch (e) {
     parsedEmployeeUser = null;
   }
+
+  // Real-time unread messages count
+  const [internalUnread, setInternalUnread] = useState(0);
+
+  const fetchCandidateUnread = async () => {
+    const token = localStorage.getItem('employeeToken');
+    if (!token) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${apiUrl}/api/employee/messages/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && typeof data.count === 'number') {
+        setInternalUnread(data.count);
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    fetchCandidateUnread();
+
+    const empId = parsedEmployeeUser?.id || parsedEmployeeUser?._id;
+    if (empId) {
+      socket.emit('join_user', empId);
+    }
+
+    const handleUpdate = () => {
+      fetchCandidateUnread();
+    };
+
+    socket.on('conversation_updated', handleUpdate);
+    socket.on('receive_message', handleUpdate);
+    socket.on('messages_marked_read', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('unread_messages_updated', handleUpdate);
+
+    return () => {
+      socket.off('conversation_updated', handleUpdate);
+      socket.off('receive_message', handleUpdate);
+      socket.off('messages_marked_read', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('unread_messages_updated', handleUpdate);
+    };
+  }, [parsedEmployeeUser?.id, parsedEmployeeUser?._id]);
+
+  const effectiveUnread = unreadCount !== undefined ? unreadCount : internalUnread;
+  const showUnreadBadge = effectiveUnread > 0 || hasUnreadMessages;
 
   const userEmail = 
     userProfile?.email || 
@@ -678,7 +728,7 @@ export default function SjLoggedInHeader({
           {/* Messages Icon */}
           <button
             type="button"
-            className="sj-icon-btn"
+            className="sj-icon-btn relative"
             onClick={onNavigateMessages}
             aria-label="Messages"
             title="Messages"
@@ -686,7 +736,11 @@ export default function SjLoggedInHeader({
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4 4h16v12H8l-4 4Z" />
             </svg>
-            {hasUnreadMessages && <span className="sj-ping-dot" />}
+            {showUnreadBadge && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center border-2 border-white shadow-xs pointer-events-none">
+                {effectiveUnread > 0 ? (effectiveUnread > 9 ? '9+' : effectiveUnread) : '1'}
+              </span>
+            )}
           </button>
 
           {/* Profile Menu Trigger */}

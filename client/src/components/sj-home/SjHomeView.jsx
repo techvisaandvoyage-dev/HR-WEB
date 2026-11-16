@@ -583,7 +583,6 @@ export default function SjHomeView({
           jobs={jobs}
           onOpenSearch={() => setIsSearchModalOpen(true)}
           userProfile={candidateProfile}
-          hasUnreadMessages={false}
           savedCount={savedJobs.length}
           onNavigateSaved={() => navigate('/my-jobs?tab=saved')}
           onNavigateApplied={() => navigate('/my-jobs?tab=applied')}

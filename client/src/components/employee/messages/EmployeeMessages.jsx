@@ -248,10 +248,16 @@ const EmployeeMessages = () => {
 
       socket.emit('join_chat', appId);
 
+      const handleReconnect = () => {
+        socket.emit('join_chat', appId);
+      };
+      socket.on('connect', handleReconnect);
+
       const handleReceiveMessage = (msg) => {
-        if (msg.applicationId === appId) {
+        const msgAppId = typeof msg.applicationId === 'object' ? (msg.applicationId._id || msg.applicationId.id) : msg.applicationId;
+        if (String(msgAppId) === String(appId)) {
           setMessages(prev => {
-            if (prev.some(m => m._id === msg._id)) return prev;
+            if (prev.some(m => String(m._id) === String(msg._id))) return prev;
             return [...prev, msg];
           });
           if (msg.senderModel === 'Employer') {
@@ -259,9 +265,10 @@ const EmployeeMessages = () => {
               headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` }
             }).catch(() => {});
             setConversations(prev => prev.map(c => 
-              c.applicationId === appId ? { ...c, unreadCount: 0 } : c
+              (c.applicationId === appId || c._id === appId) ? { ...c, unreadCount: 0 } : c
             ));
             setRefreshNav(prev => !prev);
+            window.dispatchEvent(new Event('unread_messages_updated'));
           }
         }
       };
@@ -291,6 +298,7 @@ const EmployeeMessages = () => {
 
       return () => {
         socket.emit('leave_chat', appId);
+        socket.off('connect', handleReconnect);
         socket.off('receive_message', handleReceiveMessage);
         socket.off('messages_marked_read', handleMessagesMarkedRead);
         socket.off('user_typing', handleUserTyping);
@@ -327,6 +335,7 @@ const EmployeeMessages = () => {
           c.applicationId === applicationId ? { ...c, unreadCount: 0 } : c
         ));
         setRefreshNav(prev => !prev);
+        window.dispatchEvent(new Event('unread_messages_updated'));
       }
     } catch (err) {
       console.error("Error fetching messages:", err);
@@ -630,6 +639,7 @@ const EmployeeMessages = () => {
           userProfile={candidateProfile}
           savedCount={savedJobsCount}
           hasUnreadMessages={totalUnreadCount > 0}
+          unreadCount={totalUnreadCount}
           onNavigateHome={() => navigate('/employee')}
           onNavigateSaved={() => navigate('/employee/myjobs?tab=saved')}
           onNavigateApplied={() => navigate('/employee/myjobs?tab=applied')}
@@ -719,8 +729,8 @@ const EmployeeMessages = () => {
                 >
                   <span>Unread</span>
                   {totalUnreadCount > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${filterTab === 'unread' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
-                      {totalUnreadCount}
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${filterTab === 'unread' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-700'}`}>
+                      {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
                     </span>
                   )}
                 </button>
@@ -772,9 +782,16 @@ const EmployeeMessages = () => {
                           <h3 className="font-bold text-sm text-slate-900 truncate">
                             {chat.companyName}
                           </h3>
-                          <span className="text-[11px] font-semibold text-emerald-600 shrink-0">
-                            {formatConversationTime(chat.lastMessageTime)}
-                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {chat.unreadCount > 0 && (
+                              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">
+                                {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
+                              </span>
+                            )}
+                            <span className={`text-[11px] font-semibold ${chat.unreadCount > 0 ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
+                              {formatConversationTime(chat.lastMessageTime)}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Row 2: Job Title Pill */}

@@ -217,6 +217,7 @@ const EmployeeProfile = () => {
   const [effectiveJobs, setEffectiveJobs] = useState([]);
   const [savedJobsCount, setSavedJobsCount] = useState(0);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Header search state (navigates to /employee on search)
   const [searchQuery, setSearchQuery] = useState('');
@@ -328,12 +329,14 @@ const EmployeeProfile = () => {
     // Unread messages count
     const token = localStorage.getItem('employeeToken');
     if (token) {
-      fetch(`${apiUrl}/api/messages/unread-count`, {
+      fetch(`${apiUrl}/api/employee/messages/unread-count`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then((res) => (res.ok ? res.json() : null))
         .then((json) => {
-          if (json?.count > 0 || json?.unreadCount > 0) {
+          const cnt = json?.count ?? json?.unreadCount ?? 0;
+          setUnreadCount(cnt);
+          if (cnt > 0) {
             setHasUnreadMessages(true);
           }
         })
@@ -1009,6 +1012,7 @@ const EmployeeProfile = () => {
           userProfile={formData}
           savedCount={savedJobsCount}
           hasUnreadMessages={hasUnreadMessages}
+          unreadCount={unreadCount}
           onNavigateHome={() => navigate('/employee')}
           onNavigateSaved={() => navigate('/employee/myjobs?tab=saved')}
           onNavigateApplied={() => navigate('/employee/myjobs?tab=applied')}

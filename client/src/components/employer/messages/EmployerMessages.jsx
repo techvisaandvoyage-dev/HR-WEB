@@ -60,12 +60,13 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
   useEffect(() => {
     const handleConversationUpdated = (data) => {
       setBackendConversations(prev => {
-        const exists = prev.find(c => c.applicationId === data.applicationId);
-        const isCurrentChat = selectedApplication?.appId === data.applicationId;
+        const currentAppId = selectedApplication?.appId || selectedApplication?.id || selectedApplication?._id || selectedApplication?.applicationId;
+        const exists = prev.find(c => String(c.applicationId || c.id || c._id) === String(data.applicationId));
+        const isCurrentChat = currentAppId && String(currentAppId) === String(data.applicationId);
         
         if (exists) {
           return prev.map(c => 
-            c.applicationId === data.applicationId 
+            String(c.applicationId || c.id || c._id) === String(data.applicationId) 
               ? { 
                   ...c, 
                   lastMessage: data.lastMessage, 
@@ -88,12 +89,13 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
 
     const handleConversationBlockToggled = (data) => {
       setBackendConversations(prev => prev.map(c => 
-        c.applicationId === data.applicationId 
+        String(c.applicationId || c.id || c._id) === String(data.applicationId) 
           ? { ...c, isBlocked: data.isBlocked, blockedBy: data.blockedBy, blockedAt: data.blockedAt }
           : c
       ));
       setSelectedApplication(prev => {
-        if (prev?.appId === data.applicationId) {
+        const prevAppId = prev?.appId || prev?.id || prev?._id || prev?.applicationId;
+        if (prevAppId && String(prevAppId) === String(data.applicationId)) {
           return {
             ...prev,
             isBlocked: data.isBlocked,
@@ -112,7 +114,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       socket.off('conversation_updated', handleConversationUpdated);
       socket.off('conversation_block_toggled', handleConversationBlockToggled);
     };
-  }, [selectedApplication?.appId, triggerNavRefresh]);
+  }, [selectedApplication?.appId, selectedApplication?.id, selectedApplication?._id, selectedApplication?.applicationId, triggerNavRefresh]);
 
   const fetchConversations = async () => {
     try {
@@ -155,11 +157,16 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
   // 3. Fetch messages and join live socket room when an application is selected
   useEffect(() => {
     if (selectedApplication) {
-      const appId = selectedApplication.appId;
+      const appId = selectedApplication.appId || selectedApplication.id || selectedApplication._id || selectedApplication.applicationId;
       fetchMessages(appId);
       
       // Join real-time room
       socket.emit('join_chat', appId);
+
+      const handleReconnect = () => {
+        socket.emit('join_chat', appId);
+      };
+      socket.on('connect', handleReconnect);
 
       // Pre-fill message if came from route
       if (initialEmployeeData && selectedEmployee?.id === initialEmployeeData.id) {
@@ -170,9 +177,10 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
 
       // Socket listeners for active room
       const handleReceiveMessage = (msg) => {
-        if (msg.applicationId === appId) {
+        const msgAppId = typeof msg.applicationId === 'object' ? (msg.applicationId._id || msg.applicationId.id) : msg.applicationId;
+        if (String(msgAppId) === String(appId)) {
           setMessages(prev => {
-            if (prev.some(m => m._id === msg._id)) return prev;
+            if (prev.some(m => String(m._id) === String(msg._id))) return prev;
             return [...prev, msg];
           });
           // Mark read locally and on server
@@ -181,7 +189,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
               headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
             }).catch(() => {});
             setBackendConversations(prev => prev.map(c => 
-              c.applicationId === appId ? { ...c, unreadCount: 0 } : c
+              (c.applicationId === appId || c.id === appId || c._id === appId) ? { ...c, unreadCount: 0 } : c
             ));
             if (triggerNavRefresh) triggerNavRefresh();
           }
@@ -213,6 +221,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
 
       return () => {
         socket.emit('leave_chat', appId);
+        socket.off('connect', handleReconnect);
         socket.off('receive_message', handleReceiveMessage);
         socket.off('messages_marked_read', handleMessagesMarkedRead);
         socket.off('user_typing', handleUserTyping);
@@ -223,7 +232,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       setMessages([]);
       setIsTyping(false);
     }
-  }, [selectedApplication?.appId]);
+  }, [selectedApplication?.appId, selectedApplication?.id, selectedApplication?._id, selectedApplication?.applicationId]);
 
   const fetchMessages = async (appId) => {
     try {
@@ -466,7 +475,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
                   <div className="flex flex-col items-end shrink-0 pl-2">
                     {candUnreadCount > 0 && (
                       <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mb-1">
-                        {candUnreadCount} new
+                        {candUnreadCount > 9 ? '9+' : candUnreadCount} new
                       </span>
                     )}
                     <span className={`text-xs font-bold ${isSelected ? 'text-[#29953f]' : 'text-gray-400'}`}>{appCount} Applications</span>
@@ -532,8 +541,8 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
                       <div className="mt-4 flex items-center justify-between">
                         {convState?.unreadCount > 0 ? (
                           <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-[#29953f]"></div>
-                            <span className="text-xs font-bold text-[#29953f]">{convState.unreadCount} new messages</span>
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            <span className="text-xs font-bold text-red-600">{convState.unreadCount > 9 ? '9+' : convState.unreadCount} new {convState.unreadCount === 1 ? 'message' : 'messages'}</span>
                           </div>
                         ) : (
                           <span className="text-xs font-medium text-gray-500 truncate max-w-[150px]">

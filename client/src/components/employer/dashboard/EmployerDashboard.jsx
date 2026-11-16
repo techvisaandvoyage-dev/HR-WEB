@@ -95,15 +95,24 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
   }, [refreshNav]);
 
   React.useEffect(() => {
-    const handleConversationUpdate = (data) => {
+    const handleConversationUpdate = () => {
       fetchUnreadCount();
     };
 
+    const empId = employerProfile?._id || employerProfile?.id;
+    if (empId) {
+      socket.emit('join_user', empId);
+    }
+
     socket.on('conversation_updated', handleConversationUpdate);
+    socket.on('receive_message', handleConversationUpdate);
+    socket.on('messages_marked_read', handleConversationUpdate);
     return () => {
       socket.off('conversation_updated', handleConversationUpdate);
+      socket.off('receive_message', handleConversationUpdate);
+      socket.off('messages_marked_read', handleConversationUpdate);
     };
-  }, []);
+  }, [employerProfile?._id, employerProfile?.id]);
 
 
   const sidebarCfg = portalConfig?.sidebar || {};
@@ -201,7 +210,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
                 {item.icon}
                 <span className="flex-1">{item.name}</span>
                 {item.key === 'messages' && totalUnread > 0 && !isActive && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-auto bg-[#16a34a] text-white">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-auto bg-red-500 text-white shadow-xs">
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}

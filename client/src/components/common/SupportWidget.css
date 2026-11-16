@@ -75,7 +75,7 @@
   height: 100%;
   width: 100%;
   border-radius: 50%;
-  background-color: #34d399;
+  background-color: #f87171;
   opacity: 0.75;
   animation: sj-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
@@ -85,7 +85,7 @@
   border-radius: 50%;
   height: 14px;
   width: 14px;
-  background-color: #059669;
+  background-color: #ef4444;
   border: 2px solid #0f172a;
 }
 @keyframes sj-ping {
@@ -227,7 +227,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #f9a825;
+  background: #ef4444;
   display: none;
 }
 .sj-dot.on {

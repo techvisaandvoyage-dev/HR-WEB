@@ -1408,8 +1408,8 @@ export default function SupportWidget() {
                           )}
 
                           {req.hasUnreadAdminReply && (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 800, color: '#dc2626', marginTop: '2px' }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
                               New reply from support
                             </div>
                           )}

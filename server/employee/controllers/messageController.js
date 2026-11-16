@@ -111,6 +111,12 @@ exports.getMessages = async (req, res) => {
           applicationId,
           readBy: 'Employee'
         });
+        io.emit('messages_marked_read', {
+          applicationId,
+          readBy: 'Employee',
+          employeeId,
+          employerId: application.employerId
+        });
       }
     }
 
@@ -172,6 +178,10 @@ exports.sendMessage = async (req, res) => {
     const io = getIO();
     if (io) {
       io.to(`chat_${applicationId}`).emit('receive_message', newMessage);
+      io.emit('receive_message', newMessage);
+      if (application.employerId) {
+        io.to(`user_${application.employerId}`).emit('receive_message', newMessage);
+      }
       io.emit('conversation_updated', {
         applicationId,
         lastMessage: newMessage.content,

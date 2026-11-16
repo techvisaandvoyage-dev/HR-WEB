@@ -139,13 +139,22 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
   }, [refreshUnread]);
 
   useEffect(() => {
-    const handleConversationUpdate = (data) => {
+    const handleConversationUpdate = () => {
       fetchUnreadCount();
     };
 
     socket.on('conversation_updated', handleConversationUpdate);
+    socket.on('receive_message', handleConversationUpdate);
+    socket.on('messages_marked_read', handleConversationUpdate);
+    window.addEventListener('storage', handleConversationUpdate);
+    window.addEventListener('unread_messages_updated', handleConversationUpdate);
+
     return () => {
       socket.off('conversation_updated', handleConversationUpdate);
+      socket.off('receive_message', handleConversationUpdate);
+      socket.off('messages_marked_read', handleConversationUpdate);
+      window.removeEventListener('storage', handleConversationUpdate);
+      window.removeEventListener('unread_messages_updated', handleConversationUpdate);
     };
   }, []);
 

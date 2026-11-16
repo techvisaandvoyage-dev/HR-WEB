@@ -25,6 +25,19 @@ const initSocket = (httpServer) => {
       }
     });
 
+    // Join user-specific notification room
+    socket.on('join_user', (userId) => {
+      if (userId) {
+        socket.join(`user_${userId}`);
+      }
+    });
+
+    socket.on('leave_user', (userId) => {
+      if (userId) {
+        socket.leave(`user_${userId}`);
+      }
+    });
+
     // Handle real-time typing indicators
     socket.on('typing', ({ applicationId, senderModel, senderName }) => {
       if (applicationId) {
