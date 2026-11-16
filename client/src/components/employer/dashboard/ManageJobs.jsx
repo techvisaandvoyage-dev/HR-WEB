@@ -120,7 +120,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
       {/* Toolbar */}
       <div className="flex gap-3 justify-between flex-wrap mb-4">
         {/* Search input (max 360px, search icon, green focus ring) */}
-        <label className="flex items-center gap-2.5 border border-[#d0d5dd] rounded-[8px] px-3 flex-1 max-w-[360px] text-[#98a2b3] focus-within:border-[#16a34a] focus-within:ring-2 focus-within:ring-[#ecfdf3] transition-all bg-white">
+        <label className="flex items-center gap-2.5 border border-[#d0d5dd] rounded-[8px] px-3 flex-1 max-w-[360px] text-[#98a2b3] focus-within:border-[#059669] focus-within:ring-2 focus-within:ring-[#ecfdf3] transition-all bg-white">
           <svg className="w-[18px] h-[18px] shrink-0 text-[#98a2b3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" />
@@ -167,7 +167,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
         {/* Rows */}
         {filteredJobs.length === 0 ? (
           <div className="py-16 px-5 text-center text-[#667085] border border-dashed border-[#d0d5dd] rounded-[12px] my-6">
-            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] text-[#15803d] flex items-center justify-center mx-auto mb-3.5">
+            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] text-[#047857] flex items-center justify-center mx-auto mb-3.5">
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" />
@@ -250,16 +250,16 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                       <button
                         type="button"
                         onClick={() => { setJobToShare(job); setShowShareModal(true); }}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-emerald-50/80 text-gray-800 hover:text-emerald-800 border border-gray-200 hover:border-emerald-300 transition-all shadow-2xs cursor-pointer group"
+                        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white hover:bg-emerald-50 text-gray-800 hover:text-emerald-800 border border-gray-200 hover:border-emerald-300 transition-all cursor-pointer group"
                         title={`Click to view & manage all tracked links: ${tooltipText}`}
                       >
-                        <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] font-black shrink-0">
+                        <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] font-black shrink-0">
                           🔗
                         </span>
                         <span className="font-extrabold text-[12px] text-gray-900 group-hover:text-emerald-800">
                           {linksList.length} {linksList.length === 1 ? 'Link' : 'Links'}
                         </span>
-                        <span className={`px-1.5 py-0.2 rounded-md text-[10.5px] font-black ${totalLinkApps > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-black ${totalLinkApps > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}>
                           {totalLinkApps} {totalLinkApps === 1 ? 'app' : 'apps'}
                         </span>
                         <span className="text-gray-400 group-hover:text-emerald-600 text-[10px] ml-0.5">▾</span>
@@ -302,60 +302,84 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                   {appsCount} <span className="min-[1000px]:hidden text-[#667085] font-normal text-[13px]">total applications</span>
                 </div>
 
-                {/* 6. Actions (34px borderless icon buttons) */}
+                {/* 6. Actions with Support-style dark tooltips */}
                 <div className="min-[1000px]:order-6 flex items-center justify-end gap-1 shrink-0 col-span-2 min-[1000px]:col-span-1 pt-1 min-[1000px]:pt-0">
-                  <button
-                    type="button"
-                    onClick={() => { setJobToShare(job); setShowShareModal(true); }}
-                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer"
-                    title="Share"
-                    aria-label="Share"
-                  >
-                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="18" cy="5" r="3" />
-                      <circle cx="6" cy="12" r="3" />
-                      <circle cx="18" cy="19" r="3" />
-                      <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
-                    </svg>
-                  </button>
+                  {/* 1. Share Job */}
+                  <div className="relative group/tip flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => { setJobToShare(job); setShowShareModal(true); }}
+                      className="w-[34px] h-[34px] rounded-full border-0 bg-transparent text-[#98a2b3] hover:text-[#047857] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer"
+                      aria-label="Share Job"
+                    >
+                      <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="18" cy="5" r="3" />
+                        <circle cx="6" cy="12" r="3" />
+                        <circle cx="18" cy="19" r="3" />
+                        <path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" />
+                      </svg>
+                    </button>
+                    <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 bg-[#0f172a] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
+                      Share Job
+                      <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
+                    </div>
+                  </div>
 
-                  <Link
-                    to="/employer/post-job"
-                    state={{ jobToEdit: job }}
-                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer"
-                    title="Edit"
-                    aria-label="Edit"
-                  >
-                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-                    </svg>
-                  </Link>
+                  {/* 2. Edit Job */}
+                  <div className="relative group/tip flex items-center justify-center">
+                    <Link
+                      to="/employer/post-job"
+                      state={{ jobToEdit: job }}
+                      className="w-[34px] h-[34px] rounded-full border-0 bg-transparent text-[#98a2b3] hover:text-[#047857] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer"
+                      aria-label="Edit Job"
+                    >
+                      <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                      </svg>
+                    </Link>
+                    <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 bg-[#0f172a] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
+                      Edit Job
+                      <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
+                    </div>
+                  </div>
 
-                  <Link 
-                    to="/employer/applications" 
-                    state={{ jobTitle: job.title, fromJobCandidates: true }} 
-                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
-                    title="Applicants"
-                    aria-label="Applicants"
-                  >
-                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="9" cy="8" r="3.5" />
-                      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8" />
-                    </svg>
-                  </Link>
+                  {/* 3. View Applicants */}
+                  <div className="relative group/tip flex items-center justify-center">
+                    <Link 
+                      to="/employer/applications" 
+                      state={{ jobTitle: job.title, fromJobCandidates: true }} 
+                      className="w-[34px] h-[34px] rounded-full border-0 bg-transparent text-[#98a2b3] hover:text-[#047857] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
+                      aria-label="View Applicants"
+                    >
+                      <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="9" cy="8" r="3.5" />
+                        <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8" />
+                      </svg>
+                    </Link>
+                    <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 bg-[#0f172a] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
+                      View Applicants
+                      <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
+                    </div>
+                  </div>
 
-                  <button 
-                    type="button"
-                    onClick={() => setSelectedJob(job)} 
-                    className="w-[34px] h-[34px] rounded-[8px] border-0 bg-transparent text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
-                    title="Details"
-                    aria-label="Details"
-                  >
-                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M12 11v5M12 8h.01" />
-                    </svg>
-                  </button>
+                  {/* 4. Job Details */}
+                  <div className="relative group/tip flex items-center justify-center">
+                    <button 
+                      type="button"
+                      onClick={() => setSelectedJob(job)} 
+                      className="w-[34px] h-[34px] rounded-full border-0 bg-transparent text-[#98a2b3] hover:text-[#047857] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
+                      aria-label="Job Details"
+                    >
+                      <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 11v5M12 8h.01" />
+                      </svg>
+                    </button>
+                    <div className="absolute bottom-[calc(100%+8px)] right-0 bg-[#0f172a] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
+                      Job Details
+                      <span className="absolute top-full right-3 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -398,7 +422,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                   type="button"
                   onClick={() => setSelectedJob(null)}
                   aria-label="Close"
-                  className="w-[34px] h-[34px] rounded-[8px] flex items-center justify-center text-[#98a2b3] hover:text-[#15803d] hover:bg-[#ecfdf3] transition-colors cursor-pointer border-0 bg-transparent"
+                  className="w-[34px] h-[34px] rounded-[8px] flex items-center justify-center text-[#98a2b3] hover:text-[#047857] hover:bg-[#ecfdf3] transition-colors cursor-pointer border-0 bg-transparent"
                 >
                   <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 6l12 12M18 6 6 18" />
@@ -425,10 +449,10 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                   <span className={`text-[13px] font-semibold px-3 py-[3px] rounded-full inline-flex items-center gap-1.5 ${
                     selectedJob.status === 'Closed' 
                       ? 'bg-[#f2f4f7] text-[#667085]' 
-                      : 'bg-[#ecfdf3] text-[#15803d]'
+                      : 'bg-[#ecfdf3] text-[#047857]'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${
-                      selectedJob.status === 'Closed' ? 'bg-[#98a2b3]' : 'bg-[#16a34a]'
+                      selectedJob.status === 'Closed' ? 'bg-[#98a2b3]' : 'bg-[#059669]'
                     }`} />
                     {selectedJob.status === 'Closed' ? 'Closed' : 'Active'}
                   </span>
@@ -587,7 +611,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                       {skillsList.map((skill, idx) => (
                         <span 
                           key={idx} 
-                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#ecfdf3] text-[#15803d] text-[13px] font-semibold rounded-full max-w-full break-words"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#ecfdf3] text-[#047857] text-[13px] font-semibold rounded-full max-w-full break-words"
                         >
                           <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
@@ -626,7 +650,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                 <Link 
                   to="/employer/applications" 
                   state={{ jobTitle: selectedJob.title, fromJobCandidates: true }}
-                  className="flex-1 py-2.5 px-4 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold text-[14px] rounded-[8px] transition-colors text-center cursor-pointer shadow-none"
+                  className="flex-1 py-2.5 px-4 bg-[#059669] hover:bg-[#047857] text-white font-semibold text-[14px] rounded-[8px] transition-colors text-center cursor-pointer shadow-none"
                 >
                   View applications
                 </Link>

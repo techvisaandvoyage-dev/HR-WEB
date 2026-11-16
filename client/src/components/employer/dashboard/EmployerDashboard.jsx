@@ -122,21 +122,21 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
 
   const navItems = [
     { key: 'dashboard', name: sidebarCfg.dashboardLabel || sidebarCfg.dashboard || 'Dashboard', path: '/employer', icon: (
-      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
     )},
-    { key: 'applications', name: sidebarCfg.applicationsLabel || sidebarCfg.applications || 'Total Applications', path: '/employer/applications', icon: (
-      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>
+    { key: 'applications', name: sidebarCfg.applicationsLabel || sidebarCfg.applications || 'Applications', path: '/employer/applications', icon: (
+      <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>
     )},
     { key: 'candidates', name: sidebarCfg.candidatesLabel || sidebarCfg.candidates || 'Candidates', path: '/employer/candidates', icon: (
-      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
     )},
     { key: 'messages', name: sidebarCfg.messagesLabel || sidebarCfg.messages || 'Messages', path: '/employer/messages', icon: (
-      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg>
+      <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg>
     )},
     { key: 'verification', name: 'Verify Account', path: '/employer/verification', badge: (
-      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto ${
+      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ml-auto ${
         vStatus === 'verified'
-          ? 'bg-[#ecfdf3] text-[#15803d]'
+          ? 'bg-[#ecfdf3] text-[#047857]'
           : vStatus === 'pending'
           ? 'bg-[#fef0c7] text-[#b54708]'
           : vStatus === 'rejected'
@@ -146,7 +146,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         {vStatus === 'verified' ? 'Verified' : vStatus === 'pending' ? 'Review' : vStatus === 'rejected' ? 'Fix' : 'Verify'}
       </span>
     ), icon: (
-      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         {vStatus === 'verified' && <path d="m9 12 2 2 4-4"/>}
       </svg>
@@ -175,12 +175,12 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         />
       )}
 
-      {/* Sidebar (~248px) */}
-      <aside className={`w-[248px] bg-white border-r border-[#eaecf0] flex flex-col shrink-0 z-50 transition-transform duration-200 ease-in-out max-[860px]:fixed max-[860px]:left-0 max-[860px]:top-0 max-[860px]:bottom-0 max-[860px]:w-[264px] ${isMobileNavOpen ? 'max-[860px]:translate-x-0' : 'max-[860px]:-translate-x-full'} min-[860px]:sticky min-[860px]:top-0 min-[860px]:h-screen`}>
+      {/* Sidebar (~268px wide) */}
+      <aside className={`w-[268px] bg-white border-r border-[#eaecf0] flex flex-col shrink-0 z-50 transition-transform duration-200 ease-in-out max-[860px]:fixed max-[860px]:left-0 max-[860px]:top-0 max-[860px]:bottom-0 max-[860px]:w-[280px] ${isMobileNavOpen ? 'max-[860px]:translate-x-0' : 'max-[860px]:-translate-x-full'} min-[860px]:sticky min-[860px]:top-0 min-[860px]:h-screen`}>
         {/* Logo */}
-        <div className="pt-7 pb-6 px-4 flex items-center justify-between">
-          <Link to="/employer" className="text-[21px] font-[800] tracking-[-0.03em] text-[#101828] select-none block">
-            sahijob<b className="text-[#16a34a]">.com</b>
+        <div className="pt-7 pb-6 px-5 flex items-center justify-between">
+          <Link to="/employer" className="text-[23px] font-[800] tracking-[-0.03em] text-[#101828] select-none inline-flex items-center">
+            Sahi<b className="bg-[#059669] text-white px-2 py-0.5 rounded-[8px] font-extrabold mx-1 text-[20px] leading-tight">Job</b>.com
           </Link>
           <button 
             type="button" 
@@ -193,7 +193,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         </div>
         
         {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-3.5 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -202,10 +202,10 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
                 to={item.path}
                 state={null}
                 onClick={() => setIsMobileNavOpen(false)}
-                className={`flex items-center gap-3 px-3 py-[9px] rounded-[8px] font-semibold text-[14.5px] transition-colors duration-150 ${
+                className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl font-semibold text-[15px] transition-all duration-150 ${
                   isActive
-                    ? 'bg-[#ecfdf3] text-[#15803d]'
-                    : 'text-[#667085] hover:bg-[#f9fafb] hover:text-[#101828]'
+                    ? 'bg-[#ecfdf5] text-[#059669] font-bold'
+                    : 'text-[#475467] hover:bg-[#f9fafb] hover:text-[#101828]'
                 }`}
               >
                 {item.icon}
@@ -215,7 +215,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
-                {item.badge && item.key !== 'messages' && !isActive && (
+                {item.badge && item.key !== 'messages' && (
                   item.badge
                 )}
               </Link>
@@ -224,9 +224,9 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="mt-auto border-t border-[#eaecf0] pt-4 pb-5 px-2 flex flex-col gap-1.5">
-          <div className="flex items-center gap-2.5 px-3 py-1">
-            <div className="w-[34px] h-[34px] rounded-full bg-[#ecfdf3] text-[#15803d] flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+        <div className="mt-auto border-t border-[#eaecf0] pt-4 pb-5 px-4 flex flex-col gap-2.5">
+          <div className="flex items-center gap-3 px-1 py-1">
+            <div className="w-[38px] h-[38px] rounded-full bg-[#0f172a] text-[#4ade80] flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden shadow-xs">
               {employerProfile?.companyLogo ? (
                 <img src={employerProfile.companyLogo} alt={displayName} className="w-full h-full object-cover" />
               ) : (
@@ -234,19 +234,33 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <strong className="font-semibold text-[14px] text-[#101828] block truncate leading-tight">{displayName}</strong>
-              <small className="block text-[#667085] text-[12.5px] truncate leading-snug mt-0.5">{displayCompany}</small>
+              <strong className="font-bold text-[14.5px] text-[#101828] block truncate leading-tight">{displayName}</strong>
+              <small className="block text-[#667085] text-[13px] truncate leading-snug mt-0.5">{displayCompany}</small>
             </div>
           </div>
+
+          <div className="flex items-center gap-1.5 px-1">
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+              employerProfile?.isConsultant ? 'text-[#667085]' : 'bg-[#101828] text-white'
+            }`}>
+              Employer
+            </span>
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+              employerProfile?.isConsultant ? 'bg-[#101828] text-white' : 'text-[#667085]'
+            }`}>
+              Consultant
+            </span>
+          </div>
+
           <button
             type="button"
             onClick={() => {
               localStorage.removeItem('employerToken');
               window.location.href = '/';
             }}
-            className="flex items-center gap-2.5 px-3 py-2 text-[#667085] font-semibold text-[14px] rounded-[8px] hover:bg-[#f9fafb] hover:text-[#d92d20] transition-colors w-full text-left cursor-pointer group"
+            className="flex items-center gap-3 px-2 py-2 text-[#475467] font-semibold text-[14.5px] rounded-xl hover:bg-[#f9fafb] hover:text-[#d92d20] transition-colors w-full text-left cursor-pointer group"
           >
-            <svg className="w-[18px] h-[18px] text-[#667085] group-hover:text-[#d92d20] shrink-0 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="w-5 h-5 text-[#667085] group-hover:text-[#d92d20] shrink-0 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
             </svg>
             <span>Sign out</span>
@@ -275,7 +289,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               <h1 className="text-[22px] sm:text-[25px] lg:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2] flex items-center gap-2.5 flex-wrap">
                 <span>{portalConfig?.dashboard?.welcomePrefix || (isReturningEmployer ? 'Welcome back,' : 'Welcome,')} {displayName}</span>
                 {employerProfile?.isConsultant === true && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#ecfdf3] text-[#15803d] border border-[#eaecf0]">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#ecfdf3] text-[#047857] border border-[#eaecf0]">
                     Consultant
                   </span>
                 )}
@@ -292,8 +306,8 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               const vStatus = employerProfile?.verification?.status || 'unverified';
               if (vStatus === 'verified') {
                 return (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#ecfdf3] text-[#15803d] border border-[#abefc6] font-semibold text-[13px]">
-                    <svg className="w-4 h-4 text-[#15803d]" viewBox="0 0 24 24" fill="currentColor">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ecfdf3] text-[#047857] border border-[#abefc6] font-bold text-[12px]">
+                    <svg className="w-3.5 h-3.5 text-[#047857]" viewBox="0 0 24 24" fill="currentColor">
                       <path fillRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" clipRule="evenodd" />
                     </svg>
                     <span>Verified</span>
@@ -304,10 +318,10 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
                 return (
                   <Link
                     to="/employer/verification"
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#fef0c7] text-[#b54708] border border-[#fedf89] font-semibold text-[13px] hover:bg-[#fde287] transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#fef0c7] text-[#b54708] border border-[#fedf89] font-bold text-[12px] hover:bg-[#fde287] transition-colors"
                     title="Verification is under review by SahiJob team"
                   >
-                    <svg className="w-4 h-4 animate-spin text-[#b54708]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg className="w-3.5 h-3.5 animate-spin text-[#b54708]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
                     </svg>
@@ -319,25 +333,25 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
                 return (
                   <Link
                     to="/employer/verification"
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca] font-semibold text-[13px] hover:bg-[#fee2e2] transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#fef2f2] text-[#b91c1c] border border-[#fecaca] font-bold text-[12px] hover:bg-[#fee2e2] transition-colors"
                     title="Verification rejected. Click to review reason and re-submit"
                   >
-                    <svg className="w-4 h-4 text-[#b91c1c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg className="w-3.5 h-3.5 text-[#b91c1c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <line x1="12" y1="8" x2="12" y2="12" />
                       <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
-                    <span>Verify Account (Action Required)</span>
+                    <span>Verify Account</span>
                   </Link>
                 );
               }
               return (
                 <Link
                   to="/employer/verification"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-[#fff7ed] text-[#c2410c] border border-[#ffedd5] hover:bg-[#ffedd5] font-semibold text-[13px] transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#fff7ed] text-[#c2410c] border border-[#ffedd5] hover:bg-[#ffedd5] font-bold text-[12px] transition-colors"
                   title="Verify your account to activate candidate job visibility"
                 >
-                  <svg className="w-4 h-4 text-[#c2410c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-3.5 h-3.5 text-[#c2410c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
                   <span>Verify Account</span>
@@ -347,9 +361,9 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
 
             <Link 
               to="/employer/post-job"
-              className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold text-[14px] px-4 py-2.5 rounded-[8px] transition-colors shadow-none cursor-pointer"
+              className="inline-flex items-center gap-1.5 bg-[#059669] hover:bg-[#047857] text-white font-bold text-[13px] px-4 py-2 rounded-full transition-colors shadow-none cursor-pointer"
             >
-              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
               <span className="hidden sm:inline">Post new job</span>
             </Link>
             <EmployerUserMenu employerProfile={employerProfile} />
@@ -373,7 +387,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
                 </React.Suspense>
               } />
               {/* Placeholders for Messages and Settings */}
-              <Route path="/messages" element={<EmployerMessages portalConfig={portalConfig?.messages} candidates={candidates} triggerNavRefresh={() => setRefreshNav(prev => !prev)} updateCandidateStatus={updateCandidateStatus} employerProfile={employerProfile} />} />
+              <Route path="/messages" element={<EmployerMessages portalConfig={portalConfig?.messages} candidates={candidates} jobs={jobs} triggerNavRefresh={() => setRefreshNav(prev => !prev)} updateCandidateStatus={updateCandidateStatus} employerProfile={employerProfile} />} />
               <Route path="/settings" element={<EmployerSettingsTab portalConfig={portalConfig?.settings} />} />
             </Routes>
           </div>

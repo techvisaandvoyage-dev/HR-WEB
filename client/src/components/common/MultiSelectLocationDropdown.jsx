@@ -218,7 +218,7 @@ const MultiSelectLocationDropdown = ({
     <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`${className} flex justify-between items-center cursor-pointer ${isOpen ? 'border-green-500 ring-1 ring-green-500' : ''}`}
+        className={`${className} flex justify-between items-center cursor-pointer ${isOpen ? 'border-[#059669] ring-1 ring-[#059669]' : ''}`}
       >
         <div className="flex-1 overflow-hidden pr-2 truncate">
           {selectedValues.length > 0 ? (
@@ -250,11 +250,11 @@ const MultiSelectLocationDropdown = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all shadow-sm"
+                className="w-full pl-10 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669] transition-all shadow-sm"
                 autoFocus
               />
               {isLoadingLive && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gray-300 border-t-green-500 rounded-full animate-spin" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gray-300 border-t-[#059669] rounded-full animate-spin" />
               )}
             </div>
           </div>
@@ -271,7 +271,7 @@ const MultiSelectLocationDropdown = ({
                 return (
                   <label 
                     key={`${optValue}-${idx}`} 
-                    className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${isSelected ? 'bg-green-50/70 text-green-950 font-medium' : 'hover:bg-gray-50 text-gray-700'}`}
+                    className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${isSelected ? 'bg-emerald-50/80 text-emerald-950 font-medium' : 'hover:bg-gray-50 text-gray-700'}`}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="relative flex items-center">
@@ -279,7 +279,7 @@ const MultiSelectLocationDropdown = ({
                         type={multiple ? 'checkbox' : 'radio'}
                         checked={isSelected}
                         onChange={() => handleCheckboxChange(optValue)}
-                        className={`peer w-5 h-5 appearance-none border border-gray-300 cursor-pointer checked:bg-green-500 checked:border-green-500 transition-all ${multiple ? 'rounded-md' : 'rounded-full'}`}
+                        className={`peer w-5 h-5 appearance-none border border-gray-300 cursor-pointer checked:bg-[#059669] checked:border-[#059669] transition-all ${multiple ? 'rounded-md' : 'rounded-full'}`}
                       />
                       <svg className="absolute w-3 h-3 text-white left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 peer-checked:opacity-100 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -295,7 +295,7 @@ const MultiSelectLocationDropdown = ({
               })
             ) : isLoadingLive ? (
               <div className="px-4 py-4 text-sm text-gray-500 text-center flex items-center justify-center gap-2">
-                <div className="w-4 h-4 border-2 border-gray-300 border-t-green-500 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-[#059669] rounded-full animate-spin" />
                 <span>Searching cities, villages and states...</span>
               </div>
             ) : (
@@ -306,7 +306,7 @@ const MultiSelectLocationDropdown = ({
                     <button
                       type="button"
                       onClick={() => handleCheckboxChange(searchTerm.trim())}
-                      className="text-xs text-green-600 hover:text-green-700 font-semibold underline"
+                      className="text-xs text-[#059669] hover:text-[#047857] font-semibold underline"
                     >
                       Use "{searchTerm.trim()}" as custom location
                     </button>

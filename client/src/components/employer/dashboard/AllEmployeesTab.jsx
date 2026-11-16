@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPortal } from 'react-dom';
+import CandidateProfileFullScreen from './CandidateProfileFullScreen';
 import { currentLocationOptions, preferredLocationOptions, isEmployeeCurrentLocationMatch, isEmployeePreferredLocationMatch } from '../../../data/preferredLocations';
 import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
-import VideoPlayer from '../../common/VideoPlayer';
-import CandidateVideoCard from '../../common/CandidateVideoCard';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 import { isExperienceMatch } from '../../../utils/experienceMatcher';
 import { 
@@ -55,6 +53,9 @@ const designationToIndustryMap = {
   // Finance & Accounts
   'Financial Analyst': 'Finance & Accounts',
   'Accountant': 'Finance & Accounts',
+  'Senior Accountant': 'Finance & Accounts',
+  'Financial Controller': 'Finance & Accounts',
+  'Quality Analyst': 'Manufacturing',
   
   // Other Corporate Roles
   'Operations Manager': 'Other',
@@ -75,6 +76,9 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [previewScreeningQA, setPreviewScreeningQA] = useState(null);
+  const [previewDownloads, setPreviewDownloads] = useState(null);
+  const [docModalTab, setDocModalTab] = useState('resume');
   const [experienceFilter, setExperienceFilter] = useState('All');
   const [industryFilter, setIndustryFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
@@ -141,9 +145,9 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
   };
 
   const getCurrentDesignation = (emp) => {
-    if (!emp) return 'N/A';
-    if (emp.currentDesignation) return emp.currentDesignation;
+    if (!emp) return 'Not specified';
     if (emp.designation) return emp.designation;
+    if (emp.currentDesignation) return emp.currentDesignation;
     const exps = emp.experience || [];
     if (Array.isArray(exps)) {
       const currentRole = exps.find(e => e.roles?.some(r => r.currentCompany || r.currentJob))?.roles?.find(r => r.currentCompany || r.currentJob);
@@ -151,7 +155,7 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
       if (exps[0]?.roles?.[0]?.jobTitle) return exps[0].roles[0].jobTitle;
       if (exps[0]?.title || exps[0]?.designation) return exps[0].title || exps[0].designation;
     }
-    return emp.professionalDetails?.designation || 'N/A';
+    return emp.professionalDetails?.designation || 'Not specified';
   };
 
   const getCurrentCompany = (emp) => {
@@ -165,78 +169,58 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
     return emp.professionalDetails?.currentCompany || 'N/A';
   };
 
-  const formatExperienceDate = (value, fallback) => {
-    if (!value) return fallback;
-    const match = String(value).match(/^(\d{4})-(\d{1,2})$/);
-    if (!match) {
-      const d = new Date(value);
-      return isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    }
-    return new Date(Number(match[1]), Number(match[2]) - 1, 1)
-      .toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
-
-  const formatEducationYear = (qual) => {
-    if (!qual) return '';
-    const start = qual.startYear || qual.startingYear;
-    const end = qual.endYear || qual.yearOfPassing || qual.passingYear || qual.graduationYear || qual.passingOutYear || qual.year;
-    if (start && end) {
-      return `${start} – ${end}`;
-    }
-    if (end) {
-      return String(end);
-    }
-    if (start) {
-      return `${start} – Present`;
-    }
-    return '';
-  };
-
-  const formatEducationScore = (qual) => {
-    if (!qual) return '';
-    const raw = qual.percentage ?? qual.cgpa ?? qual.score ?? qual.grade;
-    if (raw === undefined || raw === null || raw === '') return '';
+  // Helper to extract candidate profile avatar
+  const getCandidateAvatar = (emp) => {
+    if (!emp) return '';
+    const empId = emp._id || emp.id;
+    const empEmail = (emp.email || '').toLowerCase().trim();
     
-    const scoreStr = String(raw).trim();
-    if (!scoreStr) return '';
-
-    const system = (qual.gradingSystem || '').toLowerCase();
-
-    // If already formatted with %, CGPA, or Grade
-    if (scoreStr.includes('%') || scoreStr.toLowerCase().includes('cgpa') || scoreStr.toLowerCase().includes('grade')) {
-      return scoreStr;
+    // 1. Direct fields on emp
+    const directAvatar = emp.avatar || emp.profilePhoto || emp.profilePicture || emp.photo || emp.personalDetails?.profilePhoto;
+    if (directAvatar && typeof directAvatar === 'string' && directAvatar.trim()) {
+      return directAvatar.trim();
     }
 
-    // Explicit grading system check
-    if (system.includes('percent')) {
-      return `${scoreStr}%`;
-    }
-    if (system.includes('4')) {
-      return `${scoreStr} / 4 CGPA`;
-    }
-    if (system.includes('10') || system.includes('cgpa')) {
-      return `${scoreStr} CGPA`;
-    }
-    if (system.includes('grade')) {
-      return `Grade ${scoreStr}`;
-    }
-
-    // Automatic heuristic when gradingSystem is not explicitly set
-    const num = parseFloat(scoreStr);
-    if (!isNaN(num)) {
-      if (num > 10) {
-        return `${scoreStr}%`;
-      } else {
-        return `${scoreStr} CGPA`;
+    // 2. Cross-match in candidates prop (which has application data + enriched candidate profiles)
+    if (Array.isArray(candidates)) {
+      const matched = candidates.find(c => {
+        const cId = c._id || c.id;
+        const cEmail = (c.email || '').toLowerCase().trim();
+        return (empId && cId && String(empId) === String(cId)) || (empEmail && cEmail && empEmail === cEmail);
+      });
+      if (matched) {
+        const matchedAvatar = matched.avatar || matched.profilePhoto || matched.profilePicture || matched.photo || matched.personalDetails?.profilePhoto;
+        if (matchedAvatar && typeof matchedAvatar === 'string' && matchedAvatar.trim()) {
+          return matchedAvatar.trim();
+        }
       }
     }
 
-    // Letter grades (e.g. A, A+, B, Distinction)
-    if (/^[A-DFa-df][+-]?$/.test(scoreStr)) {
-      return `Grade ${scoreStr}`;
-    }
+    return '';
+  };
 
-    return scoreStr;
+  const getCandidateInitials = (name = '') => {
+    if (!name) return 'C';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+
+  const isCandidateVerified = (emp) => {
+    if (emp.isVerified || emp.verified || emp.verification?.isVerified) return true;
+    const empId = emp._id || emp.id;
+    const empEmail = (emp.email || '').toLowerCase().trim();
+    if (Array.isArray(candidates)) {
+      const matched = candidates.find(c => {
+        const cId = c._id || c.id;
+        const cEmail = (c.email || '').toLowerCase().trim();
+        return (empId && cId && String(empId) === String(cId)) || (empEmail && cEmail && empEmail === cEmail);
+      });
+      if (matched && (matched.isVerified || matched.verified || matched.verification?.isVerified)) {
+        return true;
+      }
+    }
+    return false;
   };
 
   const handleMessageCandidate = async (emp) => {
@@ -336,10 +320,13 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
 
     // Search Filter
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       const matchesName = emp.name?.toLowerCase().includes(q);
       const matchesEmail = emp.email?.toLowerCase().includes(q);
-      if (!matchesName && !matchesEmail) return false;
+      const matchesDesig = (emp.designation || '').toLowerCase().includes(q) || (emp.currentDesignation || '').toLowerCase().includes(q);
+      const matchesIndustry = (emp.industry || '').toLowerCase().includes(q);
+      const matchesLocation = (emp.location || '').toLowerCase().includes(q);
+      if (!matchesName && !matchesEmail && !matchesDesig && !matchesIndustry && !matchesLocation) return false;
     }
 
     // Experience Filter
@@ -350,7 +337,6 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
 
     // Industry Filter
     if (industryFilter !== 'All') {
-      // Get the explicit industry, or derive it using our algorithm, defaulting to 'Other'
       const derivedIndustry = emp.industry || designationToIndustryMap[emp.designation] || 'Other';
       if (!derivedIndustry.toLowerCase().includes(industryFilter.toLowerCase())) return false;
     }
@@ -387,104 +373,128 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
-      {/* Top Header */}
-      <div className="flex justify-between items-start">
+      
+      {/* 1. Header Card */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
               {portalConfig?.title || 'Candidates'}
             </h1>
             {!loading && (
-              <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/90 rounded-full text-xs font-black tracking-wide shadow-2xs">
+              <span className="px-3 py-1 bg-emerald-50 text-[#059669] border border-emerald-200 rounded-full text-xs font-bold whitespace-nowrap">
                 {hasActiveFilters 
-                  ? `${filteredEmployees.length} of ${employees.length} Total` 
-                  : `${employees.length} Total`}
+                  ? `${filteredEmployees.length} of ${employees.length} Candidates` 
+                  : `${employees.length} Candidates`}
               </span>
             )}
           </div>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-500 text-xs mt-1">
             {portalConfig?.subtitle || 'Browse and discover qualified candidates & talent on the platform.'}
           </p>
         </div>
+
+        {hasActiveFilters && (
+          <button 
+            type="button"
+            onClick={clearFilters}
+            className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap self-start md:self-auto shadow-none"
+            title="Reset all filters"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Reset Filters</span>
+          </button>
+        )}
       </div>
 
-      {/* Main Content Area */}
+      {/* 2. Main Content Card (Filters + Candidates Table) */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-visible relative">
         
-        {/* Filters Bar */}
-        <div className="flex flex-wrap justify-between items-center mb-6 gap-4 bg-white p-4 rounded-xl border border-[#ECECEC] shadow-sm relative z-10">
-          <div className="flex gap-4 items-center flex-1 min-w-[280px] max-w-[500px]">
-            <div className="relative flex-1">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={portalConfig?.searchPlaceholder || "Search by name or email..."} 
-                className="w-full pl-9 pr-4 py-2 border border-[#ECECEC] rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all placeholder-gray-400"
-              />
-            </div>
-            {hasActiveFilters && (
+        {/* Filters Section */}
+        <div className="mb-6 space-y-4">
+          
+          {/* Search bar */}
+          <div className="relative max-w-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={portalConfig?.searchPlaceholder || "Search by candidate name, role, email or location..."} 
+              className="w-full pl-10 pr-10 py-2.5 bg-gray-50/80 hover:bg-white focus:bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-800 focus:outline-none focus:border-[#059669] transition-all placeholder-gray-400 shadow-none"
+            />
+            {searchQuery && (
               <button 
-                onClick={clearFilters}
-                className="text-sm font-semibold text-[#888888] hover:text-[#111111] transition-colors whitespace-nowrap px-2"
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs font-bold cursor-pointer"
               >
-                Clear filters
+                ✕
               </button>
             )}
           </div>
-          
-          <div className="flex gap-3 flex-wrap items-center">
-            {/* Industry Filter */}
-            <div className="relative" style={{ minWidth: '220px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
-                {portalConfig?.functionFilterLabel || 'Function'}
-              </span>
+
+          {/* Filter Dropdowns Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {/* Function Filter */}
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Function</span>
               <MultiSelectLocationDropdown
                 options={[{ value: 'All', label: 'All Functions' }, ...industryOptions.map(ind => ({ value: ind, label: ind }))]}
                 value={industryFilter}
                 onChange={(val) => setIndustryFilter(val)}
                 multiple={false}
                 placeholder="All Functions"
-                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
               />
             </div>
 
             {/* Location Filter */}
-            <div className="relative" style={{ minWidth: '280px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
-                {portalConfig?.locationFilterLabel || 'Location'}
-              </span>
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Location</span>
               <MultiSelectLocationDropdown
                 options={[{ value: 'All', label: 'All Locations' }, ...preferredLocationOptions]}
                 value={locationFilter}
                 onChange={(val) => setLocationFilter(val)}
                 multiple={false}
                 placeholder="All Locations"
-                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
               />
             </div>
 
             {/* Experience Filter */}
-            <div className="relative" style={{ minWidth: '180px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
-                {portalConfig?.experienceFilterLabel || 'Experience'}
-              </span>
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Experience</span>
               <MultiSelectLocationDropdown
                 options={[{ value: 'All', label: 'All Exp' }, ...experienceOptions.map(exp => ({ value: exp, label: exp }))]}
                 value={experienceFilter}
                 onChange={(val) => setExperienceFilter(val)}
                 multiple={false}
                 placeholder="All Exp"
-                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+              />
+            </div>
+
+            {/* Preferred Location Filter */}
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Preferred Location</span>
+              <MultiSelectLocationDropdown
+                options={preferredLocationOptions}
+                value={preferredLocationFilter}
+                onChange={(val) => setPreferredLocationFilter(val)}
+                multiple={true}
+                placeholder="Any Location"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
               />
             </div>
 
             {/* Last Update Filter */}
-            <div className="relative" style={{ minWidth: '180px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">
-                {portalConfig?.lastUpdateFilterLabel || 'Last Update'}
-              </span>
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Last Update</span>
               <MultiSelectLocationDropdown
                 options={[
                   { value: 'All', label: 'Any time' },
@@ -496,20 +506,7 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
                 onChange={(val) => setLastUpdateFilter(val)}
                 multiple={false}
                 placeholder="Any time"
-                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
-              />
-            </div>
-
-            {/* Preferred Location Filter (Multi-select) */}
-            <div className="relative" style={{ minWidth: '280px' }}>
-              <span className="block text-[11px] font-bold text-[#888888] tracking-wider uppercase mb-1">Preferred Location</span>
-              <MultiSelectLocationDropdown
-                options={preferredLocationOptions}
-                value={preferredLocationFilter}
-                onChange={(val) => setPreferredLocationFilter(val)}
-                multiple={true}
-                placeholder="Any Preferred Location"
-                className="w-full px-4 py-2.5 bg-[#FDFDFD] border border-[#ECECEC] rounded-xl text-[14px] font-semibold text-[#111111] transition-all hover:border-[#D1D1D1] focus-within:border-[#999999] focus-within:ring-1 focus-within:ring-[#999999]"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
               />
             </div>
           </div>
@@ -518,38 +515,92 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
         {/* Candidates Table */}
         <div className="overflow-x-auto">
           {loading ? (
-            <p className="text-center text-gray-500 py-8">Loading candidates...</p>
+            <div className="py-16 text-center">
+              <div className="inline-block w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+              <p className="text-gray-500 text-xs font-medium">Loading candidates...</p>
+            </div>
           ) : error ? (
-            <p className="text-center text-red-500 py-8">{error}</p>
+            <div className="py-12 text-center text-red-500 text-xs font-semibold">{error}</div>
           ) : filteredEmployees.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">No candidates found.</p>
+            <div className="py-16 text-center">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <p className="text-gray-900 font-bold text-sm">No candidates found</p>
+              <p className="text-gray-500 text-xs mt-1">Try adjusting or clearing your filters to see more results.</p>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-4 px-4 py-1.5 rounded-full text-xs font-bold bg-[#059669] text-white hover:bg-[#047857] transition-colors cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-gray-50/75 border-b border-gray-200">
+                <tr className="text-[11px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50/75 border-b border-gray-200">
                   <th className="px-5 py-3.5 min-w-[220px] whitespace-nowrap">Candidate</th>
                   <th className="px-5 py-3.5 min-w-[190px] whitespace-nowrap">Role & Exp</th>
                   <th className="px-5 py-3.5 min-w-[150px] whitespace-nowrap">Function</th>
                   <th className="px-5 py-3.5 min-w-[140px] whitespace-nowrap">Phone</th>
                   <th className="px-5 py-3.5 min-w-[130px] whitespace-nowrap">Location</th>
                   <th className="px-5 py-3.5 min-w-[130px] whitespace-nowrap">Account Created</th>
-                  <th className="px-5 py-3.5 w-[90px] text-center whitespace-nowrap">Actions</th>
+                  <th className="px-5 py-3.5 w-[110px] text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredEmployees.map((emp) => {
                   const isPrivate = Boolean(emp.isPrivate || (emp.isProfilePrivate && !emp.appliedToYou));
+                  const candAvatar = getCandidateAvatar(emp);
+                  const candKey = emp._id || emp.id || emp.email;
+                  const verified = isCandidateVerified(emp);
 
                   return (
-                    <tr key={emp._id} className="hover:bg-gray-50/60 transition-colors">
+                    <tr 
+                      key={emp._id || emp.id} 
+                      onClick={() => setSelectedEmployee(emp)}
+                      className="hover:bg-emerald-50/40 transition-colors cursor-pointer group"
+                    >
+                      {/* Candidate Name & Avatar */}
                       <td className="px-5 py-3.5 align-middle whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#29953f] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs">
-                            {emp.name ? emp.name.charAt(0).toUpperCase() : '?'}
-                          </div>
+                          {candAvatar && !avatarFailedMap[candKey] ? (
+                            <img 
+                              src={candAvatar} 
+                              alt={emp.name || 'Candidate'} 
+                              onError={() => setAvatarFailedMap(prev => ({ ...prev, [candKey]: true }))}
+                              className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-gray-200 shadow-none" 
+                            />
+                          ) : (
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-extrabold text-xs shrink-0 shadow-none ${emp.bg || 'bg-slate-900'}`}>
+                              {getCandidateInitials(emp.name)}
+                            </div>
+                          )}
+
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-bold text-gray-900 text-sm leading-tight truncate">{emp.name}</h4>
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-bold text-gray-900 text-sm leading-tight truncate group-hover:text-[#059669] transition-colors">
+                                {emp.name}
+                              </h4>
+                              {verified && (
+                                <svg
+                                  className="w-4 h-4 text-sky-600 shrink-0"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                  aria-label="Verified candidate"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    clipRule="evenodd"
+                                    d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.548 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.548 4.49 4.49 0 01-3.498-1.307 4.491 4.491 0 01-1.307-3.497A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497A4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+                                  />
+                                </svg>
+                              )}
                               {isPrivate && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
                                   🔒 Private
@@ -566,58 +617,88 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
                           </div>
                         </div>
                       </td>
+
+                      {/* Role & Experience */}
                       <td className="px-5 py-3.5 align-middle whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Confidential</span>
                         ) : (
                           <div className="flex flex-col">
-                            <span className="font-bold text-gray-800 text-sm leading-tight">{emp.designation || 'Not specified'}</span>
-                            <span className="text-xs text-gray-500 mt-0.5">{emp.totalExperience ? `${emp.totalExperience} Exp.` : 'N/A Exp.'}</span>
+                            <span className="font-bold text-gray-900 text-sm leading-tight">
+                              {getCurrentDesignation(emp)}
+                            </span>
+                            <span className="inline-block mt-1">
+                              <span className="text-[11px] font-bold text-gray-700 bg-gray-100 px-2.5 py-0.5 rounded-full border border-gray-200/60">
+                                {getWorkExp(emp)}
+                              </span>
+                            </span>
                           </div>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 align-middle text-sm text-gray-700 font-medium whitespace-nowrap">
+
+                      {/* Function */}
+                      <td className="px-5 py-3.5 align-middle whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Private</span>
                         ) : (
-                          emp.industry || 'Not specified'
+                          <span className="inline-flex items-center text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/70">
+                            {emp.industry || designationToIndustryMap[emp.designation] || 'General'}
+                          </span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 align-middle text-sm text-gray-700 font-medium whitespace-nowrap">
+
+                      {/* Phone */}
+                      <td className="px-5 py-3.5 align-middle whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Hidden</span>
                         ) : (
-                          <span className="font-mono text-xs">{formatPhoneWithCountryCode(emp.mobile, emp.countryCode) || 'N/A'}</span>
+                          <span className="font-mono text-xs text-gray-700 font-semibold">
+                            {formatPhoneWithCountryCode(emp.mobile, emp.countryCode) || 'N/A'}
+                          </span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 align-middle text-sm text-gray-700 font-medium whitespace-nowrap">
+
+                      {/* Location */}
+                      <td className="px-5 py-3.5 align-middle whitespace-nowrap">
                         {isPrivate ? (
                           <span className="text-xs text-gray-400 font-medium italic">Hidden</span>
                         ) : (
-                          emp.location || 'N/A'
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 align-middle text-sm text-gray-500 font-medium whitespace-nowrap">
-                        {new Date(emp.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-5 py-3.5 align-middle text-center whitespace-nowrap">
-                        <button 
-                          onClick={() => setSelectedEmployee(emp)}
-                          className={`w-8 h-8 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs ${
-                            isPrivate 
-                              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' 
-                              : 'border-gray-200 bg-white text-gray-500 hover:text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50'
-                          }`} 
-                          title={isPrivate ? "Confidential Profile" : "View Profile"}
-                        >
-                          {isPrivate ? (
-                            <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          <span className="inline-flex items-center gap-1 text-sm text-gray-700 font-medium">
+                            <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                          )}
-                        </button>
+                            <span className="truncate max-w-[150px]">{emp.location || 'N/A'}</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Account Created Date */}
+                      <td className="px-5 py-3.5 align-middle text-xs text-gray-500 font-medium whitespace-nowrap">
+                        {emp.createdAt ? new Date(emp.createdAt).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                      </td>
+
+                      {/* Actions: ONLY Eye Button to View Profile */}
+                      <td className="px-5 py-3.5 align-middle text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end">
+                          <div className="relative group/tip inline-flex items-center justify-center">
+                            <button 
+                              type="button"
+                              onClick={() => setSelectedEmployee(emp)}
+                              className="w-8 h-8 inline-flex items-center justify-center text-gray-600 hover:text-[#059669] hover:bg-emerald-50 rounded-full border border-gray-200 hover:border-emerald-300 bg-white transition-colors cursor-pointer shadow-none"
+                              aria-label="View Profile"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <div className="absolute bottom-[calc(100%+7px)] right-0 bg-[#0f172a] text-white text-[11px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
+                              View Profile
+                              <span className="absolute top-full right-3 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
+                            </div>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -629,461 +710,664 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
 
       </div>
 
-      {/* Slide-over Profile Details Sidebar */}
-      {selectedEmployee && (() => {
-        const isSelectedPrivate = Boolean(selectedEmployee.isPrivate || (selectedEmployee.isProfilePrivate && !selectedEmployee.appliedToYou));
-        return createPortal(
-          <div className="fixed inset-0 z-50 overflow-hidden">
-            <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedEmployee(null)}></div>
-            <div data-right-drawer="true" className="fixed inset-y-0 right-0 max-w-full flex">
-              <div className="relative w-screen max-w-md transform transition ease-in-out duration-500 bg-white shadow-xl flex flex-col">
-                
-                <div className="px-6 py-6 border-b border-gray-100 flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {isSelectedPrivate ? 'Confidential Candidate' : 'Profile Details'}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    {/* ONLY allow profile download if candidate has applied to this employer */}
-                    {!isSelectedPrivate && selectedEmployee.appliedToYou && (
-                      <div className="flex items-center gap-1 bg-emerald-50/90 p-1 rounded-xl border border-emerald-200/80 shadow-2xs mr-1">
+      {/* Screening Q&A Quick Modal */}
+      {previewScreeningQA && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setPreviewScreeningQA(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50">
+              <div>
+                <h3 className="font-extrabold text-gray-900 text-sm">
+                  Screening Questions - {previewScreeningQA.candidateName}
+                </h3>
+                <p className="text-[11px] text-gray-500">{previewScreeningQA.jobTitle}</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setPreviewScreeningQA(null)} 
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 p-5 overflow-y-auto space-y-4">
+              {previewScreeningQA.answers && previewScreeningQA.answers.length > 0 ? (
+                previewScreeningQA.answers.map((qa, i) => (
+                  <div key={i} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80">
+                    <p className="text-xs font-bold text-gray-900 mb-1.5">Q{i + 1}. {qa.question}</p>
+                    <div className="bg-white p-2.5 rounded-lg border border-gray-200 text-xs text-gray-800 font-medium">
+                      {qa.answer || <span className="italic text-gray-400">No answer provided</span>}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-12 text-center text-gray-400 text-xs font-medium">
+                  No screening questions were specified or answered for this candidate.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Download Documents & Profile Modal with In-App Preview */}
+      {previewDownloads && (() => {
+        const cand = previewDownloads.cand || {};
+        const item = previewDownloads.item || {};
+        const resUrl = item.resume || cand.resume || cand.documents?.resume || '';
+        const hasResume = Boolean(resUrl);
+        
+        const clUrl = item.coverLetter || cand.coverLetter || cand.documents?.coverLetter || '';
+        const clText = item.coverLetterText || cand.coverLetterText || 
+          (typeof clUrl === 'string' && !clUrl.startsWith('http') && clUrl.length > 20 ? clUrl : '');
+        const isClFile = Boolean(clUrl && clUrl.startsWith('http'));
+        const hasCoverLetter = Boolean(clText || isClFile);
+
+        const handleDownloadResume = () => {
+          if (resUrl) {
+            const a = document.createElement('a');
+            a.href = resUrl;
+            a.download = `${(cand.name || 'Candidate').replace(/\s+/g, '_')}_Resume`;
+            a.target = '_blank';
+            a.rel = 'noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            exportCandidateProfileAsPdf(cand, [], { 
+              hasApplied: true, 
+              jobTitle: item.jobTitle || cand.designation, 
+              status: 'Active', 
+              appliedDate: 'Recent' 
+            });
+          }
+        };
+
+        const handleDownloadCoverLetter = () => {
+          if (isClFile) {
+            const a = document.createElement('a');
+            a.href = clUrl;
+            a.download = `${(cand.name || 'Candidate').replace(/\s+/g, '_')}_Cover_Letter`;
+            a.target = '_blank';
+            a.rel = 'noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else if (clText) {
+            const txt = `COVER LETTER\n\nCandidate: ${cand.name || 'Candidate'}\nApplied Role: ${item.jobTitle || cand.designation || 'Not specified'}\nEmail: ${cand.email || ''}\nPhone: ${cand.phone || cand.mobile || ''}\nDate: ${new Date().toLocaleDateString()}\n\n--------------------------------------------------\n\n${clText}\n\n--------------------------------------------------\nGenerated via SahiJob.com`;
+            const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${(cand.name || 'Candidate').replace(/\s+/g, '_')}_Cover_Letter.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }
+        };
+
+        const candAvatar = getCandidateAvatar(cand);
+
+        return (
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150"
+            onClick={() => setPreviewDownloads(null)}
+          >
+            <div 
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-[92vh] max-h-[860px] flex flex-col overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Top Header */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-b border-gray-100 bg-gray-50/90 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  {candAvatar ? (
+                    <img src={candAvatar} alt={cand.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-[#059669] flex items-center justify-center text-sm font-black shrink-0">
+                      {(cand.name || 'C').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-extrabold text-gray-900 text-sm sm:text-base leading-tight truncate">
+                        {cand.name || 'Candidate'}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-[#059669] border border-emerald-200 shrink-0">
+                        Verified
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                      {item.jobTitle || getCurrentDesignation(cand)} • {cand.location || cand.currentLocation || 'India'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Document View Switcher Pills */}
+                <div className="flex items-center gap-1.5 p-1 bg-gray-200/70 rounded-full border border-gray-300/60">
+                  <button
+                    type="button"
+                    onClick={() => setDocModalTab('resume')}
+                    className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      docModalTab === 'resume'
+                        ? 'bg-white text-gray-900 shadow-xs border border-gray-200'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Resume</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDocModalTab('coverLetter')}
+                    className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      docModalTab === 'coverLetter'
+                        ? 'bg-white text-gray-900 shadow-xs border border-gray-200'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>Cover Letter</span>
+                    {hasCoverLetter ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
+                    ) : (
+                      <span className="text-[10px] text-gray-400 font-normal">None</span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDocModalTab('profile')}
+                    className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      docModalTab === 'profile'
+                        ? 'bg-white text-gray-900 shadow-xs border border-gray-200'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="w-4 h-4 rounded-full bg-[#059669] text-white text-[9px] font-black flex items-center justify-center">SJ</span>
+                    <span className="hidden sm:inline">SahiJob Profile</span>
+                    <span className="sm:hidden">Profile</span>
+                  </button>
+                </div>
+
+                {/* Close Button */}
+                <button 
+                  type="button"
+                  onClick={() => setPreviewDownloads(null)} 
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer text-lg leading-none"
+                  title="Close (Esc)"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Document Action Toolbar */}
+              <div className="px-5 sm:px-6 py-2.5 bg-white border-b border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  {docModalTab === 'resume' && (
+                    <>
+                      <span className="text-xs font-extrabold text-gray-800">
+                        {hasResume ? 'Original Candidate Resume' : 'SahiJob Standardized Resume'}
+                      </span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500 font-medium">
+                        {hasResume ? 'Uploaded attachment' : 'Auto-generated verified resume'}
+                      </span>
+                    </>
+                  )}
+                  {docModalTab === 'coverLetter' && (
+                    <>
+                      <span className="text-xs font-extrabold text-gray-800">
+                        Personal Cover Letter
+                      </span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className={`text-xs font-semibold ${hasCoverLetter ? 'text-emerald-700' : 'text-gray-400'}`}>
+                        {hasCoverLetter ? 'Submitted with application' : 'Not submitted by candidate'}
+                      </span>
+                    </>
+                  )}
+                  {docModalTab === 'profile' && (
+                    <>
+                      <span className="text-xs font-extrabold text-gray-800">
+                        SahiJob Verified Profile Report
+                      </span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500 font-medium">
+                        Complete candidate portfolio
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Toolbar Download Buttons */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {docModalTab === 'resume' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleDownloadResume}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold bg-[#059669] hover:bg-[#047857] text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-none"
+                        title="Download Candidate Resume"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Download Resume</span>
+                      </button>
+                      {hasResume && (
+                        <a
+                          href={resUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 rounded-full text-xs font-bold bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Open resume in full window"
+                        >
+                          <span>Open ↗</span>
+                        </a>
+                      )}
+                    </>
+                  )}
+
+                  {docModalTab === 'coverLetter' && (
+                    hasCoverLetter ? (
+                      <>
                         <button
                           type="button"
-                          onClick={() => exportCandidateProfileAsPdf(selectedEmployee, [], { hasApplied: true })}
-                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
-                          title="Download SahiJob Candidate Profile (PDF)"
+                          onClick={handleDownloadCoverLetter}
+                          className="px-4 py-1.5 rounded-full text-xs font-bold bg-[#059669] hover:bg-[#047857] text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-none"
+                          title="Download Candidate Cover Letter"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                          <span>Download PDF</span>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span>Download Cover Letter</span>
+                        </button>
+                        {isClFile && (
+                          <a
+                            href={clUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 rounded-full text-xs font-bold bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>Open ↗</span>
+                          </a>
+                        )}
+                      </>
+                    ) : (
+                      <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-400">
+                        No Cover Letter
+                      </span>
+                    )
+                  )}
+
+                  {docModalTab === 'profile' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          exportCandidateProfileAsPdf(cand, [], { 
+                            hasApplied: true, 
+                            jobTitle: item.jobTitle || cand.designation, 
+                            status: 'Active', 
+                            appliedDate: 'Recent' 
+                          });
+                        }}
+                        className="px-4 py-1.5 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-full transition-colors flex items-center gap-1.5 cursor-pointer shadow-none"
+                        title="Download SahiJob Candidate Profile (PDF)"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Download PDF</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          exportCandidateProfileAsDoc(cand, [], { 
+                            hasApplied: true, 
+                            jobTitle: item.jobTitle || cand.designation, 
+                            status: 'Active', 
+                            appliedDate: 'Recent' 
+                          });
+                        }}
+                        className="px-4 py-1.5 bg-white hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-full border border-gray-300 transition-colors flex items-center gap-1.5 cursor-pointer shadow-none"
+                        title="Download SahiJob Candidate Profile (Word .doc)"
+                      >
+                        <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Download DOC</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Document Preview Stage */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-100/70">
+                {/* 1. RESUME PREVIEW */}
+                {docModalTab === 'resume' && (
+                  hasResume ? (
+                    <div className="w-full h-full min-h-[540px] flex flex-col bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
+                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between text-xs text-gray-500">
+                        <span className="font-medium truncate max-w-md">Attachment: {resUrl.split('/').pop() || 'Candidate_Resume.pdf'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-[11px]">
+                            Attachment Ready
+                          </span>
+                        </div>
+                      </div>
+                      <iframe
+                        src={resUrl}
+                        title="Candidate Resume Preview"
+                        className="w-full flex-1 min-h-[520px] bg-white border-none"
+                      />
+                    </div>
+                  ) : (
+                    /* Standardized SahiJob Resume Profile Sheet */
+                    <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-10 text-gray-800 space-y-6">
+                      {/* Sheet Header */}
+                      <div className="border-b-2 border-gray-900 pb-5 flex flex-wrap justify-between items-start gap-4">
+                        <div>
+                          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight uppercase">
+                            {cand.name || 'Candidate Name'}
+                          </h2>
+                          <p className="text-xs sm:text-sm font-bold text-[#059669] mt-0.5">
+                            {getCurrentDesignation(cand)} • {getCurrentCompany(cand)}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2 font-medium">
+                            {cand.email} • {formatPhoneWithCountryCode(cand.phone || cand.mobile, cand.countryCode)} • {cand.location || cand.currentLocation || 'India'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="px-3 py-1 bg-emerald-50 text-[#059669] border border-emerald-200 rounded-full text-xs font-bold">
+                            Standardized Profile Resume
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Summary */}
+                      {(cand.summary || cand.professionalDetails?.summary || cand.about) && (
+                        <div className="space-y-1.5">
+                          <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Professional Summary</h3>
+                          <p className="text-xs sm:text-[13px] leading-relaxed text-gray-700 font-medium bg-gray-50/80 p-3.5 rounded-xl border border-gray-100">
+                            {cand.summary || cand.professionalDetails?.summary || cand.about}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Work Experience */}
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Experience History</h3>
+                        {Array.isArray(cand.experience) && cand.experience.length > 0 ? (
+                          <div className="space-y-3">
+                            {cand.experience.map((exp, idx) => (
+                              <div key={idx} className="p-3.5 bg-gray-50/60 rounded-xl border border-gray-100">
+                                <div className="flex justify-between items-start">
+                                  <h4 className="text-sm font-bold text-gray-900">{exp.designation || exp.title || exp.role || getCurrentDesignation(cand)}</h4>
+                                  <span className="text-[11px] font-semibold text-gray-500">{exp.duration || exp.period || exp.years || 'Past'}</span>
+                                </div>
+                                <p className="text-xs font-medium text-gray-600 mt-0.5">{exp.companyName || exp.company || getCurrentCompany(cand)}</p>
+                                {exp.description && <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{exp.description}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs font-medium text-gray-700 p-3 bg-gray-50/60 rounded-xl border border-gray-100">
+                            {getWorkExp(cand)} • {cand.isFresher ? 'Fresher' : 'Direct Experience Record'}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Key Skills */}
+                      {Array.isArray(cand.skills) && cand.skills.length > 0 && (
+                        <div className="space-y-2">
+                          <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Key Competencies & Skills</h3>
+                          <div className="flex flex-wrap gap-1.5">
+                            {cand.skills.map((s, i) => (
+                              <span key={i} className="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-bold rounded-full border border-gray-200">
+                                {typeof s === 'string' ? s : s.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Education */}
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Education & Qualifications</h3>
+                        <p className="text-xs font-medium text-gray-800 p-3 bg-gray-50/60 rounded-xl border border-gray-100">
+                          {getPrimaryQualification(cand)}
+                        </p>
+                      </div>
+
+                      {/* Bottom Download Banner */}
+                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                        <p className="text-xs text-gray-400">SahiJob Verified Document System</p>
+                        <button
+                          type="button"
+                          onClick={handleDownloadResume}
+                          className="px-4 py-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-full transition-colors flex items-center gap-1.5 cursor-pointer shadow-none"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span>Download Profile Resume (PDF)</span>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* 2. COVER LETTER PREVIEW */}
+                {docModalTab === 'coverLetter' && (
+                  hasCoverLetter ? (
+                    isClFile ? (
+                      <div className="w-full h-full min-h-[540px] flex flex-col bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
+                        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex items-center justify-between text-xs text-gray-500">
+                          <span className="font-medium truncate max-w-md">Attachment: {clUrl.split('/').pop() || 'Cover_Letter.pdf'}</span>
+                          <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-[11px]">
+                            Document Ready
+                          </span>
+                        </div>
+                        <iframe
+                          src={clUrl}
+                          title="Candidate Cover Letter Preview"
+                          className="w-full flex-1 min-h-[520px] bg-white border-none"
+                        />
+                      </div>
+                    ) : (
+                      /* Elegant Letter Paper Layout */
+                      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sm:p-12 text-gray-800 space-y-6">
+                        <div className="flex justify-between items-start border-b border-gray-100 pb-4">
+                          <div>
+                            <h3 className="font-extrabold text-base text-gray-900">{cand.name}</h3>
+                            <p className="text-xs text-gray-500 mt-0.5">{cand.email} • {cand.phone || cand.mobile}</p>
+                          </div>
+                          <span className="text-xs font-semibold text-gray-400">
+                            {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          </span>
+                        </div>
+
+                        <div className="text-xs font-bold text-gray-600 space-y-1">
+                          <p>To: Hiring Manager & Recruiting Team</p>
+                          <p className="text-gray-900 font-extrabold">Re: Application for {item?.jobTitle || cand.designation || 'Open Role'}</p>
+                        </div>
+
+                        <div className="text-sm leading-relaxed text-gray-800 space-y-3 whitespace-pre-line font-normal bg-gray-50/50 p-5 rounded-xl border border-gray-100">
+                          {clText}
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 text-xs font-semibold text-gray-600 flex justify-between items-end">
+                          <div>
+                            <p>Sincerely,</p>
+                            <p className="font-bold text-sm text-gray-900 mt-1">{cand.name}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleDownloadCoverLetter}
+                            className="px-4 py-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-full transition-colors flex items-center gap-1.5 cursor-pointer shadow-none"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Download Letter</span>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    /* Empty state when no cover letter was attached */
+                    <div className="max-w-md mx-auto my-12 bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-4 shadow-xs">
+                      <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl border border-amber-200">
+                        ✉️
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-gray-900 text-base">No Cover Letter Submitted</h4>
+                        <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+                          This candidate applied without an optional cover letter. You can view their full resume and verified work history.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDocModalTab('resume')}
+                        className="px-5 py-2 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-full transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-none"
+                      >
+                        <span>View Candidate Resume</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+                  )
+                )}
+
+                {/* 3. SAHIJOB VERIFIED PROFILE REPORT PREVIEW */}
+                {docModalTab === 'profile' && (
+                  <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-emerald-200 p-6 sm:p-10 space-y-6">
+                    <div className="flex flex-wrap justify-between items-center gap-4 pb-4 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-[#059669] text-white flex items-center justify-center font-black text-base shadow-xs">
+                          SJ
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-extrabold text-gray-900 text-lg">{cand.name}</h3>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-[#059669]">
+                              Verified Report
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Application Role: <span className="font-bold text-gray-800">{item.jobTitle || cand.designation}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            exportCandidateProfileAsPdf(cand, [], { 
+                              hasApplied: true, 
+                              jobTitle: item.jobTitle || cand.designation, 
+                              status: 'Active', 
+                              appliedDate: 'Recent' 
+                            });
+                          }}
+                          className="px-4 py-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-full transition-colors flex items-center gap-1.5 cursor-pointer shadow-none"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span>PDF</span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => exportCandidateProfileAsDoc(selectedEmployee, [], { hasApplied: true })}
-                          className="px-2 py-1.5 bg-white hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-lg border border-gray-200 transition-all flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
-                          title="Download SahiJob Candidate Profile (Word .doc)"
+                          onClick={() => {
+                            exportCandidateProfileAsDoc(cand, [], { 
+                              hasApplied: true, 
+                              jobTitle: item.jobTitle || cand.designation, 
+                              status: 'Active', 
+                              appliedDate: 'Recent' 
+                            });
+                          }}
+                          className="px-4 py-2 bg-white hover:bg-gray-100 text-gray-800 text-xs font-bold rounded-full border border-gray-300 transition-colors flex items-center gap-1.5 cursor-pointer shadow-none"
                         >
-                          <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                           <span>DOC</span>
                         </button>
                       </div>
-                    )}
-                    <button 
-                      onClick={() => setSelectedEmployee(null)}
-                      className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                    >
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                </div>
+                    </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
-                  
-                  {isSelectedPrivate ? (
-                    <div className="flex flex-col items-center justify-center text-center py-8 px-2 space-y-5">
-                      <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-sm">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
+                    {/* Summary cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase">Total Experience</p>
+                        <p className="text-sm font-black text-gray-900 mt-1">{getWorkExp(cand)}</p>
                       </div>
+                      <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase">Education</p>
+                        <p className="text-sm font-black text-gray-900 mt-1 truncate">{getPrimaryQualification(cand)}</p>
+                      </div>
+                      <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase">Location</p>
+                        <p className="text-sm font-black text-gray-900 mt-1 truncate">{cand.location || 'India'}</p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100 flex items-start gap-3">
+                      <span className="text-base text-[#059669]">✓</span>
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h3>
-                        <span className="inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                          🔒 Confidential / Private Profile
-                        </span>
-                      </div>
-                      <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs text-gray-600 max-w-sm leading-relaxed text-left space-y-2">
-                        <p className="font-bold text-gray-800">Privacy Notice:</p>
-                        <p>
-                          This candidate has set their profile visibility to <strong>Private</strong>. Their contact info, work history, education, and resume are confidential.
-                        </p>
-                        <p className="text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200/70 font-medium">
-                          ✓ Candidate profile details will automatically unlock and become viewable once they submit an application to any of your active job listings.
+                        <p className="text-xs font-bold text-emerald-900">Standardized & Verified Candidate File</p>
+                        <p className="text-xs text-emerald-700 mt-0.5 leading-relaxed">
+                          This verified profile format can be exported directly to official PDF and Microsoft Word DOC for interview panelists and HR records.
                         </p>
                       </div>
                     </div>
-                  ) : (
-                    <>
-                {/* Header (Avatar, Name, Email, Location) */}
-                <div className="flex flex-col items-center text-center mb-6">
-                  {(() => {
-                    const empAvatar = selectedEmployee.avatar || selectedEmployee.profilePhoto || selectedEmployee.profilePicture || selectedEmployee.photo || selectedEmployee.personalDetails?.profilePhoto;
-                    const empKey = selectedEmployee._id || selectedEmployee.id || selectedEmployee.email;
-                    if (empAvatar && !avatarFailedMap[empKey]) {
-                      return (
-                        <img 
-                          src={empAvatar} 
-                          alt={selectedEmployee.name || 'Candidate'} 
-                          onError={() => setAvatarFailedMap(prev => ({ ...prev, [empKey]: true }))}
-                          className="w-20 h-20 rounded-full object-cover mb-3 shadow-sm ring-4 ring-emerald-50 border border-emerald-100" 
-                        />
-                      );
-                    }
-                    return (
-                      <div className="w-20 h-20 rounded-full bg-[#18a058] flex items-center justify-center text-white font-bold text-3xl mb-3 shadow-sm">
-                        {selectedEmployee.name ? selectedEmployee.name.charAt(0).toUpperCase() : '?'}
-                      </div>
-                    );
-                  })()}
-                  <h3 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h3>
-
-                  {(getCurrentDesignation(selectedEmployee) !== 'N/A' || getCurrentCompany(selectedEmployee) !== 'N/A') && (
-                    <p className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100/80 mt-1.5 inline-block">
-                      {getCurrentDesignation(selectedEmployee) !== 'N/A' ? getCurrentDesignation(selectedEmployee) : ''}
-                      {getCurrentDesignation(selectedEmployee) !== 'N/A' && getCurrentCompany(selectedEmployee) !== 'N/A' ? ' • ' : ''}
-                      {getCurrentCompany(selectedEmployee) !== 'N/A' ? getCurrentCompany(selectedEmployee) : ''}
-                    </p>
-                  )}
-
-                  <p className="text-sm text-gray-500 mt-1">{selectedEmployee.email}</p>
-                  <p className="text-xs text-gray-400 mt-1 font-semibold">
-                    {selectedEmployee.mobile && `${formatPhoneWithCountryCode(selectedEmployee.mobile, selectedEmployee.countryCode)} • `}
-                    {selectedEmployee.location || selectedEmployee.preferredLocation || 'Location not provided'}
-                  </p>
-                </div>
-                
-                <hr className="border-gray-100 mb-6" />
-
-                {/* Sections in exact Employee Profile order */}
-                <div className="space-y-6">
-                  
-                  {/* 1. Basic Details - Professional Summary */}
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Brief About Candidate / Professional Summary</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50/80 p-3.5 rounded-xl border border-gray-100">
-                      {selectedEmployee.brief || selectedEmployee.summary || selectedEmployee.bio || selectedEmployee.professionalDetails?.about || (
-                        <span className="text-gray-400 italic">No professional summary provided.</span>
-                      )}
-                    </p>
                   </div>
-
-                  <hr className="border-gray-100" />
-
-                  {/* 2. Education */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Education &amp; Qualifications</h4>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                        Primary: {getPrimaryQualification(selectedEmployee)}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3 ml-1 pt-1">
-                      {(selectedEmployee.qualifications || selectedEmployee.education) && (selectedEmployee.qualifications || selectedEmployee.education).length > 0 ? (
-                        (() => {
-                          const qualsList = selectedEmployee.qualifications || selectedEmployee.education;
-                          const hasExplicitPrimary = qualsList.some(
-                            q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)
-                          );
-
-                          return qualsList.map((qual, i) => {
-                            const isPrimary = Boolean(
-                              qual.isPrimary === true ||
-                              qual.isPrimary === 'true' ||
-                              qual.isPrimary === 1 ||
-                              (!hasExplicitPrimary && i === 0)
-                            );
-                            const eduYear = formatEducationYear(qual);
-                            const eduScore = formatEducationScore(qual);
-                            const title = qual.degree || qual.course || qual.educationType || 'Degree / Course';
-                            const spec = qual.fieldOfStudy || qual.specialization;
-                            const institute = qual.institution || qual.college || qual.university || qual.board || 'Institution / Board not specified';
-
-                            return (
-                              <div key={i} className="relative pl-4 mb-3 border-l-2 border-[#18a058] ml-1.5 py-0.5 space-y-1">
-                                <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h5 className="font-extrabold text-gray-900 text-xs">
-                                    {title} {spec ? `in ${spec}` : ''}
-                                  </h5>
-                                  {isPrimary && (
-                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                      Primary Education
-                                    </span>
-                                  )}
-                                </div>
-                                {(eduYear || eduScore) && (
-                                  <p className="text-[11px] text-emerald-700 font-bold">
-                                    {eduYear}
-                                    {eduYear && eduScore ? ` • ${eduScore}` : eduScore}
-                                    {qual.courseType ? ` • ${qual.courseType}` : ''}
-                                  </p>
-                                )}
-                                <p className="text-xs text-gray-500 leading-relaxed">
-                                  {institute}
-                                </p>
-                              </div>
-                            );
-                          });
-                        })()
-                      ) : (
-                        <span className="text-gray-400 italic text-xs">No education details provided.</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <hr className="border-gray-100" />
-
-                  {/* 3. Work Experience */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Work Experience</h4>
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                        Total: {getWorkExp(selectedEmployee)}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 bg-gray-50/70 p-3 rounded-xl mb-4 border border-gray-100">
-                      <div>
-                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Current Designation</h5>
-                        <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentDesignation(selectedEmployee)}</p>
-                      </div>
-                      <div>
-                        <h5 className="text-[10px] font-bold text-gray-400 uppercase">Current Company</h5>
-                        <p className="text-xs font-extrabold text-gray-900 truncate">{getCurrentCompany(selectedEmployee)}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 ml-1">
-                      {selectedEmployee.experience && selectedEmployee.experience.length > 0 ? (
-                        selectedEmployee.experience.map((exp, i) => {
-                          const isCurrent = Boolean(
-                            exp.currentCompany ||
-                            exp.currentJob ||
-                            (Array.isArray(exp.roles) && exp.roles.some(r => r.currentCompany || r.currentJob || String(r.leavingDate || '').toLowerCase() === 'present')) ||
-                            (i === 0 && getCurrentCompany(selectedEmployee) !== 'N/A' && (exp.company || exp.companyName || '').toLowerCase() === getCurrentCompany(selectedEmployee).toLowerCase())
-                          );
-                          const candidateNotice = (isCurrent && exp.noticePeriod) || selectedEmployee.noticePeriod || selectedEmployee.professionalDetails?.noticePeriod;
-
-                          return (
-                            <div key={i} className="mb-4">
-                              <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                                <h5 className="font-extrabold text-gray-900 text-xs">
-                                  {exp.company || exp.companyName || 'Company Name'}
-                                </h5>
-                                {isCurrent && (
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                    Current Company
-                                  </span>
-                                )}
-                                {isCurrent && candidateNotice && candidateNotice !== 'N/A' && (
-                                  <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                                    Notice Period: {candidateNotice}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="border-l-2 border-[#18a058] ml-1.5 space-y-3 py-1">
-                                {(exp.roles && exp.roles.length > 0 ? exp.roles : [exp]).map((role, rIndex) => {
-                                  const start = formatExperienceDate(role.joiningDate || role.startDate || exp.joiningDate || exp.startDate, 'Start');
-                                  const isRoleCurrent = role.currentCompany || role.currentJob || exp.currentCompany || exp.currentJob || String(role.leavingDate || '').toLowerCase() === 'present';
-                                  const end = isRoleCurrent ? 'Present' : formatExperienceDate(role.leavingDate || role.endDate || exp.leavingDate || exp.endDate, 'End');
-
-                                  return (
-                                    <div key={rIndex} className="relative pl-4 space-y-0.5">
-                                      <div className="absolute w-2.5 h-2.5 bg-[#18a058] rounded-full -left-[6px] top-1.5 ring-4 ring-emerald-50"></div>
-                                      <h5 className="font-bold text-emerald-800 text-xs">
-                                        {role.jobTitle || role.title || role.role || exp.title || exp.designation || 'Position'}
-                                      </h5>
-                                      <p className="text-[11px] text-gray-400 font-medium">
-                                        {start} – {end} {role.employmentType && ` • ${role.employmentType}`}
-                                      </p>
-                                      {(role.roleDescription || role.description || exp.roleDescription || exp.description) && (
-                                        <p className="text-xs text-gray-600 leading-relaxed mt-1">
-                                          {role.roleDescription || role.description || exp.roleDescription || exp.description}
-                                        </p>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <span className="text-gray-400 italic text-xs">No prior work experience recorded (Fresher).</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <hr className="border-gray-100" />
-
-                  {/* 4. Key Skills & Preferences */}
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-2">
-                      Key Skills &amp; Preferences
-                    </h4>
-                    
-                    {/* Skills pills */}
-                    <div className="mb-4">
-                      <h5 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Key Skills</h5>
-                      <div className="flex flex-wrap gap-1.5">
-                        {(() => {
-                          const rawSkills = selectedEmployee.professionalDetails?.skills || selectedEmployee.skills;
-                          const list = Array.isArray(rawSkills) 
-                            ? rawSkills.map(s => (typeof s === 'string' ? s : s?.name || s?.label || String(s || ''))).filter(Boolean)
-                            : typeof rawSkills === 'string' 
-                              ? rawSkills.split(',').map(s => s.trim()).filter(Boolean)
-                              : [];
-
-                          if (list.length === 0) {
-                            return <span className="text-gray-400 italic text-xs">No skills listed.</span>;
-                          }
-
-                          return list.map((skill, idx) => (
-                            <span key={idx} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold border border-emerald-100/80">
-                              {skill}
-                            </span>
-                          ));
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Preferences Grid */}
-                    <div className="grid grid-cols-2 gap-3 bg-gray-50/80 p-3.5 rounded-xl border border-gray-100">
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Function / Industry</span>
-                        <span className="font-extrabold text-gray-900 text-xs">
-                          {selectedEmployee.industry || selectedEmployee.function || selectedEmployee.professionalDetails?.functionalArea || 'N/A'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Total Experience</span>
-                        <span className="font-extrabold text-gray-900 text-xs">{getWorkExp(selectedEmployee)}</span>
-                      </div>
-
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                          Current {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
-                        </span>
-                        <span className="font-extrabold text-gray-900 text-xs">
-                          {selectedEmployee.professionalDetails?.currentSalary 
-                            ? `₹ ${selectedEmployee.professionalDetails.currentSalary}` 
-                            : (selectedEmployee.currentCTC ? `₹ ${selectedEmployee.currentCTC}` : 'N/A')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">
-                          Expected {selectedEmployee.professionalDetails?.salaryType === 'Monthly' ? 'Monthly' : 'Annual'} CTC
-                        </span>
-                        <span className="font-extrabold text-gray-900 text-xs">
-                          {selectedEmployee.professionalDetails?.expectedSalary 
-                            ? `₹ ${selectedEmployee.professionalDetails.expectedSalary}` 
-                            : (selectedEmployee.expectedCTC ? `₹ ${selectedEmployee.expectedCTC}` : 'N/A')}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Preferred Location</span>
-                        <span className="font-extrabold text-gray-900 text-xs">
-                          {selectedEmployee.preferredLocation || selectedEmployee.professionalDetails?.preferredLocation || selectedEmployee.location || 'N/A'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Notice Period</span>
-                        <span className="font-extrabold text-gray-900 text-xs">
-                          {selectedEmployee.noticePeriod || selectedEmployee.professionalDetails?.noticePeriod || 'Immediate / N/A'}
-                        </span>
-                      </div>
-
-                      {selectedEmployee.professionalDetails?.linkedinUrl && (
-                        <div className="col-span-2 pt-1 border-t border-gray-200/50">
-                          <span className="text-gray-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">LinkedIn Profile</span>
-                          <a 
-                            href={selectedEmployee.professionalDetails.linkedinUrl.startsWith('http') ? selectedEmployee.professionalDetails.linkedinUrl : `https://${selectedEmployee.professionalDetails.linkedinUrl}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline truncate block"
-                          >
-                            {selectedEmployee.professionalDetails.linkedinUrl}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <hr className="border-gray-100" />
-                  
-                  {/* 5. Documents & Media */}
-                  {(selectedEmployee.resume || selectedEmployee.coverLetter || selectedEmployee.introVideo || selectedEmployee.hasIntroVideo || selectedEmployee.isVideoLocked) && (
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents & Media</h4>
-                      <div className="space-y-3">
-                        <CandidateVideoCard
-                          videoUrl={selectedEmployee.introVideo}
-                          hasVideo={Boolean(selectedEmployee.hasIntroVideo || selectedEmployee.introVideo || selectedEmployee.isVideoLocked)}
-                          isVideoLocked={selectedEmployee.isVideoLocked}
-                          videoVisibility={selectedEmployee.videoVisibility}
-                          appliedToYou={selectedEmployee.appliedToYou}
-                          employerProfile={employerProfile}
-                          maxPlayerHeight="220px"
-                        />
-                        {selectedEmployee.resume && (
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center shrink-0">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-gray-900">Resume</p>
-                                <p className="text-xs text-gray-500">Document</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <a href={selectedEmployee.resume} target="_blank" rel="noreferrer" className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                              </a>
-                              <a href={selectedEmployee.resume} download className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                              </a>
-                            </div>
-                          </div>
-                        )}
-                        {selectedEmployee.coverLetter && (
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-gray-900">Cover Letter</p>
-                                <p className="text-xs text-gray-500">Document</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <a href={selectedEmployee.coverLetter} target="_blank" rel="noreferrer" className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                              </a>
-                              <a href={selectedEmployee.coverLetter} download className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                              </a>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-                </>
                 )}
               </div>
 
-              <div className="mt-auto pt-6 border-t border-[#ECECEC] flex gap-3 shrink-0 p-6 bg-white">
-                <button 
-                  onClick={() => setSelectedEmployee(null)}
-                  className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors cursor-pointer"
+              {/* Modal Footer */}
+              <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between shrink-0">
+                <span className="text-xs text-gray-400 hidden sm:inline">
+                  Press <kbd className="px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded font-mono">Esc</kbd> to exit
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDownloads(null)}
+                  className="px-6 py-2 rounded-full border border-gray-900 bg-white hover:bg-gray-900 hover:text-white text-gray-900 font-bold text-xs transition-colors cursor-pointer shadow-none ml-auto"
                 >
-                  Close
+                  Done
                 </button>
               </div>
+
             </div>
           </div>
-        </div>,
-        document.body
-      );
-    })()}
+        );
+      })()}
+
+      {/* Full Screen Candidate Profile View */}
+      {selectedEmployee && (
+        <CandidateProfileFullScreen
+          isOpen={Boolean(selectedEmployee)}
+          onClose={() => setSelectedEmployee(null)}
+          candidate={selectedEmployee}
+          application={selectedEmployee.history?.[0] || null}
+          employerProfile={employerProfile}
+          backLabel="Candidates"
+          isCandidatesDirectory={true}
+        />
+      )}
     </div>
   );
 };

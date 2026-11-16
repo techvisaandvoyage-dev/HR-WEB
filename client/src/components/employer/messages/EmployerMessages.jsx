@@ -1,57 +1,173 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import VideoPlayer from '../../common/VideoPlayer';
-import CandidateVideoCard from '../../common/CandidateVideoCard';
-import CustomDropdown from '../../common/CustomDropdown';
 import { socket } from '../../../utils/socket';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
+import CandidateProfileFullScreen from '../dashboard/CandidateProfileFullScreen';
 
-const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, updateCandidateStatus, employerProfile = null }) => {
+const EmployerMessages = ({ 
+  portalConfig, 
+  candidates = [], 
+  jobs = [], 
+  triggerNavRefresh, 
+  updateCandidateStatus, 
+  employerProfile = null 
+}) => {
   const location = useLocation();
   const initialEmployeeData = location.state?.initialEmployee;
   const initialApplicationData = location.state?.initialApplication;
 
+  // Conversations & Chat State
   const [backendConversations, setBackendConversations] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedAppId, setSelectedAppId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isEmployeeDetailsOpen, setIsEmployeeDetailsOpen] = useState(false);
-  const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
-  const [employeeSearch, setEmployeeSearch] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
+  const [selectedJobFilter, setSelectedJobFilter] = useState('All jobs');
+  const [candidateColFilter, setCandidateColFilter] = useState('');
+  const [selectedChatFilter, setSelectedChatFilter] = useState('All');
+
+  // Popovers & Modals
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isBlockLoading, setIsBlockLoading] = useState(false);
+  const [activeStatusDropdownAppId, setActiveStatusDropdownAppId] = useState(null);
 
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const infoRef = useRef(null);
+  const optionsRef = useRef(null);
 
-  // Auto-scroll to bottom whenever messages or typing state changes
+  // Close popovers on click outside
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
-
-  const getStatusBadgeStyles = (status) => {
-    const map = {
-      'new': 'bg-blue-50 text-blue-600 border-blue-100',
-      'applied': 'bg-blue-50 text-blue-600 border-blue-100',
-      'viewed': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      'under review': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      'shortlisted': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      'interview scheduled': 'bg-purple-50 text-purple-700 border-purple-200',
-      'technical round': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      'hr round': 'bg-pink-50 text-pink-700 border-pink-200',
-      'offer sent': 'bg-teal-50 text-teal-700 border-teal-200',
-      'hired': 'bg-green-100 text-green-800 border-green-300',
-      'rejected': 'bg-red-50 text-red-600 border-red-100',
-      'withdrawn': 'bg-stone-100 text-stone-600 border-stone-200',
+    const handleClickOutside = (e) => {
+      if (infoRef.current && !infoRef.current.contains(e.target)) {
+        setIsInfoOpen(false);
+      }
+      if (optionsRef.current && !optionsRef.current.contains(e.target)) {
+        setIsOptionsOpen(false);
+      }
+      if (!e.target.closest('[data-status-dropdown]')) {
+        setActiveStatusDropdownAppId(null);
+      }
     };
-    const key = status?.toLowerCase() || 'new';
-    return map[key] || map['new'];
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    if (isDrawerOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isTyping, isDrawerOpen]);
+
+  // Helper functions for Candidate details
+  const getWorkExp = (cand) => {
+    if (!cand) return 'Fresher';
+    if (cand.professionalDetails?.totalExperience && cand.professionalDetails.totalExperience !== 'N/A' && cand.professionalDetails.totalExperience !== '') {
+      return cand.professionalDetails.totalExperience;
+    }
+    if (cand.totalExperience && cand.totalExperience !== 'N/A' && cand.totalExperience !== '') {
+      return cand.totalExperience;
+    }
+    if (cand.isFresher) return 'Fresher';
+    if (cand.experience && cand.experience.length > 0) {
+      const count = cand.experience.length;
+      return `${count} - ${count + 2} Yrs`;
+    }
+    return 'Fresher';
   };
 
-  const statusOptions = ['Shortlisted', 'Hired', 'Rejected'];
+  const getCurrentDesignation = (cand) => {
+    if (!cand) return 'N/A';
+    if (cand.currentDesignation) return cand.currentDesignation;
+    if (cand.designation && cand.designation !== 'N/A' && cand.designation !== '') {
+      return cand.designation;
+    }
+    const exps = cand.experience || [];
+    if (Array.isArray(exps)) {
+      const currentRole = exps.find(e => e.roles?.some(r => r.currentCompany || r.currentJob))?.roles?.find(r => r.currentCompany || r.currentJob);
+      if (currentRole?.jobTitle || currentRole?.title || currentRole?.role) return currentRole.jobTitle || currentRole.title || currentRole.role;
+      if (exps[0]?.roles?.[0]?.jobTitle) return exps[0].roles[0].jobTitle;
+      if (exps[0]?.role) return exps[0].role;
+    }
+    return 'Quality Analyst';
+  };
 
-  // 1. Fetch conversations (unread counts and last messages grouped by applicationId)
+  const getCurrentCompany = (cand) => {
+    if (!cand) return 'N/A';
+    if (cand.currentCompany) return cand.currentCompany;
+    const exps = cand.experience || [];
+    if (Array.isArray(exps)) {
+      const currentExp = exps.find(e => e.roles?.some(r => r.currentCompany || r.currentJob) || e.currentCompany || e.currentJob) || exps[0];
+      if (currentExp?.companyName || currentExp?.company) return currentExp.companyName || currentExp.company;
+    }
+    if (cand.professionalDetails?.currentCompany) {
+      return cand.professionalDetails.currentCompany;
+    }
+    return cand.company || 'Infosys Limited';
+  };
+
+  const getHighestQualification = (cand) => {
+    if (!cand) return 'Bachelor of Commerce (B.Com)';
+    const quals = cand.qualifications || cand.education || [];
+    if (!Array.isArray(quals) || quals.length === 0) return 'Bachelor of Commerce (B.Com)';
+    const primary = quals.find(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)) || quals[0];
+    return primary?.course || primary?.educationType || primary?.degree || primary?.university || 'Bachelor of Commerce (B.Com)';
+  };
+
+  const getInitials = (name = '') => {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
+
+  const getAvatarBg = (name = '') => {
+    const colors = [
+      'bg-purple-600',
+      'bg-slate-900',
+      'bg-emerald-600',
+      'bg-blue-600',
+      'bg-indigo-600',
+      'bg-teal-600',
+      'bg-rose-600',
+      'bg-amber-600'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // 1. Fetch conversations metadata
+  const fetchConversations = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/conversations`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBackendConversations(data.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching conversations:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchConversations();
   }, []);
@@ -60,9 +176,8 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
   useEffect(() => {
     const handleConversationUpdated = (data) => {
       setBackendConversations(prev => {
-        const currentAppId = selectedApplication?.appId || selectedApplication?.id || selectedApplication?._id || selectedApplication?.applicationId;
+        const isCurrentChat = selectedAppId && String(selectedAppId) === String(data.applicationId);
         const exists = prev.find(c => String(c.applicationId || c.id || c._id) === String(data.applicationId));
-        const isCurrentChat = currentAppId && String(currentAppId) === String(data.applicationId);
         
         if (exists) {
           return prev.map(c => 
@@ -93,18 +208,6 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
           ? { ...c, isBlocked: data.isBlocked, blockedBy: data.blockedBy, blockedAt: data.blockedAt }
           : c
       ));
-      setSelectedApplication(prev => {
-        const prevAppId = prev?.appId || prev?.id || prev?._id || prev?.applicationId;
-        if (prevAppId && String(prevAppId) === String(data.applicationId)) {
-          return {
-            ...prev,
-            isBlocked: data.isBlocked,
-            blockedBy: data.blockedBy,
-            blockedAt: data.blockedAt
-          };
-        }
-        return prev;
-      });
     };
 
     socket.on('conversation_updated', handleConversationUpdated);
@@ -114,82 +217,233 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       socket.off('conversation_updated', handleConversationUpdated);
       socket.off('conversation_block_toggled', handleConversationBlockToggled);
     };
-  }, [selectedApplication?.appId, selectedApplication?.id, selectedApplication?._id, selectedApplication?.applicationId, triggerNavRefresh]);
+  }, [selectedAppId, triggerNavRefresh]);
 
-  const fetchConversations = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/conversations`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setBackendConversations(data.data);
+  // Build flattened applications list with stable displayAppId & enriched conversation data
+  const allConversations = useMemo(() => {
+    const list = [];
+    (candidates || []).forEach(cand => {
+      const history = cand.history || [];
+      if (history.length === 0) {
+        list.push({
+          appId: cand.id || `app-${cand.email}`,
+          applicationNumber: cand.applicationNumber,
+          jobTitle: cand.appliedJob || 'General Application',
+          status: cand.status || 'New',
+          appliedDate: cand.date || new Date().toLocaleDateString(),
+          createdAt: cand.createdAt || cand.date,
+          screeningAnswers: cand.screeningAnswers || [],
+          sourceLink: cand.sourceLink || 'Direct Apply',
+          resume: cand.resume || cand.documents?.resume || '',
+          coverLetter: cand.coverLetter || cand.documents?.coverLetter || '',
+          introVideo: cand.introVideo || cand.documents?.introVideo || '',
+          hasIntroVideo: Boolean(cand.hasIntroVideo || cand.introVideo || cand.documents?.introVideo),
+          candidate: cand
+        });
+      } else {
+        history.forEach(app => {
+          list.push({
+            appId: app.appId || `${cand.id}-${app.title}`,
+            applicationNumber: app.applicationNumber,
+            jobTitle: app.title || 'Unknown Job',
+            status: app.status || 'New',
+            appliedDate: app.date || cand.date,
+            createdAt: app.createdAt || cand.createdAt || app.date,
+            screeningAnswers: app.screeningAnswers || [],
+            sourceLink: app.sourceLink || cand.sourceLink || 'Direct Apply',
+            resume: app.resume || cand.resume || cand.documents?.resume || '',
+            coverLetter: app.coverLetter || cand.coverLetter || cand.documents?.coverLetter || '',
+            introVideo: app.introVideo || cand.introVideo || cand.documents?.introVideo || '',
+            hasIntroVideo: Boolean(app.hasIntroVideo || cand.hasIntroVideo || app.introVideo || cand.introVideo || cand.documents?.introVideo),
+            candidate: cand
+          });
+        });
       }
-    } catch (err) {
-      console.error("Error fetching conversations:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    });
+
+    // Chronological stable sort to assign sequential Application IDs starting from 500101
+    const sortedChronological = [...list].sort((a, b) => new Date(a.createdAt || a.appliedDate || 0) - new Date(b.createdAt || b.appliedDate || 0));
+    const appIdMap = new Map();
+    sortedChronological.forEach((item, index) => {
+      const seqId = 500101 + index;
+      appIdMap.set(item.appId, item.applicationNumber || seqId);
+    });
+
+    return list.map(item => {
+      const conv = backendConversations.find(c => String(c.applicationId || c.id || c._id) === String(item.appId));
+      const jobInfo = (jobs || []).find(j => (j.title || j.jobTitle || '').toLowerCase() === (item.jobTitle || '').toLowerCase());
+      
+      const openings = jobInfo?.openings || jobInfo?.vacancies || jobInfo?.numberOfOpenings || 1;
+      const jobStatus = jobInfo?.status || 'Active';
+
+      return {
+        ...item,
+        displayAppId: appIdMap.get(item.appId) || 500101,
+        openings,
+        jobStatus,
+        lastMessage: conv?.lastMessage || '',
+        lastMessageTime: conv?.lastMessageTime || item.appliedDate,
+        unreadCount: conv?.unreadCount || 0,
+        isBlocked: Boolean(conv?.isBlocked),
+        blockedBy: conv?.blockedBy || null
+      };
+    }).sort((a, b) => {
+      // Sort with conversations with recent messages or unreads first
+      if (b.unreadCount !== a.unreadCount) {
+        return b.unreadCount - a.unreadCount;
+      }
+      return new Date(b.lastMessageTime || b.createdAt || 0) - new Date(a.lastMessageTime || a.createdAt || 0);
+    });
+  }, [candidates, backendConversations, jobs]);
+
+  // Unique jobs for filter dropdown
+  const uniqueJobs = useMemo(() => {
+    const list = [
+      ...(jobs || []).map(j => j.title || j.jobTitle),
+      ...allConversations.map(a => a.jobTitle)
+    ].filter(Boolean);
+    return ['All jobs', ...new Set(list)];
+  }, [jobs, allConversations]);
+
+  // Counts for top status pills
+  const statusCounts = useMemo(() => {
+    const counts = {
+      All: allConversations.length,
+      New: 0,
+      Viewed: 0,
+      Shortlisted: 0,
+      Rejected: 0
+    };
+
+    allConversations.forEach(item => {
+      const s = (item.status || '').toLowerCase();
+      if (s === 'new' || s === 'applied') {
+        counts.New++;
+      } else if (s === 'viewed' || s === 'under review') {
+        counts.Viewed++;
+      } else if (s === 'shortlisted' || s === 'interview scheduled' || s === 'technical round' || s === 'hr round' || s === 'offer sent' || s === 'hired') {
+        counts.Shortlisted++;
+      } else if (s === 'rejected' || s === 'withdrawn') {
+        counts.Rejected++;
+      }
+    });
+
+    return counts;
+  }, [allConversations]);
+
+  // Filtered conversations list
+  const filteredConversations = useMemo(() => {
+    return allConversations.filter(item => {
+      // 1. Status filter
+      if (selectedStatusFilter !== 'All') {
+        const s = (item.status || '').toLowerCase();
+        if (selectedStatusFilter === 'New' && s !== 'new' && s !== 'applied') return false;
+        if (selectedStatusFilter === 'Viewed' && s !== 'viewed' && s !== 'under review') return false;
+        if (selectedStatusFilter === 'Shortlisted' && !['shortlisted', 'interview scheduled', 'technical round', 'hr round', 'offer sent', 'hired'].includes(s)) return false;
+        if (selectedStatusFilter === 'Rejected' && s !== 'rejected' && s !== 'withdrawn') return false;
+      }
+
+      // 2. Job dropdown filter
+      if (selectedJobFilter !== 'All jobs' && selectedJobFilter !== 'All') {
+        if ((item.jobTitle || '').toLowerCase() !== selectedJobFilter.toLowerCase()) return false;
+      }
+
+      // 3. Candidate dedicated column filter
+      if (candidateColFilter.trim()) {
+        const cq = candidateColFilter.toLowerCase().trim();
+        const candName = item.candidate?.name?.toLowerCase() || '';
+        const candEmail = item.candidate?.email?.toLowerCase() || '';
+        if (!candName.includes(cq) && !candEmail.includes(cq)) return false;
+      }
+
+      // 4. Chat filter (All / Unread)
+      if (selectedChatFilter === 'Unread') {
+        if (!item.unreadCount || item.unreadCount <= 0) return false;
+      }
+
+      // 5. Global Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const candName = item.candidate?.name?.toLowerCase() || '';
+        const candEmail = item.candidate?.email?.toLowerCase() || '';
+        const job = item.jobTitle?.toLowerCase() || '';
+        const appId = String(item.displayAppId);
+        if (!candName.includes(q) && !candEmail.includes(q) && !job.includes(q) && !appId.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [allConversations, selectedStatusFilter, selectedJobFilter, candidateColFilter, selectedChatFilter, searchQuery]);
+
+  // Check if any filters are active
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() ||
+    (selectedJobFilter !== 'All jobs' && selectedJobFilter !== 'All') ||
+    selectedStatusFilter !== 'All' ||
+    candidateColFilter.trim() ||
+    selectedChatFilter !== 'All'
+  );
+
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setSelectedJobFilter('All jobs');
+    setSelectedStatusFilter('All');
+    setCandidateColFilter('');
+    setSelectedChatFilter('All');
   };
 
-  // 2. Handle initial employee selection from route state
+  // Handle route state initial selection
   useEffect(() => {
-    if (initialEmployeeData) {
-      const targetId = initialEmployeeData.id || initialEmployeeData._id;
-      const targetEmail = (initialEmployeeData.email || '').toLowerCase();
+    if (initialApplicationData || initialEmployeeData) {
+      const targetAppId = initialApplicationData?.appId || initialApplicationData?.id;
+      const targetEmail = (initialEmployeeData?.email || '').toLowerCase();
 
-      const emp = candidates.find(c => 
-        (targetId && (c.id === targetId || c._id === targetId)) ||
-        (targetEmail && c.email && c.email.toLowerCase() === targetEmail)
-      ) || initialEmployeeData;
+      const matched = allConversations.find(a => 
+        (targetAppId && a.appId === targetAppId) ||
+        (targetEmail && a.candidate?.email?.toLowerCase() === targetEmail)
+      );
 
-      setSelectedEmployee(emp);
-
-      // Select specific application if provided or first from history
-      if (initialApplicationData) {
-        setSelectedApplication(initialApplicationData);
-      } else if (emp.history && emp.history.length > 0) {
-        setSelectedApplication(emp.history[0]);
+      if (matched) {
+        setSelectedAppId(matched.appId);
+        setIsDrawerOpen(true);
       }
     }
-  }, [initialEmployeeData, initialApplicationData, candidates]);
+  }, [initialApplicationData, initialEmployeeData, allConversations]);
 
-  // 3. Fetch messages and join live socket room when an application is selected
+  // Active selected conversation object
+  const activeConversation = useMemo(() => {
+    if (!selectedAppId) return null;
+    return allConversations.find(c => c.appId === selectedAppId) || null;
+  }, [selectedAppId, allConversations]);
+
+  // Fetch messages and join live socket room when selectedAppId changes
   useEffect(() => {
-    if (selectedApplication) {
-      const appId = selectedApplication.appId || selectedApplication.id || selectedApplication._id || selectedApplication.applicationId;
-      fetchMessages(appId);
-      
-      // Join real-time room
-      socket.emit('join_chat', appId);
+    if (selectedAppId && isDrawerOpen) {
+      fetchMessages(selectedAppId);
+      socket.emit('join_chat', selectedAppId);
 
       const handleReconnect = () => {
-        socket.emit('join_chat', appId);
+        socket.emit('join_chat', selectedAppId);
       };
       socket.on('connect', handleReconnect);
 
-      // Pre-fill message if came from route
-      if (initialEmployeeData && selectedEmployee?.id === initialEmployeeData.id) {
-        setNewMessage(`Hey ${selectedEmployee.name?.split(' ')[0] || ''}, `);
-      } else {
-        setNewMessage('');
-      }
-
-      // Socket listeners for active room
       const handleReceiveMessage = (msg) => {
         const msgAppId = typeof msg.applicationId === 'object' ? (msg.applicationId._id || msg.applicationId.id) : msg.applicationId;
-        if (String(msgAppId) === String(appId)) {
+        if (String(msgAppId) === String(selectedAppId)) {
           setMessages(prev => {
             if (prev.some(m => String(m._id) === String(msg._id))) return prev;
             return [...prev, msg];
           });
-          // Mark read locally and on server
+          
           if (msg.senderModel === 'Employee') {
-            fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${appId}`, {
+            fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedAppId}`, {
               headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
             }).catch(() => {});
+            
             setBackendConversations(prev => prev.map(c => 
-              (c.applicationId === appId || c.id === appId || c._id === appId) ? { ...c, unreadCount: 0 } : c
+              String(c.applicationId || c.id) === String(selectedAppId) ? { ...c, unreadCount: 0 } : c
             ));
             if (triggerNavRefresh) triggerNavRefresh();
           }
@@ -197,19 +451,19 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       };
 
       const handleMessagesMarkedRead = (data) => {
-        if (data.applicationId === appId && data.readBy === 'Employee') {
+        if (String(data.applicationId) === String(selectedAppId) && data.readBy === 'Employee') {
           setMessages(prev => prev.map(m => m.senderModel === 'Employer' ? { ...m, isRead: true } : m));
         }
       };
 
       const handleUserTyping = (data) => {
-        if (data.applicationId === appId && data.senderModel === 'Employee') {
+        if (String(data.applicationId) === String(selectedAppId) && data.senderModel === 'Employee') {
           setIsTyping(true);
         }
       };
 
       const handleUserStopTyping = (data) => {
-        if (data.applicationId === appId && data.senderModel === 'Employee') {
+        if (String(data.applicationId) === String(selectedAppId) && data.senderModel === 'Employee') {
           setIsTyping(false);
         }
       };
@@ -220,7 +474,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       socket.on('user_stop_typing', handleUserStopTyping);
 
       return () => {
-        socket.emit('leave_chat', appId);
+        socket.emit('leave_chat', selectedAppId);
         socket.off('connect', handleReconnect);
         socket.off('receive_message', handleReceiveMessage);
         socket.off('messages_marked_read', handleMessagesMarkedRead);
@@ -232,7 +486,7 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       setMessages([]);
       setIsTyping(false);
     }
-  }, [selectedApplication?.appId, selectedApplication?.id, selectedApplication?._id, selectedApplication?.applicationId]);
+  }, [selectedAppId, isDrawerOpen]);
 
   const fetchMessages = async (appId) => {
     try {
@@ -241,18 +495,9 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
       });
       const data = await res.json();
       if (data.success) {
-        setMessages(data.data);
-        if (data.application) {
-          setSelectedApplication(prev => ({
-            ...prev,
-            isBlocked: data.application.isBlocked,
-            blockedBy: data.application.blockedBy,
-            blockedAt: data.application.blockedAt
-          }));
-        }
-        // Clear unread count for this app in backendConversations
+        setMessages(data.data || []);
         setBackendConversations(prev => prev.map(c => 
-          c.applicationId === appId ? { 
+          String(c.applicationId || c.id) === String(appId) ? { 
             ...c, 
             unreadCount: 0,
             ...(data.application ? { isBlocked: data.application.isBlocked, blockedBy: data.application.blockedBy } : {})
@@ -265,40 +510,117 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
     }
   };
 
-  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
-  const [isBlockLoading, setIsBlockLoading] = useState(false);
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setNewMessage(val);
 
-  const openBlockModal = () => {
-    if (!selectedApplication) return;
-    if (selectedApplication.isBlocked && selectedApplication.blockedBy === 'Employee') {
-      return;
+    if (selectedAppId && activeConversation && !activeConversation.isBlocked) {
+      socket.emit('typing', {
+        applicationId: selectedAppId,
+        senderModel: 'Employer'
+      });
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stop_typing', {
+          applicationId: selectedAppId,
+          senderModel: 'Employer'
+        });
+      }, 1500);
     }
-    setIsBlockModalOpen(true);
   };
 
-  const handleConfirmToggleBlock = async () => {
-    if (!selectedApplication) return;
+  const sendMessage = async (textToSend) => {
+    const text = (textToSend !== undefined ? textToSend : newMessage).trim();
+    if (!text || !selectedAppId || (activeConversation && activeConversation.isBlocked)) return;
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit('stop_typing', {
+      applicationId: selectedAppId,
+      senderModel: 'Employer'
+    });
+
+    setNewMessage('');
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedAppId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('employerToken')}`
+        },
+        body: JSON.stringify({ content: text })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => {
+          if (prev.some(m => String(m._id) === String(data.data._id))) return prev;
+          return [...prev, data.data];
+        });
+
+        setBackendConversations(prev => {
+          const exists = prev.find(c => String(c.applicationId || c.id) === String(selectedAppId));
+          if (exists) {
+            return prev.map(c => 
+              String(c.applicationId || c.id) === String(selectedAppId) 
+                ? { ...c, lastMessage: data.data.content, lastMessageTime: data.data.createdAt }
+                : c
+            );
+          } else {
+            return [{
+              applicationId: selectedAppId,
+              lastMessage: data.data.content,
+              lastMessageTime: data.data.createdAt,
+              unreadCount: 0
+            }, ...prev];
+          }
+        });
+      } else {
+        alert("Failed to send message: " + data.message);
+      }
+    } catch (err) {
+      console.error("Error sending message:", err);
+      alert("Network error sending message.");
+    }
+  };
+
+  const handleUpdateStatus = (appId, newStatus) => {
+    if (updateCandidateStatus) {
+      updateCandidateStatus(appId, newStatus);
+    }
+
+    const targetConv = allConversations.find(a => a.appId === appId);
+    if (targetConv && targetConv.candidate && targetConv.candidate.history) {
+      targetConv.candidate.history = targetConv.candidate.history.map(h => 
+        h.appId === appId ? { ...h, status: newStatus } : h
+      );
+    }
+    if (targetConv) {
+      targetConv.status = newStatus;
+    }
+
+    setActiveStatusDropdownAppId(null);
+  };
+
+  const handleToggleBlock = async () => {
+    if (!selectedAppId || !activeConversation) return;
     setIsBlockLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedApplication.appId}/toggle-block`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedAppId}/toggle-block`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('employerToken')}` }
       });
       const data = await res.json();
       if (data.success) {
-        setSelectedApplication(prev => ({
-          ...prev,
-          isBlocked: data.data.isBlocked,
-          blockedBy: data.data.blockedBy,
-          blockedAt: data.data.blockedAt
-        }));
         setBackendConversations(prev => prev.map(c => 
-          c.applicationId === selectedApplication.appId
+          String(c.applicationId || c.id) === String(selectedAppId)
             ? { ...c, isBlocked: data.data.isBlocked, blockedBy: data.data.blockedBy, blockedAt: data.data.blockedAt }
             : c
         ));
         setIsBlockModalOpen(false);
+        setIsOptionsOpen(false);
       } else {
         alert(data.message || 'Action failed');
       }
@@ -310,909 +632,868 @@ const EmployerMessages = ({ portalConfig, candidates = [], triggerNavRefresh, up
     }
   };
 
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setNewMessage(val);
+  const openChatDrawer = (app) => {
+    setSelectedAppId(app.appId);
+    setIsDrawerOpen(true);
+    setIsInfoOpen(false);
+    setIsOptionsOpen(false);
 
-    if (selectedApplication && !selectedApplication.isBlocked) {
-      socket.emit('typing', {
-        applicationId: selectedApplication.appId,
-        senderModel: 'Employer'
-      });
-
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => {
-        socket.emit('stop_typing', {
-          applicationId: selectedApplication.appId,
-          senderModel: 'Employer'
-        });
-      }, 1500);
+    // Auto update status from New/Applied to Viewed upon viewing
+    const curStatus = (app.status || '').toLowerCase();
+    if (curStatus === 'new' || curStatus === 'applied') {
+      handleUpdateStatus(app.appId, 'Viewed');
     }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedApplication || selectedApplication.isBlocked) return;
-    
-    // Stop typing immediately
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    socket.emit('stop_typing', {
-      applicationId: selectedApplication.appId,
-      senderModel: 'Employer'
-    });
+  const closeChatDrawer = () => {
+    setIsDrawerOpen(false);
+    setIsInfoOpen(false);
+    setIsOptionsOpen(false);
+  };
 
-    const msgContent = newMessage;
-    setNewMessage('');
-    
+  const getStatusBadgePill = (status) => {
+    const s = (status || 'New').toLowerCase();
+    if (s === 'viewed' || s === 'under review') {
+      return {
+        label: 'VIEWED',
+        style: 'border-[#fde68a] bg-[#fffbeb] text-[#b45309] hover:bg-[#fef3c7]'
+      };
+    }
+    if (s === 'shortlisted' || s === 'hired') {
+      return {
+        label: 'SHORTLISTED',
+        style: 'border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46] hover:bg-[#d1fae5]'
+      };
+    }
+    if (s === 'rejected' || s === 'withdrawn') {
+      return {
+        label: 'REJECTED',
+        style: 'border-[#fecdd3] bg-[#fff1f2] text-[#be123c] hover:bg-[#ffe4e6]'
+      };
+    }
+    return {
+      label: 'NEW',
+      style: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] hover:bg-[#dbeafe]'
+    };
+  };
+
+  const formatDate = (d) => {
+    if (!d) return 'Today';
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employer/messages/applications/${selectedApplication.appId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('employerToken')}`
-        },
-        body: JSON.stringify({ content: msgContent })
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        // Append locally if not already received via socket
-        setMessages(prev => {
-          if (prev.some(m => m._id === data.data._id)) return prev;
-          return [...prev, data.data];
-        });
-        
-        // Update last message in backendConversations
-        setBackendConversations(prev => {
-          const exists = prev.find(c => c.applicationId === selectedApplication.appId);
-          if (exists) {
-            return prev.map(c => 
-              c.applicationId === selectedApplication.appId 
-                ? { ...c, lastMessage: data.data.content, lastMessageTime: data.data.createdAt }
-                : c
-            );
-          } else {
-            return [{
-              applicationId: selectedApplication.appId,
-              lastMessage: data.data.content,
-              lastMessageTime: data.data.createdAt,
-              unreadCount: 0
-            }, ...prev];
-          }
-        });
-      } else {
-        alert("Failed to send message: " + data.message);
-        console.error("Backend error:", data);
-      }
-    } catch (err) {
-      alert("Network error sending message.");
-      console.error("Error sending message:", err);
+      const date = new Date(d);
+      if (isNaN(date.getTime())) return d;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return d;
     }
   };
 
-  // Derived candidates list including selectedEmployee if from direct outreach
-  const allCandidatesList = useMemo(() => {
-    if (!selectedEmployee) return candidates;
-    const targetId = selectedEmployee.id || selectedEmployee._id;
-    const targetEmail = (selectedEmployee.email || '').toLowerCase();
-    const exists = candidates.some(c => 
-      (targetId && (c.id === targetId || c._id === targetId)) ||
-      (targetEmail && c.email && c.email.toLowerCase() === targetEmail)
-    );
-    if (!exists) {
-      return [selectedEmployee, ...candidates];
+  const formatTime = (d) => {
+    if (!d) return '';
+    try {
+      const date = new Date(d);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return '';
     }
-    return candidates;
-  }, [candidates, selectedEmployee]);
+  };
 
-  // Derived state for filtering
-  const filteredCandidates = allCandidatesList.filter(c => {
-    const term = employeeSearch.toLowerCase();
-    return c.name?.toLowerCase().includes(term) || 
-           c.email?.toLowerCase().includes(term) || 
-           c.phone?.toLowerCase().includes(term);
-  });
-
+  const quickReplies = [
+    "Please share your updated CV",
+    "Are you available for a call?",
+    "When can you join?"
+  ];
 
   if (isLoading) {
-    return <div className="p-8 text-center text-gray-500 font-medium animate-pulse">Loading Messages...</div>;
+    return (
+      <div className="p-12 text-center text-gray-500 font-semibold animate-pulse">
+        Loading conversations...
+      </div>
+    );
   }
 
   return (
-    <div className="h-[calc(100vh-80px)] flex gap-4 overflow-hidden bg-[#FAFAFA] -m-8 p-6 font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="space-y-6 font-sans">
       
-      {/* Column 1 - Employees */}
-      <div className="w-[300px] bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col shrink-0 overflow-hidden">
-        <div className="p-5 border-b border-gray-100 shrink-0">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">{portalConfig?.candidatesColumnTitle || 'Candidates'}</h2>
-          <div className="relative">
-            <svg className="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input 
-              type="text" 
-              placeholder={portalConfig?.candidatesSearchPlaceholder || "Search candidates..."} 
-              value={employeeSearch}
-              onChange={(e) => setEmployeeSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#29953f] focus:bg-white transition-all text-gray-800 placeholder-gray-400"
-            />
+      {/* 1. TOP HEADER CARD */}
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
+            <span className="bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] px-3 py-1 rounded-full text-xs font-bold shrink-0">
+              {filteredConversations.length} of {allConversations.length} conversations
+            </span>
           </div>
+          <p className="text-sm text-gray-500 mt-1">
+            Chat with candidates about their applications.
+          </p>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-1">
-          {filteredCandidates.length === 0 ? (
-            <div className="text-center p-6 text-gray-400 text-sm">{portalConfig?.noCandidatesFoundText || "No candidates found."}</div>
-          ) : (
-            filteredCandidates.map(cand => {
-              const appCount = cand.history?.length || 0;
-              const isSelected = selectedEmployee && (
-                selectedEmployee.id === cand.id || 
-                selectedEmployee._id === cand.id || 
-                selectedEmployee.id === cand._id || 
-                selectedEmployee._id === cand._id ||
-                (selectedEmployee.email && cand.email && selectedEmployee.email.toLowerCase() === cand.email.toLowerCase())
-              );
-              
-              const candUnreadCount = cand.history?.reduce((total, app) => {
-                const conv = backendConversations.find(c => c.applicationId === app.appId || c.applicationId === app.id); // appId or id depending on how history is shaped
-                return total + (conv?.unreadCount || 0);
-              }, 0) || 0;
-              
-              return (
-                <div 
-                  key={cand.id}
-                  onClick={() => {
-                    setSelectedEmployee(cand);
-                    setSelectedApplication(null); // Reset app when switching employees
-                  }}
-                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${isSelected ? 'bg-[#f0fdf4] border-[#bbf7d0] shadow-sm' : 'border-transparent hover:bg-gray-50'}`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 ${cand.bg || 'bg-[#29953f]'}`}>
-                      {cand.initials || cand.name?.charAt(0)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className={`text-sm truncate ${isSelected ? 'font-bold text-[#166534]' : 'font-semibold text-gray-900'}`}>{cand.name}</h3>
-                      <p className="text-xs text-gray-500 truncate">{cand.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end shrink-0 pl-2">
-                    {candUnreadCount > 0 && (
-                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full mb-1">
-                        {candUnreadCount > 9 ? '9+' : candUnreadCount} new
-                      </span>
-                    )}
-                    <span className={`text-xs font-bold ${isSelected ? 'text-[#29953f]' : 'text-gray-400'}`}>{appCount} Applications</span>
-                  </div>
-                </div>
-              );
-            })
-          )}
+
+        {/* Quick Status Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setSelectedStatusFilter('All')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              selectedStatusFilter === 'All'
+                ? 'bg-[#0f172a] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            All: {statusCounts.All}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedStatusFilter('New')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
+              selectedStatusFilter === 'New'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-[#eff6ff] text-[#2563eb] border-[#bfdbfe] hover:bg-blue-100'
+            }`}
+          >
+            New: {statusCounts.New}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedStatusFilter('Viewed')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
+              selectedStatusFilter === 'Viewed'
+                ? 'bg-amber-600 text-white border-amber-600'
+                : 'bg-[#fffbeb] text-[#d97706] border-[#fde68a] hover:bg-amber-100'
+            }`}
+          >
+            Viewed: {statusCounts.Viewed}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedStatusFilter('Shortlisted')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
+              selectedStatusFilter === 'Shortlisted'
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0] hover:bg-emerald-100'
+            }`}
+          >
+            Shortlisted: {statusCounts.Shortlisted}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedStatusFilter('Rejected')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
+              selectedStatusFilter === 'Rejected'
+                ? 'bg-rose-600 text-white border-rose-600'
+                : 'bg-[#fff1f2] text-[#e11d48] border-[#fecdd3] hover:bg-rose-100'
+            }`}
+          >
+            Rejected: {statusCounts.Rejected}
+          </button>
         </div>
       </div>
 
-      {/* Column 2 - Applications */}
-      <div className="w-[320px] bg-[#FAFAFA] flex flex-col shrink-0 overflow-hidden">
-        {selectedEmployee ? (
-          <>
-            <div className="p-2 shrink-0 mb-2">
-              <h2 className="text-xl font-bold text-gray-900 leading-tight">{selectedEmployee.name}</h2>
-              <p className="text-sm text-gray-500">{selectedEmployee.email}</p>
-              <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-[#dcfce7] text-[#166534] text-xs font-bold rounded-full border border-[#bbf7d0]">
-                {selectedEmployee.history?.length || 0} Applications
-              </div>
+      {/* 2. SEARCH & FILTER ROW */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Search Input */}
+        <div className="relative w-full md:w-96">
+          <svg className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by candidate, email or job"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#059669] focus:bg-white text-gray-800 placeholder-gray-400 transition"
+          />
+        </div>
+
+        {/* Job Filter Dropdown */}
+        <div className="w-full md:w-auto flex items-center gap-2">
+          <div className="relative inline-block w-full md:w-64">
+            <select
+              value={selectedJobFilter}
+              onChange={(e) => setSelectedJobFilter(e.target.value)}
+              className="w-full appearance-none bg-white border border-gray-200 px-4 py-2 pr-9 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#059669] cursor-pointer shadow-2xs"
+            >
+              {uniqueJobs.map(job => (
+                <option key={job} value={job}>{job}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
             </div>
-            
-            <div className="p-2 shrink-0">
-              <h3 className="font-bold text-gray-900 text-sm mb-1">Applications</h3>
-              <p className="text-xs text-gray-500">Select an application to view conversation</p>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto px-2.5 pt-2 pb-4 space-y-3 custom-scrollbar">
-              {(selectedEmployee.history || []).length === 0 ? (
-                <div className="text-center p-6 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">No applications yet.</div>
-              ) : (
-                selectedEmployee.history.map(app => {
-                  const isSelected = selectedApplication?.appId === app.appId;
-                  const convState = backendConversations.find(c => c.applicationId === app.appId);
-                  
-                  return (
-                    <div 
-                      key={app.appId}
-                      onClick={() => setSelectedApplication(app)}
-                      className={`p-4 rounded-2xl cursor-pointer transition-all border bg-white shadow-sm ${isSelected ? 'border-[#29953f] ring-2 ring-[#29953f]/15' : 'border-gray-200 hover:border-gray-300'}`}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. MAIN CONVERSATIONS TABLE */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              {/* Row 1: Column Headers */}
+              <tr className="bg-[#f8fafc] border-b border-gray-100 text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+                <th className="py-3 px-6 font-semibold min-w-[220px]">JOB TITLE</th>
+                <th className="py-3 px-6 font-semibold min-w-[200px]">CANDIDATE</th>
+                <th className="py-3 px-6 font-semibold min-w-[150px]">CANDIDATE STATUS</th>
+                <th className="py-3 px-6 font-semibold min-w-[260px]">CHAT</th>
+              </tr>
+
+              {/* Row 2: In-Column Dedicated Filters for All Columns */}
+              <tr className="bg-gray-50/90 border-b border-gray-200">
+                {/* Column 1: Job Filter */}
+                <th className="py-2 px-6">
+                  <div className="relative">
+                    <select
+                      value={selectedJobFilter}
+                      onChange={(e) => setSelectedJobFilter(e.target.value)}
+                      className="w-full h-8 px-2.5 pr-7 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer appearance-none"
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-xl shrink-0 border border-gray-100">
-                            💼
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <h4 className={`text-sm font-bold truncate ${isSelected ? 'text-gray-900' : 'text-gray-800'}`}>{app.title}</h4>
-                              {(app.isBlocked || convState?.isBlocked) && (
-                                <span className="text-[9px] bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded shrink-0">
-                                  Blocked
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500 font-medium mt-0.5">{selectedEmployee.skills?.[0] || 'Role'}</p>
-                          </div>
-                        </div>
-                        <svg className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#29953f]' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                      </div>
-                      
-                      <div className="mt-4 flex items-center justify-between">
-                        {convState?.unreadCount > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                            <span className="text-xs font-bold text-red-600">{convState.unreadCount > 9 ? '9+' : convState.unreadCount} new {convState.unreadCount === 1 ? 'message' : 'messages'}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs font-medium text-gray-500 truncate max-w-[150px]">
-                            {convState?.lastMessage || 'No messages yet'}
-                          </span>
-                        )}
-                        <span className="text-[10px] font-bold text-gray-400">
-                          {convState?.lastMessageTime 
-                            ? new Date(convState.lastMessageTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                            : new Date(app.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-                          }
-                        </span>
+                      <option value="All jobs">All jobs</option>
+                      {uniqueJobs.filter(j => j !== 'All jobs').map(j => (
+                        <option key={j} value={j}>{j}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
+                </th>
+
+                {/* Column 2: Candidate Name / Email Filter */}
+                <th className="py-2 px-6">
+                  <input
+                    type="text"
+                    value={candidateColFilter}
+                    onChange={(e) => setCandidateColFilter(e.target.value)}
+                    placeholder="Filter candidate / email..."
+                    className="w-full h-8 px-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-emerald-500 placeholder-gray-400 shadow-2xs"
+                  />
+                </th>
+
+                {/* Column 3: Status Filter */}
+                <th className="py-2 px-6">
+                  <div className="relative">
+                    <select
+                      value={selectedStatusFilter}
+                      onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                      className="w-full h-8 px-2.5 pr-7 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer appearance-none"
+                    >
+                      <option value="All">All Status</option>
+                      <option value="New">New</option>
+                      <option value="Viewed">Viewed</option>
+                      <option value="Shortlisted">Shortlisted</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                  </div>
+                </th>
+
+                {/* Column 4: Chat Filter & Reset */}
+                <th className="py-2 px-6">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <select
+                        value={selectedChatFilter}
+                        onChange={(e) => setSelectedChatFilter(e.target.value)}
+                        className="w-full h-8 px-2.5 pr-7 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer appearance-none"
+                      >
+                        <option value="All">All Chats</option>
+                        <option value="Unread">Unread Only</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                       </div>
                     </div>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={resetAllFilters}
+                        className="h-8 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                        title="Reset all filters"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-sm">
+              {filteredConversations.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="py-16 text-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      <p className="font-semibold text-gray-500">No conversations found</p>
+                      <p className="text-xs text-gray-400">Try adjusting your search or filters.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredConversations.map((app) => {
+                  const cand = app.candidate || {};
+                  const candAvatar = cand.avatar || cand.profilePhoto || cand.profilePicture || cand.photo;
+                  const avatarBg = cand.bg || getAvatarBg(cand.name || '');
+                  const statusPill = getStatusBadgePill(app.status);
+
+                  return (
+                    <tr 
+                      key={app.appId} 
+                      className="hover:bg-gray-50/70 transition-colors group cursor-pointer"
+                      onClick={() => openChatDrawer(app)}
+                    >
+                      {/* 1. JOB TITLE */}
+                      <td className="py-4 px-6 align-middle">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-900 group-hover:text-[#059669] transition-colors leading-tight">
+                            {app.jobTitle}
+                          </span>
+                          <span className="text-xs text-gray-400 mt-1 font-medium">
+                            {app.jobStatus} • {app.openings} opening{app.openings > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 2. CANDIDATE */}
+                      <td className="py-4 px-6 align-middle">
+                        <div className="flex items-center gap-3">
+                          {candAvatar ? (
+                            <img 
+                              src={candAvatar} 
+                              alt={cand.name} 
+                              className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-100" 
+                            />
+                          ) : (
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs ${avatarBg}`}>
+                              {getInitials(cand.name)}
+                            </div>
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-gray-900 leading-tight truncate">
+                              {cand.name || 'Candidate'}
+                            </span>
+                            <span className="text-xs text-gray-500 truncate mt-0.5">
+                              {cand.email || 'N/A'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 3. CANDIDATE STATUS */}
+                      <td className="py-4 px-6 align-middle" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative inline-block" data-status-dropdown="true">
+                          <button
+                            type="button"
+                            onClick={() => setActiveStatusDropdownAppId(prev => prev === app.appId ? null : app.appId)}
+                            className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold tracking-wider flex items-center justify-between gap-2 shadow-2xs transition-colors cursor-pointer ${statusPill.style}`}
+                          >
+                            <span>{statusPill.label}</span>
+                            <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {activeStatusDropdownAppId === app.appId && (
+                            <div className="absolute left-0 mt-1 w-36 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                              {['New', 'Viewed', 'Shortlisted', 'Rejected'].map((opt) => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => handleUpdateStatus(app.appId, opt)}
+                                  className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors cursor-pointer"
+                                >
+                                  <span>{opt}</span>
+                                  {app.status?.toLowerCase() === opt.toLowerCase() && (
+                                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 4. CHAT */}
+                      <td className="py-4 px-6 align-middle">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-xs text-gray-500 truncate max-w-[240px] md:max-w-[280px]">
+                            {app.lastMessage || 'Hi, I have applied for this role...'}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openChatDrawer(app);
+                            }}
+                            className="bg-[#059669] hover:bg-[#047857] text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>Message</span>
+                            {app.unreadCount > 0 && (
+                              <span className="w-4 h-4 rounded-full bg-white text-[#059669] text-[10px] font-black flex items-center justify-center shrink-0">
+                                {app.unreadCount > 9 ? '9+' : app.unreadCount}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })
               )}
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            </div>
-            <h3 className="text-gray-900 font-bold mb-1">
-              {portalConfig?.selectCandidateTitle || 'Select a Candidate'}
-            </h3>
-            <p className="text-sm text-gray-500">
-              {portalConfig?.selectCandidateSubtitle || 'Choose a candidate from the list to view their job applications & chats.'}
-            </p>
-          </div>
-        )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Column 3 - Job Specific Chat */}
-      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden relative min-w-[350px]">
-        {selectedApplication ? (
-          <>
-            <div className="p-4 sm:p-6 border-b border-gray-100 bg-white shrink-0 flex justify-between items-center z-10 shadow-sm">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl border border-gray-100 shadow-sm shrink-0">
-                  💼
-                </div>
+      {/* 4. SLIDE-IN RIGHT CHAT DRAWER */}
+      {isDrawerOpen && activeConversation && createPortal(
+        <div className="fixed inset-0 z-[9999] overflow-hidden font-sans">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            onClick={closeChatDrawer}
+          />
+
+          {/* Drawer Container */}
+          <div 
+            data-right-drawer="true"
+            data-chat-drawer="true"
+            className="fixed inset-y-0 right-0 w-full sm:w-[500px] md:w-[540px] bg-white shadow-2xl z-[10000] flex flex-col h-full border-l border-gray-200 animate-in slide-in-from-right duration-300"
+          >
+            
+            {/* Header Top Bar */}
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+              <div className="flex items-center gap-3 min-w-0">
+                {activeConversation.candidate?.avatar || activeConversation.candidate?.profilePhoto ? (
+                  <img 
+                    src={activeConversation.candidate.avatar || activeConversation.candidate.profilePhoto} 
+                    alt={activeConversation.candidate.name} 
+                    className="w-11 h-11 rounded-full object-cover shrink-0 border border-gray-100" 
+                  />
+                ) : (
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-2xs ${activeConversation.candidate?.bg || getAvatarBg(activeConversation.candidate?.name || '')}`}>
+                    {getInitials(activeConversation.candidate?.name)}
+                  </div>
+                )}
+                
                 <div className="min-w-0">
-                  <h2 className="font-bold text-gray-900 text-lg leading-tight truncate">{selectedApplication.title}</h2>
-                  <p className="text-sm text-gray-500 font-medium truncate">{selectedEmployee.skills?.[0] || 'Role'}</p>
+                  {/* Job Title Line */}
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#047857] truncate">
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="truncate">{activeConversation.jobTitle}</span>
+                  </div>
+
+                  {/* Candidate Name & Status Pill Line */}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
+                      {activeConversation.candidate?.name || 'Candidate'}
+                    </h3>
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getStatusBadgePill(activeConversation.status).style}`}>
+                      • {activeConversation.status || 'New'}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${selectedApplication.color || 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                  {selectedApplication.status || 'Under Review'}
+
+              {/* Action Icons Right */}
+              <div className="flex items-center gap-1 shrink-0 relative">
+                {/* ⓘ Info Button */}
+                <div className="relative" ref={infoRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsInfoOpen(prev => !prev);
+                      setIsOptionsOpen(false);
+                    }}
+                    className={`p-2 rounded-full transition-colors cursor-pointer ${
+                      isInfoOpen ? 'bg-emerald-50 text-emerald-700' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                    }`}
+                    title="Candidate info"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+
+                  {/* Candidate Info Popover (Image 3) */}
+                  {isInfoOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                        <span className="font-bold text-gray-900 text-sm">Candidate info</span>
+                        <span className="font-mono font-bold text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200">
+                          #{activeConversation.displayAppId}
+                        </span>
+                      </div>
+
+                      <div className="py-3 space-y-2.5 text-xs">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Email:</span>
+                          <span className="text-gray-800 font-semibold truncate">{activeConversation.candidate?.email || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Phone:</span>
+                          <span className="text-gray-800 font-semibold">{formatPhoneWithCountryCode(activeConversation.candidate?.phone || activeConversation.candidate?.mobileNumber)}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Qualification:</span>
+                          <span className="text-gray-800 font-semibold text-right">{getHighestQualification(activeConversation.candidate)}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Experience:</span>
+                          <span className="text-gray-800 font-semibold">{getWorkExp(activeConversation.candidate)}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Current role:</span>
+                          <span className="text-gray-800 font-semibold text-right">{getCurrentDesignation(activeConversation.candidate)}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Company:</span>
+                          <span className="text-gray-800 font-semibold text-right">{getCurrentCompany(activeConversation.candidate)}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Applied on:</span>
+                          <span className="text-gray-800 font-semibold">{formatDate(activeConversation.appliedDate)}</span>
+                        </div>
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-gray-400 font-medium shrink-0">Source:</span>
+                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold text-[11px] border border-emerald-100">
+                            {activeConversation.sourceLink || 'Direct Apply'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsInfoOpen(false);
+                          setIsProfileModalOpen(true);
+                        }}
+                        className="w-full mt-2 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>View full profile</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {selectedApplication.isBlocked ? (
-                  selectedApplication.blockedBy === 'Employer' && (
-                    <button 
-                      onClick={openBlockModal}
-                      className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm shrink-0"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
-                      Unblock this chat
-                    </button>
-                  )
-                ) : (
-                  <button 
-                    onClick={openBlockModal}
-                    className="px-3 py-1.5 text-xs font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 border border-red-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm shrink-0"
-                    title="Block this chat"
+                {/* ⋯ Three Dots More Options Menu (Image 4) */}
+                <div className="relative" ref={optionsRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOptionsOpen(prev => !prev);
+                      setIsInfoOpen(false);
+                    }}
+                    className={`p-2 rounded-full transition-colors cursor-pointer ${
+                      isOptionsOpen ? 'bg-gray-100 text-gray-800' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                    }`}
+                    title="More options"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
-                    Block this chat
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
                   </button>
-                )}
 
-                <button 
-                  onClick={() => setIsAppDetailsOpen(!isAppDetailsOpen)}
-                  className={`p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors border ${isAppDetailsOpen ? 'bg-gray-50 border-gray-200 text-gray-700' : 'border-transparent'}`}
-                  title={isAppDetailsOpen ? "Hide Application Details" : "Show Application Details"}
+                  {isOptionsOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOptionsOpen(false);
+                          setIsBlockModalOpen(true);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        <span>{activeConversation.isBlocked ? 'Unblock this chat' : 'Block this chat'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOptionsOpen(false);
+                          setIsProfileModalOpen(true);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>View full profile</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ✕ Close Button */}
+                <button
+                  type="button"
+                  onClick={closeChatDrawer}
+                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                  title="Close"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {isAppDetailsOpen ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                    )}
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAFA] flex flex-col gap-6 custom-scrollbar">
-              <div className="text-center mb-4">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                  Applied on {selectedApplication.date}
+            {/* Action Row Below Header: ✓ Shortlist & ✕ Reject */}
+            <div className="px-5 py-2.5 bg-gray-50/60 border-b border-gray-100 flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus(activeConversation.appId, 'Shortlisted')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
+                  activeConversation.status?.toLowerCase() === 'shortlisted'
+                    ? 'bg-emerald-700 text-white'
+                    : 'bg-[#059669] hover:bg-[#047857] text-white'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{activeConversation.status?.toLowerCase() === 'shortlisted' ? 'Shortlisted ✓' : 'Shortlist'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus(activeConversation.appId, 'Rejected')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
+                  activeConversation.status?.toLowerCase() === 'rejected'
+                    ? 'bg-rose-600 text-white border-rose-600'
+                    : 'border border-rose-300 text-rose-600 hover:bg-rose-50'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>{activeConversation.status?.toLowerCase() === 'rejected' ? 'Rejected ✓' : 'Reject'}</span>
+              </button>
+            </div>
+
+            {/* Chat Messages Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-[#f8fafc]">
+              
+              {/* Applied On Badge */}
+              <div className="flex justify-center">
+                <span className="bg-white border border-gray-200 text-gray-500 text-[10px] font-bold tracking-wider px-3.5 py-1 rounded-full uppercase shadow-2xs">
+                  APPLIED ON {formatDate(activeConversation.appliedDate).toUpperCase()}
                 </span>
               </div>
+
+              {/* Date Separator */}
+              <div className="flex justify-center">
+                <span className="bg-gray-200/80 text-gray-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">
+                  {formatDate(activeConversation.appliedDate).split(',')[0]}
+                </span>
+              </div>
+
+              {/* Messages Thread */}
               {messages.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-70">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                  </div>
-                  <h3 className="text-gray-900 font-bold mb-1">No messages yet</h3>
-                  <p className="text-sm text-gray-500">Start the conversation with this applicant.</p>
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-xs font-medium">No messages yet. Send a message to start the conversation.</p>
                 </div>
               ) : (
-                messages.map(msg => (
-                  <div key={msg._id} className={`flex flex-col ${msg.senderModel === 'Employer' ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.senderModel === 'Employer' ? 'bg-[#e8f5e9] text-gray-900 rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'}`}>
-                      {msg.content}
+                messages.map((msg, idx) => {
+                  const isEmployer = msg.senderModel === 'Employer';
+                  return (
+                    <div 
+                      key={msg._id || idx}
+                      className={`flex flex-col ${isEmployer ? 'items-end' : 'items-start'}`}
+                    >
+                      <div 
+                        className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-2xs ${
+                          isEmployer 
+                            ? 'bg-[#059669] text-white rounded-tr-sm' 
+                            : 'bg-white text-gray-800 border border-gray-100 rounded-tl-sm'
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+
+                      <div className="flex items-center gap-1 mt-1 px-1">
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {formatTime(msg.createdAt)}
+                        </span>
+                        {isEmployer && (
+                          <span className="text-[10px] text-emerald-600 font-bold">
+                            {msg.isRead ? '✓✓' : '✓'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 mt-1.5 px-1 text-xs text-gray-400 font-medium">
-                      <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      {msg.senderModel === 'Employer' && (
-                        <svg className={`w-3.5 h-3.5 ${msg.isRead ? 'text-[#29953f]' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                      )}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
 
-              {/* Real-time Typing Indicator */}
-              {isTyping && !selectedApplication.isBlocked && (
-                <div className="flex flex-col items-start animate-fade-in">
-                  <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              {/* Real-time Candidate Typing Indicator */}
+              {isTyping && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+                  <div className="bg-white border border-gray-200 rounded-2xl px-3.5 py-2 flex items-center gap-1.5 shadow-2xs">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    <span className="text-[11px] text-gray-500 ml-1">Candidate is typing...</span>
                   </div>
-                  <span className="text-[11px] text-gray-400 mt-1 px-1 font-medium">{selectedEmployee?.name?.split(' ')[0] || 'Candidate'} is typing...</span>
                 </div>
               )}
 
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Blocked Notice & Chat Input Area */}
-            {selectedApplication.isBlocked ? (
-              <div className="p-4 border-t border-gray-200 bg-red-50/70 shrink-0 z-10 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-lg shrink-0">
-                    🚫
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-red-900">Conversation Blocked</h4>
-                    <p className="text-xs text-red-700 mt-0.5">
-                      {selectedApplication.blockedBy === 'Employer' 
-                        ? 'You have blocked this candidate for this job application. Messages are disabled.' 
-                        : 'The candidate has blocked this conversation. You cannot send messages.'}
-                    </p>
-                  </div>
-                </div>
-                {selectedApplication.blockedBy === 'Employer' && (
+            {/* Quick Reply Suggestions Chips */}
+            {!activeConversation.isBlocked && (
+              <div className="px-5 py-2.5 bg-white border-t border-gray-100 flex items-center gap-2 overflow-x-auto scrollbar-none">
+                {quickReplies.map((qr) => (
                   <button
-                    onClick={openBlockModal}
-                    className="px-4 py-2 bg-white hover:bg-gray-50 text-red-700 border border-red-300 rounded-lg text-xs font-bold shrink-0 transition-colors shadow-sm"
+                    key={qr}
+                    type="button"
+                    onClick={() => {
+                      setNewMessage(qr);
+                      inputRef.current?.focus();
+                    }}
+                    className="bg-white border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 text-gray-700 hover:text-emerald-800 text-xs px-3.5 py-1.5 rounded-full font-medium whitespace-nowrap shadow-2xs transition-colors cursor-pointer"
                   >
-                    Unblock
+                    {qr}
                   </button>
-                )}
+                ))}
               </div>
-            ) : (
-              <div className="p-4 border-t border-gray-100 bg-white shrink-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
-                <div className="flex items-end gap-3 bg-[#FAFAFA] rounded-xl p-2 border border-gray-200 focus-within:border-[#29953f] focus-within:ring-1 focus-within:ring-[#29953f] transition-all">
-                  <textarea 
+            )}
+
+            {/* Bottom Input Area */}
+            <div className="p-4 bg-white border-t border-gray-100 shrink-0">
+              {activeConversation.isBlocked ? (
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-2xl text-xs font-semibold flex items-center justify-between">
+                  <span>🚫 This conversation is blocked.</span>
+                  {activeConversation.blockedBy === 'Employer' && (
+                    <button
+                      type="button"
+                      onClick={handleToggleBlock}
+                      className="underline text-rose-800 hover:text-rose-900 cursor-pointer"
+                    >
+                      Unblock
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    sendMessage();
+                  }}
+                  className="relative flex items-center"
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder="Type a message..."
                     value={newMessage}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                    className="w-full flex-1 resize-none bg-transparent outline-none text-sm text-gray-900 placeholder-gray-500 py-2.5 px-2 max-h-[120px]"
-                    placeholder="Type a message..."
-                    rows="1"
-                  ></textarea>
-                  <button 
-                    onClick={sendMessage} 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#059669] focus:bg-white text-gray-800 placeholder-gray-400 transition"
+                  />
+                  <button
+                    type="submit"
                     disabled={!newMessage.trim()}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all shrink-0 ${!newMessage.trim() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#29953f] text-white hover:bg-[#207a32] shadow-sm'}`}
+                    className={`absolute right-2 p-2 rounded-xl text-white transition-all shadow-sm ${
+                      newMessage.trim() 
+                        ? 'bg-[#059669] hover:bg-[#047857] active:scale-95 cursor-pointer' 
+                        : 'bg-gray-300 cursor-not-allowed'
+                    }`}
                   >
-                    Send
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
                   </button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-[#FAFAFA]">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm border border-gray-100">
-              <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                </form>
+              )}
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {portalConfig?.emptyChatTitle || 'Employer Messages'}
-            </h3>
-            <p className="text-gray-500">
-              {portalConfig?.emptyChatSubtitle || 'Select an application to view its conversation.'}
-            </p>
+
           </div>
-        )}
-      </div>
-
-      {/* Column 4 - Application Details */}
-      {isAppDetailsOpen && (
-        <div className="w-[300px] bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col shrink-0 overflow-y-auto animate-in slide-in-from-right-8 fade-in duration-300">
-          {selectedApplication ? (
-            <div className="p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">Application Details</h2>
-              
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shrink-0 ${selectedEmployee.bg || 'bg-[#29953f]'}`}>
-                  {selectedEmployee.initials || selectedEmployee.name?.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-bold text-gray-900 text-sm truncate">{selectedEmployee.name}</h3>
-                  <p className="text-xs text-gray-500 truncate">{selectedEmployee.email}</p>
-                </div>
-              </div>
-              
-              <button 
-                className="text-[#29953f] text-sm font-bold flex items-center gap-1 hover:text-[#207a32] transition-colors mb-8"
-                onClick={() => setIsEmployeeDetailsOpen(true)}
-              >
-                View full profile
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-              </button>
-
-              <div className="space-y-6">
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Job Position</p>
-                  <p className="text-sm font-bold text-[#29953f]">{selectedApplication.title}</p>
-                  <p className="text-xs text-gray-600 font-medium">{selectedEmployee.skills?.[0] || 'Role'}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Application ID</p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-gray-900">APP-{selectedApplication.appId.substring(selectedApplication.appId.length - 4).toUpperCase()}</p>
-                    <button className="text-gray-400 hover:text-gray-600" title="Copy ID">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    Applied On
-                  </p>
-                  <p className="text-sm font-bold text-gray-900">{selectedApplication.date}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                  <div className="w-fit min-w-[145px]">
-                    <CustomDropdown
-                      className={`px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
-                      value={selectedApplication?.status || 'Under Review'}
-                      options={[...new Set([selectedApplication?.status || 'Under Review', ...statusOptions])]}
-                      allowCustomValue={false}
-                      onChange={(newStatus) => {
-                        setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
-                        if (updateCandidateStatus) {
-                          updateCandidateStatus(selectedApplication.appId, newStatus);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                    Location
-                  </p>
-                  <p className="text-sm font-bold text-gray-900 leading-snug">{selectedEmployee.location || 'Not specified'}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center p-6 text-center text-gray-400 text-sm">
-              Select an application to view its details.
-            </div>
-          )}
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Modal Overlay for Application + Candidate Profile */}
-      {isEmployeeDetailsOpen && selectedEmployee && (
-        <>
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-in fade-in duration-300" onClick={() => setIsEmployeeDetailsOpen(false)}></div>
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
-            <div className="w-full max-w-[850px] h-full max-h-[90vh] bg-white rounded-2xl shadow-2xl flex overflow-hidden pointer-events-auto animate-in zoom-in-95 duration-300 font-sans" style={{ fontFamily: "'Inter', sans-serif" }}>
-              
-              {/* Left Column: Application Details */}
-              <div className="w-[300px] bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0 overflow-y-auto custom-scrollbar p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-6 border-b border-gray-200 pb-4">Application Details</h2>
-                
-                <div className="flex items-center gap-3 mb-8">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shrink-0 ${selectedEmployee.bg || 'bg-[#29953f]'}`}>
-                    {selectedEmployee.initials || selectedEmployee.name?.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-gray-900 text-sm truncate">{selectedEmployee.name}</h3>
-                    <p className="text-xs text-gray-500 truncate">{selectedEmployee.email}</p>
-                  </div>
-                </div>
+      {/* 5. CANDIDATE FULL PROFILE FULLSCREEN */}
+      <CandidateProfileFullScreen
+        isOpen={isProfileModalOpen && Boolean(activeConversation)}
+        onClose={() => setIsProfileModalOpen(false)}
+        candidate={activeConversation?.candidate}
+        application={activeConversation}
+        updateCandidateStatus={handleUpdateStatus}
+        employerProfile={employerProfile}
+        backLabel="Messages"
+      />
 
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Job Position</p>
-                    <p className="text-sm font-bold text-[#29953f]">{selectedApplication?.title || 'Unknown'}</p>
-                    <p className="text-xs text-gray-600 font-medium">{selectedEmployee.skills?.[0] || 'Role'}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Application ID</p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-bold text-gray-900">APP-{(selectedApplication?.appId || 'XXXX').substring((selectedApplication?.appId || 'XXXX').length - 4).toUpperCase()}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                      Applied On
-                    </p>
-                    <p className="text-sm font-bold text-gray-900">{selectedApplication?.date || selectedEmployee.date || 'Recently'}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                    <div className="w-fit min-w-[145px]">
-                      <CustomDropdown
-                        className={`px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadgeStyles(selectedApplication?.status || 'Under Review')}`}
-                        value={selectedApplication?.status || 'Under Review'}
-                        options={[...new Set([selectedApplication?.status || 'Under Review', ...statusOptions])]}
-                        allowCustomValue={false}
-                        onChange={(newStatus) => {
-                          setSelectedApplication(prev => ({ ...prev, status: newStatus, color: getStatusBadgeStyles(newStatus) }));
-                          if (updateCandidateStatus) {
-                            updateCandidateStatus(selectedApplication.appId, newStatus);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-
-
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
-                      Location
-                    </p>
-                    <p className="text-sm font-bold text-gray-900 leading-snug">{selectedEmployee.location || 'Not specified'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Candidate Profile */}
-              <div className="flex-1 flex flex-col p-6 sm:p-8 bg-white relative">
-                <div className="flex justify-between items-start mb-6 shrink-0">
-                  <h3 className="font-bold text-gray-900 text-lg">Candidate Profile</h3>
-                  <button 
-                    onClick={() => setIsEmployeeDetailsOpen(false)}
-                    className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-transparent hover:border-gray-200"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
-                  <div className="flex flex-col items-center text-center border-b border-[#ECECEC] pb-6">
-                    <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl mb-4 shadow-sm ring-4 ring-white ${selectedEmployee.bg || 'bg-[#29953f]'}`}>
-                      {selectedEmployee.initials || selectedEmployee.name?.charAt(0)}
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedEmployee.name}</h2>
-                    <p className="text-sm text-gray-500 mt-1">{selectedEmployee.email}</p>
-                    <p className="text-xs font-semibold text-gray-400 mt-1">{formatPhoneWithCountryCode(selectedEmployee.phone || selectedEmployee.mobile, selectedEmployee.countryCode) || '+91 98765 43210'} • {selectedEmployee.location || 'Bangalore, India'}</p>
-                  </div>
-
-                  <div className="flex flex-col gap-4 border-b border-[#ECECEC] pb-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                          Current {selectedEmployee.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
-                        </h4>
-                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.currentCTC ? `₹ ${selectedEmployee.currentCTC}` : 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                          Expected {selectedEmployee.salaryType === 'Monthly' ? 'Monthly' : selectedEmployee.salaryType === 'Hourly' ? 'Hourly' : 'Annual'} Salary
-                        </h4>
-                        <p className="text-sm font-bold text-gray-900">{selectedEmployee.expectedCTC ? `₹ ${selectedEmployee.expectedCTC}` : 'Not specified'}</p>
-                      </div>
-                    </div>
-                    
-                    <hr className="border-gray-100" />
-                    
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Applied On</h4>
-                      <p className="text-sm font-bold text-gray-900">{selectedApplication?.date || selectedEmployee.date || 'Recently'}</p>
-                    </div>
-
-                    {/* Documents & Media Section */}
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Documents & Media</h4>
-                      <div className="space-y-3">
-                        {/* Introductory Video Card */}
-                        <CandidateVideoCard
-                          videoUrl={selectedApplication?.introVideo || selectedEmployee.introVideo || selectedEmployee.documents?.introVideo}
-                          hasVideo={Boolean(selectedApplication?.hasIntroVideo || selectedEmployee.hasIntroVideo || selectedApplication?.introVideo || selectedEmployee.introVideo || selectedEmployee.documents?.introVideo || selectedApplication?.isVideoLocked || selectedEmployee.isVideoLocked)}
-                          isVideoLocked={Boolean(selectedApplication?.isVideoLocked || selectedEmployee.isVideoLocked)}
-                          videoVisibility={selectedEmployee.videoVisibility || selectedEmployee.documents?.videoVisibility || 'everyone'}
-                          appliedToYou={true}
-                          employerProfile={employerProfile}
-                          candidateName={selectedEmployee.fullName || selectedEmployee.name}
-                          maxPlayerHeight="220px"
-                        />
-
-                        {/* Resume Card */}
-                        {(selectedApplication?.resume || selectedEmployee.resume || selectedEmployee.documents?.resume) && (
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-gray-900">Resume</p>
-                                <p className="text-xs text-gray-500">Document</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const resUrl = selectedApplication?.resume || selectedEmployee.resume || selectedEmployee.documents?.resume;
-                                  if (resUrl && resUrl.startsWith('http')) {
-                                    window.open(resUrl, '_blank');
-                                  } else {
-                                    alert('Resume: ' + (resUrl || 'Standard Profile Resume'));
-                                  }
-                                }}
-                                className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
-                                title="Preview Resume"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const resUrl = selectedApplication?.resume || selectedEmployee.resume || selectedEmployee.documents?.resume;
-                                  if (resUrl && resUrl.startsWith('http')) {
-                                    const a = document.createElement('a');
-                                    a.href = resUrl;
-                                    a.download = `${selectedEmployee.name || 'Candidate'}_Resume`;
-                                    a.target = '_blank';
-                                    a.click();
-                                  } else {
-                                    alert('Downloading Resume...');
-                                  }
-                                }}
-                                className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
-                                title="Download Resume"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Cover Letter Card */}
-                        {(selectedApplication?.coverLetter || selectedEmployee.coverLetter || selectedEmployee.documents?.coverLetter) && (
-                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-gray-900">Cover Letter</p>
-                                <p className="text-xs text-gray-500">Document</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const cl = selectedApplication?.coverLetter || selectedEmployee.coverLetter || selectedEmployee.documents?.coverLetter;
-                                  if (cl && cl.startsWith('http')) {
-                                    window.open(cl, '_blank');
-                                  } else {
-                                    alert('Cover letter: \n' + cl);
-                                  }
-                                }}
-                                className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
-                                title="Preview Cover Letter"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const cl = selectedApplication?.coverLetter || selectedEmployee.coverLetter || selectedEmployee.documents?.coverLetter;
-                                  if (cl && cl.startsWith('http')) {
-                                    const a = document.createElement('a');
-                                    a.href = cl;
-                                    a.download = `${selectedEmployee.name || 'Candidate'}_CoverLetter`;
-                                    a.target = '_blank';
-                                    a.click();
-                                  } else if (cl) {
-                                    const blob = new Blob([cl], { type: 'text/plain' });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `${selectedEmployee.name || 'Candidate'}_CoverLetter.txt`;
-                                    a.click();
-                                  }
-                                }}
-                                className="p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 rounded-lg transition-colors"
-                                title="Download Cover Letter"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Professional Summary</h4>
-                    <p className="text-sm text-gray-600 leading-relaxed">
-                      {selectedEmployee.summary || <span className="text-gray-400 italic">No professional summary provided.</span>}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Key Skills</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEmployee.skills?.length > 0 ? selectedEmployee.skills.map(skill => (
-                        <span key={skill} className="px-3 py-1 bg-gray-50 text-gray-600 rounded-full text-xs font-semibold border border-gray-100">
-                          {skill}
-                        </span>
-                      )) : (
-                        <span className="text-gray-400 italic text-sm">No skills provided.</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Work Experience</h4>
-                    <div className="space-y-4 ml-2">
-                      {selectedEmployee.experience?.length > 0 && selectedEmployee.experience[0].companyName ? (
-                        selectedEmployee.experience.map((exp, i) => (
-                          <div key={i} className="mb-4">
-                            <h5 className="font-bold text-gray-900 text-sm mb-2">{exp.companyName || 'Company'}</h5>
-                            <div className="border-l-2 border-[#29953f] ml-1.5 space-y-4 py-1">
-                              {(exp.roles && exp.roles.length > 0 ? exp.roles : [{}]).map((role, rIndex) => {
-                                const formatDate = (dateStr) => {
-                                  if (!dateStr) return '';
-                                  const d = new Date(dateStr);
-                                  return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                                };
-                                const startDate = role.joiningDate ? formatDate(role.joiningDate) : 'Start';
-                                const endDate = role.leavingDate ? formatDate(role.leavingDate) : 'Present';
-                                
-                                return (
-                                  <div key={rIndex} className="relative pl-4">
-                                    <div className="absolute w-2 h-2 bg-[#29953f] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                                    <h5 className="font-bold text-gray-900 text-sm">{role.jobTitle || 'Role'}</h5>
-                                    <p className="text-[13px] text-gray-500 font-medium mb-1">
-                                      {startDate} - {endDate} <span className="text-gray-300 mx-1">|</span> {role.employmentType || 'Full-time'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 leading-relaxed">{role.roleDescription || 'No description provided.'}</p>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <span className="text-gray-400 italic text-sm">No work experience provided.</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Education</h4>
-                    <div className="space-y-4 ml-2">
-                      {selectedEmployee.education?.length > 0 ? (
-                        selectedEmployee.education.map((edu, i) => (
-                          <div key={i} className="relative pl-4">
-                            <div className="absolute w-2 h-2 bg-[#29953f] rounded-full -left-[5px] top-1.5 ring-4 ring-white"></div>
-                            <h5 className="font-bold text-gray-900 text-sm">{edu.degree || 'Degree'}</h5>
-                            <p className="text-xs text-[#29953f] font-semibold mb-1">{edu.year || 'Year'}</p>
-                            <p className="text-xs text-gray-500 leading-relaxed">{edu.institution || 'Institution'}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <span className="text-gray-400 italic text-sm">No education details provided.</span>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-      {/* Themed Confirmation Modal for Block / Unblock */}
-      {isBlockModalOpen && selectedApplication && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* 6. BLOCK CONFIRMATION MODAL */}
+      {isBlockModalOpen && activeConversation && createPortal(
+        <div className="fixed inset-0 z-[10003] flex items-center justify-center p-4">
           <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => !isBlockLoading && setIsBlockModalOpen(false)}
-          ></div>
-
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 z-10 transform transition-all border border-gray-100 flex flex-col items-center text-center animate-in zoom-in-95 duration-200 font-sans">
-            {selectedApplication.isBlocked ? (
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mb-4 border border-emerald-100 shadow-sm">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
-              </div>
-            ) : (
-              <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center text-2xl mb-4 border border-red-100 shadow-sm">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
-              </div>
-            )}
-
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {selectedApplication.isBlocked 
-                ? `Unblock this chat?` 
-                : `Block this chat?`}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs" 
+            onClick={() => !isBlockLoading && setIsBlockModalOpen(false)} 
+          />
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full z-[10004] relative shadow-2xl animate-in zoom-in-95 duration-150">
+            <h3 className="text-base font-bold text-gray-900">
+              {activeConversation.isBlocked ? 'Unblock Conversation?' : 'Block Conversation?'}
             </h3>
-
-            <p className="text-sm text-gray-500 leading-relaxed mb-6">
-              {selectedApplication.isBlocked
-                ? `Are you sure you want to unblock this chat? You will be able to send and receive messages again for this job application.`
-                : `Are you sure you want to block this chat? You will not be able to send or receive messages for this job application until unblocked.`}
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              {activeConversation.isBlocked
+                ? 'Candidate will be able to send messages again.'
+                : 'Blocking this chat will prevent the candidate from sending further messages.'}
             </p>
-
-            <div className="flex gap-3 w-full">
+            <div className="mt-5 flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 disabled={isBlockLoading}
                 onClick={() => setIsBlockModalOpen(false)}
-                className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition-colors"
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={isBlockLoading}
-                onClick={handleConfirmToggleBlock}
-                className={`flex-1 py-2.5 px-4 text-white font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 ${
-                  selectedApplication.isBlocked 
-                    ? 'bg-[#29953f] hover:bg-[#207a32]' 
-                    : 'bg-red-600 hover:bg-red-700'
-                } ${isBlockLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                onClick={handleToggleBlock}
+                className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-xs transition cursor-pointer ${
+                  activeConversation.isBlocked
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
               >
-                {isBlockLoading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    Please wait...
-                  </>
-                ) : (
-                  selectedApplication.isBlocked ? 'Unblock this chat' : 'Block this chat'
-                )}
+                {isBlockLoading ? 'Processing...' : (activeConversation.isBlocked ? 'Yes, Unblock' : 'Yes, Block')}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
     </div>
   );
 };

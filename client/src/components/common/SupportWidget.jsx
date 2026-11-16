@@ -266,18 +266,36 @@ export default function SupportWidget() {
 
   useEffect(() => {
     const checkRightDrawer = () => {
-      if (typeof document === 'undefined') return;
-      const rightDrawer = document.querySelector(
-        '[data-right-drawer="true"], .fixed.inset-y-0.right-0, [class*="right-0"][class*="inset-y-0"]'
+      if (typeof document === "undefined") return;
+      const drawers = document.querySelectorAll(
+        '[data-right-drawer="true"], [data-chat-drawer="true"], div.fixed.inset-y-0.right-0, [class*="fixed"][class*="inset-y-0"][class*="right-0"]'
       );
-      if (rightDrawer && window.innerWidth > 768) {
-        const rect = rightDrawer.getBoundingClientRect();
-        const drawerWidth = Math.round(window.innerWidth - rect.left);
-        // Only offset if the drawer is on the right side and doesn't take 100% of the screen
-        if (drawerWidth > 150 && rect.left > 60) {
-          setDrawerOffset(drawerWidth + 16);
-          return;
+
+      let maxDrawerWidth = 0;
+      for (const el of drawers) {
+        const rect = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") continue;
+
+        // Drawer must take real width and be docked to the right viewport edge
+        if (rect.width >= 200 && rect.right >= window.innerWidth - 20) {
+          if (rect.width > maxDrawerWidth) {
+            maxDrawerWidth = Math.round(rect.width);
+          }
         }
+      }
+
+      if (maxDrawerWidth > 0) {
+        if (window.innerWidth > 768) {
+          if (window.innerWidth - maxDrawerWidth > 120) {
+            setDrawerOffset(maxDrawerWidth + 24);
+          } else {
+            setDrawerOffset("to-left");
+          }
+        } else {
+          setDrawerOffset("to-left");
+        }
+        return;
       }
       setDrawerOffset(0);
     };
@@ -1167,7 +1185,13 @@ export default function SupportWidget() {
         id="sjFab"
         type="button"
         className={`sj-fab ${isOpen ? 'is-open' : ''}`}
-        style={drawerOffset ? { right: `${drawerOffset}px` } : undefined}
+        style={
+          drawerOffset === 'to-left'
+            ? { left: '24px', right: 'auto' }
+            : (typeof drawerOffset === 'number' && drawerOffset > 0)
+              ? { right: `${drawerOffset}px`, left: 'auto' }
+              : undefined
+        }
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-controls="sjPanel"

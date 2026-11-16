@@ -201,7 +201,7 @@ const CustomDropdown = ({
                   setIsOpen(false);
                   setSearchTerm('');
                 }}
-                className={`px-4 py-2 cursor-pointer text-sm hover:bg-green-50/70 hover:text-[#29953f] transition-colors ${value === opt.value ? 'bg-green-50 text-[#29953f] font-semibold' : 'text-gray-700'}`}
+                className={`px-4 py-2 cursor-pointer text-sm hover:bg-emerald-50/80 hover:text-[#059669] transition-colors ${value === opt.value ? 'bg-emerald-50 text-[#059669] font-semibold' : 'text-gray-700'}`}
               >
                 {opt.label}
               </div>
@@ -214,7 +214,7 @@ const CustomDropdown = ({
                   setIsOpen(false);
                   setSearchTerm('');
                 }}
-                className="px-4 py-2.5 cursor-pointer text-sm text-[#29953f] hover:bg-green-50 transition-colors font-medium flex items-center gap-2"
+                className="px-4 py-2.5 cursor-pointer text-sm text-[#059669] hover:bg-emerald-50 transition-colors font-medium flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                 Add "{searchTerm}"

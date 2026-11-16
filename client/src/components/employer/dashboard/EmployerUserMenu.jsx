@@ -35,7 +35,7 @@ const EmployerUserMenu = ({ employerProfile }) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-10 h-10 rounded-full border border-[#eaecf0] bg-white text-[#15803d] font-bold text-sm flex items-center justify-center hover:bg-[#f9fafb] transition-all cursor-pointer overflow-hidden focus-visible:outline-2 focus-visible:outline-[#16a34a]"
+        className="w-9 h-9 rounded-full bg-[#0f172a] text-[#4ade80] font-bold text-xs flex items-center justify-center hover:opacity-90 transition-all cursor-pointer overflow-hidden border border-[#eaecf0] shadow-2xs"
         title={displayName}
         aria-label="Account menu"
         aria-expanded={isOpen}

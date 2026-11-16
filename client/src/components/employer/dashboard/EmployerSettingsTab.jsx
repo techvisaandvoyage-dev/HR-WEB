@@ -430,12 +430,12 @@ const EmployerSettingsTab = ({ portalConfig }) => {
         <div
           className={`mb-6 p-4 rounded-[10px] flex items-start gap-3 transition-all duration-300 border ${
             toastMessage.type === 'success'
-              ? 'bg-[#ecfdf3] text-[#15803d] border-[#eaecf0]'
+              ? 'bg-[#ecfdf3] text-[#047857] border-[#eaecf0]'
               : 'bg-red-50 text-red-900 border-red-200'
           }`}
         >
           {toastMessage.type === 'success' ? (
-            <svg className="w-5 h-5 text-[#16a34a] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#059669] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ) : (
@@ -483,8 +483,8 @@ const EmployerSettingsTab = ({ portalConfig }) => {
 
             <div className="justify-self-end sm:justify-self-auto">
               {securityData.isGoogleConnected ? (
-                <span className="font-semibold text-[12px] bg-[#ecfdf3] text-[#15803d] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                <span className="font-semibold text-[12px] bg-[#ecfdf3] text-[#047857] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
                   Connected
                 </span>
               ) : (
@@ -514,8 +514,8 @@ const EmployerSettingsTab = ({ portalConfig }) => {
 
             <div className="justify-self-end sm:justify-self-auto">
               {securityData.hasPassword ? (
-                <span className="font-semibold text-[12px] bg-[#ecfdf3] text-[#15803d] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                <span className="font-semibold text-[12px] bg-[#ecfdf3] text-[#047857] px-2.5 py-1 rounded-full inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#059669]" />
                   Set
                 </span>
               ) : (
@@ -596,7 +596,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
               {/* Modal Header */}
               <div className="flex items-start justify-between pb-4 border-b border-[#eaecf0]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-[10px] bg-[#ecfdf3] text-[#15803d] flex items-center justify-center border border-[#eaecf0]">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#ecfdf3] text-[#047857] flex items-center justify-center border border-[#eaecf0]">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
@@ -640,7 +640,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                       value={setForm.newPassword}
                       onChange={e => setSetForm(prev => ({ ...prev, newPassword: e.target.value }))}
                       placeholder="Create a strong password"
-                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
+                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#059669] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                       required
                     />
                     <button
@@ -678,19 +678,19 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     Password requirements
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.minLength ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.minLength ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.minLength ? '✓' : '•'}</span>
                       <span>At least 8 characters</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasUpper ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasUpper ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.hasUpper ? '✓' : '•'}</span>
                       <span>1 uppercase letter (A-Z)</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasLower ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasLower ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.hasLower ? '✓' : '•'}</span>
                       <span>1 lowercase letter (a-z)</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasNumberOrSymbol ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                    <div className={`flex items-center gap-1.5 ${setPasswordCriteria.hasNumberOrSymbol ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                       <span>{setPasswordCriteria.hasNumberOrSymbol ? '✓' : '•'}</span>
                       <span>1 number or special symbol</span>
                     </div>
@@ -705,7 +705,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                       value={setForm.confirmPassword}
                       onChange={e => setSetForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                       placeholder="Re-enter your password"
-                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
+                      className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#059669] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                       required
                     />
                     <button
@@ -721,7 +721,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   {setForm.confirmPassword.length > 0 && (
                     <div className="mt-1.5 text-[12px]">
                       {setForm.newPassword === setForm.confirmPassword ? (
-                        <span className="text-[#15803d] font-medium flex items-center gap-1">
+                        <span className="text-[#047857] font-medium flex items-center gap-1">
                           ✓ Passwords match
                         </span>
                       ) : (
@@ -744,7 +744,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                   <button
                     type="submit"
                     disabled={setForm.submitting || !setPasswordCriteria.isValid || setForm.newPassword !== setForm.confirmPassword}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#059669] hover:bg-[#047857] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
                   >
                     {setForm.submitting ? 'Saving...' : 'Set password'}
                   </button>
@@ -764,7 +764,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
               {/* Modal Header */}
               <div className="flex items-start justify-between pb-4 border-b border-[#eaecf0]">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-[10px] bg-[#ecfdf3] text-[#15803d] flex items-center justify-center border border-[#eaecf0]">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#ecfdf3] text-[#047857] flex items-center justify-center border border-[#eaecf0]">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                     </svg>
@@ -811,7 +811,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                         value={changeForm.currentPassword}
                         onChange={e => setChangeForm(prev => ({ ...prev, currentPassword: e.target.value }))}
                         placeholder="Enter your current password"
-                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
+                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#059669] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                         required
                       />
                       <button
@@ -833,7 +833,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                         value={changeForm.newPassword}
                         onChange={e => setChangeForm(prev => ({ ...prev, newPassword: e.target.value }))}
                         placeholder="Enter new password"
-                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
+                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#059669] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                         required
                       />
                       <button
@@ -871,19 +871,19 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                       New password requirements
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.minLength ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.minLength ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.minLength ? '✓' : '•'}</span>
                         <span>At least 8 characters</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasUpper ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasUpper ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.hasUpper ? '✓' : '•'}</span>
                         <span>1 uppercase letter (A-Z)</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasLower ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasLower ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.hasLower ? '✓' : '•'}</span>
                         <span>1 lowercase letter (a-z)</span>
                       </div>
-                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasNumberOrSymbol ? 'text-[#15803d] font-medium' : 'text-[#667085]'}`}>
+                      <div className={`flex items-center gap-1.5 ${changePasswordCriteria.hasNumberOrSymbol ? 'text-[#047857] font-medium' : 'text-[#667085]'}`}>
                         <span>{changePasswordCriteria.hasNumberOrSymbol ? '✓' : '•'}</span>
                         <span>1 number or special symbol</span>
                       </div>
@@ -898,7 +898,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                         value={changeForm.confirmPassword}
                         onChange={e => setChangeForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                         placeholder="Re-enter new password"
-                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#16a34a] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
+                        className="w-full px-3.5 py-2.5 pr-11 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder-[#98a2b3] focus:outline-none focus:border-[#059669] focus:ring-2 focus:ring-[#ecfdf3] transition-all"
                         required
                       />
                       <button
@@ -914,7 +914,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     {changeForm.confirmPassword.length > 0 && (
                       <div className="mt-1.5 text-[12px]">
                         {changeForm.newPassword === changeForm.confirmPassword ? (
-                          <span className="text-[#15803d] font-medium flex items-center gap-1">
+                          <span className="text-[#047857] font-medium flex items-center gap-1">
                             ✓ Passwords match
                           </span>
                         ) : (
@@ -937,7 +937,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     <button
                       type="submit"
                       disabled={changeForm.submitting || !changePasswordCriteria.isValid || changeForm.newPassword !== changeForm.confirmPassword || !changeForm.currentPassword}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#059669] hover:bg-[#047857] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
                     >
                       {changeForm.submitting ? 'Sending OTP...' : 'Send verification OTP'}
                     </button>
@@ -949,8 +949,8 @@ const EmployerSettingsTab = ({ portalConfig }) => {
               {changeStep === 'otp' && (
                 <form onSubmit={handleVerifyAndChangePassword} className="mt-5 space-y-4">
                   {changeForm.successInfo && (
-                    <div className="p-3 bg-[#ecfdf3] border border-[#eaecf0] rounded-[8px] text-[13px] font-medium text-[#15803d] flex items-start gap-2">
-                      <svg className="w-4 h-4 text-[#16a34a] shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <div className="p-3 bg-[#ecfdf3] border border-[#eaecf0] rounded-[8px] text-[13px] font-medium text-[#047857] flex items-start gap-2">
+                      <svg className="w-4 h-4 text-[#059669] shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                       <span>{changeForm.successInfo}</span>
@@ -977,7 +977,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                       value={changeForm.otp}
                       onChange={e => setChangeForm(prev => ({ ...prev, otp: e.target.value.replace(/[^0-9]/g, '') }))}
                       placeholder="• • • •"
-                      className="w-44 mx-auto px-4 py-2.5 bg-white border border-[#16a34a] rounded-[8px] text-center font-mono font-bold text-xl tracking-[0.3em] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] transition-all"
+                      className="w-44 mx-auto px-4 py-2.5 bg-white border border-[#059669] rounded-[8px] text-center font-mono font-bold text-xl tracking-[0.3em] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] transition-all"
                       required
                     />
                     <p className="text-[12px] text-[#667085]">
@@ -996,7 +996,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                         type="button"
                         disabled={changeForm.resending}
                         onClick={handleResendChangePasswordOtp}
-                        className="text-[#15803d] hover:underline font-semibold disabled:opacity-50 cursor-pointer"
+                        className="text-[#047857] hover:underline font-semibold disabled:opacity-50 cursor-pointer"
                       >
                         {changeForm.resending ? 'Sending...' : 'Resend code'}
                       </button>
@@ -1017,7 +1017,7 @@ const EmployerSettingsTab = ({ portalConfig }) => {
                     <button
                       type="submit"
                       disabled={changeForm.submitting || !changeForm.otp || changeForm.otp.trim().length < 4}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#16a34a] hover:bg-[#15803d] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#059669] hover:bg-[#047857] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold rounded-[8px] transition-all cursor-pointer shadow-none"
                     >
                       {changeForm.submitting ? 'Verifying...' : 'Confirm & update password'}
                     </button>

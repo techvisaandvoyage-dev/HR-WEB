@@ -382,7 +382,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
 
         {/* Job Mini Preview */}
         <div className="p-3 rounded-2xl bg-gray-50 border border-gray-100 flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-green-100 text-green-800 font-black flex items-center justify-center text-sm shrink-0">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 text-[#047857] font-black flex items-center justify-center text-sm shrink-0">
             {job.companyInitial || companyName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
@@ -393,7 +393,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
             type="button"
             onClick={handleAddNewLink}
             disabled={loadingAction}
-            className="px-3.5 py-1.5 bg-[#29953f] hover:bg-green-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4 py-1.5 bg-[#059669] hover:bg-[#047857] text-white font-bold text-xs rounded-full transition-colors shrink-0 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 shadow-none"
           >
             <span>+</span>
             <span>New Link</span>
@@ -422,7 +422,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                 {/* Link Top Row: Label, Edit Button, Applications Count */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center shrink-0">
+                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black flex items-center justify-center shrink-0">
                       🔗
                     </span>
 
@@ -437,20 +437,20 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                             if (e.key === 'Escape') setEditingIndex(null);
                           }}
                           autoFocus
-                          className="px-2.5 py-1 bg-white border border-green-500 rounded-lg text-xs font-bold text-gray-900 outline-none w-full shadow-2xs"
+                          className="px-3 py-1 bg-white border border-[#059669] rounded-full text-xs font-bold text-gray-900 outline-none w-full shadow-2xs"
                           placeholder="e.g. 01, 02, Indeed"
                         />
                         <button
                           type="button"
                           onClick={() => handleSaveRename(index)}
-                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+                          className="px-2.5 py-1 bg-[#059669] hover:bg-[#047857] text-white rounded-full text-xs font-bold cursor-pointer"
                         >
                           ✓
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingIndex(null)}
-                          className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-bold cursor-pointer"
+                          className="px-2.5 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full text-xs font-bold cursor-pointer"
                         >
                           ✕
                         </button>
@@ -458,12 +458,12 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                     ) : (
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="font-extrabold text-sm text-gray-900 truncate">
-                          Link: <span className="text-[#29953f] bg-green-50 px-2 py-0.5 rounded-md border border-green-200">{link.name || link.linkId || `0${index + 1}`}</span>
+                          Link: <span className="text-[#059669] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold text-xs">{link.name || link.linkId || `0${index + 1}`}</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => handleStartRename(index, link.name || link.linkId || `0${index + 1}`)}
-                          className="text-gray-400 hover:text-gray-700 p-1 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
+                          className="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
                           title="Rename link"
                         >
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -476,9 +476,9 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
 
                   {/* Applications count pill & delete */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    <span className={`inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-bold ${
                       appsCount > 0 
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                        ? 'bg-emerald-50 text-[#059669] border border-emerald-200' 
                         : 'bg-gray-100 text-gray-600 border border-gray-200'
                     }`}>
                       <span className="font-black">{appsCount}</span> {appsCount === 1 ? 'Application' : 'Applications'}
@@ -489,7 +489,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                         to="/employer/applications"
                         state={{ jobTitle: jobTitle, sourceLink: link.name || link.linkId, fromJobCandidates: true }}
                         onClick={onClose}
-                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline inline-flex items-center gap-0.5"
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 px-2.5 py-0.5 rounded-full bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200/80 transition-colors inline-flex items-center gap-0.5"
                         title="View candidates who applied through this link"
                       >
                         View →
@@ -501,7 +501,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                         type="button"
                         onClick={() => handleDeleteLink(index)}
                         disabled={loadingAction}
-                        className="text-gray-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+                        className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors cursor-pointer"
                         title="Delete this link"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -518,15 +518,15 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                     type="text"
                     readOnly
                     value={url}
-                    className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-mono text-gray-700 focus:outline-none select-all"
+                    className="flex-1 px-4 py-2 bg-gray-50/80 border border-gray-200 rounded-full text-xs font-mono text-gray-700 focus:outline-none focus:border-[#059669] focus:bg-white transition select-all"
                   />
                   <button
                     type="button"
                     onClick={() => handleCopyLink(index, url)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1 ${
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition-colors shrink-0 cursor-pointer flex items-center gap-1.5 shadow-none ${
                       isCopied 
-                        ? 'bg-emerald-600 text-white' 
-                        : 'bg-[#29953f] hover:bg-green-700 text-white'
+                        ? 'bg-emerald-700 text-white' 
+                        : 'bg-[#059669] hover:bg-[#047857] text-white'
                     }`}
                   >
                     {isCopied ? "✓ Copied!" : "Copy Link"}
@@ -543,7 +543,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
             type="button"
             onClick={handleAddNewLink}
             disabled={loadingAction}
-            className="text-xs font-bold text-[#29953f] hover:text-green-800 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            className="text-xs font-bold text-[#059669] hover:text-[#047857] transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <span className="text-sm font-extrabold">+</span>
             <span>Add another link (02, 03...)</span>
@@ -552,7 +552,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+            className="px-6 py-2 rounded-full border border-gray-900 bg-white hover:bg-gray-900 hover:text-white text-gray-900 font-bold text-xs transition-colors cursor-pointer shadow-none"
           >
             Done
           </button>
@@ -579,7 +579,7 @@ const JobShareModal = ({ isOpen, onClose, job, employerProfile, isNewlyPublished
                 </button>
                 <a
                   href="/employer/verification"
-                  className="px-4 py-2 text-xs font-bold text-white bg-[#16a34a] hover:bg-[#15803d] rounded-lg transition-colors shadow-sm"
+                  className="px-4 py-2 text-xs font-bold text-white bg-[#059669] hover:bg-[#047857] rounded-lg transition-colors shadow-sm"
                 >
                   Verify Account Now
                 </a>

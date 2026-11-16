@@ -871,23 +871,23 @@ const PostJob = ({ addJob, updateJob }) => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-[26px] font-bold text-[#147a2e] tracking-tight uppercase">
-            {isEditing ? (cmsConfig?.header?.editTitle || 'Edit Job') : (cmsConfig?.header?.title || 'POST A NEW JOB')}
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            {isEditing ? (cmsConfig?.header?.editTitle || 'Edit Job') : (cmsConfig?.header?.title || 'Post a New Job')}
           </h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-500 text-xs mt-1">
             {isEditing ? (cmsConfig?.header?.editSubtitle || 'Update the details of your job posting.') : (cmsConfig?.header?.subtitle || 'Fill in the details to create a new job posting.')}
           </p>
         </div>
 
         {/* Daily Job Posting Limit Indicator */}
         {dailyQuota && dailyQuota.limitEnabled && !isEditing && (
-          <div className={`flex flex-wrap items-center gap-2.5 px-4 py-2 rounded-xl border text-sm font-medium shadow-xs transition-all ${
+          <div className={`flex flex-wrap items-center gap-2.5 px-4 py-2 rounded-full border text-xs font-semibold shadow-none transition-all ${
             dailyQuota.limitReached 
               ? 'bg-red-50 border-red-200 text-red-700' 
               : 'bg-emerald-50 border-emerald-200 text-emerald-800'
           }`}>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${dailyQuota.limitReached ? 'bg-red-500 animate-pulse' : 'bg-[#29953f]'}`} />
+              <span className={`w-2.5 h-2.5 rounded-full ${dailyQuota.limitReached ? 'bg-red-500 animate-pulse' : 'bg-[#059669]'}`} />
               <span className="font-semibold text-xs uppercase tracking-wider text-gray-500">Per Day Limit:</span>
               <span className="font-bold">{dailyQuota.maxLimit} Jobs/Day</span>
             </div>
@@ -921,31 +921,44 @@ const PostJob = ({ addJob, updateJob }) => {
       )}
 
       {/* Main Content Area */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row min-h-[600px] relative">
+      <div className="bg-white rounded-3xl border border-gray-200/80 shadow-sm flex flex-col md:flex-row min-h-[620px] relative overflow-hidden">
         
         {/* Left Column - Steps */}
-        <div className="w-full md:w-64 bg-gray-50/50 border-r border-gray-100 p-8 shrink-0 rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl">
-          <div className="space-y-8">
+        <div className="w-full md:w-72 bg-gray-50/70 border-r border-gray-100 p-6 md:p-8 shrink-0">
+          <div className="space-y-4">
             {steps.map((step) => {
               const isActive = activeStep === step.id;
               const isPast = activeStep > step.id;
               return (
-                <div key={step.id} className="flex items-center gap-4 cursor-pointer" onClick={() => handleStepClick(step.id)}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
-                    isActive ? 'bg-green-100 text-[#29953f] border border-[#29953f]' :
-                    isPast ? 'bg-[#29953f] text-white' : 'bg-white border border-gray-200 text-gray-400'
+                <div 
+                  key={step.id} 
+                  className={`flex items-center gap-3.5 p-2.5 rounded-2xl transition-all cursor-pointer ${
+                    isActive ? 'bg-white shadow-xs border border-gray-200' : 'hover:bg-gray-100/70'
+                  }`} 
+                  onClick={() => handleStepClick(step.id)}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                    isActive ? 'bg-[#059669] text-white shadow-xs' :
+                    isPast ? 'bg-emerald-100 text-[#059669]' : 'bg-white border border-gray-200 text-gray-400'
                   }`}>
                     {isPast ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
                     ) : (
                       step.id
                     )}
                   </div>
-                  <span className={`font-bold text-sm ${isActive ? 'text-[#29953f]' : isPast ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {step.name}
-                  </span>
+                  <div className="min-w-0">
+                    <span className={`block font-bold text-xs leading-tight truncate ${isActive ? 'text-gray-900' : isPast ? 'text-gray-700' : 'text-gray-400'}`}>
+                      {step.name}
+                    </span>
+                    <span className="block text-[10px] text-gray-400 mt-0.5 font-medium">
+                      {isActive ? 'Current step' : isPast ? 'Completed' : `Step ${step.id}`}
+                    </span>
+                  </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -972,7 +985,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors outline-none ${
                     fieldErrors.title
                       ? 'border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-1 focus:ring-red-200'
-                      : 'border-gray-200 focus:border-[#29953f]'
+                      : 'border-gray-200 focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/20'
                   }`}
                 />
                 {fieldErrors.title && (
@@ -1077,7 +1090,7 @@ const PostJob = ({ addJob, updateJob }) => {
                     className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors outline-none ${
                       fieldErrors.openings
                         ? 'border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-1 focus:ring-red-200'
-                        : 'border-gray-200 focus:border-[#29953f]'
+                        : 'border-gray-200 focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/20'
                     }`}
                   />
                   {fieldErrors.openings && (
@@ -1106,7 +1119,7 @@ const PostJob = ({ addJob, updateJob }) => {
                     className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors ${
                       fieldErrors.location
                         ? 'border-red-500 bg-red-50/20'
-                        : 'border-gray-200 focus:border-[#29953f]'
+                        : 'border-gray-200 focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/20'
                     }`}
                   />
                   {fieldErrors.location && (
@@ -1189,10 +1202,10 @@ const PostJob = ({ addJob, updateJob }) => {
                         key={index}
                         onClick={() => removeSkill(skill)}
                         title="Click to remove"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-[#1b732d] border border-green-200/80 rounded-lg text-xs font-semibold cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-2xs group"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-[#1b732d] border border-emerald-200/80 rounded-lg text-xs font-semibold cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-2xs group"
                       >
                         <span>{skill}</span>
-                        <span className="text-[11px] text-green-600 group-hover:text-red-500 transition-colors ml-0.5">✕</span>
+                        <span className="text-[11px] text-[#059669] group-hover:text-red-500 transition-colors ml-0.5">✕</span>
                       </span>
                     ))}
                   </div>
@@ -1239,9 +1252,9 @@ const PostJob = ({ addJob, updateJob }) => {
                                 clearFieldError('skills');
                               }
                             }}
-                            className="px-3 py-1.5 bg-white text-gray-600 rounded-lg text-xs font-semibold border border-gray-200 hover:border-[#29953f] hover:text-[#29953f] hover:bg-green-50 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                            className="px-3 py-1.5 bg-white text-gray-600 rounded-full text-xs font-bold border border-gray-200 hover:border-[#059669] hover:text-[#059669] hover:bg-emerald-50 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
                           >
-                            <span>{suggestion}</span> <span className="text-sm font-bold text-gray-400 group-hover:text-[#29953f]">+</span>
+                            <span>{suggestion}</span> <span className="text-sm font-bold text-gray-400 group-hover:text-[#059669]">+</span>
                           </button>
                         ))}
                       </div>
@@ -1308,7 +1321,7 @@ const PostJob = ({ addJob, updateJob }) => {
                             setSalaryValues({...salaryValues, [salaryType]: {...currentSalaryValues, min: formatIndianNumber(e.target.value)}});
                             clearFieldError('compensation');
                           }}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">
                           {cmsConfig?.step3?.minLabel || 'Minimum'}
@@ -1323,7 +1336,7 @@ const PostJob = ({ addJob, updateJob }) => {
                             setSalaryValues({...salaryValues, [salaryType]: {...currentSalaryValues, max: formatIndianNumber(e.target.value)}});
                             clearFieldError('compensation');
                           }}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669]/20 transition-all placeholder:text-gray-400 font-medium"
                         />
                         <p className="text-[10px] text-gray-400 mt-1.5 ml-1 font-semibold uppercase tracking-wide">
                           {cmsConfig?.step3?.maxLabel || 'Maximum'}
@@ -1351,7 +1364,7 @@ const PostJob = ({ addJob, updateJob }) => {
                           localStorage.setItem('employer_post_job_salary_note', e.target.value);
                           clearFieldError('compensation');
                         }}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f] focus:ring-1 focus:ring-[#29953f]/20 transition-all placeholder:text-gray-400 font-medium"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669]/20 transition-all placeholder:text-gray-400 font-medium"
                       />
 
                       {/* Quick Suggestion Chips */}
@@ -1401,7 +1414,7 @@ const PostJob = ({ addJob, updateJob }) => {
                     </div>
 
                     <p className="text-[11px] text-gray-500 mt-3 font-medium flex items-center gap-1.5 bg-gray-50/80 p-2 rounded-lg border border-gray-100">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-[#059669] shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                       {cmsConfig?.step3?.salaryDisclaimer || 'This salary will be shown to candidates on the job listing.'}
                     </p>
                   </div>
@@ -1497,7 +1510,7 @@ const PostJob = ({ addJob, updateJob }) => {
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                       jobData.screeningQuestions.length >= 5
                         ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                        : 'bg-green-100 text-green-800 border border-green-200'
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     }`}>
                       {jobData.screeningQuestions.length}/5 added
                     </span>
@@ -1520,7 +1533,7 @@ const PostJob = ({ addJob, updateJob }) => {
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors cursor-pointer ${
                     jobData.screeningQuestions.length >= 5
                       ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
-                      : 'bg-green-50 text-[#29953f] hover:bg-green-100'
+                      : 'bg-emerald-50 text-[#059669] hover:bg-emerald-100'
                   }`}
                 >
                   {jobData.screeningQuestions.length >= 5 ? 'Max 5 Limit Reached' : (cmsConfig?.step4?.addBtnText || '+ Add Question')}
@@ -1624,7 +1637,7 @@ const PostJob = ({ addJob, updateJob }) => {
                           className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none transition-colors pr-10 ${
                             fieldErrors[`screening_${index}`]
                               ? 'border-red-500 bg-red-50/20 focus:border-red-500'
-                              : 'border-gray-200 focus:border-[#29953f]'
+                              : 'border-gray-200 focus:border-[#059669] focus:ring-2 focus:ring-emerald-500/20'
                           }`}
                         />
                         {fieldErrors[`screening_${index}`] && (
@@ -1674,7 +1687,7 @@ const PostJob = ({ addJob, updateJob }) => {
                                 newQs[index].required = e.target.checked;
                                 setJobData({...jobData, screeningQuestions: newQs});
                               }}
-                              className="w-4 h-4 text-[#29953f] rounded border-gray-300 focus:ring-[#29953f] accent-[#29953f]"
+                              className="w-4 h-4 text-[#059669] rounded border-gray-300 focus:ring-[#059669] accent-[#059669]"
                             />
                             <span className="text-sm font-bold text-gray-700">
                               {cmsConfig?.step4?.requiredLabel || 'Required'}
@@ -1700,7 +1713,7 @@ const PostJob = ({ addJob, updateJob }) => {
                               setJobData({ ...jobData, screeningQuestions: newQs });
                               clearFieldError(`screening_max_length_${index}`);
                             }}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f]"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#059669]"
                           />
                           <p className="text-xs text-gray-500">Choose a value from {MIN_SCREENING_TEXT_MAX_LENGTH} to {MAX_SCREENING_TEXT_MAX_LENGTH} characters. Default: {DEFAULT_SCREENING_TEXT_MAX_LENGTH}.</p>
                           {fieldErrors[`screening_max_length_${index}`] && (
@@ -1726,7 +1739,7 @@ const PostJob = ({ addJob, updateJob }) => {
                               setJobData({ ...jobData, screeningQuestions: newQs });
                               clearFieldError(`screening_max_digits_${index}`);
                             }}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f]"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#059669]"
                           />
                           <p className="text-xs text-gray-500">Choose a value from {MIN_SCREENING_NUMBER_MAX_DIGITS} to {MAX_SCREENING_NUMBER_MAX_DIGITS} digits. Default: {DEFAULT_SCREENING_NUMBER_MAX_DIGITS}.</p>
                           {fieldErrors[`screening_max_digits_${index}`] && (
@@ -1748,7 +1761,7 @@ const PostJob = ({ addJob, updateJob }) => {
                                 setJobData({ ...jobData, screeningQuestions: newQs });
                                 clearFieldError(`screening_options_${index}`);
                               }}
-                              className="text-xs font-bold text-[#29953f] disabled:text-gray-400"
+                              className="text-xs font-bold text-[#059669] disabled:text-gray-400"
                             >
                               + Add option
                             </button>
@@ -1768,7 +1781,7 @@ const PostJob = ({ addJob, updateJob }) => {
                                   setJobData({ ...jobData, screeningQuestions: newQs });
                                   clearFieldError(`screening_options_${index}`);
                                 }}
-                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#29953f]"
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#059669]"
                               />
                               {(q.options || []).length > 2 && (
                                 <button
@@ -1821,13 +1834,13 @@ const PostJob = ({ addJob, updateJob }) => {
                 <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {/* Basic Info */}
                   <div>
-                    <h4 className="text-2xl font-bold text-[#147a2e]">{jobData.title || 'Untitled Job'}</h4>
+                    <h4 className="text-2xl font-bold text-[text-gray-900]">{jobData.title || 'Untitled Job'}</h4>
                     <div className="flex flex-wrap gap-3 mt-3 text-sm text-gray-600 font-medium">
-                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> {jobData.employmentType || 'Not specified'}</span>
-                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> {jobData.workplaceType || 'Not specified'}</span>
-                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> {jobData.location || 'Not specified'}</span>
-                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg> {jobData.experience || 'Not specified'}</span>
-                      <span className="flex items-center gap-1.5 bg-white px-3 py-1 rounded-md border border-gray-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> {getListingSalaryPreview(currentSalaryValues.min, currentSalaryValues.max, salaryType, cSym, salaryNote) || 'Salary not specified'}</span>
+                      <span className="flex items-center gap-1.5 bg-gray-50/80 px-3.5 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> {jobData.employmentType || 'Not specified'}</span>
+                      <span className="flex items-center gap-1.5 bg-gray-50/80 px-3.5 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> {jobData.workplaceType || 'Not specified'}</span>
+                      <span className="flex items-center gap-1.5 bg-gray-50/80 px-3.5 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> {jobData.location || 'Not specified'}</span>
+                      <span className="flex items-center gap-1.5 bg-gray-50/80 px-3.5 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg> {jobData.experience || 'Not specified'}</span>
+                      <span className="flex items-center gap-1.5 bg-gray-50/80 px-3.5 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> {getListingSalaryPreview(currentSalaryValues.min, currentSalaryValues.max, salaryType, cSym, salaryNote) || 'Salary not specified'}</span>
                     </div>
                   </div>
 
@@ -1889,7 +1902,7 @@ const PostJob = ({ addJob, updateJob }) => {
                     {skillsList.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {skillsList.map((skill, index) => (
-                          <span key={index} className="px-3 py-1.5 bg-green-50 text-[#29953f] border border-green-100 rounded-md text-xs font-bold">{skill}</span>
+                          <span key={index} className="px-3 py-1.5 bg-emerald-50 text-[#059669] border border-emerald-200 rounded-full text-xs font-bold">{skill}</span>
                         ))}
                       </div>
                     ) : (
@@ -1924,14 +1937,14 @@ const PostJob = ({ addJob, updateJob }) => {
           {/* Form Actions */}
           <div className="mt-10 pt-6 border-t border-gray-100 flex items-center justify-between">
             {activeStep > 1 ? (
-              <button onClick={handleBack} className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors cursor-pointer">
+              <button onClick={handleBack} className="px-6 py-2.5 text-sm font-bold text-gray-700 hover:text-gray-900 border border-gray-300 bg-white hover:bg-gray-50 rounded-full transition-colors cursor-pointer">
                 {cmsConfig?.buttons?.backBtnText || 'Back'}
               </button>
             ) : <div></div>}
             
             <div className="flex gap-4">
               {activeStep === 5 && (
-                <button onClick={() => setActiveStep(1)} className="px-6 py-2.5 text-sm font-bold text-[#29953f] bg-green-50 hover:bg-green-100 rounded-lg transition-colors cursor-pointer">
+                <button onClick={() => setActiveStep(1)} className="px-6 py-2.5 text-sm font-bold text-[#059669] bg-emerald-50 hover:bg-emerald-100 rounded-full transition-colors cursor-pointer border border-emerald-200">
                   {cmsConfig?.buttons?.editBtnText || 'Edit'}
                 </button>
               )}
@@ -1939,10 +1952,10 @@ const PostJob = ({ addJob, updateJob }) => {
                 type="button"
                 onClick={activeStep === 5 ? handlePublishOrUpdate : handleNext}
                 disabled={isSubmitting || (!isEditing && dailyQuota?.limitReached)}
-                className={`px-8 py-2.5 text-sm font-bold rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 ${
+                className={`px-8 py-2.5 text-sm font-bold rounded-full transition-colors shadow-none flex items-center justify-center gap-2 ${
                   isSubmitting || (!isEditing && dailyQuota?.limitReached)
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-75'
-                    : 'bg-[#29953f] hover:bg-green-700 text-white cursor-pointer'
+                    : 'bg-[#059669] hover:bg-[#047857] text-white cursor-pointer'
                 }`}
                 title={!isEditing && dailyQuota?.limitReached ? (dailyQuota?.message || `Daily limit of ${dailyQuota?.maxLimit} jobs reached.`) : ''}
               >

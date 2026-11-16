@@ -408,7 +408,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
               <textarea 
                 value={value}
                 onChange={(e) => handleChange(section, field, e.target.value)}
-                className="w-full max-w-[420px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] resize-none"
+                className="w-full max-w-[420px] px-3 py-2 border border-[#059669] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3] resize-none"
                 rows="3"
                 autoFocus
               />
@@ -418,7 +418,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 value={value}
                 onChange={(nextValue) => handleChange(section, field, nextValue)}
                 allowCustomValue={false}
-                className="w-full max-w-[360px] px-3 py-2 border-[#16a34a] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
+                className="w-full max-w-[360px] px-3 py-2 border-[#059669] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
               />
             ) : type === 'select-employees' ? (
               <CustomDropdown
@@ -426,7 +426,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 value={value}
                 onChange={(nextValue) => handleChange(section, field, nextValue)}
                 allowCustomValue={false}
-                className="w-full max-w-[360px] px-3 py-2 border-[#16a34a] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
+                className="w-full max-w-[360px] px-3 py-2 border-[#059669] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
               />
             ) : type === 'select-designation' ? (
               <CustomDropdown
@@ -434,7 +434,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 value={value}
                 onChange={(nextValue) => handleChange(section, field, nextValue)}
                 allowCustomValue={false}
-                className="w-full max-w-[360px] px-3 py-2 border-[#16a34a] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
+                className="w-full max-w-[360px] px-3 py-2 border-[#059669] ring-2 ring-[#ecfdf3] text-[14px] font-medium"
               />
             ) : type === 'location' ? (
               <MultiSelectLocationDropdown 
@@ -442,18 +442,18 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 value={value} 
                 onChange={(val) => handleChange(section, field, val)} 
                 multiple={false} 
-                className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3]" 
+                className="w-full max-w-[360px] px-3 py-2 border border-[#059669] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3]" 
                 placeholder="Select location" 
               />
             ) : field === 'phone' ? (
               <div className="space-y-1.5">
-                <div className={`flex items-center w-full max-w-[380px] bg-white border rounded-[8px] px-3 py-2 ring-2 relative transition-all ${phoneError ? 'border-red-500 ring-red-100' : 'border-[#16a34a] ring-[#ecfdf3]'}`}>
+                <div className={`flex items-center w-full max-w-[380px] bg-white border rounded-[8px] px-3 py-2 ring-2 relative transition-all ${phoneError ? 'border-red-500 ring-red-100' : 'border-[#059669] ring-[#ecfdf3]'}`}>
                   {/* Custom Country Code Dropdown Trigger */}
                   <div className="relative shrink-0" ref={countryDropdownRef}>
                     <button
                       type="button"
                       onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                      className="flex items-center gap-1.5 text-gray-900 font-bold border-none outline-none cursor-pointer pr-2 text-[14px] hover:text-[#16a34a] transition-colors"
+                      className="flex items-center gap-1.5 text-gray-900 font-bold border-none outline-none cursor-pointer pr-2 text-[14px] hover:text-[#059669] transition-colors"
                     >
                       <span className="text-base leading-none">{selectedCountryObj.flag}</span>
                       <span>{selectedCountryObj.code}</span>
@@ -472,7 +472,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                             value={countrySearch}
                             onChange={(e) => setCountrySearch(e.target.value)}
                             placeholder="Search country or code..."
-                            className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-[#16a34a] text-gray-900"
+                            className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-lg outline-none focus:border-[#059669] text-gray-900"
                             autoFocus
                           />
                         </div>
@@ -491,7 +491,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                                   setIsCountryDropdownOpen(false);
                                   setCountrySearch('');
                                 }}
-                                className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-[#ecfdf3] transition-colors ${c.code === (accountData.countryCode || '+91') ? 'bg-[#ecfdf3] font-bold text-[#15803d]' : 'text-gray-700'}`}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-[#ecfdf3] transition-colors ${c.code === (accountData.countryCode || '+91') ? 'bg-[#ecfdf3] font-bold text-[#047857]' : 'text-gray-700'}`}
                               >
                                 <div className="flex items-center gap-2 truncate">
                                   <span className="text-base leading-none">{c.flag}</span>
@@ -536,12 +536,12 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                 value={value} 
                 onChange={(e) => handleChange(section, field, e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveField(); }}
-                className="w-full max-w-[360px] px-3 py-2 border border-[#16a34a] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3]"
+                className="w-full max-w-[360px] px-3 py-2 border border-[#059669] rounded-[8px] text-[14px] text-[#101828] focus:outline-none ring-2 ring-[#ecfdf3]"
                 autoFocus
               />
             )
           ) : (
-            <span className={`text-[14.5px] font-medium ${field === 'website' ? 'text-[#16a34a] hover:underline' : 'text-[#101828]'} ${type === 'textarea' ? 'block max-w-md break-words' : 'truncate block'}`}>
+            <span className={`text-[14.5px] font-medium ${field === 'website' ? 'text-[#059669] hover:underline' : 'text-[#101828]'} ${type === 'textarea' ? 'block max-w-md break-words' : 'truncate block'}`}>
               {field === 'phone' ? (
                 accountData.phone ? (
                   <span className="font-mono">
@@ -558,7 +558,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
               <button 
                 type="button"
                 onClick={handleSaveField} 
-                className="text-[13.5px] font-semibold text-[#15803d] hover:bg-[#ecfdf3] px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer"
+                className="text-[13.5px] font-semibold text-[#047857] hover:bg-[#ecfdf3] px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer"
               >
                 Done
               </button>
@@ -566,7 +566,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
               <button 
                 type="button"
                 onClick={() => handleEdit(`${section}.${field}`)} 
-                className="text-[13.5px] font-semibold text-[#15803d] hover:bg-[#ecfdf3] px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer"
+                className="text-[13.5px] font-semibold text-[#047857] hover:bg-[#ecfdf3] px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer"
               >
                 Edit
               </button>
@@ -603,14 +603,14 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
         <button 
           type="button"
           onClick={() => handleTabChange('account')}
-          className={`pb-3 text-[14.5px] font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'account' ? 'border-[#16a34a] text-[#15803d]' : 'border-transparent text-[#667085] hover:text-[#101828]'}`}
+          className={`pb-3 text-[14.5px] font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'account' ? 'border-[#059669] text-[#047857]' : 'border-transparent text-[#667085] hover:text-[#101828]'}`}
         >
           {portalConfig?.accountTabLabel || 'Account details'}
         </button>
         <button 
           type="button"
           onClick={() => handleTabChange('company')}
-          className={`pb-3 text-[14.5px] font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'company' ? 'border-[#16a34a] text-[#15803d]' : 'border-transparent text-[#667085] hover:text-[#101828]'}`}
+          className={`pb-3 text-[14.5px] font-semibold border-b-2 transition-colors cursor-pointer ${activeTab === 'company' ? 'border-[#059669] text-[#047857]' : 'border-transparent text-[#667085] hover:text-[#101828]'}`}
         >
           {isConsultant ? (portalConfig?.consultantTabLabel || 'Consultant details') : (portalConfig?.companyTabLabel || 'Company details')}
         </button>
@@ -621,7 +621,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
           <span>Verification</span>
           <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
             employerProfile?.verification?.status === 'verified'
-              ? 'bg-[#ecfdf3] text-[#15803d]'
+              ? 'bg-[#ecfdf3] text-[#047857]'
               : employerProfile?.verification?.status === 'pending'
               ? 'bg-[#fef0c7] text-[#b54708]'
               : employerProfile?.verification?.status === 'rejected'
@@ -685,14 +685,14 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
                     />
                   </div>
                 ) : (
-                  <div className="w-12 h-12 rounded-[10px] bg-[#16a34a] text-white flex items-center justify-center text-[20px] font-bold uppercase shrink-0">
+                  <div className="w-12 h-12 rounded-[10px] bg-[#059669] text-white flex items-center justify-center text-[20px] font-bold uppercase shrink-0">
                     {(companyData.companyName || accountData.name || 'C').charAt(0)}
                   </div>
                 )}
 
                 <div className="flex items-center gap-2">
                   {uploadingLogo ? (
-                    <span className="text-[13.5px] font-semibold text-[#15803d]">
+                    <span className="text-[13.5px] font-semibold text-[#047857]">
                       Uploading {uploadProgress > 0 ? `${uploadProgress}%` : '...'}
                     </span>
                   ) : (
@@ -745,7 +745,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
         <button 
           type="button"
           onClick={() => handleSaveAll(true)} 
-          className="inline-flex items-center gap-2 bg-[#16a34a] hover:bg-[#15803d] text-white font-semibold text-[14px] px-5 py-2.5 rounded-[8px] transition-colors shadow-none cursor-pointer"
+          className="inline-flex items-center gap-2 bg-[#059669] hover:bg-[#047857] text-white font-semibold text-[14px] px-5 py-2.5 rounded-[8px] transition-colors shadow-none cursor-pointer"
         >
           Save changes
         </button>
