@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import JobApplicationModal from '../JobApplicationModal';
 import SjLoggedInHeader from '../../sj-home/SjLoggedInHeader';
 import SjGuestHeader from '../../sj-home/SjGuestHeader';
 import SjJobDetailsDrawer from '../../sj-home/SjJobDetailsDrawer';
 import { getEmployeeStoredValue, setEmployeeStoredValue } from '../../../utils/employeeStorage';
-import { formatJobLocation } from '../../../data/preferredLocations';
+import { isLocationMatch, formatJobLocation } from '../../../data/preferredLocations';
+import { isExperienceMatch } from '../../../utils/experienceMatcher';
 import { formatSalary } from '../../../utils/salaryUtils';
 import './MyJobs.css';
 
@@ -201,9 +202,89 @@ const MyJobs = ({ jobs = [] }) => {
     fetchMyApplications();
   };
 
-  const savedList = effectiveJobs.filter(j => savedJobs.some(id => String(id) === String(j.id || j._id)));
+  const filterJobsList = (list, query, location, experience, postingDate) => {
+    if (!Array.isArray(list)) return [];
+    return list.filter((job) => {
+      // 1. Text Search Query
+      if (query && query.trim()) {
+        const q = query.toLowerCase().trim();
+        const t = (job.title || job.t || '').toLowerCase();
+        const c = (job.company || job.companyName || job.c || '').toLowerCase();
+        const s = Array.isArray(job.skills) ? job.skills.join(' ').toLowerCase() : '';
+        if (!t.includes(q) && !c.includes(q) && !s.includes(q)) return false;
+      }
 
-  const appliedList = appliedJobs.map((applied) => {
+      // 2. Location Query (supports single string, array, or comma-separated locations)
+      const locList = Array.isArray(location)
+        ? location.filter(Boolean)
+        : (typeof location === 'string' && location.trim()
+            ? location.split(',').map((s) => s.trim()).filter(Boolean)
+            : []);
+
+      if (locList.length > 0 && !locList.includes('All')) {
+        try {
+          const matchesAnyLoc = locList.some((singleLoc) =>
+            isLocationMatch(
+              job.location || job.employerId?.location,
+              singleLoc,
+              job.details?.workLocation,
+              job.workplaceMode || job.details?.workplaceMode,
+              job
+            )
+          );
+          if (!matchesAnyLoc) return false;
+        } catch (err) {
+          console.warn('Location filter check error:', err);
+        }
+      }
+
+      // 3. Experience Filter
+      if (experience && experience !== 'All') {
+        try {
+          const jobExp = job.details?.experience || job.experience || '';
+          if (!isExperienceMatch(jobExp, experience)) {
+            return false;
+          }
+        } catch (err) {
+          console.warn('Experience filter check error:', err);
+        }
+      }
+
+      // 4. Posting Date Filter
+      const dateList = Array.isArray(postingDate)
+        ? postingDate.filter(Boolean)
+        : (typeof postingDate === 'string' && postingDate.trim() && postingDate !== 'Any time'
+            ? postingDate.split(',').map((s) => s.trim()).filter(Boolean)
+            : []);
+
+      if (dateList.length > 0 && !dateList.includes('Any time')) {
+        try {
+          const rawDate = job.createdAt || job.date || job.postedDate || job.updatedAt || 0;
+          const postedAt = new Date(rawDate).getTime();
+          if (postedAt && !isNaN(postedAt)) {
+            const getDays = (opt) => {
+              const str = String(opt).toLowerCase();
+              if (str.includes('24') || str.includes('1 day')) return 1;
+              if (str.includes('3')) return 3;
+              if (str.includes('week') || str.includes('7')) return 7;
+              if (str.includes('month') || str.includes('30')) return 30;
+              return 365;
+            };
+            const maxAllowedDays = Math.max(...dateList.map(getDays));
+            if (Date.now() - postedAt > maxAllowedDays * 24 * 60 * 60 * 1000) return false;
+          }
+        } catch (err) {
+          console.warn('Date filter check error:', err);
+        }
+      }
+
+      return true;
+    });
+  };
+
+  const rawSavedList = effectiveJobs.filter(j => savedJobs.some(id => String(id) === String(j.id || j._id)));
+
+  const rawAppliedList = appliedJobs.map((applied) => {
     const targetId = String(applied.id || applied._id || '');
     const foundJob = effectiveJobs.find(j => String(j.id || j._id) === targetId);
     return foundJob || applied.jobDetails || {
@@ -215,6 +296,28 @@ const MyJobs = ({ jobs = [] }) => {
       details: {}
     };
   });
+
+  const savedList = useMemo(() => {
+    return filterJobsList(rawSavedList, searchQuery, searchLocation, searchExperience, searchPostingDate);
+  }, [rawSavedList, searchQuery, searchLocation, searchExperience, searchPostingDate]);
+
+  const appliedList = useMemo(() => {
+    return filterJobsList(rawAppliedList, searchQuery, searchLocation, searchExperience, searchPostingDate);
+  }, [rawAppliedList, searchQuery, searchLocation, searchExperience, searchPostingDate]);
+
+  const isFilterActive = Boolean(
+    searchQuery.trim() ||
+    (searchLocation && searchLocation !== 'All') ||
+    (searchExperience && searchExperience !== 'All') ||
+    (searchPostingDate && searchPostingDate !== 'Any time')
+  );
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setSearchLocation('');
+    setSearchExperience('All');
+    setSearchPostingDate('Any time');
+  };
 
   const activeDrawerList = activeTab === 'applied' ? appliedList : savedList;
 
@@ -305,28 +408,17 @@ const MyJobs = ({ jobs = [] }) => {
         <SjLoggedInHeader
           logoConfig={homepageConfig?.logo}
           searchTerm={searchQuery}
-          onSearchTermChange={(val) => {
-            setSearchQuery(val);
-            handleHeaderSearch(val, searchLocation, searchExperience, searchPostingDate);
-          }}
+          onSearchTermChange={(val) => setSearchQuery(val)}
           searchLocation={searchLocation}
-          onSearchLocationChange={(val) => {
-            setSearchLocation(val);
-            handleHeaderSearch(searchQuery, val, searchExperience, searchPostingDate);
-          }}
+          onSearchLocationChange={(val) => setSearchLocation(val)}
           experience={searchExperience}
-          onExperienceChange={(val) => {
-            setSearchExperience(val);
-            handleHeaderSearch(searchQuery, searchLocation, val, searchPostingDate);
-          }}
+          onExperienceChange={(val) => setSearchExperience(val)}
           postingDate={searchPostingDate}
-          onPostingDateChange={(val) => {
-            setSearchPostingDate(val);
-            handleHeaderSearch(searchQuery, searchLocation, searchExperience, val);
-          }}
+          onPostingDateChange={(val) => setSearchPostingDate(val)}
           jobs={effectiveJobs}
           userProfile={candidateProfile}
           savedCount={savedJobs.length}
+          onNavigateHome={() => navigate('/employee')}
           onNavigateSaved={() => setActiveTab('saved')}
           onNavigateApplied={() => setActiveTab('applied')}
           onNavigateMessages={() => navigate('/employee/messages')}
@@ -382,7 +474,7 @@ const MyJobs = ({ jobs = [] }) => {
             className={activeTab === 'applied' ? 'on' : ''}
           >
             <span>Applied</span>
-            <small>{appliedJobs.length}</small>
+            <small>{appliedList.length}</small>
           </button>
         </div>
 
@@ -396,14 +488,28 @@ const MyJobs = ({ jobs = [] }) => {
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
                   </svg>
                 </span>
-                <h2>No saved jobs</h2>
-                <p>Jobs you bookmark will appear here so you can easily review and apply later.</p>
-                <button
-                  onClick={() => navigate('/employee')}
-                  className="myjobs-go"
-                >
-                  Browse jobs
-                </button>
+                <h2>{isFilterActive ? 'No matching saved jobs found' : 'No saved jobs'}</h2>
+                <p>
+                  {isFilterActive
+                    ? 'Try adjusting your search keyword or clearing filters to see all your saved jobs.'
+                    : 'Jobs you bookmark will appear here so you can easily review and apply later.'}
+                </p>
+                {isFilterActive ? (
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="myjobs-go"
+                  >
+                    Clear search &amp; filters
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/employee')}
+                    className="myjobs-go"
+                  >
+                    Browse jobs
+                  </button>
+                )}
               </div>
             ) : (
               <div className="myjobs-list">
@@ -498,7 +604,7 @@ const MyJobs = ({ jobs = [] }) => {
         {/* Tab 2: Applied Jobs (Clean display without sidebar drawer opening) */}
         {activeTab === 'applied' && (
           <div>
-            {appliedJobs.length === 0 ? (
+            {appliedList.length === 0 ? (
               <div className="myjobs-empt">
                 <span className="ic2">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -509,29 +615,34 @@ const MyJobs = ({ jobs = [] }) => {
                     <polyline points="10 9 9 9 8 9" />
                   </svg>
                 </span>
-                <h2>No applied jobs</h2>
-                <p>Jobs you apply to will appear here.</p>
-                <button
-                  onClick={() => navigate('/employee')}
-                  className="myjobs-go"
-                >
-                  Browse jobs
-                </button>
+                <h2>{isFilterActive ? 'No matching applied jobs found' : 'No applied jobs'}</h2>
+                <p>
+                  {isFilterActive
+                    ? 'Try adjusting your search keyword or clearing filters to see all your applications.'
+                    : 'Jobs you apply to will appear here.'}
+                </p>
+                {isFilterActive ? (
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    className="myjobs-go"
+                  >
+                    Clear search &amp; filters
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/employee')}
+                    className="myjobs-go"
+                  >
+                    Browse jobs
+                  </button>
+                )}
               </div>
             ) : (
               <div className="myjobs-list">
-                {appliedJobs.map((applied, index) => {
-                  const targetId = String(applied.id || applied._id || '');
-                  const foundJob = effectiveJobs.find(j => String(j.id || j._id) === targetId);
-                  const job = foundJob || applied.jobDetails || {
-                    id: targetId,
-                    _id: targetId,
-                    title: applied.title || 'Applied Position',
-                    company: applied.company || 'amazone',
-                    location: applied.location || 'Remote',
-                    details: {}
-                  };
-
+                {appliedList.map((job, index) => {
+                  const targetId = String(job.id || job._id || '');
+                  const appliedData = appliedJobs.find(a => String(a.id) === targetId);
                   const displaySalary = formatSalary(job.salary, job.salaryNote || job.details?.salaryNote);
 
                   return (

@@ -996,29 +996,20 @@ const EmployeeProfile = () => {
         <SjLoggedInHeader
           logoConfig={homepageConfig?.logo}
           searchTerm={searchQuery}
-          onSearchTermChange={(val) => {
-            setSearchQuery(val);
-            handleHeaderSearch(val, searchLocation, searchExperience, searchPostingDate);
-          }}
+          onSearchTermChange={(val) => setSearchQuery(val)}
           searchLocation={searchLocation}
-          onSearchLocationChange={(val) => {
-            setSearchLocation(val);
-            handleHeaderSearch(searchQuery, val, searchExperience, searchPostingDate);
-          }}
+          onSearchLocationChange={(val) => setSearchLocation(val)}
           experience={searchExperience}
-          onExperienceChange={(val) => {
-            setSearchExperience(val);
-            handleHeaderSearch(searchQuery, searchLocation, val, searchPostingDate);
-          }}
+          onExperienceChange={(val) => setSearchExperience(val)}
           postingDate={searchPostingDate}
-          onPostingDateChange={(val) => {
-            setSearchPostingDate(val);
-            handleHeaderSearch(searchQuery, searchLocation, searchExperience, val);
-          }}
+          onPostingDateChange={(val) => setSearchPostingDate(val)}
+          onSubmitSearch={(q) => handleHeaderSearch(q, searchLocation, searchExperience, searchPostingDate)}
+          onSelectSuggestion={(job) => handleHeaderSearch(job.title || job.t, searchLocation, searchExperience, searchPostingDate)}
           jobs={effectiveJobs}
           userProfile={formData}
           savedCount={savedJobsCount}
           hasUnreadMessages={hasUnreadMessages}
+          onNavigateHome={() => navigate('/employee')}
           onNavigateSaved={() => navigate('/employee/myjobs?tab=saved')}
           onNavigateApplied={() => navigate('/employee/myjobs?tab=applied')}
           onNavigateMessages={() => navigate('/employee/messages')}

@@ -454,6 +454,9 @@ export default function SjLoggedInHeader({
   userProfile = null,
   hasUnreadMessages = false,
   savedCount = 0,
+  onSubmitSearch,
+  onSelectSuggestion,
+  onNavigateHome,
   onNavigateSaved,
   onNavigateApplied,
   onNavigateMessages,
@@ -611,6 +614,12 @@ export default function SjLoggedInHeader({
                   setOpenDropdown(null);
                 }
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setOpenDropdown(null);
+                  onSubmitSearch?.(searchTerm);
+                }
+              }}
               className="w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus:border-transparent text-sm text-gray-900 placeholder-gray-500 shadow-none ring-0"
             />
             {openDropdown === 'suggestions' && searchTerm && searchTerm.trim() && (
@@ -623,8 +632,10 @@ export default function SjLoggedInHeader({
                     <div
                       key={job.id || job._id}
                       onClick={() => {
-                        onSearchTermChange?.(job.title || job.t);
+                        const title = job.title || job.t;
+                        onSearchTermChange?.(title);
                         setOpenDropdown(null);
+                        onSelectSuggestion?.(job);
                       }}
                       className="sj-search-dropdown-item"
                     >
@@ -708,6 +719,7 @@ export default function SjLoggedInHeader({
             onClose={() => setIsDropdownOpen(false)}
             email={userEmail}
             name={userName}
+            onNavigateHome={onNavigateHome || onLogoClick}
             onNavigateProfile={onNavigateProfile}
             onNavigateSaved={onNavigateSaved}
             onNavigateApplied={onNavigateApplied}

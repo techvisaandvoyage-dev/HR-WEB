@@ -15,6 +15,7 @@ import {
   validateScreeningAnswer
 } from '../../utils/screeningQuestions';
 import SjJobDetailsContent from '../sj-home/SjJobDetailsContent';
+import SjProfileDropdown from '../sj-home/SjProfileDropdown';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'IN', flag: '🇮🇳', name: 'India (+91)' },
@@ -114,9 +115,57 @@ const DirectJobApply = ({ onAuthSuccess }) => {
   // Current Step: 1: Auth, 2: Questions & CV, 3: Review, 4: Success
   const [step, setStep] = useState(1);
 
-  // Shareable application links start unauthenticated; sign-in must be explicit per application.
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState('');
+  // Authenticated candidate state (initialized from localStorage if already logged in)
+  const [user, setUser] = useState(() => {
+    try {
+      const existingToken = localStorage.getItem('employeeToken') || localStorage.getItem('token');
+      const rawUser = localStorage.getItem('employeeUser') || localStorage.getItem('userProfile');
+      if (existingToken && rawUser) {
+        return JSON.parse(rawUser);
+      }
+    } catch (_) {}
+    return null;
+  });
+  const [token, setToken] = useState(() => {
+    return localStorage.getItem('employeeToken') || localStorage.getItem('token') || '';
+  });
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  // Derived candidate profile info for header dropdown
+  const userEmail = 
+    user?.email || 
+    user?.profile?.email || 
+    localStorage.getItem('employeeEmail') || 
+    '';
+
+  const userName = 
+    user?.fullName || 
+    user?.name || 
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 
+    user?.profile?.name || 
+    [user?.profile?.firstName, user?.profile?.lastName].filter(Boolean).join(' ') || 
+    (userEmail ? userEmail.split('@')[0] : 'Candidate');
+
+  const avatarUrl = 
+    user?.avatar || 
+    user?.photo || 
+    user?.profile?.avatar || 
+    user?.profile?.photo || 
+    '';
+
+  const initial = (userName.charAt(0) || 'U').toUpperCase();
+
+  const handleDropdownSignOut = () => {
+    localStorage.removeItem('employeeToken');
+    localStorage.removeItem('employeeUser');
+    localStorage.removeItem('token');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('userRole');
+    setUser(null);
+    setToken('');
+    setStep(1);
+    setIsProfileDropdownOpen(false);
+  };
 
   // Auth form state (Step 1)
   const [authTab, setAuthTab] = useState('login'); // 'login' | 'register'
@@ -1386,33 +1435,44 @@ const DirectJobApply = ({ onAuthSuccess }) => {
             </span>
           </Link>
 
-          <div className="flex items-center gap-3 text-xs font-semibold text-gray-500">
-            <span className="hidden sm:inline font-bold text-[#0f172a]">{general.portalBadgeText || 'Direct Application Portal'}</span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-800 border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-pulse"></span>
-              {general.verifiedJobBadgeText || 'Verified Job'}
-            </span>
+          <div className="flex items-center gap-3 relative">
             {user && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('employeeToken');
-                  localStorage.removeItem('employeeUser');
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('userProfile');
-                  setUser(null);
-                  setToken('');
-                  setStep(1);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-white text-red-600 border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a] hover:bg-red-50 transition-colors cursor-pointer"
-                title="Sign out of your candidate account"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/>
-                  <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-                Sign Out
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileDropdownOpen((prev) => !prev)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center border-[1.5px] border-[#0f172a] shadow-[2px_2px_0_#0f172a] hover:opacity-90 transition-all cursor-pointer overflow-hidden bg-white"
+                  aria-haspopup="menu"
+                  aria-expanded={isProfileDropdownOpen}
+                  aria-label="Profile Account Menu"
+                  title={userName}
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={userName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#0f172a] text-white text-xs font-black flex items-center justify-center">
+                      {initial}
+                    </div>
+                  )}
+                </button>
+
+                <SjProfileDropdown
+                  isOpen={isProfileDropdownOpen}
+                  onClose={() => setIsProfileDropdownOpen(false)}
+                  email={userEmail}
+                  name={userName}
+                  onNavigateHome={() => navigate('/employee')}
+                  onNavigateProfile={() => navigate('/employee/profile')}
+                  onNavigateSaved={() => navigate('/employee/myjobs?tab=saved')}
+                  onNavigateApplied={() => navigate('/employee/myjobs?tab=applied')}
+                  onNavigateSecurity={() => navigate('/employee/profile?tab=security')}
+                  onSignOut={handleDropdownSignOut}
+                />
+              </div>
             )}
           </div>
         </div>

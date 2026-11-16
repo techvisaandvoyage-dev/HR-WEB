@@ -503,11 +503,25 @@ const EmployeeMessages = () => {
 
   // Filter conversations
   const filteredConversations = conversations.filter(c => {
-    const matchesSearch = !searchQuery.trim() || 
-      c.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      c.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (navSearchKeyword || searchQuery || '').trim().toLowerCase();
+    const matchesSearch = !q || 
+      c.companyName?.toLowerCase().includes(q) || 
+      c.jobTitle?.toLowerCase().includes(q) ||
+      c.lastMessage?.toLowerCase().includes(q);
     
+    // Location filter
+    const locList = Array.isArray(navSearchLocation)
+      ? navSearchLocation.filter(Boolean)
+      : (typeof navSearchLocation === 'string' && navSearchLocation.trim()
+          ? navSearchLocation.split(',').map((s) => s.trim()).filter(Boolean)
+          : []);
+
+    if (locList.length > 0 && !locList.includes('All')) {
+      const chatLoc = (c.jobLocation || c.location || '').toLowerCase();
+      const matchesLoc = locList.some(l => chatLoc.includes(l.toLowerCase()));
+      if (!matchesLoc) return false;
+    }
+
     const matchesTab = filterTab === 'all' || (filterTab === 'unread' && (c.unreadCount || 0) > 0);
     return matchesSearch && matchesTab;
   });
@@ -616,29 +630,20 @@ const EmployeeMessages = () => {
         <SjLoggedInHeader
           logoConfig={homepageConfig?.logo}
           searchTerm={navSearchKeyword}
-          onSearchTermChange={(val) => {
-            setNavSearchKeyword(val);
-            handleHeaderSearch(val, navSearchLocation, navSearchExperience, navSearchPostingDate);
-          }}
+          onSearchTermChange={(val) => setNavSearchKeyword(val)}
           searchLocation={navSearchLocation}
-          onSearchLocationChange={(val) => {
-            setNavSearchLocation(val);
-            handleHeaderSearch(navSearchKeyword, val, navSearchExperience, navSearchPostingDate);
-          }}
+          onSearchLocationChange={(val) => setNavSearchLocation(val)}
           experience={navSearchExperience}
-          onExperienceChange={(val) => {
-            setNavSearchExperience(val);
-            handleHeaderSearch(navSearchKeyword, navSearchLocation, val, navSearchPostingDate);
-          }}
+          onExperienceChange={(val) => setNavSearchExperience(val)}
           postingDate={navSearchPostingDate}
-          onPostingDateChange={(val) => {
-            setNavSearchPostingDate(val);
-            handleHeaderSearch(navSearchKeyword, navSearchLocation, navSearchExperience, val);
-          }}
+          onPostingDateChange={(val) => setNavSearchPostingDate(val)}
+          onSubmitSearch={(q) => handleHeaderSearch(q, navSearchLocation, navSearchExperience, navSearchPostingDate)}
+          onSelectSuggestion={(j) => handleHeaderSearch(j.title || j.t, navSearchLocation, navSearchExperience, navSearchPostingDate)}
           jobs={allJobsList}
           userProfile={candidateProfile}
           savedCount={savedJobsCount}
           hasUnreadMessages={totalUnreadCount > 0}
+          onNavigateHome={() => navigate('/employee')}
           onNavigateSaved={() => navigate('/employee/myjobs?tab=saved')}
           onNavigateApplied={() => navigate('/employee/myjobs?tab=applied')}
           onNavigateMessages={() => {}}
