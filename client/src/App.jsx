@@ -1158,9 +1158,7 @@ function App() {
           }}
         />
       )}
-      {(!USE_NEW_HOME_UI || (!['/', '/employee'].includes(location.pathname))) && (
-        <SupportWidget />
-      )}
+      <SupportWidget />
     </>
   )
 }

@@ -418,6 +418,8 @@ const MyJobs = ({ jobs = [] }) => {
           jobs={effectiveJobs}
           userProfile={candidateProfile}
           savedCount={savedJobs.length}
+          onSubmitSearch={(q) => handleHeaderSearch(q, searchLocation, searchExperience, searchPostingDate)}
+          onSelectSuggestion={(job) => handleHeaderSearch(job.title || job.t, searchLocation, searchExperience, searchPostingDate)}
           onNavigateHome={() => navigate('/employee')}
           onNavigateSaved={() => setActiveTab('saved')}
           onNavigateApplied={() => setActiveTab('applied')}

@@ -29,6 +29,42 @@ const POSTING_DATE_OPTIONS = [
   { label: 'Past month', value: 'Past month' },
 ];
 
+// Shared cache for all SjLoggedInHeader instances so jobs are available instantly on every page
+let cachedGlobalJobs = [];
+let isFetchingGlobalJobs = false;
+const globalJobsListeners = new Set();
+
+const fetchGlobalJobs = async () => {
+  if (cachedGlobalJobs.length > 0 || isFetchingGlobalJobs) return;
+  isFetchingGlobalJobs = true;
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/employee/jobs`);
+    const data = await res.json();
+    if (data.success && Array.isArray(data.data)) {
+      const normalized = data.data.map(j => {
+        const comp = j.company || j.employerId?.companyName || j.companyName || 'SahiJob';
+        return {
+          ...j,
+          id: j._id || j.id,
+          title: j.title || j.t || '',
+          company: comp,
+          companyInitial: (comp.trim().charAt(0) || 'S').toUpperCase(),
+          location: j.location || j.details?.workLocation || j.city || 'Anywhere in India'
+        };
+      });
+      cachedGlobalJobs = normalized;
+      globalJobsListeners.forEach(listener => {
+        try { listener(normalized); } catch (_) {}
+      });
+    }
+  } catch (err) {
+    console.error("Error loading header jobs:", err);
+  } finally {
+    isFetchingGlobalJobs = false;
+  }
+};
+
 function TopbarDropdown({
   placeholder,
   headerTitle,
@@ -471,19 +507,48 @@ export default function SjLoggedInHeader({
   const [openDropdown, setOpenDropdown] = useState(null); // 'experience' | 'datePosted' | 'suggestions' | null
   const searchRef = useRef(null);
 
+  // Fallback internal jobs for pages that don't pass `jobs` prop
+  const [internalJobs, setInternalJobs] = useState(cachedGlobalJobs);
+
+  useEffect(() => {
+    if (cachedGlobalJobs.length > 0) {
+      setInternalJobs(cachedGlobalJobs);
+    }
+    const onJobsLoaded = (newJobs) => {
+      setInternalJobs(newJobs);
+    };
+    globalJobsListeners.add(onJobsLoaded);
+
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+      fetchGlobalJobs();
+    }
+
+    return () => {
+      globalJobsListeners.delete(onJobsLoaded);
+    };
+  }, [jobs]);
+
+  const effectiveJobsList = useMemo(() => {
+    if (Array.isArray(jobs) && jobs.length > 0) return jobs;
+    if (internalJobs.length > 0) return internalJobs;
+    return cachedGlobalJobs;
+  }, [jobs, internalJobs]);
+
   // Suggestions for job title input (matching or suggested jobs)
   const matchingJobs = useMemo(() => {
-    if (!Array.isArray(jobs) || jobs.length === 0) return [];
+    if (!Array.isArray(effectiveJobsList) || effectiveJobsList.length === 0) return [];
     if (!searchTerm || !searchTerm.trim()) {
-      return jobs.slice(0, 5);
+      return effectiveJobsList.slice(0, 5);
     }
     const q = searchTerm.toLowerCase().trim();
-    return jobs.filter((j) => {
+    return effectiveJobsList.filter((j) => {
       const title = (j.title || j.t || '').toLowerCase();
-      const comp = (j.company || j.companyName || j.c || '').toLowerCase();
-      return title.includes(q) || comp.includes(q);
-    }).slice(0, 6);
-  }, [searchTerm, jobs]);
+      const comp = (j.company || j.companyName || j.employerId?.companyName || j.c || '').toLowerCase();
+      const loc = (j.location || j.details?.workLocation || j.city || '').toLowerCase();
+      const skills = Array.isArray(j.skills) ? j.skills.join(' ').toLowerCase() : (j.skills || '').toLowerCase();
+      return title.includes(q) || comp.includes(q) || loc.includes(q) || skills.includes(q);
+    }).slice(0, 8);
+  }, [searchTerm, effectiveJobsList]);
 
   // Click outside to close all search dropdowns
   useEffect(() => {
@@ -677,32 +742,42 @@ export default function SjLoggedInHeader({
                   {searchTerm && searchTerm.trim() ? `Matching Jobs (${matchingJobs.length})` : 'Suggested Jobs'}
                 </div>
                 {matchingJobs.length > 0 ? (
-                  matchingJobs.map((job) => (
-                    <div
-                      key={job.id || job._id}
-                      onClick={() => {
-                        const title = job.title || job.t;
-                        onSearchTermChange?.(title);
-                        setOpenDropdown(null);
-                        onSelectSuggestion?.(job);
-                      }}
-                      className="sj-search-dropdown-item"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="sj-search-dropdown-icon text-xs font-bold">
-                          {job.companyInitial || job.company?.charAt(0)?.toUpperCase() || 'J'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[13.5px] font-bold text-gray-900 truncate leading-tight">
-                            {job.title || job.t}
+                  matchingJobs.map((job) => {
+                    const compName = job.company || job.companyName || job.employerId?.companyName || 'SahiJob';
+                    const compInitial = (job.companyInitial || compName.trim().charAt(0) || 'S').toUpperCase();
+                    const jobTitle = job.title || job.t || 'Job Opening';
+                    const jobLoc = job.location || job.details?.workLocation || job.city || 'Anywhere in India';
+
+                    return (
+                      <div
+                        key={job.id || job._id}
+                        onClick={() => {
+                          onSearchTermChange?.(jobTitle);
+                          setOpenDropdown(null);
+                          if (onSelectSuggestion) {
+                            onSelectSuggestion(job);
+                          } else if (onSubmitSearch) {
+                            onSubmitSearch(jobTitle);
+                          }
+                        }}
+                        className="sj-search-dropdown-item"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="sj-search-dropdown-icon text-xs font-bold">
+                            {compInitial}
                           </div>
-                          <div className="text-[11.5px] text-gray-500 truncate mt-0.5 font-medium">
-                            {job.company || job.companyName} • {job.location}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[13.5px] font-bold text-gray-900 truncate leading-tight">
+                              {jobTitle}
+                            </div>
+                            <div className="text-[11.5px] text-gray-500 truncate mt-0.5 font-medium">
+                              {compName} • {jobLoc}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="px-4 py-3 text-xs text-gray-500 text-center font-medium">
                     No jobs found for "{searchTerm}"

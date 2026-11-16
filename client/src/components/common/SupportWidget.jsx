@@ -548,10 +548,28 @@ export default function SupportWidget() {
     };
   }, [isOpen, syncAuthState]);
 
-  // Initial fetch on mount
+  // Initial fetch on mount & background sync
   useEffect(() => {
     fetchQuickReplies();
-  }, [fetchQuickReplies]);
+    fetchUserRequests();
+
+    const interval = setInterval(() => {
+      fetchUserRequests();
+    }, 20000);
+
+    const handleGlobalSupportMessage = () => {
+      fetchUserRequests();
+    };
+
+    socket.on('support_message', handleGlobalSupportMessage);
+    socket.on('support_status_change', handleGlobalSupportMessage);
+
+    return () => {
+      clearInterval(interval);
+      socket.off('support_message', handleGlobalSupportMessage);
+      socket.off('support_status_change', handleGlobalSupportMessage);
+    };
+  }, [fetchQuickReplies, fetchUserRequests]);
 
   // When widget opens: refresh problems, quick replies, requests list & details
   useEffect(() => {
@@ -1139,10 +1157,12 @@ export default function SupportWidget() {
               <path d="M5 13h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3v-2a2 2 0 0 1 2-2Z" />
               <path d="M19 13h-2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1a3 3 0 0 0 3-3v-2a2 2 0 0 0-2-2Z" />
             </svg>
-            <span className="sj-fab-ping">
-              <span className="sj-fab-ping-ring" />
-              <span className="sj-fab-ping-dot" />
-            </span>
+            {hasUnread && (
+              <span className="sj-fab-ping">
+                <span className="sj-fab-ping-ring" />
+                <span className="sj-fab-ping-dot" />
+              </span>
+            )}
           </>
         )}
       </button>

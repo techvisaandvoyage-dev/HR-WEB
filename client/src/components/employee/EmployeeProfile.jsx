@@ -318,10 +318,17 @@ const EmployeeProfile = () => {
     } catch (_) {}
 
     // Jobs for autocomplete
-    fetch(`${apiUrl}/api/jobs`)
+    fetch(`${apiUrl}/api/employee/jobs`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
-        const jList = Array.isArray(json) ? json : json?.jobs || json?.data || [];
+        const rawList = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : json?.jobs || []);
+        const jList = rawList.map(j => ({
+          ...j,
+          id: j._id || j.id,
+          company: j.company || j.employerId?.companyName || j.companyName || 'SahiJob',
+          companyInitial: (j.company || j.employerId?.companyName || j.companyName || j.title || 'S').trim().charAt(0).toUpperCase(),
+          location: j.location || j.details?.workLocation || 'Anywhere in India'
+        }));
         setEffectiveJobs(jList);
       })
       .catch(() => {});

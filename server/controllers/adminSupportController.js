@@ -636,6 +636,13 @@ exports.adminReply = async (req, res) => {
           status: request.status,
           hasUnreadAdminReply: true,
         });
+        io.emit('support_message', {
+          requestId: id,
+          message: msg,
+          allMessages: request.messages,
+          status: request.status,
+          hasUnreadAdminReply: true,
+        });
         io.to('support_admin_room').emit('support_request_updated', {
           requestId: id,
           status: request.status,

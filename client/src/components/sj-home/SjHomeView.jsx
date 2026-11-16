@@ -12,13 +12,12 @@ import SjGuestHero from './SjGuestHero';
 import SjGuestGrid from './SjGuestGrid';
 import SjFooter from './SjFooter';
 
-// Feed, Search, Drawer, Toast & Support
+// Feed, Search, Drawer, Toast
 import SjJobFilterBar from './SjJobFilterBar';
 import SjJobList from './SjJobList';
 import SjSearchModal from './SjSearchModal';
 import SjJobDetailsDrawer from './SjJobDetailsDrawer';
 import SjToast from './SjToast';
-import SjSupportPanel from './SjSupportPanel';
 
 // Existing Job Application Modal for full screening workflow
 import JobApplicationModal from '../employee/JobApplicationModal';
@@ -582,6 +581,8 @@ export default function SjHomeView({
           onPostingDateChange={setSearchPostingDate}
           jobs={jobs}
           onOpenSearch={() => setIsSearchModalOpen(true)}
+          onSubmitSearch={(q) => setSearchQuery(q)}
+          onSelectSuggestion={(job) => setSearchQuery(job.title || job.t)}
           userProfile={candidateProfile}
           savedCount={savedJobs.length}
           onNavigateSaved={() => navigate('/my-jobs?tab=saved')}
@@ -711,16 +712,6 @@ export default function SjHomeView({
         isError={toast.isError}
         onDismiss={hideToast}
         duration={2600}
-      />
-
-      {/* 8. Floating Support Widget */}
-      <SjSupportPanel
-        isOpen={isSupportOpen}
-        onToggle={() => setIsSupportOpen((prev) => !prev)}
-        onClose={() => setIsSupportOpen(false)}
-        onSubmitRequest={(req) => {
-          showToast('Support request sent! Our team will reach out.');
-        }}
       />
     </div>
   );
