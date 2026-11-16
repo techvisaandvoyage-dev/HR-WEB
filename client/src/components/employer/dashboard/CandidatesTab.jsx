@@ -1137,9 +1137,9 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
                 <th className="py-3 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
                 <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
-                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Source Link</th>
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Applied Date</th>
                 <th className="py-3 px-3 min-w-[120px] whitespace-nowrap text-center">Status</th>
+                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap text-center">Source Link</th>
                 <th className="py-3 px-3 min-w-[130px] text-right whitespace-nowrap">Actions</th>
               </tr>
 
@@ -1242,24 +1242,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                   />
                 </th>
 
-                {/* Source Link Filter */}
-                <th className="p-1.5">
-                  <CustomDropdown
-                    options={[
-                      { value: 'All', label: 'All Sources' },
-                      ...uniqueLinks.filter((link) => link !== 'All').map((link) => ({
-                        value: link,
-                        label: link === 'Portal' || link === 'Direct' ? '🌐 Portal' : `🔗 Link ${link}`
-                      }))
-                    ]}
-                    value={colFilters.sourceLink}
-                    onChange={(value) => handleFilterChange('sourceLink', value)}
-                    allowCustomValue={false}
-                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                    dropdownClassName="w-44"
-                  />
-                </th>
-
                 {/* 8. Applied Date Sort Toggle */}
                 <th className="p-1.5">
                   <button
@@ -1280,6 +1262,24 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                     ]}
                     value={colFilters.status}
                     onChange={(value) => handleFilterChange('status', value)}
+                    allowCustomValue={false}
+                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
+                    dropdownClassName="w-44"
+                  />
+                </th>
+
+                {/* Source Link Filter (Right side of Status) */}
+                <th className="p-1.5">
+                  <CustomDropdown
+                    options={[
+                      { value: 'All', label: 'All Sources' },
+                      ...uniqueLinks.filter((link) => link !== 'All').map((link) => ({
+                        value: link,
+                        label: link === 'Portal' || link === 'Direct' ? '🌐 Portal' : `🔗 Link ${link}`
+                      }))
+                    ]}
+                    value={colFilters.sourceLink}
+                    onChange={(value) => handleFilterChange('sourceLink', value)}
                     allowCustomValue={false}
                     className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
                     dropdownClassName="w-44"
@@ -1426,17 +1426,6 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                         {comp}
                       </td>
 
-                      {/* Link Source */}
-                      <td className="py-3.5 px-3 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
-                          item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct'
-                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                            : 'bg-gray-100 text-gray-600 border border-gray-200'
-                        }`}>
-                          {item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct' ? `Link ${item.sourceLink}` : 'Portal'}
-                        </span>
-                      </td>
-
                       {/* 8. Applied Date */}
                       <td className="py-3.5 px-3 text-gray-500 text-xs font-medium whitespace-nowrap">
                         {item.appliedDate}
@@ -1461,6 +1450,17 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                             }}
                           />
                         </div>
+                      </td>
+
+                      {/* Link Source (Right side of Status) */}
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
+                          item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-gray-100 text-gray-600 border border-gray-200'
+                        }`}>
+                          {item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct' ? `Link ${item.sourceLink}` : 'Portal'}
+                        </span>
                       </td>
 
                       {/* 10. Actions */}
