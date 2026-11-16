@@ -586,10 +586,33 @@ exports.getPublicRequestMessages = async (req, res) => {
   try {
     const { id } = req.params;
     const request = await SupportRequest.findById(id)
-      .select('problemText name email status messages createdAt resolvedAt hasUnreadAdminReply')
-      .lean();
+      .select('problemText name email status messages createdAt resolvedAt hasUnreadAdminReply');
     if (!request) {
       return res.status(404).json({ success: false, message: 'Support request not found.' });
+    }
+
+    // When the user opens/views this request's messages, mark new reply as seen/opened
+    if (request.hasUnreadAdminReply) {
+      request.hasUnreadAdminReply = false;
+      await request.save();
+
+      try {
+        const io = getIO();
+        if (io) {
+          io.emit('support_message_read', {
+            requestId: id,
+            hasUnreadAdminReply: false,
+          });
+          io.to('support_admin_room').emit('support_request_updated', {
+            requestId: id,
+            status: request.status,
+            messagesCount: request.messages.length,
+            hasUnreadAdminReply: false,
+          });
+        }
+      } catch (sockErr) {
+        console.warn('Socket emit error in getPublicRequestMessages:', sockErr.message);
+      }
     }
 
     // Fetch dynamic quick reply options configured in admin
@@ -609,6 +632,52 @@ exports.getPublicRequestMessages = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to fetch status.' });
+  }
+};
+
+/**
+ * @desc    Mark support request reply as read/opened by user
+ * @route   POST /api/support/requests/:id/read
+ * @access  Public
+ */
+exports.markSupportRequestAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await SupportRequest.findById(id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Support request not found.' });
+    }
+
+    if (request.hasUnreadAdminReply) {
+      request.hasUnreadAdminReply = false;
+      await request.save();
+
+      try {
+        const io = getIO();
+        if (io) {
+          io.emit('support_message_read', {
+            requestId: id,
+            hasUnreadAdminReply: false,
+          });
+          io.to('support_admin_room').emit('support_request_updated', {
+            requestId: id,
+            status: request.status,
+            messagesCount: request.messages.length,
+            hasUnreadAdminReply: false,
+          });
+        }
+      } catch (sockErr) {
+        console.warn('Socket emit error in markSupportRequestAsRead:', sockErr.message);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Support request marked as read.',
+      data: { _id: id, hasUnreadAdminReply: false },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to mark request as read.' });
   }
 };
 

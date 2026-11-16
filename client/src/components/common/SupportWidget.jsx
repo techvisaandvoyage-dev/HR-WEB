@@ -367,6 +367,10 @@ export default function SupportWidget() {
   const bodyRef = useRef(null);
   const prevMsgCountRef = useRef(0);
   const prevSelectedReqIdRef = useRef(null);
+  const selectedRequestIdRef = useRef(selectedRequestId);
+  useEffect(() => {
+    selectedRequestIdRef.current = selectedRequestId;
+  }, [selectedRequestId]);
 
   // ---------------------------------------------------------------------------
   // API CALLS (Existing endpoints reused exactly)
@@ -407,23 +411,20 @@ export default function SupportWidget() {
       const res = await fetch(`${API_URL}/api/support/requests/${reqId}/messages`);
       const data = await res.json();
       if (data.success && data.data) {
+        // User has opened / is viewing this ticket, so mark reply as seen/opened
+        const readData = { ...data.data, hasUnreadAdminReply: false };
         setRequestDetails((prev) => {
-          if (!prev) return data.data;
-          const prevMsgs = prev.messages || [];
-          const newMsgs = data.data.messages || [];
-          const statusChanged = prev.status !== data.data.status;
-          const countChanged = prevMsgs.length !== newMsgs.length;
-          const followUpsChanged = JSON.stringify(prev.allowedFollowUps || []) !== JSON.stringify(data.data.allowedFollowUps || []);
-          if (!statusChanged && !countChanged && !followUpsChanged) {
-            if (prevMsgs.length === 0 && newMsgs.length === 0) return prev;
-            const lastPrev = prevMsgs[prevMsgs.length - 1];
-            const lastNew = newMsgs[newMsgs.length - 1];
-            if (lastPrev?._id === lastNew?._id && lastPrev?.text === lastNew?.text) {
-              return prev;
-            }
-          }
-          return data.data;
+          if (!prev) return readData;
+          return {
+            ...readData,
+            hasUnreadAdminReply: false,
+          };
         });
+
+        // Also update in userRequests list so the red dot & "New reply from support" disappears immediately
+        setUserRequests((prev) =>
+          prev.map((r) => (r._id === reqId ? { ...r, hasUnreadAdminReply: false } : r))
+        );
       }
     } catch (_) {
     } finally {
@@ -514,9 +515,13 @@ export default function SupportWidget() {
       const res = await fetch(`${API_URL}/api/support/my-requests?${queryParts.join('&')}`, { headers });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
+        const currentTargetId = selectedRequestIdRef.current;
+        const normalized = json.data.map((r) =>
+          currentTargetId && r._id === currentTargetId ? { ...r, hasUnreadAdminReply: false } : r
+        );
         setUserRequests((prev) => {
-          if (JSON.stringify(prev) === JSON.stringify(json.data)) return prev;
-          return json.data;
+          if (JSON.stringify(prev) === JSON.stringify(normalized)) return prev;
+          return normalized;
         });
 
         // Update storedIds with all IDs returned by server
@@ -561,13 +566,30 @@ export default function SupportWidget() {
       fetchUserRequests();
     };
 
+    const handleSupportMessageRead = (payload) => {
+      const payloadId = (payload?.requestId || payload?._id || '').toString();
+      if (payloadId) {
+        setUserRequests((prev) =>
+          prev.map((r) => (r._id === payloadId ? { ...r, hasUnreadAdminReply: false } : r))
+        );
+        setRequestDetails((prev) => {
+          if (prev && (prev._id === payloadId || prev.id === payloadId)) {
+            return { ...prev, hasUnreadAdminReply: false };
+          }
+          return prev;
+        });
+      }
+    };
+
     socket.on('support_message', handleGlobalSupportMessage);
     socket.on('support_status_change', handleGlobalSupportMessage);
+    socket.on('support_message_read', handleSupportMessageRead);
 
     return () => {
       clearInterval(interval);
       socket.off('support_message', handleGlobalSupportMessage);
       socket.off('support_status_change', handleGlobalSupportMessage);
+      socket.off('support_message_read', handleSupportMessageRead);
     };
   }, [fetchQuickReplies, fetchUserRequests]);
 
@@ -661,20 +683,25 @@ export default function SupportWidget() {
     const handleSupportMessage = (payload) => {
       const payloadId = (payload?.requestId || payload?._id || '').toString();
       if (payloadId === reqId) {
+        const isCurrentlyViewing = selectedRequestIdRef.current === reqId && activeTab === 'upd';
+        const unreadFlag = isCurrentlyViewing ? false : (payload.hasUnreadAdminReply ?? true);
+        if (isCurrentlyViewing && payload.hasUnreadAdminReply) {
+          fetch(`${API_URL}/api/support/requests/${reqId}/read`, { method: 'POST' }).catch(() => {});
+        }
         setRequestDetails((prev) => {
           if (!prev) {
             return {
               _id: reqId,
               status: payload.status || 'pending',
               messages: payload.allMessages || (payload.message ? [payload.message] : []),
-              hasUnreadAdminReply: payload.hasUnreadAdminReply ?? true,
+              hasUnreadAdminReply: unreadFlag,
             };
           }
           return {
             ...prev,
             status: payload.status || prev.status,
             messages: payload.allMessages || [...(prev.messages || []), payload.message],
-            hasUnreadAdminReply: payload.hasUnreadAdminReply ?? true,
+            hasUnreadAdminReply: unreadFlag,
           };
         });
         fetchUserRequests();
@@ -1122,10 +1149,10 @@ export default function SupportWidget() {
     );
   };
 
-  // Unread badge indicator for Updates & Chat tab
+  // Unread badge indicator for Updates & Chat tab (disappears when viewed/opened)
   const hasUnread = Boolean(
-    userRequests.some((r) => r.hasUnreadAdminReply) ||
-    (requestDetails?.hasUnreadAdminReply && activeTab !== 'upd')
+    userRequests.some((r) => r.hasUnreadAdminReply && !(selectedRequestId && r._id === selectedRequestId && activeTab === 'upd')) ||
+    (requestDetails?.hasUnreadAdminReply && (activeTab !== 'upd' || !selectedRequestId))
   );
 
   // Hide widget completely on admin routes
@@ -1238,6 +1265,7 @@ export default function SupportWidget() {
               fetchUserRequests();
               if (selectedRequestId) {
                 fetchRequestDetails(selectedRequestId);
+                fetch(`${API_URL}/api/support/requests/${selectedRequestId}/read`, { method: 'POST' }).catch(() => {});
               }
             }}
           >
@@ -1383,7 +1411,16 @@ export default function SupportWidget() {
                           className="sj-req-card"
                           onClick={() => {
                             setSelectedRequestId(req._id);
+                            // Instantly mark as read in local state so red dot disappears immediately
+                            setUserRequests((prev) =>
+                              prev.map((r) => (r._id === req._id ? { ...r, hasUnreadAdminReply: false } : r))
+                            );
+                            setRequestDetails((prev) =>
+                              prev && prev._id === req._id ? { ...prev, hasUnreadAdminReply: false } : prev
+                            );
                             fetchRequestDetails(req._id);
+                            // Inform backend that this ticket reply has been opened / seen
+                            fetch(`${API_URL}/api/support/requests/${req._id}/read`, { method: 'POST' }).catch(() => {});
                           }}
                           style={{
                             padding: '12px 14px',
@@ -1943,6 +1980,7 @@ export default function SupportWidget() {
                 if (activeRequest?.id) {
                   setSelectedRequestId(activeRequest.id);
                   fetchRequestDetails(activeRequest.id);
+                  fetch(`${API_URL}/api/support/requests/${activeRequest.id}/read`, { method: 'POST' }).catch(() => {});
                 }
               }}
             >

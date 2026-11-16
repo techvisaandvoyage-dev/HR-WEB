@@ -9,6 +9,7 @@ const {
   getPublicRequestMessages,
   submitUserFollowUp,
   getPublicQuickReplies,
+  markSupportRequestAsRead,
 } = require('../controllers/supportController');
 
 // Public route to fetch active problems
@@ -28,6 +29,9 @@ router.get('/my-requests', optionalAuth, getMySupportRequests);
 
 // Public route to view status & messages for a submitted request
 router.get('/requests/:id/messages', getPublicRequestMessages);
+
+// Mark support request as read / opened by user
+router.post('/requests/:id/read', markSupportRequestAsRead);
 
 // Public route for user to reply using predefined selected options
 router.post('/requests/:id/followup', submitUserFollowUp);
