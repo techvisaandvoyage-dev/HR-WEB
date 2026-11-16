@@ -801,22 +801,28 @@ export default function SjLoggedInHeader({
         {/* Action Buttons */}
         <div className="sj-actions-cluster">
           {/* Messages Icon */}
-          <button
-            type="button"
-            className="sj-icon-btn relative"
-            onClick={onNavigateMessages}
-            aria-label="Messages"
-            title="Messages"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 4h16v12H8l-4 4Z" />
-            </svg>
-            {showUnreadBadge && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center border-2 border-white shadow-xs pointer-events-none">
-                {effectiveUnread > 0 ? (effectiveUnread > 9 ? '9+' : effectiveUnread) : '1'}
-              </span>
-            )}
-          </button>
+          <div className="relative group flex items-center justify-center">
+            <button
+              type="button"
+              className="sj-icon-btn relative"
+              onClick={onNavigateMessages}
+              aria-label="Messages"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4 4h16v12H8l-4 4Z" />
+              </svg>
+              {showUnreadBadge && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center border-2 border-white shadow-xs pointer-events-none">
+                  {effectiveUnread > 0 ? (effectiveUnread > 9 ? '9+' : effectiveUnread) : '1'}
+                </span>
+              )}
+            </button>
+            {/* Custom Tooltip on Hover */}
+            <div className="absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 px-2.5 py-1 bg-[#0f172a] text-white text-[11px] font-bold rounded-lg shadow-xl pointer-events-none whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-150 transform group-hover:translate-y-0 translate-y-1 z-[120]">
+              Messages
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#0f172a] rotate-45"></div>
+            </div>
+          </div>
 
           {/* Profile Menu Trigger */}
           <button

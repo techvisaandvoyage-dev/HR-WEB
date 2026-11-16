@@ -367,7 +367,6 @@ const EmployeeNavbar = ({ jobs = [], refreshUnread = false, filters, setFilters,
             <button 
               onClick={() => navigate('/employee/messages')} 
               className="text-gray-700 hover:text-emerald-800 transition-colors relative p-1.5 rounded-lg hover:bg-gray-100/80 flex items-center justify-center cursor-pointer" 
-              title="Messages"
               aria-label="Messages"
             >
               <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">

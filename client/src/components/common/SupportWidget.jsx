@@ -1163,6 +1163,9 @@ export default function SupportWidget() {
                 <span className="sj-fab-ping-dot" />
               </span>
             )}
+            <span className="sj-fab-tooltip" role="tooltip">
+              Support
+            </span>
           </>
         )}
       </button>
