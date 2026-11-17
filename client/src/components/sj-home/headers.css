@@ -21,6 +21,15 @@
   justify-content: space-between;
   gap: 16px;
   padding: 14px 24px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+@media (max-width: 860px) {
+  .sj-nav-inner {
+    padding: 10px 14px;
+    gap: 8px;
+  }
 }
 
 .sj-logo {
@@ -623,6 +632,37 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes sjSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes sjFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slideUp {
+  animation: sjSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fadeIn {
+  animation: sjFadeIn 0.18s ease forwards;
+}
+
+@media (max-width: 640px) {
+  .sj-dropdown-menu {
+    max-width: calc(100vw - 20px) !important;
+    right: -6px !important;
   }
 }
 

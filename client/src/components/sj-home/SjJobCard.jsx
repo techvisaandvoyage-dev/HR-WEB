@@ -51,44 +51,51 @@ export default function SjJobCard({
       onKeyDown={handleRowKeyDown}
       aria-label={`${title} at ${companyName}`}
     >
-      {/* 1. Company Avatar */}
-      <SjAvatar
-        src={logoUrl}
-        name={companyName}
-        size="md"
-        alt={`${companyName} Logo`}
-      />
+      <div className="sj-job-main-col">
+        {/* 1. Company Avatar */}
+        <SjAvatar
+          src={logoUrl}
+          name={companyName}
+          size="md"
+          alt={`${companyName} Logo`}
+        />
 
-      {/* 2. Job Info */}
-      <div className="min-w-0">
-        <h2 className="sj-job-title truncate">{title}</h2>
-        <div className="sj-job-sub">
-          <span className="sj-company-name">
-            {companyName}
-            <svg
-              className="sj-verified-check"
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-label="Verified"
-            >
-              <path d="M12 2l2.4 2 3.1-.3.9 3 2.7 1.6-1 3 1 3-2.7 1.6-.9 3-3.1-.3L12 22l-2.4-2-3.1.3-.9-3L2.9 15.7l1-3-1-3 2.7-1.6.9-3 3.1.3Zm-1 13 5-5-1.4-1.4L11 12.2 9.4 10.6 8 12Z" />
-            </svg>
-          </span>
+        {/* 2. Job Info */}
+        <div className="min-w-0 flex-1 sj-job-info-col">
+          <h2 className="sj-job-title">{title}</h2>
+          <div className="sj-job-sub">
+            <span className="sj-company-name">
+              {companyName}
+              <svg
+                className="sj-verified-check"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-label="Verified"
+              >
+                <path d="M12 2l2.4 2 3.1-.3.9 3 2.7 1.6-1 3 1 3-2.7 1.6-.9 3-3.1-.3L12 22l-2.4-2-3.1.3-.9-3L2.9 15.7l1-3-1-3 2.7-1.6.9-3 3.1.3Zm-1 13 5-5-1.4-1.4L11 12.2 9.4 10.6 8 12Z" />
+              </svg>
+            </span>
 
-          <span className="truncate">{location}</span>
+            <span className="sj-job-location truncate">{location}</span>
 
-          {isMatched && matchedRole && (
-            <SjPill variant="accent">
-              ◎ Matched for {matchedRole}
-            </SjPill>
-          )}
+            {isMatched && matchedRole && (
+              <SjPill variant="accent" className="hidden sm:inline-flex">
+                ◎ Matched for {matchedRole}
+              </SjPill>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 3. Salary & Status */}
       <div className="sj-job-right">
+        {isMatched && matchedRole && (
+          <span className="sj-mobile-matched-pill sm:hidden">
+            ◎ Matched for {matchedRole}
+          </span>
+        )}
         <div className="sj-job-pay">{salaryDisplay}</div>
         <div className="sj-job-stat">
           {openings} Opening{openings > 1 ? 's' : ''}

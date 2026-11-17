@@ -109,6 +109,10 @@
   border-radius: 8px;
 }
 
+.sj-job-main-col {
+  display: contents;
+}
+
 .sj-job-row:hover {
   background: var(--sj-soft);
   padding-left: 20px;
@@ -327,31 +331,169 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .sj-feed-wrap {
-    padding: 26px 16px 60px;
+    padding: 16px 10px 70px;
   }
+
   .sj-job-row {
-    grid-template-columns: 48px 1fr 34px;
-    gap: 12px 14px;
-    padding: 20px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 14px;
+    margin-bottom: 12px;
+    background: #ffffff;
+    border: 1px solid #eaecf0;
+    border-radius: 18px;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+    position: relative;
+    border-bottom: 1px solid #eaecf0;
   }
+
   .sj-job-row:hover {
-    padding-left: 4px;
+    padding-left: 14px;
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 14px rgba(16, 24, 40, 0.07);
   }
+
+  .sj-job-row:active {
+    transform: scale(0.99);
+  }
+
+  .sj-job-row .sj-avatar {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+    font-size: 20px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sj-job-main-col {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .sj-list-label {
+    margin: 20px 0 10px;
+    font-size: 11px;
+  }
+
+  .sj-job-info-col {
+    padding-right: 38px; /* Room for the bookmark button */
+  }
+
+  .sj-job-title {
+    font-size: 16px;
+    line-height: 1.35;
+    margin: 0 0 5px 0;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: normal;
+    color: #0f172a;
+  }
+
+  .sj-job-sub {
+    font-size: 12.5px;
+    gap: 6px 10px;
+    line-height: 1.3;
+    color: #64748b;
+  }
+
+  .sj-job-sub .sj-company-name {
+    color: #1e293b;
+    font-weight: 700;
+  }
+
+  .sj-bookmark-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    color: #64748b;
+    display: grid;
+    place-items: center;
+  }
+
+  .sj-bookmark-btn:hover {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
   .sj-job-right {
-    grid-column: 2;
-    text-align: left;
     display: flex;
     flex-direction: row;
-    gap: 10px;
-    align-items: baseline;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px dashed #f1f5f9;
+    text-align: left;
   }
-  .sj-bookmark-btn {
-    grid-row: 1;
-    grid-column: 3;
+
+  .sj-job-pay {
+    font-size: 12px;
+    font-weight: 700;
+    color: #047857;
+    background: #ecfdf5;
+    padding: 4px 9px;
+    border-radius: 8px;
+    border: 1px solid #d1fae5;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
+
+  .sj-job-stat {
+    font-size: 12px;
+    font-weight: 500;
+    color: #475467;
+    background: #f8fafc;
+    padding: 4px 9px;
+    border-radius: 8px;
+    border: 1px solid #eaecf0;
+    margin-top: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sj-job-stat.sj-applied {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #ffffff;
+    background: #059669;
+    border: 1px solid #059669;
+    padding: 4px 10px;
+    border-radius: 8px;
+    margin-left: auto;
+    box-shadow: 0 1px 2px rgba(5, 150, 105, 0.2);
+  }
+
+  .sj-mobile-matched-pill {
+    font-size: 11px;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid #fde68a;
+    display: inline-flex;
+    align-items: center;
+  }
+
   .sj-filter-count {
     margin-left: 0;
     width: 100%;

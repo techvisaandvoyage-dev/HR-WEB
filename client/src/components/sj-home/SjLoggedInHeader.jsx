@@ -475,6 +475,356 @@ function TopbarLocationDropdown({
   );
 }
 
+function MobileFilterSheet({
+  isOpen,
+  type, // 'experience' | 'datePosted' | 'location'
+  onClose,
+  experience,
+  onExperienceChange,
+  postingDate,
+  onPostingDateChange,
+  searchLocation,
+  onSearchLocationChange,
+}) {
+  const [locQuery, setLocQuery] = useState('');
+  const [locSuggestions, setLocSuggestions] = useState([]);
+  const [locLoading, setLocLoading] = useState(false);
+
+  // Parse current values
+  const expSelected = useMemo(() => {
+    if (!experience || experience === 'All') return [];
+    return experience.split(',').map((s) => s.trim()).filter(Boolean);
+  }, [experience]);
+
+  const dateSelected = useMemo(() => {
+    if (!postingDate || postingDate === 'Any time') return [];
+    return postingDate.split(',').map((s) => s.trim()).filter(Boolean);
+  }, [postingDate]);
+
+  const locSelected = useMemo(() => {
+    if (!searchLocation || searchLocation.trim().toLowerCase() === 'all') return [];
+    return searchLocation.split(',').map((s) => s.trim()).filter(Boolean);
+  }, [searchLocation]);
+
+  // Location suggestions fetch
+  useEffect(() => {
+    if (!locQuery || locQuery.trim().length < 2) {
+      setLocSuggestions([]);
+      setLocLoading(false);
+      return;
+    }
+    setLocLoading(true);
+    const fetchLocs = async () => {
+      try {
+        const res = await fetch(
+          `https://api.locationiq.com/v1/autocomplete.php?key=pk.7314b93604200f3007d3b610030e6f1b&q=${encodeURIComponent(
+            locQuery
+          )}&limit=10&tag=place:city,place:town,place:village,place:state,place:suburb,place:hamlet&countrycodes=in`
+        );
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setLocSuggestions(data);
+        } else {
+          setLocSuggestions([]);
+        }
+      } catch {
+        setLocSuggestions([]);
+      } finally {
+        setLocLoading(false);
+      }
+    };
+    const timer = setTimeout(fetchLocs, 200);
+    return () => clearTimeout(timer);
+  }, [locQuery]);
+
+  const popularLocations = [
+    'Remote',
+    'Anywhere in India',
+    'Bangalore',
+    'Mumbai',
+    'Delhi NCR',
+    'Hyderabad',
+    'Pune',
+    'Chennai',
+    'Noida',
+    'Gurugram',
+    'Kolkata',
+    'Ahmedabad',
+  ];
+
+  const displayedLocations = useMemo(() => {
+    if (locQuery.trim().length >= 2 && locSuggestions.length > 0) {
+      return locSuggestions.map((item) => {
+        const address = item.address || {};
+        const main = address.city || address.town || address.village || address.suburb || address.state_district || item.display_name.split(',')[0];
+        const state = address.state || '';
+        const label = state && main !== state ? `${main}, ${state}` : main;
+        return { label, value: label };
+      });
+    }
+    if (locQuery.trim().length > 0) {
+      return (preferredLocationOptions || [])
+        .filter((opt) => opt.label.toLowerCase().includes(locQuery.toLowerCase()))
+        .slice(0, 15);
+    }
+    return popularLocations.map((l) => ({ label: l, value: l }));
+  }, [locQuery, locSuggestions]);
+
+  if (!isOpen || !type) return null;
+
+  const handleToggleExp = (val) => {
+    if (val === 'All') {
+      onExperienceChange?.('All');
+      return;
+    }
+    let next;
+    if (expSelected.includes(val)) {
+      next = expSelected.filter((v) => v !== val);
+    } else {
+      next = [...expSelected, val];
+    }
+    onExperienceChange?.(next.length === 0 ? 'All' : next.join(', '));
+  };
+
+  const handleToggleDate = (val) => {
+    if (val === 'Any time') {
+      onPostingDateChange?.('Any time');
+      return;
+    }
+    let next;
+    if (dateSelected.includes(val)) {
+      next = dateSelected.filter((v) => v !== val);
+    } else {
+      next = [...dateSelected, val];
+    }
+    onPostingDateChange?.(next.length === 0 ? 'Any time' : next.join(', '));
+  };
+
+  const handleToggleLocation = (loc) => {
+    const isIndia = (v) => v.toLowerCase().includes('anywhere in india');
+    let next;
+    if (locSelected.some((l) => l.toLowerCase() === loc.toLowerCase())) {
+      next = locSelected.filter((l) => l.toLowerCase() !== loc.toLowerCase());
+    } else {
+      if (isIndia(loc)) {
+        next = [loc];
+      } else {
+        next = [...locSelected.filter((l) => !isIndia(l)), loc];
+      }
+    }
+    onSearchLocationChange?.(next.length === 0 ? '' : next.join(', '));
+  };
+
+  const getSheetTitle = () => {
+    if (type === 'experience') return 'Filter by Experience';
+    if (type === 'datePosted') return 'Filter by Date Posted';
+    if (type === 'location') return 'Filter by Location';
+    return 'Filter';
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex flex-col justify-end">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-200"
+        onClick={onClose}
+      />
+
+      {/* Sheet Content */}
+      <div className="relative bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col z-[121] animate-slideUp">
+        {/* Drag handle pill */}
+        <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+        {/* Sheet Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900">{getSheetTitle()}</h3>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              {type === 'experience' && (expSelected.length > 0 ? `${expSelected.length} selected` : 'Select experience ranges')}
+              {type === 'datePosted' && (dateSelected.length > 0 ? `${dateSelected.length} selected` : 'Select job posting period')}
+              {type === 'location' && (locSelected.length > 0 ? `${locSelected.length} locations selected` : 'Select cities or remote')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Sheet Body */}
+        <div className="overflow-y-auto p-4 flex-1">
+          {/* 1. EXPERIENCE */}
+          {type === 'experience' && (
+            <div className="space-y-1.5">
+              {EXPERIENCE_OPTIONS.map((opt) => {
+                const isAll = opt.value === 'All';
+                const checked = isAll ? expSelected.length === 0 : expSelected.includes(opt.value);
+                return (
+                  <div
+                    key={opt.value}
+                    onClick={() => handleToggleExp(opt.value)}
+                    className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
+                      checked
+                        ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-bold'
+                        : 'bg-white border-slate-200 text-slate-700 font-medium hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-sm">{opt.label}</span>
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
+                      checked ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                    }`}>
+                      {checked && (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 2. DATE POSTED */}
+          {type === 'datePosted' && (
+            <div className="space-y-1.5">
+              {POSTING_DATE_OPTIONS.map((opt) => {
+                const isAll = opt.value === 'Any time';
+                const checked = isAll ? dateSelected.length === 0 : dateSelected.includes(opt.value);
+                return (
+                  <div
+                    key={opt.value}
+                    onClick={() => handleToggleDate(opt.value)}
+                    className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
+                      checked
+                        ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-bold'
+                        : 'bg-white border-slate-200 text-slate-700 font-medium hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-sm">{opt.label}</span>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
+                      checked ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                    }`}>
+                      {checked && <div className="w-2 h-2 rounded-full bg-white" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 3. LOCATION */}
+          {type === 'location' && (
+            <div className="space-y-3">
+              {/* Search location input */}
+              <div className="relative">
+                <svg className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search city, state or remote..."
+                  value={locQuery}
+                  onChange={(e) => setLocQuery(e.target.value)}
+                  className="w-full pl-9 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                />
+                {locLoading && (
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-emerald-600 rounded-full animate-spin absolute right-3 top-2.5" />
+                )}
+              </div>
+
+              {/* Selected Pills */}
+              {locSelected.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 p-2 bg-emerald-50/60 rounded-xl border border-emerald-200/60">
+                  {locSelected.map((loc) => (
+                    <span
+                      key={loc}
+                      className="inline-flex items-center gap-1 bg-white border border-emerald-300 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full shadow-2xs"
+                    >
+                      <span>{loc}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleLocation(loc)}
+                        className="text-emerald-700 hover:text-emerald-950 font-black cursor-pointer ml-0.5"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Suggestions / Popular locations list */}
+              <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 pt-1">
+                  {locQuery.trim().length >= 2 ? 'Search Results' : 'Popular Cities & Remote'}
+                </div>
+                {displayedLocations.map((item) => {
+                  const locVal = item.value || item.label;
+                  const isChecked = locSelected.some((l) => l.toLowerCase() === locVal.toLowerCase());
+                  return (
+                    <div
+                      key={locVal}
+                      onClick={() => handleToggleLocation(locVal)}
+                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
+                        isChecked
+                          ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950 font-bold'
+                          : 'bg-white border-slate-200 text-slate-700 font-medium hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-xs truncate">{item.label}</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
+                        isChecked ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                      }`}>
+                        {isChecked && (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sheet Footer */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (type === 'experience') onExperienceChange?.('All');
+              if (type === 'datePosted') onPostingDateChange?.('Any time');
+              if (type === 'location') onSearchLocationChange?.('');
+            }}
+            className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-xl cursor-pointer"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer text-center"
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SjLoggedInHeader({
   logoConfig,
   searchLabel = 'Search jobs here',
@@ -506,6 +856,11 @@ export default function SjLoggedInHeader({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null); // 'experience' | 'datePosted' | 'suggestions' | null
   const searchRef = useRef(null);
+
+  // Mobile Search & Filter state
+  const [mobileFilterSheet, setMobileFilterSheet] = useState(null); // 'experience' | 'datePosted' | 'location' | null
+  const [isMobileSuggestionsOpen, setIsMobileSuggestionsOpen] = useState(false);
+  const mobileSearchRef = useRef(null);
 
   // Fallback internal jobs for pages that don't pass `jobs` prop
   const [internalJobs, setInternalJobs] = useState(cachedGlobalJobs);
@@ -555,6 +910,9 @@ export default function SjLoggedInHeader({
     const handleClickOutsideSearch = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setOpenDropdown(null);
+      }
+      if (mobileSearchRef.current && !mobileSearchRef.current.contains(event.target)) {
+        setIsMobileSuggestionsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutsideSearch);
@@ -674,13 +1032,13 @@ export default function SjLoggedInHeader({
   return (
     <header className="sj-header" id="mh">
       <div className="sj-nav-inner">
-        {/* Brand Logo (Matching EmployeeNavbar: single line, no wrapping) */}
-        <div className="w-48 shrink-0 flex items-center">
+        {/* Brand Logo (Single line, scale cleanly on mobile) */}
+        <div className="shrink-0 flex items-center max-w-[140px] sm:max-w-none sm:w-48">
           <BrandLogo onClick={onLogoClick} customConfig={logoConfig} />
         </div>
 
-        {/* Multi-Segment Search Bar (Image 1 multi-segment + 3D Hover Only) */}
-        <div className="sj-topbar-search" ref={searchRef}>
+        {/* Multi-Segment Search Bar (Desktop only: >= 860px) */}
+        <div className="sj-topbar-search hidden min-[860px]:flex" ref={searchRef}>
           <TopbarDropdown
             placeholder="Experience"
             headerTitle="Experience"
@@ -798,8 +1156,8 @@ export default function SjLoggedInHeader({
           />
         </div>
 
-        {/* Action Buttons */}
-        <div className="sj-actions-cluster">
+        {/* Action Buttons (Messages + Profile Avatar, always visible on right) */}
+        <div className="sj-actions-cluster flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
           {/* Messages Icon */}
           <div className="relative group flex items-center justify-center">
             <button
@@ -862,6 +1220,169 @@ export default function SjLoggedInHeader({
           />
         </div>
       </div>
+
+      {/* Mobile Search & Filters Strip (< 860px) */}
+      <div className="min-[860px]:hidden px-3.5 pb-2.5 pt-0.5 border-t border-slate-100/80 bg-white">
+        {/* Mobile Search Input */}
+        <div className="relative flex items-center mb-2" ref={mobileSearchRef}>
+          <svg className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search jobs by title, company, skills..."
+            value={searchTerm}
+            onChange={(e) => {
+              onSearchTermChange?.(e.target.value);
+              setIsMobileSuggestionsOpen(true);
+            }}
+            onFocus={() => {
+              if (searchTerm) setIsMobileSuggestionsOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setIsMobileSuggestionsOpen(false);
+                onSubmitSearch?.(searchTerm);
+              }
+            }}
+            className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 placeholder:font-normal outline-none focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 transition-all shadow-2xs"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                onSearchTermChange?.('');
+                setIsMobileSuggestionsOpen(false);
+              }}
+              className="absolute right-2.5 w-5 h-5 rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-pointer"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
+
+          {/* Mobile Suggestions Popup */}
+          {isMobileSuggestionsOpen && searchTerm && (
+            <div className="absolute top-[calc(100%+6px)] inset-x-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-[250px] overflow-y-auto">
+              <div className="p-2 border-b border-slate-100 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                Matching Jobs ({matchingJobs.length})
+              </div>
+              {matchingJobs.length > 0 ? (
+                matchingJobs.map((job) => {
+                  const compName = job.company || job.companyName || job.employerId?.companyName || 'SahiJob';
+                  const jobTitle = job.title || job.t || 'Job Opening';
+                  const jobLoc = job.location || job.details?.workLocation || job.city || 'Anywhere in India';
+                  return (
+                    <div
+                      key={job.id || job._id}
+                      onClick={() => {
+                        onSearchTermChange?.(jobTitle);
+                        setIsMobileSuggestionsOpen(false);
+                        if (onSelectSuggestion) onSelectSuggestion(job);
+                        else if (onSubmitSearch) onSubmitSearch(jobTitle);
+                      }}
+                      className="p-2.5 border-b border-slate-50 hover:bg-emerald-50/60 active:bg-emerald-100/50 cursor-pointer flex items-center gap-2.5 transition-colors"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
+                        {(job.companyInitial || compName.trim().charAt(0) || 'S').toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 truncate">{jobTitle}</p>
+                        <p className="text-[11px] text-slate-500 truncate">{compName} • {jobLoc}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-3 text-center text-xs text-slate-400 font-medium">
+                  No jobs found for "{searchTerm}"
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Filter Pills Horizontal Scroll */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {/* Experience Chip */}
+          <button
+            type="button"
+            onClick={() => setMobileFilterSheet('experience')}
+            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+              experience && experience !== 'All'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <span>{experience && experience !== 'All' ? experience : 'Experience'}</span>
+            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Date Posted Chip */}
+          <button
+            type="button"
+            onClick={() => setMobileFilterSheet('datePosted')}
+            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+              postingDate && postingDate !== 'Any time'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <span>{postingDate && postingDate !== 'Any time' ? postingDate : 'Date Posted'}</span>
+            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Location Chip */}
+          <button
+            type="button"
+            onClick={() => setMobileFilterSheet('location')}
+            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+              searchLocation && searchLocation.trim()
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <span className="truncate max-w-[130px]">{searchLocation && searchLocation.trim() ? searchLocation : 'Location'}</span>
+            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Reset Chip (visible only when any filter or search is active) */}
+          {((experience && experience !== 'All') || (postingDate && postingDate !== 'Any time') || (searchLocation && searchLocation.trim()) || (searchTerm && searchTerm.trim())) && (
+            <button
+              type="button"
+              onClick={() => {
+                onSearchTermChange?.('');
+                onExperienceChange?.('All');
+                onPostingDateChange?.('Any time');
+                onSearchLocationChange?.('');
+              }}
+              className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
+            >
+              <span>Reset</span>
+              <span>✕</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile Filter Modal Bottom Sheet */}
+      <MobileFilterSheet
+        isOpen={Boolean(mobileFilterSheet)}
+        type={mobileFilterSheet}
+        onClose={() => setMobileFilterSheet(null)}
+        experience={experience}
+        onExperienceChange={onExperienceChange}
+        postingDate={postingDate}
+        onPostingDateChange={onPostingDateChange}
+        searchLocation={searchLocation}
+        onSearchLocationChange={onSearchLocationChange}
+      />
     </header>
   );
 }
