@@ -15,8 +15,8 @@ const DEFAULT_KYC_CONFIG = {
   pageTitle: 'Get your company verified',
   pageSubtitle: 'Upload 2 documents. Our team reviews them and your jobs go live for candidates.',
   breadcrumbLabel: '/ Employer Verification',
-  step1Label: 'Tax document',
-  step2Label: 'Incorporation document',
+  step1Label: 'Company KYC document',
+  step2Label: 'User KYC document',
   step3Label: 'Submit for review',
   step3ResubmitLabel: 'Re-submit for review',
   verifiedBanner: {
@@ -38,8 +38,8 @@ const DEFAULT_KYC_CONFIG = {
   },
   unverifiedBadgeText: 'Unverified',
   taxDoc: {
-    title: 'Tax document',
-    helpText: 'Any one is enough. Document must be in your company name.',
+    title: 'Company KYC document',
+    helpText: 'Any one is enough. Document must be in your registered company name.',
     isMandatory: true,
     requiredBadgeText: 'Required',
     optionalBadgeText: 'Optional',
@@ -47,27 +47,32 @@ const DEFAULT_KYC_CONFIG = {
     options: [
       { type: 'gst_certificate', label: 'GST Certificate', fullLabel: 'GST Registration Certificate (Form GST REG-06)', enabled: true },
       { type: 'pan_card_company', label: 'Company PAN', fullLabel: 'Company PAN Card', enabled: true },
+      { type: 'certificate_of_incorporation', label: 'Certificate of Incorporation', fullLabel: 'Certificate of Incorporation (COI)', enabled: true },
+      { type: 'msme_udyam_certificate', label: 'Udyam / MSME', fullLabel: 'Udyam / MSME Registration Certificate', enabled: true },
+      { type: 'cin_document', label: 'CIN / MCA Master Data', fullLabel: 'CIN / MCA Company Master Data', enabled: true },
+      { type: 'shop_establishment_license', label: 'Shop & Establishment', fullLabel: 'Shop & Establishment License', enabled: true },
+      { type: 'gumasta_trade_license', label: 'Trade License', fullLabel: 'Gumasta / Trade License', enabled: true },
       { type: 'tan_certificate', label: 'TAN', fullLabel: 'TAN Allotment Certificate', enabled: true },
       { type: 'itr_acknowledgement', label: 'ITR-V', fullLabel: 'Latest ITR-V / Acknowledgement', enabled: true },
-      { type: 'professional_tax_certificate', label: 'Professional Tax', fullLabel: 'Professional Tax Certificate', enabled: true }
+      { type: 'llp_agreement', label: 'LLP Agreement', fullLabel: 'LLP Agreement', enabled: true },
+      { type: 'partnership_deed', label: 'Partnership Deed', fullLabel: 'Registered Partnership Deed', enabled: true }
     ]
   },
   incorpDoc: {
-    title: 'Incorporation document',
-    helpText: 'Proof that your business is legally registered. Pick one and upload it.',
+    title: 'User KYC document',
+    helpText: 'Identity proof of the authorized person, founder, or employer. Pick one and upload it.',
     isMandatory: true,
     requiredBadgeText: 'Required',
     optionalBadgeText: 'Optional',
     doneBadgeText: 'Done',
     options: [
-      { type: 'certificate_of_incorporation', label: 'Certificate of Incorporation', fullLabel: 'Certificate of Incorporation (COI)', enabled: true },
-      { type: 'cin_document', label: 'CIN / MCA Master Data', fullLabel: 'CIN / MCA Company Master Data', enabled: true },
-      { type: 'moa_aoa', label: 'MOA / AOA', fullLabel: 'Memorandum & Articles of Association (MOA/AOA)', enabled: true },
-      { type: 'partnership_deed', label: 'Partnership Deed', fullLabel: 'Registered Partnership Deed', enabled: true },
-      { type: 'llp_agreement', label: 'LLP Agreement', fullLabel: 'LLP Agreement', enabled: true },
-      { type: 'msme_udyam_certificate', label: 'Udyam / MSME', fullLabel: 'Udyam / MSME Registration Certificate', enabled: true },
-      { type: 'shop_establishment_license', label: 'Shop & Establishment', fullLabel: 'Shop & Establishment License', enabled: true },
-      { type: 'gumasta_trade_license', label: 'Trade License', fullLabel: 'Gumasta / Trade License', enabled: true }
+      { type: 'aadhaar_card', label: 'Aadhaar Card', fullLabel: 'Aadhaar Card (Front & Back)', enabled: true },
+      { type: 'pan_card_personal', label: 'Personal PAN', fullLabel: 'Personal PAN Card of Signatory / Founder', enabled: true },
+      { type: 'passport', label: 'Passport', fullLabel: 'Passport (First & Last Page)', enabled: true },
+      { type: 'voter_id', label: 'Voter ID', fullLabel: 'Voter Identity Card', enabled: true },
+      { type: 'driving_license', label: 'Driving License', fullLabel: 'Driving License', enabled: true },
+      { type: 'authorized_person_id', label: 'Signatory ID', fullLabel: 'Authorized Signatory Identity Proof', enabled: true },
+      { type: 'authorization_letter', label: 'Authorization Letter', fullLabel: 'Company Authorization Letter / Board Resolution', enabled: true }
     ]
   },
   extraDoc: {
@@ -111,12 +116,13 @@ const TAX_DOC_OPTIONS = DEFAULT_KYC_CONFIG.taxDoc.options;
 const INCORPORATION_DOC_OPTIONS = DEFAULT_KYC_CONFIG.incorpDoc.options;
 const EXTRA_DOC_OPTIONS = DEFAULT_KYC_CONFIG.extraDoc.options;
 
-export default function VerificationPage({ employerProfile }) {
+export default function VerificationPage({ employerProfile, portalConfig: propPortalConfig }) {
   const [loading, setLoading] = useState(true);
   const [statusData, setStatusData] = useState(null);
+  const [portalConfig, setPortalConfig] = useState(propPortalConfig || null);
   const [kycConfig, setKycConfig] = useState(DEFAULT_KYC_CONFIG);
   const [selectedTaxDocType, setSelectedTaxDocType] = useState('gst_certificate');
-  const [selectedIncorpDocType, setSelectedIncorpDocType] = useState('certificate_of_incorporation');
+  const [selectedIncorpDocType, setSelectedIncorpDocType] = useState('aadhaar_card');
   const [selectedExtraDocType, setSelectedExtraDocType] = useState('address_proof');
   const [extraDocsOpen, setExtraDocsOpen] = useState(false);
 
@@ -191,6 +197,9 @@ export default function VerificationPage({ employerProfile }) {
               : prev.benefitsCard.benefits
           }
         }));
+        if (data.data?.portalConfig?.account) {
+          setPortalConfig(data.data.portalConfig.account);
+        }
       }
     } catch (err) {
       console.warn('Could not load dynamic KYC config:', err);
@@ -233,6 +242,33 @@ export default function VerificationPage({ employerProfile }) {
   const status = verification.status || 'unverified';
   const documents = Array.isArray(verification.documents) ? verification.documents : [];
   const isLocked = status === 'pending' || status === 'verified';
+
+  const isConsultant = Boolean(
+    employerProfile?.isConsultant ||
+    statusData?.isConsultant ||
+    statusData?.employer?.isConsultant ||
+    (() => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('employerInfo') || '{}');
+        return Boolean(stored.isConsultant);
+      } catch (_) {
+        return false;
+      }
+    })()
+  );
+
+  const pageTitle = isConsultant 
+    ? (portalConfig?.consultantTitle || 'Consultant Profile')
+    : (portalConfig?.title || 'Company Profile');
+
+  const pageSubtitle = isConsultant
+    ? (portalConfig?.consultantSubtitle || 'Manage your consultant profile, staffing details and branding.')
+    : (portalConfig?.subtitle || 'Manage your company information, branding and details.');
+
+  const accountTabLabel = portalConfig?.accountTabLabel || 'Account details';
+  const detailsTabLabel = isConsultant 
+    ? (portalConfig?.consultantTabLabel || 'Consultant details')
+    : (portalConfig?.companyTabLabel || 'Company details');
 
   // Grouped documents
   const taxDocs = documents.filter(d => d.category === 'tax');
@@ -523,163 +559,155 @@ export default function VerificationPage({ employerProfile }) {
         </div>
       )}
 
-      {/* Top Header Bar */}
-      <div className="bg-white border-b border-[#e3e8e5] px-6 sm:px-10 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/employer" className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
-            sahijob<span className="text-[#1f9d4c]">.com</span>
+      {/* Main Verification Card matching Admin Live Preview */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+        {/* Profile Page Header & Underline Navigation Tabs */}
+        <div className="mb-7">
+          <h1 className="text-[26px] sm:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2]">
+            {pageTitle}
+          </h1>
+          <p className="text-[#667085] text-[14px] mt-1">
+            {pageSubtitle}
+          </p>
+        </div>
+
+        {/* Underline Tabs matching CompanyProfileTab */}
+        <div className="flex gap-6 border-b border-[#eaecf0] mb-7">
+          <Link
+            to="/employer/company-profile?tab=account"
+            className="pb-3 text-[14.5px] font-semibold border-b-2 border-transparent text-[#667085] hover:text-[#101828] transition-colors cursor-pointer"
+          >
+            {accountTabLabel}
           </Link>
-          <span className="text-xs text-gray-400 font-medium hidden sm:inline">{kycConfig.breadcrumbLabel || '/ Employer Verification'}</span>
+          <Link
+            to="/employer/company-profile?tab=company"
+            className="pb-3 text-[14.5px] font-semibold border-b-2 border-transparent text-[#667085] hover:text-[#101828] transition-colors cursor-pointer"
+          >
+            {detailsTabLabel}
+          </Link>
+          <div
+            className="pb-3 text-[14.5px] font-semibold border-b-2 border-[#059669] text-[#047857] transition-colors flex items-center gap-1.5 cursor-default"
+          >
+            <span>Verification</span>
+            <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
+              status === 'verified'
+                ? 'bg-[#ecfdf3] text-[#047857]'
+                : status === 'pending'
+                ? 'bg-[#fef0c7] text-[#b54708]'
+                : status === 'rejected'
+                ? 'bg-[#fef2f2] text-[#b91c1c]'
+                : 'bg-[#fff7ed] text-[#c2410c]'
+            }`}>
+              {status === 'verified' ? 'Verified' : status === 'pending' ? 'Pending' : status === 'rejected' ? 'Rejected' : 'Verify'}
+            </span>
+          </div>
         </div>
 
-        {/* Status Pill in Header */}
-        <div>
-          {status === 'verified' && (
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#e4f6ea] text-[#14753a] border border-[#bce4cb]">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              {kycConfig.verifiedBanner?.badgeText || 'Verified'}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-md p-6 space-y-6">
+
+          {/* Header Preview / Bar */}
+          <div className="border-b border-gray-100 pb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link to="/employer" className="text-xl font-bold text-gray-900">
+                sahijob<span className="text-emerald-600">.com</span>
+              </Link>
+              <span className="text-xs text-gray-400 font-medium">{kycConfig.breadcrumbLabel || (isConsultant ? '/ Consultant Verification' : '/ Employer Verification')}</span>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+              status === 'verified'
+                ? 'bg-[#e4f6ea] text-[#14753a] border border-[#cfe9d8]'
+                : status === 'pending'
+                  ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                  : status === 'rejected'
+                    ? 'bg-red-50 text-red-700 border border-red-200'
+                    : 'bg-[#fff1e3] text-[#b4540a] border border-[#fbd8b5]'
+            }`}>
+              {status === 'verified'
+                ? (kycConfig.verifiedBanner?.badgeText || 'Verified')
+                : status === 'pending'
+                  ? (kycConfig.pendingBanner?.badgeText || 'Under Review')
+                  : status === 'rejected'
+                    ? (kycConfig.rejectedBanner?.badgeText || 'Rejected')
+                    : (kycConfig.unverifiedBadgeText || 'Unverified')}
             </span>
-          )}
-          {status === 'pending' && (
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-              {kycConfig.pendingBanner?.badgeText || 'Under Review'}
-            </span>
-          )}
+          </div>
+
+          {/* Status Alert Banners */}
           {status === 'rejected' && (
-            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-50 text-red-800 border border-red-200">
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              {kycConfig.rejectedBanner?.badgeText || 'Verification Rejected'}
-            </span>
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-red-100 text-red-700 flex items-center justify-center shrink-0 font-bold text-xs">
+                !
+              </div>
+              <div>
+                <h4 className="font-bold text-red-950 text-xs sm:text-sm">{kycConfig.rejectedBanner?.title || 'Verification Submission Rejected'}</h4>
+                <p className="text-xs text-red-800 mt-0.5">
+                  <strong>Reason from Admin:</strong> {verification.rejectionReason || 'Documents did not meet criteria. Please re-upload clearer documents.'}
+                </p>
+                <p className="text-[11px] text-red-600 mt-1">
+                  {kycConfig.rejectedBanner?.helperText || kycConfig.rejectedBanner?.description || 'Remove the rejected documents below, upload updated documents under 300 KB, and re-submit for review.'}
+                </p>
+              </div>
+            </div>
           )}
-          {status === 'unverified' && (
-            <span className="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#fff1e3] text-[#b4540a] border border-[#fbd8b5]">
-              {kycConfig.unverifiedBadgeText || 'Unverified'}
-            </span>
+
+          {status === 'pending' && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold text-xs">
+                ⏱
+              </div>
+              <div>
+                <h4 className="font-bold text-amber-950 text-xs sm:text-sm">{kycConfig.pendingBanner?.title || 'Verification Under Review'}</h4>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  {kycConfig.pendingBanner?.description || 'Document uploads are locked while our compliance team reviews your business registration.'}
+                </p>
+              </div>
+            </div>
           )}
-        </div>
-      </div>
 
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-8 pt-8">
+          {status === 'verified' && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold text-xs">
+                ✓
+              </div>
+              <div>
+                <h4 className="font-bold text-emerald-950 text-xs sm:text-sm">{kycConfig.verifiedBanner?.title || 'Account Verified Successfully!'}</h4>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  {kycConfig.verifiedBanner?.description || 'Your business is verified. All your active jobs are now live and visible to candidates with the green Verified Employer badge.'}
+                </p>
+              </div>
+            </div>
+          )}
 
-        {/* Rejection Alert Banner */}
-        {status === 'rejected' && (
-          <div className="mb-6 p-4 sm:p-5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center shrink-0 font-bold">
-              !
-            </div>
-            <div>
-              <h4 className="font-bold text-red-900 text-sm">{kycConfig.rejectedBanner?.title || 'Verification Submission Rejected'}</h4>
-              <p className="text-xs text-red-700 mt-1">
-                <strong>Reason from Admin:</strong> {verification.rejectionReason || 'Documents did not meet criteria. Please re-upload clearer documents.'}
-              </p>
-              <p className="text-[11px] text-red-600 mt-1">
-                {kycConfig.rejectedBanner?.description || 'Remove the rejected documents below, upload updated documents under 300 KB, and re-submit for review.'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Pending Notice */}
-        {status === 'pending' && (
-          <div className="mb-6 p-4 sm:p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold">
-              ⏱
-            </div>
-            <div>
-              <h4 className="font-bold text-amber-900 text-sm">{kycConfig.pendingBanner?.title || 'Verification Under Review'}</h4>
-              <p className="text-xs text-amber-800 mt-1">
-                {kycConfig.pendingBanner?.description || `Your documents were submitted on ${verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString() : 'recently'}. Document uploads are locked while our compliance team reviews your business registration.`}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Verified Notice */}
-        {status === 'verified' && (
-          <div className="mb-6 p-4 sm:p-5 bg-[#e4f6ea] border border-[#cfe9d8] rounded-2xl flex items-start gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-[#c5ebd1] text-[#14753a] flex items-center justify-center shrink-0 font-bold">
-              ✓
-            </div>
-            <div>
-              <h4 className="font-bold text-[#14753a] text-sm">{kycConfig.verifiedBanner?.title || 'Account Verified Successfully!'}</h4>
-              <p className="text-xs text-[#216b3d] mt-1">
-                {kycConfig.verifiedBanner?.description || 'Your business is verified. All your active jobs are now live and visible to candidates with the green Verified Employer badge.'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Page Titles */}
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0f172a] mb-1">
-          {kycConfig.pageTitle || 'Get your company verified'}
-        </h1>
-        <p className="text-sm sm:text-base text-[#5a6a61] mb-7">
-          {kycConfig.pageSubtitle || 'Upload documents. Our team reviews them and your jobs go live for candidates.'}
-        </p>
-
-        {/* Stepper Bar */}
-        <div className="flex items-center gap-3 mb-8 overflow-x-auto pb-2">
-          {/* Step 1 */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
-              hasTax ? 'bg-[#1f9d4c] text-white' : 'bg-[#0f172a] text-white'
-            }`}>
-              {hasTax ? (
-                <svg className="w-4 h-4 fill-none stroke-current stroke-3" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              ) : '1'}
-            </div>
-            <span className={`text-sm ${hasTax ? 'font-bold text-[#0f172a]' : 'font-semibold text-gray-700'}`}>
-              {kycConfig.step1Label || 'Tax document'}
-            </span>
+          {/* Title & Subtitle Preview */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{kycConfig.pageTitle || 'Get your company verified'}</h2>
+            <p className="text-sm text-gray-500 mt-1">{kycConfig.pageSubtitle || 'Upload 2 documents. Our team reviews them and your jobs go live for candidates.'}</p>
           </div>
 
-          <div className={`flex-1 h-0.5 min-w-[30px] transition-colors ${hasTax ? 'bg-[#1f9d4c]' : 'bg-[#d3dbd6]'}`} />
-
-          {/* Step 2 */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
-              hasIncorp ? 'bg-[#1f9d4c] text-white' : (hasTax ? 'bg-[#0f172a] text-white' : 'bg-[#e3e8e5] text-[#5a6a61]')
-            }`}>
-              {hasIncorp ? (
-                <svg className="w-4 h-4 fill-none stroke-current stroke-3" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              ) : '2'}
+          {/* Stepper Preview */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-1 text-xs font-bold">
+            <div className={`flex items-center gap-2 ${hasTax ? 'text-emerald-800' : 'text-emerald-800'}`}>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white ${hasTax ? 'bg-emerald-600' : 'bg-emerald-600'}`}>
+                {hasTax ? '✓' : '1'}
+              </span>
+              <span>{kycConfig.step1Label || 'Company KYC document'}</span>
             </div>
-            <span className={`text-sm ${hasIncorp ? 'font-bold text-[#0f172a]' : 'font-semibold text-gray-700'}`}>
-              {kycConfig.step2Label || 'Incorporation document'}
-            </span>
-          </div>
-
-          <div className={`flex-1 h-0.5 min-w-[30px] transition-colors ${hasIncorp ? 'bg-[#1f9d4c]' : 'bg-[#d3dbd6]'}`} />
-
-          {/* Step 3 */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
-              isLocked 
-                ? 'bg-[#1f9d4c] text-white' 
-                : (canSubmit ? 'bg-[#0f172a] text-white' : 'bg-[#e3e8e5] text-[#5a6a61]')
-            }`}>
-              {isLocked ? (
-                <svg className="w-4 h-4 fill-none stroke-current stroke-3" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              ) : '3'}
+            <div className={`flex-1 h-0.5 ${hasTax ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+            <div className={`flex items-center gap-2 ${hasIncorp ? 'text-emerald-800' : (hasTax ? 'text-gray-900' : 'text-gray-700')}`}>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white ${hasIncorp ? 'bg-emerald-600' : (hasTax ? 'bg-gray-900' : 'bg-gray-900')}`}>
+                {hasIncorp ? '✓' : '2'}
+              </span>
+              <span>{kycConfig.step2Label || 'User KYC document'}</span>
             </div>
-            <span className={`text-sm ${canSubmit ? 'font-bold text-[#0f172a]' : 'font-medium text-[#5a6a61]'}`}>
-              {status === 'rejected' ? (kycConfig.step3ResubmitLabel || 'Re-submit for review') : (kycConfig.step3Label || 'Submit for review')}
-            </span>
+            <div className={`flex-1 h-0.5 ${hasIncorp ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+            <div className={`flex items-center gap-2 ${isLocked ? 'text-emerald-800' : 'text-gray-400'}`}>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white ${isLocked ? 'bg-emerald-600' : 'bg-gray-200 text-gray-600'}`}>
+                {isLocked ? '✓' : '3'}
+              </span>
+              <span>{status === 'rejected' ? (kycConfig.step3ResubmitLabel || 'Re-submit for review') : (kycConfig.step3Label || 'Submit for review')}</span>
+            </div>
           </div>
-        </div>
 
         {/* 2-Column Responsive Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
@@ -687,50 +715,46 @@ export default function VerificationPage({ employerProfile }) {
           {/* ================= LEFT COLUMN: UPLOAD CARDS ================= */}
           <div className="flex flex-col gap-5">
 
-            {/* CARD 1: TAX DOCUMENT */}
-            <div className={`bg-white rounded-2xl p-6 border transition-all ${
-              hasTax ? 'border-[#1f9d4c] shadow-xs' : 'border-[#e3e8e5]'
+            {/* CARD 1: COMPANY KYC DOCUMENT */}
+            <div className={`rounded-xl p-4 transition-all ${
+              hasTax 
+                ? 'border border-emerald-500 bg-white shadow-2xs' 
+                : 'border border-emerald-500/80 bg-emerald-50/20 shadow-2xs'
             }`}>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                    hasTax ? 'bg-[#1f9d4c] text-white' : 'bg-[#0f172a] text-white'
-                  }`}>
-                    1
-                  </div>
-                  <h2 className="text-lg font-bold text-[#0f172a]">
-                    {kycConfig.taxDoc?.title || 'Tax document'}
-                  </h2>
-                </div>
+              <div className="flex items-center justify-between mb-1">
+                <b className="text-sm font-bold text-gray-900">
+                  {kycConfig.taxDoc?.title || 'Company KYC document'}
+                </b>
                 {hasTax ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#e4f6ea] text-[#14753a]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                     {kycConfig.taxDoc?.doneBadgeText || 'Done'}
                   </span>
                 ) : isTaxMandatory ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fdecec] text-[#b42318]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
                     {kycConfig.taxDoc?.requiredBadgeText || 'Required'}
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eef1ef] text-[#4b5a52]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700">
                     {kycConfig.taxDoc?.optionalBadgeText || 'Optional'}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-[#5a6a61] ml-11 mb-4">
-                {kycConfig.taxDoc?.helpText || 'Any one is enough. Document must be in your company name.'}
+              <p className="text-xs text-gray-500 mb-3">
+                {kycConfig.taxDoc?.helpText || 'Any one is enough. Document must be in your registered company name.'}
               </p>
 
               {/* Doc Type Selector Chips */}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-1.5 mb-3">
                 {activeTaxOptions.map((item) => (
                   <button
                     key={item.type}
                     type="button"
+                    disabled={isLocked}
                     onClick={() => setSelectedTaxDocType(item.type)}
-                    className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
                       selectedTaxDocType === item.type
-                        ? 'bg-[#e4f6ea] border-[#1f9d4c] text-[#14753a] font-bold shadow-2xs'
-                        : 'bg-white border-[#d3dbd6] text-[#2b3a32] hover:bg-gray-50'
+                        ? 'bg-emerald-600 text-white border border-emerald-600 shadow-xs'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-400 shadow-2xs'
                     }`}
                   >
                     {item.label}
@@ -740,33 +764,33 @@ export default function VerificationPage({ employerProfile }) {
 
               {/* Uploaded Documents List (Strict 1 Document) */}
               {taxDocs.length > 0 && (
-                <div className="space-y-2 mb-3">
+                <div className="space-y-2 mb-2">
                   {taxDocs.map((doc) => (
                     <div
                       key={doc._id}
-                      className="flex items-center justify-between gap-3 border border-[#cfe9d8] bg-[#f2fbf5] rounded-xl p-3.5"
+                      className="flex items-center justify-between gap-3 border border-emerald-200 bg-emerald-50/50 rounded-xl p-3"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-lg bg-[#e4f6ea] text-[#14753a] flex items-center justify-center shrink-0">
-                          <svg className="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
-                            {doc.fileName || 'Tax Document'}
+                          <p className="font-bold text-xs text-gray-900 truncate">
+                            {doc.fileName || 'Company KYC Document'}
                           </p>
-                          <p className="text-xs text-[#5a6a61]">
+                          <p className="text-[11px] text-gray-500">
                             {getDocTypeDisplayLabel(doc.docType)} · {doc.fileSize ? formatBytes(doc.fileSize) : 'under 300 KB'} · Uploaded
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => setPreviewDoc(doc)}
-                          className="px-3 py-1.5 bg-white border border-[#d3dbd6] text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer shadow-2xs"
+                          className="px-2.5 py-1 bg-white border border-gray-200 text-xs font-semibold text-gray-700 rounded-lg hover:bg-gray-50 cursor-pointer shadow-2xs"
                         >
                           Preview
                         </button>
@@ -778,7 +802,7 @@ export default function VerificationPage({ employerProfile }) {
                                 setSelectedTaxDocType(doc.docType);
                                 taxFileInputRef.current?.click();
                               }}
-                              className="px-3 py-1.5 bg-white border border-[#1f9d4c] text-[#14753a] text-xs font-semibold rounded-lg hover:bg-[#e4f6ea] cursor-pointer shadow-2xs"
+                              className="px-2.5 py-1 bg-white border border-emerald-600 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 cursor-pointer shadow-2xs"
                               title="Replace this document with another file"
                             >
                               Replace
@@ -787,9 +811,12 @@ export default function VerificationPage({ employerProfile }) {
                               type="button"
                               onClick={() => handleDelete(doc._id)}
                               disabled={deletingDocId === doc._id}
-                              className="px-3 py-1.5 bg-white border border-[#f0c4c0] text-[#b42318] text-xs font-semibold rounded-lg hover:bg-red-50 cursor-pointer disabled:opacity-50 shadow-2xs"
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                              title="Remove document"
                             >
-                              {deletingDocId === doc._id ? '...' : 'Remove'}
+                              <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
                           </>
                         )}
@@ -801,8 +828,8 @@ export default function VerificationPage({ employerProfile }) {
 
               {/* Upload in progress banner when replacing */}
               {taxDocs.length > 0 && (compressingDocType === selectedTaxDocType || uploadingDocType === selectedTaxDocType) && (
-                <div className="mb-3 py-2 px-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2.5 text-emerald-800 text-xs font-bold">
-                  <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                <div className="mb-2 py-2 px-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                  <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
                   <span>{compressingMessage || 'Uploading replacement document...'}</span>
                 </div>
               )}
@@ -820,7 +847,7 @@ export default function VerificationPage({ employerProfile }) {
                 }}
               />
 
-              {/* Upload Dropzone - ONLY shown if NO tax document has been uploaded yet */}
+              {/* Upload Dropzone - ONLY shown if NO company KYC document has been uploaded yet */}
               {!isLocked && taxDocs.length === 0 && (
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragOverTax(true); }}
@@ -831,34 +858,34 @@ export default function VerificationPage({ employerProfile }) {
                     const file = e.dataTransfer.files?.[0];
                     if (file) processAndUploadFile(file, 'tax', selectedTaxDocType);
                   }}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center flex flex-col items-center justify-center transition-all ${
+                  className={`border-2 border-dashed rounded-xl p-4 sm:p-5 text-center flex flex-col items-center justify-center transition-all ${
                     dragOverTax
-                      ? 'border-[#1f9d4c] bg-[#e4f6ea]/30'
-                      : 'border-[#b9c6bf] bg-[#fafcfb] hover:border-[#1f9d4c]/60 hover:bg-white'
+                      ? 'border-emerald-600 bg-emerald-50/40'
+                      : 'border-gray-200 bg-[#fbfdfc] hover:border-emerald-500 hover:bg-white'
                   }`}
                 >
                   {compressingDocType === selectedTaxDocType || uploadingDocType === selectedTaxDocType ? (
-                    <div className="py-2 flex flex-col items-center gap-2 text-emerald-700">
-                      <div className="w-7 h-7 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="py-2 flex flex-col items-center gap-1.5 text-emerald-700">
+                      <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                       <span className="text-xs font-bold">{compressingMessage || 'Uploading document...'}</span>
                     </div>
                   ) : (
                     <>
-                      <div className="w-10 h-10 rounded-full bg-[#e4f6ea] text-[#1f9d4c] flex items-center justify-center mb-2">
-                        <svg className="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mb-1.5">
+                        <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                       </div>
-                      <p className="font-semibold text-sm text-[#0f172a] mb-0.5">
-                        Drag & drop {activeTaxOptions.find(d => d.type === selectedTaxDocType)?.label || 'Tax Document'} here
+                      <p className="font-semibold text-xs text-gray-900 mb-0.5">
+                        Drag & drop {activeTaxOptions.find(d => d.type === selectedTaxDocType)?.label || 'Company KYC Document'} here
                       </p>
-                      <p className="text-xs text-[#5a6a61] mb-3">
+                      <p className="text-[11px] text-gray-400 mb-2">
                         PDF, JPG or PNG · <strong className="text-emerald-700 font-semibold">under 300 KB</strong> (Auto-compressed)
                       </p>
                       <button
                         type="button"
                         onClick={() => taxFileInputRef.current?.click()}
-                        className="px-4 py-2 bg-[#1f9d4c] hover:bg-[#18803e] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
                       >
                         Choose file
                       </button>
@@ -868,50 +895,46 @@ export default function VerificationPage({ employerProfile }) {
               )}
             </div>
 
-            {/* CARD 2: INCORPORATION DOCUMENT */}
-            <div className={`bg-white rounded-2xl p-6 border transition-all ${
-              hasIncorp ? 'border-[#1f9d4c] shadow-xs' : 'border-[#0f172a] shadow-md'
+            {/* CARD 2: USER KYC DOCUMENT */}
+            <div className={`rounded-xl p-4 transition-all ${
+              hasIncorp 
+                ? 'border border-emerald-500 bg-white shadow-2xs' 
+                : 'border border-gray-200 bg-white shadow-2xs'
             }`}>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                    hasIncorp ? 'bg-[#1f9d4c] text-white' : 'bg-[#0f172a] text-white'
-                  }`}>
-                    2
-                  </div>
-                  <h2 className="text-lg font-bold text-[#0f172a]">
-                    {kycConfig.incorpDoc?.title || 'Incorporation document'}
-                  </h2>
-                </div>
+              <div className="flex items-center justify-between mb-1">
+                <b className="text-sm font-bold text-gray-900">
+                  {kycConfig.incorpDoc?.title || 'User KYC document'}
+                </b>
                 {hasIncorp ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#e4f6ea] text-[#14753a]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                     {kycConfig.incorpDoc?.doneBadgeText || 'Done'}
                   </span>
                 ) : isIncorpMandatory ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fdecec] text-[#b42318]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
                     {kycConfig.incorpDoc?.requiredBadgeText || 'Required'}
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eef1ef] text-[#4b5a52]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700">
                     {kycConfig.incorpDoc?.optionalBadgeText || 'Optional'}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-[#5a6a61] ml-11 mb-4">
-                {kycConfig.incorpDoc?.helpText || 'Proof that your business is legally registered. Pick one and upload it.'}
+              <p className="text-xs text-gray-500 mb-3">
+                {kycConfig.incorpDoc?.helpText || 'Identity proof of the authorized person, founder, or employer. Pick one and upload it.'}
               </p>
 
               {/* Doc Type Selector Chips */}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-1.5 mb-3">
                 {activeIncorpOptions.map((item) => (
                   <button
                     key={item.type}
                     type="button"
+                    disabled={isLocked}
                     onClick={() => setSelectedIncorpDocType(item.type)}
-                    className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
                       selectedIncorpDocType === item.type
-                        ? 'bg-[#e4f6ea] border-[#1f9d4c] text-[#14753a] font-bold shadow-2xs'
-                        : 'bg-white border-[#d3dbd6] text-[#2b3a32] hover:bg-gray-50'
+                        ? 'bg-emerald-600 text-white border border-emerald-600 shadow-xs'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-400 shadow-2xs'
                     }`}
                   >
                     {item.label}
@@ -921,33 +944,33 @@ export default function VerificationPage({ employerProfile }) {
 
               {/* Uploaded Documents List (Strict 1 Document) */}
               {incorpDocs.length > 0 && (
-                <div className="space-y-2 mb-3">
+                <div className="space-y-2 mb-2">
                   {incorpDocs.map((doc) => (
                     <div
                       key={doc._id}
-                      className="flex items-center justify-between gap-3 border border-[#cfe9d8] bg-[#f2fbf5] rounded-xl p-3.5"
+                      className="flex items-center justify-between gap-3 border border-emerald-200 bg-emerald-50/50 rounded-xl p-3"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-lg bg-[#e4f6ea] text-[#14753a] flex items-center justify-center shrink-0">
-                          <svg className="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                           </svg>
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-xs sm:text-sm text-gray-900 truncate">
-                            {doc.fileName || 'Incorporation Document'}
+                          <p className="font-bold text-xs text-gray-900 truncate">
+                            {doc.fileName || 'User KYC Document'}
                           </p>
-                          <p className="text-xs text-[#5a6a61]">
+                          <p className="text-[11px] text-gray-500">
                             {getDocTypeDisplayLabel(doc.docType)} · {doc.fileSize ? formatBytes(doc.fileSize) : 'under 300 KB'} · Uploaded
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => setPreviewDoc(doc)}
-                          className="px-3 py-1.5 bg-white border border-[#d3dbd6] text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer shadow-2xs"
+                          className="px-2.5 py-1 bg-white border border-gray-200 text-xs font-semibold text-gray-700 rounded-lg hover:bg-gray-50 cursor-pointer shadow-2xs"
                         >
                           Preview
                         </button>
@@ -959,7 +982,7 @@ export default function VerificationPage({ employerProfile }) {
                                 setSelectedIncorpDocType(doc.docType);
                                 incorpFileInputRef.current?.click();
                               }}
-                              className="px-3 py-1.5 bg-white border border-[#1f9d4c] text-[#14753a] text-xs font-semibold rounded-lg hover:bg-[#e4f6ea] cursor-pointer shadow-2xs"
+                              className="px-2.5 py-1 bg-white border border-emerald-600 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 cursor-pointer shadow-2xs"
                               title="Replace this document with another file"
                             >
                               Replace
@@ -968,9 +991,12 @@ export default function VerificationPage({ employerProfile }) {
                               type="button"
                               onClick={() => handleDelete(doc._id)}
                               disabled={deletingDocId === doc._id}
-                              className="px-3 py-1.5 bg-white border border-[#f0c4c0] text-[#b42318] text-xs font-semibold rounded-lg hover:bg-red-50 cursor-pointer disabled:opacity-50 shadow-2xs"
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                              title="Remove document"
                             >
-                              {deletingDocId === doc._id ? '...' : 'Remove'}
+                              <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
                           </>
                         )}
@@ -982,8 +1008,8 @@ export default function VerificationPage({ employerProfile }) {
 
               {/* Upload in progress banner when replacing */}
               {incorpDocs.length > 0 && (compressingDocType === selectedIncorpDocType || uploadingDocType === selectedIncorpDocType) && (
-                <div className="mb-3 py-2 px-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2.5 text-emerald-800 text-xs font-bold">
-                  <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                <div className="mb-2 py-2 px-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                  <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
                   <span>{compressingMessage || 'Uploading replacement document...'}</span>
                 </div>
               )}
@@ -1001,7 +1027,7 @@ export default function VerificationPage({ employerProfile }) {
                 }}
               />
 
-              {/* Upload Dropzone - ONLY shown if NO incorporation document has been uploaded yet */}
+              {/* Upload Dropzone - ONLY shown if NO user KYC document has been uploaded yet */}
               {!isLocked && incorpDocs.length === 0 && (
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragOverIncorp(true); }}
@@ -1012,34 +1038,34 @@ export default function VerificationPage({ employerProfile }) {
                     const file = e.dataTransfer.files?.[0];
                     if (file) processAndUploadFile(file, 'incorporation', selectedIncorpDocType);
                   }}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center flex flex-col items-center justify-center transition-all ${
+                  className={`border-2 border-dashed rounded-xl p-4 sm:p-5 text-center flex flex-col items-center justify-center transition-all ${
                     dragOverIncorp
-                      ? 'border-[#1f9d4c] bg-[#e4f6ea]/30'
-                      : 'border-[#b9c6bf] bg-[#fafcfb] hover:border-[#1f9d4c]/60 hover:bg-white'
+                      ? 'border-emerald-600 bg-emerald-50/40'
+                      : 'border-gray-200 bg-[#fbfdfc] hover:border-emerald-500 hover:bg-white'
                   }`}
                 >
                   {compressingDocType === selectedIncorpDocType || uploadingDocType === selectedIncorpDocType ? (
-                    <div className="py-2 flex flex-col items-center gap-2 text-emerald-700">
-                      <div className="w-7 h-7 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="py-2 flex flex-col items-center gap-1.5 text-emerald-700">
+                      <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                       <span className="text-xs font-bold">{compressingMessage || 'Uploading document...'}</span>
                     </div>
                   ) : (
                     <>
-                      <div className="w-10 h-10 rounded-full bg-[#e4f6ea] text-[#1f9d4c] flex items-center justify-center mb-2">
-                        <svg className="w-5 h-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mb-1.5">
+                        <svg className="w-4 h-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                       </div>
-                      <p className="font-semibold text-sm text-[#0f172a] mb-0.5">
-                        Drag & drop {activeIncorpOptions.find(d => d.type === selectedIncorpDocType)?.label || 'Incorporation Document'} here
+                      <p className="font-semibold text-xs text-gray-900 mb-0.5">
+                        Drag & drop {activeIncorpOptions.find(d => d.type === selectedIncorpDocType)?.label || 'User KYC Document'} here
                       </p>
-                      <p className="text-xs text-[#5a6a61] mb-3">
+                      <p className="text-[11px] text-gray-400 mb-2">
                         PDF, JPG or PNG · <strong className="text-emerald-700 font-semibold">under 300 KB</strong> (Auto-compressed)
                       </p>
                       <button
                         type="button"
                         onClick={() => incorpFileInputRef.current?.click()}
-                        className="px-4 py-2 bg-[#1f9d4c] hover:bg-[#18803e] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
                       >
                         Choose file
                       </button>
@@ -1050,42 +1076,37 @@ export default function VerificationPage({ employerProfile }) {
             </div>
 
             {/* CARD 3: EXTRA DOCUMENTS (OPTIONAL / CMS MANAGED) */}
-            <div className="bg-white rounded-2xl p-6 border border-[#e3e8e5]">
+            <div className="rounded-xl p-4 border border-gray-200 bg-white shadow-2xs">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#e3e8e5] text-[#5a6a61] flex items-center justify-center font-bold text-sm shrink-0">
-                    +
+                <div>
+                  <div className="flex items-center gap-2">
+                    <b className="text-sm font-bold text-gray-900">
+                      {kycConfig.extraDoc?.title || 'Extra documents'}
+                    </b>
+                    {hasExtra ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {kycConfig.extraDoc?.doneBadgeText || 'Done'}
+                      </span>
+                    ) : isExtraMandatory ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
+                        {kycConfig.extraDoc?.requiredBadgeText || 'Required'}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700">
+                        {kycConfig.extraDoc?.optionalBadgeText || 'Optional'}
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <b className="text-base text-[#0f172a]">
-                        {kycConfig.extraDoc?.title || 'Extra documents'}
-                      </b>
-                      {hasExtra ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e4f6ea] text-[#14753a]">
-                          {kycConfig.extraDoc?.doneBadgeText || 'Done'}
-                        </span>
-                      ) : isExtraMandatory ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#fdecec] text-[#b42318]">
-                          {kycConfig.extraDoc?.requiredBadgeText || 'Required'}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#eef1ef] text-[#4b5a52]">
-                          {kycConfig.extraDoc?.optionalBadgeText || 'Optional'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs sm:text-sm text-[#5a6a61] mt-0.5">
-                      {kycConfig.extraDoc?.helpText || 'Address proof, authorization letter, signatory ID, staffing license. Speeds up approval.'}
-                    </p>
-                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {kycConfig.extraDoc?.helpText || 'Address proof, authorization letter, signatory ID, staffing license. Speeds up approval.'}
+                  </p>
                 </div>
 
                 {!isLocked && (
                   <button
                     type="button"
                     onClick={() => setExtraDocsOpen(prev => !prev)}
-                    className="px-3.5 py-1.5 bg-white border border-[#d3dbd6] hover:bg-gray-50 text-[#0f172a] text-xs sm:text-sm font-semibold rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
+                    className="px-3 py-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-800 text-xs font-semibold rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
                   >
                     {extraDocsOpen ? 'Close' : 'Add'}
                   </button>
@@ -1094,7 +1115,7 @@ export default function VerificationPage({ employerProfile }) {
 
               {/* Uploaded Extra Documents */}
               {extraDocs.length > 0 && (
-                <div className="space-y-2 mt-4 pt-3 border-t border-gray-100">
+                <div className="space-y-2 mt-3 pt-3 border-t border-gray-100">
                   {extraDocs.map((doc) => (
                     <div
                       key={doc._id}
@@ -1142,17 +1163,17 @@ export default function VerificationPage({ employerProfile }) {
 
               {/* Extra Docs Upload Drawer */}
               {extraDocsOpen && !isLocked && (
-                <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                  <div className="flex flex-wrap gap-2">
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
                     {activeExtraOptions.map((item) => (
                       <button
                         key={item.type}
                         type="button"
                         onClick={() => setSelectedExtraDocType(item.type)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${
                           selectedExtraDocType === item.type
-                            ? 'bg-[#e4f6ea] border-[#1f9d4c] text-[#14753a] font-bold'
-                            : 'bg-white border-[#d3dbd6] text-[#2b3a32] hover:bg-gray-50'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 shadow-2xs'
                         }`}
                       >
                         {item.label}
@@ -1170,10 +1191,10 @@ export default function VerificationPage({ employerProfile }) {
                       const activeOpt = activeExtraOptions.find(d => d.type === selectedExtraDocType);
                       if (file && activeOpt) processAndUploadFile(file, activeOpt.category || 'other', selectedExtraDocType);
                     }}
-                    className={`border-2 border-dashed rounded-xl p-5 text-center flex flex-col items-center justify-center transition-all ${
+                    className={`border-2 border-dashed rounded-xl p-4 text-center flex flex-col items-center justify-center transition-all ${
                       dragOverExtra
-                        ? 'border-[#1f9d4c] bg-[#e4f6ea]/30'
-                        : 'border-[#b9c6bf] bg-[#fafcfb] hover:border-[#1f9d4c]/60 hover:bg-white'
+                        ? 'border-emerald-600 bg-emerald-50/40'
+                        : 'border-gray-200 bg-[#fbfdfc] hover:border-emerald-500 hover:bg-white'
                     }`}
                   >
                     <input
@@ -1190,22 +1211,22 @@ export default function VerificationPage({ employerProfile }) {
                     />
 
                     {compressingDocType === selectedExtraDocType || uploadingDocType === selectedExtraDocType ? (
-                      <div className="py-2 flex flex-col items-center gap-2 text-emerald-700">
-                        <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                      <div className="py-2 flex flex-col items-center gap-1.5 text-emerald-700">
+                        <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                         <span className="text-xs font-bold">{compressingMessage || 'Uploading document...'}</span>
                       </div>
                     ) : (
                       <>
-                        <p className="font-semibold text-xs sm:text-sm text-[#0f172a] mb-0.5">
-                          Upload {activeExtraOptions.find(d => d.type === selectedExtraDocType)?.label || 'Document'}
+                        <p className="font-semibold text-xs text-gray-900 mb-0.5">
+                          Drag & drop {activeExtraOptions.find(d => d.type === selectedExtraDocType)?.label || 'Document'} here
                         </p>
-                        <p className="text-[11px] text-[#5a6a61] mb-2.5">
-                          PDF, JPG or PNG · under 300 KB (Auto-compressed)
+                        <p className="text-[11px] text-gray-400 mb-2">
+                          PDF, JPG or PNG · <strong className="text-emerald-700 font-semibold">under 300 KB</strong>
                         </p>
                         <button
                           type="button"
                           onClick={() => extraFileInputRef.current?.click()}
-                          className="px-3.5 py-1.5 bg-[#1f9d4c] hover:bg-[#18803e] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
                         >
                           Choose file
                         </button>
@@ -1218,65 +1239,44 @@ export default function VerificationPage({ employerProfile }) {
 
           </div>
 
-          {/* ================= RIGHT COLUMN: PROGRESS & SUBMIT (STICKY) ================= */}
-          <div className="flex flex-col gap-5 lg:sticky lg:top-5">
+          {/* ================= RIGHT COLUMN: PROGRESS & BENEFITS SIDEBAR ================= */}
+          <div className="space-y-4">
 
             {/* PROGRESS CARD */}
-            <div className="bg-white rounded-2xl p-6 border border-[#e3e8e5] shadow-xs">
-              <div className="flex justify-between items-baseline mb-2">
-                <b className="text-base text-[#0f172a]">
-                  {kycConfig.progressCard?.title || 'Your progress'}
-                </b>
-                <span className="text-xs font-medium text-[#5a6a61]">
-                  {displayDoneCount} of {displayTotalCount} done
-                </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="h-2 bg-[#e3e8e5] rounded-full overflow-hidden mb-4">
+            <div className="border border-gray-200 rounded-xl p-4 bg-white shadow-2xs">
+              <b className="text-xs font-bold text-gray-900 block mb-2">{kycConfig.progressCard?.title || 'Your progress'}</b>
+              <div className="h-1.5 bg-gray-200 rounded-full mb-3 overflow-hidden">
                 <div
-                  className="h-full bg-[#1f9d4c] transition-all duration-300 rounded-full"
+                  className="h-full bg-emerald-600 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(100, Math.round((displayDoneCount / Math.max(1, displayTotalCount)) * 100))}%` }}
                 />
               </div>
 
               {/* Checklist */}
-              <div className="flex flex-col gap-2.5 text-sm mb-5">
+              <div className="space-y-1.5 text-xs text-gray-600 mb-4">
                 {(isTaxMandatory || hasTax) && (
-                  <div className="flex items-center gap-2.5">
-                    {hasTax ? (
-                      <span className="text-[#14753a] font-bold text-base">✓</span>
-                    ) : (
-                      <span className="text-[#b42318] text-base font-bold">○</span>
-                    )}
-                    <span className={hasTax ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
-                      {kycConfig.taxDoc?.title || 'Tax document'}
+                  <div className="flex items-center gap-1.5">
+                    {hasTax ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-gray-400">○</span>}
+                    <span className={hasTax ? 'font-medium text-gray-900' : 'text-gray-600'}>
+                      {kycConfig.taxDoc?.title || 'Company KYC document'} ({isTaxMandatory ? 'Required' : 'Optional'})
                     </span>
                   </div>
                 )}
 
                 {(isIncorpMandatory || hasIncorp) && (
-                  <div className="flex items-center gap-2.5">
-                    {hasIncorp ? (
-                      <span className="text-[#14753a] font-bold text-base">✓</span>
-                    ) : (
-                      <span className="text-[#b42318] text-base font-bold">○</span>
-                    )}
-                    <span className={hasIncorp ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
-                      {kycConfig.incorpDoc?.title || 'Incorporation document'}
+                  <div className="flex items-center gap-1.5">
+                    {hasIncorp ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-gray-400">○</span>}
+                    <span className={hasIncorp ? 'font-medium text-gray-900' : 'text-gray-600'}>
+                      {kycConfig.incorpDoc?.title || 'User KYC document'} ({isIncorpMandatory ? 'Required' : 'Optional'})
                     </span>
                   </div>
                 )}
 
                 {(isExtraMandatory || hasExtra) && (
-                  <div className="flex items-center gap-2.5">
-                    {hasExtra ? (
-                      <span className="text-[#14753a] font-bold text-base">✓</span>
-                    ) : (
-                      <span className="text-[#b42318] text-base font-bold">○</span>
-                    )}
-                    <span className={hasExtra ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
-                      {kycConfig.extraDoc?.title || 'Extra documents'}
+                  <div className="flex items-center gap-1.5">
+                    {hasExtra ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-gray-400">○</span>}
+                    <span className={hasExtra ? 'font-medium text-gray-900' : 'text-gray-600'}>
+                      {kycConfig.extraDoc?.title || 'Extra documents'} ({isExtraMandatory ? 'Required' : 'Optional'})
                     </span>
                   </div>
                 )}
@@ -1284,14 +1284,14 @@ export default function VerificationPage({ employerProfile }) {
 
               {/* Submit for Verification Button */}
               {isLocked ? (
-                <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-center">
+                <div className="py-2.5 px-3 bg-gray-50 border border-gray-200 rounded-lg text-center">
                   <p className="text-xs font-bold text-gray-700">
-                    {status === 'pending' ? 'Verification In Review' : 'Account Verified'}
+                    {status === 'pending' ? (kycConfig.progressCard?.lockedPendingTitle || 'Verification In Review') : (kycConfig.progressCard?.lockedVerifiedTitle || 'Account Verified')}
                   </p>
                   <p className="text-[11px] text-gray-500 mt-0.5">
                     {status === 'pending'
-                      ? 'Our team is reviewing your documents.'
-                      : 'All candidate visibility privileges are active.'}
+                      ? (kycConfig.progressCard?.lockedPendingDesc || 'Our team is reviewing your documents.')
+                      : (kycConfig.progressCard?.lockedVerifiedDesc || 'All candidate visibility privileges are active.')}
                   </p>
                 </div>
               ) : (
@@ -1300,36 +1300,30 @@ export default function VerificationPage({ employerProfile }) {
                     type="button"
                     onClick={() => setConfirmSubmitOpen(true)}
                     disabled={!canSubmit || submitting}
-                    className={`w-full py-3 px-4 rounded-xl font-bold text-sm transition-all shadow-xs cursor-pointer ${
-                      canSubmit
-                        ? 'bg-[#1f9d4c] hover:bg-[#18803e] text-white active:scale-98'
-                        : 'bg-[#e3e8e5] text-[#7b8a82] cursor-not-allowed'
-                    }`}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting 
-                      ? (status === 'rejected' ? 'Re-submitting...' : 'Submitting...') 
+                      ? (status === 'rejected' ? (kycConfig.progressCard?.resubmittingText || 'Re-submitting...') : (kycConfig.progressCard?.submittingText || 'Submitting...')) 
                       : (status === 'rejected' 
                           ? (kycConfig.progressCard?.resubmitButtonText || 'Re-submit for verification') 
                           : (kycConfig.progressCard?.submitButtonText || 'Submit for verification'))}
                   </button>
 
-                  <p className="text-xs text-[#5a6a61] text-center mt-2.5">
+                  <p className="text-[11px] text-gray-400 text-center mt-2">
                     {!canSubmit
                       ? 'Upload all required documents to continue'
                       : (status === 'rejected'
-                          ? 'Updated documents ready! Click to re-submit for review.'
-                          : 'All requirements met! Ready to submit.')}
+                          ? (kycConfig.progressCard?.resubmitReadyText || 'Updated documents ready! Click to re-submit for review.')
+                          : (kycConfig.progressCard?.requirementsMetText || 'All requirements met! Ready to submit.'))}
                   </p>
                 </>
               )}
             </div>
 
             {/* BENEFITS CARD */}
-            <div className="bg-[#f2fbf5] border border-[#cfe9d8] rounded-2xl p-6">
-              <b className="text-base text-[#0f172a] block mb-3.5">
-                {kycConfig.benefitsCard?.title || 'After approval you get'}
-              </b>
-              <div className="flex flex-col gap-3 text-xs sm:text-sm text-gray-800 leading-relaxed">
+            <div className="border border-emerald-200 bg-emerald-50/50 rounded-xl p-4 text-xs shadow-2xs">
+              <b className="text-gray-900 font-bold block mb-2">{kycConfig.benefitsCard?.title || 'After approval you get'}</b>
+              <div className="space-y-1.5 text-gray-700">
                 {(kycConfig.benefitsCard?.benefits && kycConfig.benefitsCard.benefits.length > 0 
                   ? kycConfig.benefitsCard.benefits 
                   : [
@@ -1338,8 +1332,8 @@ export default function VerificationPage({ employerProfile }) {
                       'Tracked application links enabled'
                     ]
                 ).map((benefit, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5">
-                    <span className="text-[#14753a] font-bold text-base leading-none">✓</span>
+                  <div key={idx} className="flex items-start gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span>
                     <span>{benefit}</span>
                   </div>
                 ))}
@@ -1349,6 +1343,8 @@ export default function VerificationPage({ employerProfile }) {
           </div>
 
         </div>
+
+      </div>
 
       </div>
 
@@ -1369,11 +1365,11 @@ export default function VerificationPage({ employerProfile }) {
             </p>
             <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-700 space-y-1 mb-5">
               <div className="flex justify-between">
-                <span className="text-gray-500">{kycConfig.taxDoc?.title || 'Tax Documents'}:</span>
+                <span className="text-gray-500">{kycConfig.taxDoc?.title || 'Company KYC Documents'}:</span>
                 <span className="font-semibold">{taxDocs.length} uploaded</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">{kycConfig.incorpDoc?.title || 'Incorporation Documents'}:</span>
+                <span className="text-gray-500">{kycConfig.incorpDoc?.title || 'User KYC Documents'}:</span>
                 <span className="font-semibold">{incorpDocs.length} uploaded</span>
               </div>
               {extraDocs.length > 0 && (

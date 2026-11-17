@@ -821,4 +821,18 @@
   background-color: rgba(148, 163, 184, 0.85);
 }
 
+/* When job details drawer is open on mobile: hide search bar & start drawer right under navbar */
+@media (max-width: 860px) {
+  body.sj-drawer-open .sj-mobile-search-strip {
+    display: none !important;
+  }
+
+  body.sj-drawer-open .sj-drawer-backdrop:not(.sj-drawer-sidebar),
+  body.sj-drawer-open .sj-drawer-panel:not(.sj-drawer-sidebar) {
+    top: 60px !important;
+    height: calc(100vh - 60px) !important;
+  }
+}
+
+
 

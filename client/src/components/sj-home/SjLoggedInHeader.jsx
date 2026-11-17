@@ -857,6 +857,7 @@ export default function SjLoggedInHeader({
   onNavigateSecurity,
   onSignOut,
   onLogoClick,
+  hideSearchOnMobile = false,
 }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null); // 'experience' | 'datePosted' | 'suggestions' | null
@@ -865,28 +866,8 @@ export default function SjLoggedInHeader({
   // Mobile Search & Filter state
   const [mobileFilterSheet, setMobileFilterSheet] = useState(null); // 'experience' | 'datePosted' | 'location' | null
   const [isMobileSuggestionsOpen, setIsMobileSuggestionsOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const mobileSearchRef = useRef(null);
   const headerRef = useRef(null);
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
-    };
-    const handleClickOutside = (e) => {
-      if (headerRef.current && !headerRef.current.contains(e.target)) {
-        setIsMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    if (isMobileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKey);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isMobileMenuOpen]);
 
   // Fallback internal jobs for pages that don't pass `jobs` prop
   const [internalJobs, setInternalJobs] = useState(cachedGlobalJobs);
@@ -1211,7 +1192,7 @@ export default function SjLoggedInHeader({
           {/* Profile Menu Trigger */}
           <button
             type="button"
-            className="sj-icon-btn"
+            className="sj-icon-btn sj-profile-trigger cursor-pointer"
             onClick={() => setIsDropdownOpen((prev) => !prev)}
             aria-haspopup="menu"
             aria-expanded={isDropdownOpen}
@@ -1231,28 +1212,6 @@ export default function SjLoggedInHeader({
             )}
           </button>
 
-          {/* Mobile Hamburger Toggle Button (< 860px) */}
-          <button
-            type="button"
-            className="sj-hamburger-btn min-[861px]:!hidden"
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={isMobileMenuOpen}
-          >
-            {isMobileMenuOpen ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="7" x2="20" y2="7" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="17" x2="20" y2="17" />
-              </svg>
-            )}
-          </button>
-
           {/* Profile Dropdown Component */}
           <SjProfileDropdown
             isOpen={isDropdownOpen}
@@ -1261,6 +1220,9 @@ export default function SjLoggedInHeader({
             name={userName}
             onNavigateHome={onNavigateHome || onLogoClick}
             onNavigateProfile={onNavigateProfile}
+            onNavigateMessages={onNavigateMessages}
+            unreadCount={showUnreadBadge ? effectiveUnread : 0}
+            savedCount={savedCount}
             onNavigateSaved={onNavigateSaved}
             onNavigateApplied={onNavigateApplied}
             onNavigateSecurity={onNavigateSecurity}
@@ -1269,154 +1231,8 @@ export default function SjLoggedInHeader({
         </div>
       </div>
 
-      {/* Mobile Hamburger Dropdown Drawer (< 860px) */}
-      {isMobileMenuOpen && (
-        <div className="sj-mobile-menu-drawer min-[861px]:!hidden" style={{ display: 'block' }}>
-          <div className="sj-mobile-menu-inner">
-            {/* User profile card */}
-            <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl mb-2">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={userName}
-                  className="w-11 h-11 rounded-full object-cover border border-emerald-400 shrink-0"
-                />
-              ) : (
-                <div className="w-11 h-11 rounded-full bg-[#0f172a] text-white font-bold text-sm flex items-center justify-center shrink-0">
-                  {initial}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-sm text-slate-900 truncate">{userName}</p>
-                <p className="text-xs text-slate-500 truncate">{userEmail || 'Job Seeker'}</p>
-              </div>
-            </div>
-
-            {/* Navigation links */}
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  if (onNavigateHome) onNavigateHome();
-                  else if (onLogoClick) onLogoClick();
-                  else window.location.href = '/employee';
-                }}
-                className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer text-left"
-              >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <span>Home / Job Search</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onNavigateProfile?.();
-                }}
-                className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer text-left"
-              >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span>My Profile</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onNavigateMessages?.();
-                }}
-                className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <span>Messages</span>
-                </div>
-                {showUnreadBadge && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500 text-white">
-                    {effectiveUnread > 0 ? (effectiveUnread > 9 ? '9+' : effectiveUnread) : 'New'}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onNavigateSaved?.();
-                }}
-                className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                  <span>Saved Jobs</span>
-                </div>
-                {savedCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
-                    {savedCount}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onNavigateApplied?.();
-                }}
-                className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer text-left"
-              >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Applied Jobs</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onNavigateSecurity?.();
-                }}
-                className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer text-left"
-              >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <span>Security & Password</span>
-              </button>
-            </div>
-
-            {/* Sign Out */}
-            <div className="pt-2 mt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  onSignOut?.();
-                }}
-                className="flex items-center gap-3 w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
-              >
-                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span>Sign Out</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Mobile Search & Filters Strip (< 860px) */}
-      <div className="min-[860px]:hidden px-3.5 pb-2.5 pt-0.5 border-t border-slate-100/80 bg-white">
+      <div className={`sj-mobile-search-strip min-[860px]:hidden px-3.5 pb-2.5 pt-0.5 border-t border-slate-100/80 bg-white ${hideSearchOnMobile ? '!hidden' : ''}`}>
         {/* Mobile Search Input */}
         <div className="relative flex items-center mb-2" ref={mobileSearchRef}>
           <svg className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1497,72 +1313,93 @@ export default function SjLoggedInHeader({
         </div>
 
         {/* Filter Pills Horizontal Scroll */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {/* Experience Chip */}
-          <button
-            type="button"
-            onClick={() => setMobileFilterSheet('experience')}
-            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-              experience && experience !== 'All'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
-                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-            }`}
-          >
-            <span>{experience && experience !== 'All' ? experience : 'Experience'}</span>
-            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+        {(() => {
+          const isExpActive = Boolean(experience && experience !== 'All');
+          const isDateActive = Boolean(postingDate && postingDate !== 'Any time');
+          const isLocActive = Boolean(searchLocation && searchLocation.trim() && searchLocation.toLowerCase() !== 'all');
+          const isSearchActive = Boolean(searchTerm && searchTerm.trim());
+          const hasActiveFilters = isExpActive || isDateActive || isLocActive || isSearchActive;
 
-          {/* Date Posted Chip */}
-          <button
-            type="button"
-            onClick={() => setMobileFilterSheet('datePosted')}
-            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-              postingDate && postingDate !== 'Any time'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
-                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-            }`}
-          >
-            <span>{postingDate && postingDate !== 'Any time' ? postingDate : 'Date Posted'}</span>
-            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+          const getExpText = () => {
+            if (!isExpActive) return 'Experience';
+            const parts = experience.split(',').map((s) => s.trim()).filter(Boolean);
+            if (parts.length <= 1) return parts[0] || 'Experience';
+            return `Exp (${parts.length})`;
+          };
 
-          {/* Location Chip */}
-          <button
-            type="button"
-            onClick={() => setMobileFilterSheet('location')}
-            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-              searchLocation && searchLocation.trim()
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
-                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-            }`}
-          >
-            <span className="truncate max-w-[130px]">{searchLocation && searchLocation.trim() ? searchLocation : 'Location'}</span>
-            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+          const getDateText = () => {
+            if (!isDateActive) return 'Date Posted';
+            const parts = postingDate.split(',').map((s) => s.trim()).filter(Boolean);
+            if (parts.length <= 1) return parts[0] || 'Date Posted';
+            return `Date (${parts.length})`;
+          };
 
-          {/* Reset Chip (visible only when any filter or search is active) */}
-          {((experience && experience !== 'All') || (postingDate && postingDate !== 'Any time') || (searchLocation && searchLocation.trim()) || (searchTerm && searchTerm.trim())) && (
-            <button
-              type="button"
-              onClick={() => {
-                onSearchTermChange?.('');
-                onExperienceChange?.('All');
-                onPostingDateChange?.('Any time');
-                onSearchLocationChange?.('');
-              }}
-              className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer"
-            >
-              <span>Reset</span>
-              <span>✕</span>
-            </button>
-          )}
-        </div>
+          const getLocText = () => {
+            if (!isLocActive) return 'Location';
+            const parts = searchLocation.split(',').map((s) => s.trim()).filter(Boolean);
+            if (parts.length <= 1) return parts[0] || 'Location';
+            return `Location (${parts.length})`;
+          };
+
+          const handleClearFilters = () => {
+            onSearchTermChange?.('');
+            onExperienceChange?.('All');
+            onPostingDateChange?.('Any time');
+            onSearchLocationChange?.('');
+          };
+
+          return (
+            <div className="sj-mobile-filter-pills">
+              {/* Clear filters Chip (prominently visible at front when any filter or search is active) */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="sj-mobile-clear-chip"
+                  title="Clear all filters"
+                >
+                  <span>✕ Clear filters</span>
+                </button>
+              )}
+
+              {/* Experience Chip */}
+              <button
+                type="button"
+                onClick={() => setMobileFilterSheet('experience')}
+                className={`sj-mobile-filter-chip ${isExpActive ? 'is-active' : ''}`}
+              >
+                <span className="truncate max-w-[130px]">{getExpText()}</span>
+                <svg className="w-3 h-3 opacity-60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Date Posted Chip */}
+              <button
+                type="button"
+                onClick={() => setMobileFilterSheet('datePosted')}
+                className={`sj-mobile-filter-chip ${isDateActive ? 'is-active' : ''}`}
+              >
+                <span className="truncate max-w-[130px]">{getDateText()}</span>
+                <svg className="w-3 h-3 opacity-60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {/* Location Chip */}
+              <button
+                type="button"
+                onClick={() => setMobileFilterSheet('location')}
+                className={`sj-mobile-filter-chip ${isLocActive ? 'is-active' : ''}`}
+              >
+                <span className="truncate max-w-[130px]">{getLocText()}</span>
+                <svg className="w-3 h-3 opacity-60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Mobile Filter Modal Bottom Sheet */}

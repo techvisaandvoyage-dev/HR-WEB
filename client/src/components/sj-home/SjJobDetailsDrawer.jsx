@@ -118,16 +118,28 @@ export default function SjJobDetailsDrawer({
 
   // Dynamically measure navbar height so the fullscreen view starts seamlessly right underneath the navbar
   useEffect(() => {
-    if (isSidebar) return;
+    if (!isOpen) return;
+
+    if (!isSidebar) {
+      document.body.classList.add('sj-drawer-open');
+    }
+
     const updateHeaderHeight = () => {
+      if (isSidebar) return;
+      const navInner = document.querySelector('.sj-nav-inner');
       const header = document.querySelector('.sj-header') || document.querySelector('header');
-      if (header) {
+      if (window.innerWidth <= 860) {
+        setHeaderHeight(navInner ? navInner.offsetHeight : 60);
+      } else if (header) {
         setHeaderHeight(header.offsetHeight);
       }
     };
     updateHeaderHeight();
     window.addEventListener('resize', updateHeaderHeight);
-    return () => window.removeEventListener('resize', updateHeaderHeight);
+    return () => {
+      document.body.classList.remove('sj-drawer-open');
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
   }, [isOpen, isSidebar]);
 
   // Keyboard navigation & scroll lock

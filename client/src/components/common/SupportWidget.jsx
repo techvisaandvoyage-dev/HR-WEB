@@ -7,6 +7,7 @@ import { socket } from '../../utils/socket';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const ROLE_LABELS = {
+  guest: 'Without Login',
   candidate: 'Candidate',
   employer: 'Employer',
   consultant: 'Consultant',
@@ -320,7 +321,7 @@ export default function SupportWidget() {
 
   // Guest flow state: Step 1 (contact form), Step 2 (role & issue selection)
   const [guestStep, setGuestStep] = useState(1);
-  const [guestRole, setGuestRole] = useState('candidate'); // 'candidate' | 'employer' | 'consultant'
+  const [guestRole, setGuestRole] = useState('guest'); // 'guest' | 'candidate' | 'employer' | 'consultant'
   const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '' });
   const [countryCode, setCountryCode] = useState('+91');
   const [contactErrors, setContactErrors] = useState({});

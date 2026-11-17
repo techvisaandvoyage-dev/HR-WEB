@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getAllProblems,
+  seedGuestProblems,
   createProblem,
   updateProblem,
   toggleProblemActive,
@@ -23,6 +24,7 @@ const {
 
 // Support Problems Admin Routes
 router.get('/problems', getAllProblems);
+router.post('/problems/seed-guest', seedGuestProblems);
 router.post('/problems', createProblem);
 router.put('/problems/:id', updateProblem);
 router.patch('/problems/:id/toggle', toggleProblemActive);

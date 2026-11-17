@@ -4,15 +4,8 @@ import {
   SlidersHorizontal,
   Save,
   RefreshCw,
-  Check,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
-  Tag,
-  Award,
-  Target,
-  Sliders,
-  ShieldCheck,
   Building2,
   Users
 } from 'lucide-react';
@@ -36,17 +29,12 @@ export const DEFAULT_JOB_MATCH_BANNER_CONFIG = {
 };
 
 export default function EmployerVisibilityEditor({ onSaveSuccess }) {
-  const [bannerConfig, setBannerConfig] = useState(DEFAULT_JOB_MATCH_BANNER_CONFIG);
   const [globalCardVisible, setGlobalCardVisible] = useState(true);
   const [globalCardLoading, setGlobalCardLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
-
-  // Live tester sandbox states
-  const [previewDesignation, setPreviewDesignation] = useState('Auditor');
-  const [previewSkills, setPreviewSkills] = useState('Auditing, Compliance, Taxation');
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -56,20 +44,8 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Fetch CMS homepage settings for match banner
-        const resHome = await fetch(`${API_URL}/api/homepage`);
-        const dataHome = await resHome.json();
-        if (dataHome.success && dataHome.data) {
-          const step6 = dataHome.data.employerPostJob?.step6 || dataHome.data.jobMatchBanner;
-          if (step6) {
-            setBannerConfig(prev => ({
-              ...prev,
-              ...step6
-            }));
-          }
-        }
-
-        // 2. Fetch site settings for global recruiter card visibility
+        setLoading(true);
+        // Fetch site settings for global recruiter card visibility
         const resSettings = await fetch(`${API_URL}/api/admin/site-settings`);
         const dataSettings = await resSettings.json();
         if (dataSettings.success && dataSettings.data) {
@@ -78,6 +54,8 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
       } catch (err) {
         console.error('Error loading visibility settings:', err);
         setErrorMessage('Failed to load visibility settings from server.');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -102,9 +80,14 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ hidePostedByCardGlobally: !newVisible })
-        }).catch(e => console.warn('Sync to homepage error:', e));
+        }).catch((e) => console.warn('Sync to homepage error:', e));
 
-        showToast(newVisible ? 'Website-wide Recruiter Card ENABLED (Visible on job posts)' : 'Website-wide Recruiter Card DISABLED (Hidden on job posts)');
+        showToast(
+          newVisible
+            ? 'Website-wide Recruiter Card ENABLED (Visible on job posts)'
+            : 'Website-wide Recruiter Card DISABLED (Hidden on job posts)'
+        );
+        if (onSaveSuccess) onSaveSuccess();
       } else {
         alert(data.message || 'Failed to update visibility setting');
       }
@@ -116,58 +99,31 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
     }
   };
 
-  // Field change handler for Banner Config
-  const handleBannerPropChange = (key, value) => {
-    setBannerConfig(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
-  // Save Settings Function for Match Banner & Recruiter Card Visibility
-  const handleSaveBannerConfig = async () => {
+  // Save button handler
+  const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      setToastMessage('');
-      setErrorMessage('');
-
-      // Fetch existing employerPostJob config to preserve all other steps
-      const resHome = await fetch(`${API_URL}/api/homepage`);
-      const dataHome = await resHome.json();
-      const existingEmployerPostJob = (dataHome.success && dataHome.data?.employerPostJob) ? dataHome.data.employerPostJob : {};
-
-      const updatedEmployerPostJob = {
-        ...existingEmployerPostJob,
-        step6: bannerConfig
-      };
-
-      // 1. Save to homepage config
-      const res = await fetch(`${API_URL}/api/homepage`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employerPostJob: updatedEmployerPostJob,
-          jobMatchBanner: bannerConfig,
-          hidePostedByCardGlobally: !globalCardVisible
-        })
-      });
-
-      // 2. Also save to site-settings directly for immediate global effect
-      await fetch(`${API_URL}/api/admin/site-settings`, {
+      const res = await fetch(`${API_URL}/api/admin/site-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hidePostedByCardGlobally: !globalCardVisible })
-      }).catch(err => console.warn('Could not update site-settings directly:', err));
+      });
+
+      fetch(`${API_URL}/api/homepage`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hidePostedByCardGlobally: !globalCardVisible })
+      }).catch((err) => console.warn('Sync to homepage error:', err));
 
       const data = await res.json();
       if (data.success) {
-        showToast('Display & Visibility settings saved & published successfully!');
-        if (onSaveSuccess) onSaveSuccess(bannerConfig);
+        showToast('Recruiter Card Visibility settings saved & published successfully!');
+        if (onSaveSuccess) onSaveSuccess();
       } else {
         setErrorMessage(data.message || 'Failed to save settings.');
       }
     } catch (err) {
-      console.error('Error saving Visibility config:', err);
+      console.error('Error saving visibility config:', err);
       setErrorMessage('Unable to connect to server.');
     } finally {
       setSaving(false);
@@ -176,7 +132,6 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-8 z-[100] bg-emerald-700 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
@@ -197,16 +152,16 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
             <Eye className="w-7 h-7 text-emerald-600" />
-            Job Display & Visibility Controls
+            Recruiter Card Visibility Controls
           </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Manage website-wide recruiter card visibility and customize the candidate job match highlight banner & badges.
+            Manage website-wide "Posted by" recruiter identity card visibility on job postings across the entire platform.
           </p>
         </div>
 
         <button
-          onClick={handleSaveBannerConfig}
-          disabled={saving || loading}
+          onClick={handleSaveSettings}
+          disabled={saving || loading || globalCardLoading}
           className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer disabled:opacity-50"
         >
           {saving ? (
@@ -220,287 +175,31 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
 
       {/* Main 2-Column Split: Controls on Left, Live Preview on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
         {/* Left 7 Columns: Controls */}
         <div className="lg:col-span-7 space-y-6">
-          
-          {/* SECTION 1: CANDIDATE JOB MATCH HIGHLIGHT BANNER & BADGES */}
-          <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 shadow-2xs">
-                  <Target className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                    Candidate Job Match Highlight Banner
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Customize the highlight banner, labels, and badges displayed when a candidate's profile matches job criteria.
-                  </p>
-                </div>
-              </div>
-
-              {/* Match Banner Master Toggle */}
-              <button
-                type="button"
-                onClick={() => handleBannerPropChange('enabled', bannerConfig?.enabled === false ? true : false)}
-                className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer font-bold text-xs ${
-                  bannerConfig?.enabled !== false
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                    : 'bg-gray-100 border-gray-300 text-gray-500'
-                }`}
-              >
-                <span>{bannerConfig?.enabled !== false ? 'Active' : 'Disabled'}</span>
-                <div
-                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                    bannerConfig?.enabled !== false ? 'bg-emerald-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      bannerConfig?.enabled !== false ? 'translate-x-4' : 'translate-x-0'
-                    }`}
-                  />
-                </div>
-              </button>
-            </div>
-
-            {/* Banner Title & Subtitle Texts */}
-            <div className="space-y-4 pt-2">
-              <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2.5">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                Banner Heading & Subtitle Texts
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-bold text-gray-700">Banner Title Prefix</label>
-                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                      Auto + Designation
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={bannerConfig?.headerPrefix || 'MATCHED FOR'}
-                    onChange={(e) => handleBannerPropChange('headerPrefix', e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
-                    placeholder="e.g. MATCHED FOR"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Prefix added before designation, e.g. <strong className="text-gray-600">🎯 MATCHED FOR AUDITOR</strong>
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-bold text-gray-700">Banner Subtitle Template</label>
-                    <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                      {'{designation}'}
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={bannerConfig?.subheading || 'Matches your designation ({designation})'}
-                    onChange={(e) => handleBannerPropChange('subheading', e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
-                    placeholder="e.g. Matches your designation ({designation})"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Example: <strong className="text-gray-600">Matches your designation (Auditor)</strong>
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Fallback Match Reason</label>
-                <input
-                  type="text"
-                  value={bannerConfig?.emptyMatchReason || 'This job matches your designation and role criteria.'}
-                  onChange={(e) => handleBannerPropChange('emptyMatchReason', e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
-                  placeholder="e.g. This job matches your designation and role criteria."
-                />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Shown if no specific designation or skills match reason is generated.
-                </p>
-              </div>
-            </div>
-
-            {/* Match Highlight Chips Customization */}
-            <div className="space-y-4 pt-2">
-              <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b border-gray-100 pb-2.5">
-                <Tag className="w-4 h-4 text-emerald-600" />
-                Match Highlight Chips / Pills
-              </h4>
-
-              {/* Designation Chip */}
-              <div className="p-3.5 bg-gray-50/70 rounded-xl border border-gray-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <label className="text-xs font-bold text-gray-800">Designation Chip Text</label>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleBannerPropChange('showDesignationChip', bannerConfig?.showDesignationChip === false ? true : false)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                      bannerConfig?.showDesignationChip !== false
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : 'bg-gray-100 text-gray-400 border-gray-200'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${bannerConfig?.showDesignationChip !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
-                    <span>{bannerConfig?.showDesignationChip !== false ? '✓ Show Chip' : 'Hidden'}</span>
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={bannerConfig?.designationChipText || '✓ Designation: {designation}'}
-                  onChange={(e) => handleBannerPropChange('designationChipText', e.target.value)}
-                  className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
-                  placeholder="e.g. ✓ Designation: {designation}"
-                />
-              </div>
-
-              {/* Skills Chip */}
-              <div className="p-3.5 bg-gray-50/70 rounded-xl border border-gray-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <label className="text-xs font-bold text-gray-800">Skills Chip Text</label>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleBannerPropChange('showSkillsChip', bannerConfig?.showSkillsChip === false ? true : false)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                      bannerConfig?.showSkillsChip !== false
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : 'bg-gray-100 text-gray-400 border-gray-200'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${bannerConfig?.showSkillsChip !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
-                    <span>{bannerConfig?.showSkillsChip !== false ? '✓ Show Chip' : 'Hidden'}</span>
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={bannerConfig?.skillsChipText || '✓ Skills: {skills}'}
-                  onChange={(e) => handleBannerPropChange('skillsChipText', e.target.value)}
-                  className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
-                  placeholder="e.g. ✓ Skills: {skills}"
-                />
-              </div>
-
-              {/* Industry Fit Chip */}
-              <div className="p-3.5 bg-gray-50/70 rounded-xl border border-gray-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <label className="text-xs font-bold text-gray-800">Industry Fit Chip Text</label>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleBannerPropChange('showIndustryChip', bannerConfig?.showIndustryChip === false ? true : false)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                      bannerConfig?.showIndustryChip !== false
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                        : 'bg-gray-100 text-gray-400 border-gray-200'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full ${bannerConfig?.showIndustryChip !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
-                    <span>{bannerConfig?.showIndustryChip !== false ? '✓ Show Chip' : 'Hidden'}</span>
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={bannerConfig?.industryChipText || '✓ Industry Fit'}
-                  onChange={(e) => handleBannerPropChange('industryChipText', e.target.value)}
-                  className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
-                  placeholder="e.g. ✓ Industry Fit"
-                />
-              </div>
-            </div>
-
-            {/* Job Card List Badge */}
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-                <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-600" />
-                  Job Card List Badge
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => handleBannerPropChange('cardBadgeEnabled', bannerConfig?.cardBadgeEnabled === false ? true : false)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                    bannerConfig?.cardBadgeEnabled !== false
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                      : 'bg-gray-100 text-gray-400 border-gray-200'
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${bannerConfig?.cardBadgeEnabled !== false ? 'bg-emerald-600' : 'bg-gray-400'}`}></span>
-                  <span>{bannerConfig?.cardBadgeEnabled !== false ? '✓ Show on Job Cards' : 'Hidden on Job Cards'}</span>
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Badge Text Template</label>
-                <input
-                  type="text"
-                  value={bannerConfig?.cardBadgeText || '🎯 Matched for {designation}'}
-                  onChange={(e) => handleBannerPropChange('cardBadgeText', e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium text-gray-900 text-xs focus:outline-none focus:border-emerald-500"
-                  placeholder="e.g. 🎯 Matched for {designation}"
-                />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Shown as a highlight badge at the top of each matching job card on the candidate homepage.
-                </p>
-              </div>
-            </div>
-
-            {/* Helpful Variables Note */}
-            <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 text-xs text-emerald-900 space-y-1.5">
-              <div className="font-extrabold flex items-center gap-1.5 text-emerald-950">
-                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                Available Dynamic Variables
-              </div>
-              <p className="text-[11px] text-emerald-800">
-                You can use these dynamic placeholder tags in text fields — they will be automatically replaced with candidate profile data:
-              </p>
-              <div className="flex gap-2 flex-wrap pt-1">
-                <span className="font-mono font-bold bg-white text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs">
-                  {'{designation}'}
-                </span>
-                <span className="font-mono font-bold bg-white text-emerald-800 px-2.5 py-1 rounded-lg border border-emerald-200 shadow-2xs">
-                  {'{skills}'}
-                </span>
-              </div>
-            </div>
-
-          </div>
-
-          {/* SECTION 2: GLOBAL RECRUITER CARD VISIBILITY CONTROLS */}
-          <div className="bg-white rounded-2xl border border-emerald-200/90 p-6 shadow-xs space-y-4 ring-1 ring-emerald-500/10">
-            <div className="flex items-start justify-between gap-4 flex-wrap pb-3 border-b border-gray-100">
-              <div className="flex items-start gap-3 max-w-xl">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100/70 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs mt-0.5">
-                  <SlidersHorizontal className="w-5 h-5" />
+          {/* GLOBAL RECRUITER CARD VISIBILITY CONTROLS */}
+          <div className="bg-white rounded-2xl border border-emerald-200/90 p-6 sm:p-8 shadow-xs space-y-5 ring-1 ring-emerald-500/10">
+            <div className="flex items-start justify-between gap-4 flex-wrap pb-4 border-b border-gray-100">
+              <div className="flex items-start gap-3.5 max-w-xl">
+                <div className="w-11 h-11 rounded-xl bg-emerald-100/70 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs mt-0.5">
+                  <SlidersHorizontal className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider">
+                    <h3 className="text-base font-extrabold text-gray-900 tracking-tight">
                       Website-wide "Posted by" Recruiter Card Visibility
                     </h3>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      globalCardVisible 
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                        : 'bg-amber-100 text-amber-800 border border-amber-300'
-                    }`}>
+                    <span
+                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        globalCardVisible
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}
+                    >
                       {globalCardVisible ? 'Global: ON' : 'Global: OFF'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
                     Control whether recruiter identity cards (company name, recruiter profile, contact avatar) appear on public job postings across the entire platform.
                   </p>
                 </div>
@@ -511,186 +210,74 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                 type="button"
                 onClick={handleToggleGlobalRecruiterCard}
                 disabled={globalCardLoading}
-                className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
                   globalCardVisible ? 'bg-emerald-600' : 'bg-gray-300'
                 }`}
+                title="Toggle Recruiter Card Visibility"
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    globalCardVisible ? 'translate-x-6' : 'translate-x-0'
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    globalCardVisible ? 'translate-x-7' : 'translate-x-0'
                   }`}
                 />
               </button>
             </div>
 
-            <div className="p-3.5 bg-gray-50/80 rounded-xl text-xs font-medium text-gray-700 flex items-center justify-between gap-3 flex-wrap border border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${globalCardVisible ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+            <div className="p-4 bg-gray-50/80 rounded-xl text-xs font-medium text-gray-700 flex items-center justify-between gap-3 flex-wrap border border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`w-3 h-3 rounded-full ${
+                    globalCardVisible ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                  }`}
+                ></span>
                 <span>
-                  Current Status: <strong>{globalCardVisible ? 'Enabled (Recruiter cards visible on job posts)' : 'Disabled (Recruiter cards hidden globally)'}</strong>
+                  Current Status:{' '}
+                  <strong>
+                    {globalCardVisible
+                      ? 'Enabled (Recruiter cards visible on job posts)'
+                      : 'Disabled (Recruiter cards hidden globally)'}
+                  </strong>
                 </span>
               </div>
               {globalCardLoading && (
-                <span className="text-[11px] text-emerald-600 flex items-center gap-1 font-bold">
+                <span className="text-xs text-emerald-600 flex items-center gap-1.5 font-bold">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   Updating...
                 </span>
               )}
             </div>
-          </div>
 
+            {/* Explanation card */}
+            <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-100 text-xs text-emerald-900 space-y-1.5">
+              <div className="font-extrabold flex items-center gap-1.5 text-emerald-950">
+                <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                How Recruiter Card Visibility Works
+              </div>
+              <p className="text-[11.5px] text-emerald-800 leading-relaxed">
+                When <strong>Enabled</strong>, job seekers viewing job details will see recruiter information (name, designation, company size, and verification badge) in a dedicated "Posted by" card. When <strong>Disabled</strong>, recruiter personal details remain private and hidden website-wide.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Right 5 Columns: Live Visual Preview & Interactive Playground */}
+        {/* Right 5 Columns: Live Visual Preview */}
         <div className="lg:col-span-5 space-y-4">
           <div className="sticky top-6 space-y-4">
-            
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Eye className="w-4 h-4 text-emerald-600" />
                 Live Visual Preview
               </span>
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                Interactive Tester
+                {globalCardVisible ? 'Card Visible' : 'Card Hidden'}
               </span>
             </div>
 
-            {/* Interactive Test Inputs */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-3">
-              <div className="text-xs font-extrabold text-gray-800 flex items-center justify-between">
-                <span>Test with Custom Values:</span>
-                <span className="text-[10px] text-gray-400 font-normal">Type below to see instant update</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Test Designation</label>
-                  <input
-                    type="text"
-                    value={previewDesignation}
-                    onChange={(e) => setPreviewDesignation(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
-                    placeholder="e.g. Auditor"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 mb-1">Test Skills</label>
-                  <input
-                    type="text"
-                    value={previewSkills}
-                    onChange={(e) => setPreviewSkills(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500"
-                    placeholder="e.g. Auditing, Excel"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Preview 1: Candidate Job Details Highlight Banner */}
+            {/* Preview: Website-wide "Posted by" Recruiter Card */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-md p-5 text-left space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                 <h4 className="text-xs font-black uppercase tracking-wider text-gray-700">
-                  Candidate Details Page Banner
-                </h4>
-                {bannerConfig?.enabled !== false ? (
-                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    Enabled
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                    Hidden
-                  </span>
-                )}
-              </div>
-
-              {bannerConfig?.enabled !== false ? (
-                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50 border border-emerald-200 shadow-2xs">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <h4 className="text-xs font-black uppercase tracking-wider text-emerald-900">
-                          🎯 {(bannerConfig?.headerPrefix || 'MATCHED FOR').trim()} {(previewDesignation || 'AUDITOR').toUpperCase()}
-                        </h4>
-                      </div>
-                      <p className="text-xs font-medium text-emerald-950">
-                        {(bannerConfig?.subheading || 'Matches your designation ({designation})').replace(/\{designation\}/gi, previewDesignation || 'Auditor')}
-                      </p>
-                      
-                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                        {bannerConfig?.showDesignationChip !== false && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
-                            {(bannerConfig?.designationChipText || '✓ Designation: {designation}').replace(/\{designation\}/gi, previewDesignation || 'Auditor')}
-                          </span>
-                        )}
-
-                        {bannerConfig?.showSkillsChip !== false && previewSkills && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
-                            {(bannerConfig?.skillsChipText || '✓ Skills: {skills}').replace(/\{skills\}/gi, previewSkills || 'Auditing')}
-                          </span>
-                        )}
-
-                        {bannerConfig?.showIndustryChip !== false && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-white text-emerald-800 border border-emerald-300 shadow-2xs">
-                            {bannerConfig?.industryChipText || '✓ Industry Fit'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 bg-gray-50 rounded-xl text-center text-xs text-gray-400 border border-dashed border-gray-200">
-                  Banner is currently disabled. Toggle active to preview.
-                </div>
-              )}
-            </div>
-
-            {/* Preview 2: Left Job Card Badge */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-md p-5 text-left space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                <h4 className="text-xs font-black uppercase tracking-wider text-gray-700">
-                  Job Card in Listings
-                </h4>
-                {bannerConfig?.cardBadgeEnabled !== false ? (
-                  <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    Badge Visible
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                    Badge Hidden
-                  </span>
-                )}
-              </div>
-
-              <div className="p-4 bg-white border border-emerald-500/60 rounded-xl shadow-xs space-y-3">
-                {bannerConfig?.cardBadgeEnabled !== false && (
-                  <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-emerald-100">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>
-                        {(bannerConfig?.cardBadgeText || '🎯 Matched for {designation}').replace(/\{designation\}/gi, previewDesignation || 'Auditor')}
-                      </span>
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900">Alpha Global Ltd.</h4>
-                    <h3 className="text-base font-bold text-emerald-700">{previewDesignation || 'Senior Auditor'}</h3>
-                    <p className="text-xs text-gray-500">Bangalore, Karnataka • Full-time • ₹ 8-14 LPA</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Preview 3: Website-wide "Posted by" Recruiter Card */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-md p-5 text-left space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                <h4 className="text-xs font-black uppercase tracking-wider text-gray-700">
-                  "Posted by" Recruiter Card Live Preview
+                  "Posted by" Recruiter Card Preview
                 </h4>
                 {globalCardVisible ? (
                   <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
@@ -713,14 +300,14 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                         <span className="text-base">👤</span>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="text-sm font-bold text-gray-900 leading-tight">yash raj singh</h4>
-                        <p className="text-xs text-gray-700 mt-0.5 font-medium">Finance Manager at Abc</p>
+                        <h4 className="text-sm font-bold text-gray-900 leading-tight">Yash Raj Singh</h4>
+                        <p className="text-xs text-gray-700 mt-0.5 font-medium">Head of Retail at Amazone</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-green-50 text-green-700 border border-green-200">
-                            Company / Business
+                            Verified Employer
                           </span>
                           <span className="text-[11px] text-gray-500 font-medium">
-                            • 11-50 employees Employees
+                            • 11-50 employees
                           </span>
                         </div>
                         <p className="text-[11px] text-gray-400 mt-0.5">Last Active: Today</p>
@@ -732,32 +319,31 @@ export default function EmployerVisibilityEditor({ onSaveSuccess }) {
                   <div className="bg-gray-50/90 rounded-xl p-3.5 border border-gray-100">
                     <div className="flex justify-around items-center text-center">
                       <div>
-                        <div className="text-xl font-black font-serif text-gray-900">1</div>
+                        <div className="text-xl font-black font-serif text-gray-900">24</div>
                         <div className="text-[9px] uppercase font-bold text-gray-500 tracking-wider mt-0.5">Job Views</div>
                       </div>
                       <div className="h-6 w-px bg-gray-200"></div>
                       <div>
-                        <div className="text-xl font-black font-serif text-gray-900">6</div>
+                        <div className="text-xl font-black font-serif text-gray-900">8</div>
                         <div className="text-[9px] uppercase font-bold text-gray-500 tracking-wider mt-0.5">Applications</div>
                       </div>
                       <div className="h-6 w-px bg-gray-200"></div>
                       <div>
-                        <div className="text-xl font-black font-serif text-gray-900">0</div>
+                        <div className="text-xl font-black font-serif text-gray-900">3</div>
                         <div className="text-[9px] uppercase font-bold text-gray-500 tracking-wider mt-0.5">Recruiter Actions</div>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-6 bg-gray-50 rounded-xl text-center text-xs text-gray-400 border border-dashed border-gray-200">
-                  Recruiter card is currently disabled website-wide.
+                <div className="p-8 bg-gray-50 rounded-xl text-center text-xs text-gray-400 border border-dashed border-gray-200 space-y-1">
+                  <p className="font-semibold text-gray-600">Recruiter card is currently disabled website-wide.</p>
+                  <p className="text-[11px]">Job posts will only display company name without recruiter personal identity.</p>
                 </div>
               )}
             </div>
-
           </div>
         </div>
-
       </div>
     </div>
   );

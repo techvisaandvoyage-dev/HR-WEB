@@ -123,6 +123,9 @@ exports.createSupportRequest = async (req, res) => {
       finalEmail = String(email || req.user.email || '').toLowerCase().trim();
       finalPhone = sanitizeString(phone, 20) || req.user.mobile || '';
     } else {
+      if (req.body.targetRole && ['guest', 'employee', 'employer', 'consultant'].includes(req.body.targetRole)) {
+        finalUserType = req.body.targetRole;
+      }
       finalName = sanitizeString(name, 100);
       finalEmail = String(email || '').trim().toLowerCase();
       finalPhone = sanitizeString(phone, 20);
@@ -406,6 +409,21 @@ exports.seedSupportProblems = async () => {
     const hasEmployee = await SupportProblem.exists({ role: 'employee' });
     const hasEmployer = await SupportProblem.exists({ role: 'employer' });
     const hasConsultant = await SupportProblem.exists({ role: 'consultant' });
+    const hasGuest = await SupportProblem.exists({ role: 'guest' });
+
+    // Seed guest (without login) problems if missing
+    if (!hasGuest) {
+      const guestProblems = [
+        { title: 'I am unable to login', role: 'guest', order: 0, isActive: true },
+        { title: 'OTP not received during login', role: 'guest', order: 1, isActive: true },
+        { title: 'Account locked / OTP attempts exceeded', role: 'guest', order: 2, isActive: true },
+        { title: 'Problem in registration / creating account', role: 'guest', order: 3, isActive: true },
+        { title: 'Forgot password / login credentials', role: 'guest', order: 4, isActive: true },
+        { title: 'Other login or account access issue', role: 'guest', order: 5, isActive: true },
+      ];
+      await SupportProblem.insertMany(guestProblems);
+      console.log('✅ [Support] Seeded guest (without login) support problems.');
+    }
 
     if (hasEmployee && hasEmployer && hasConsultant) return;
 

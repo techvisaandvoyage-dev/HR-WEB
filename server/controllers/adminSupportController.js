@@ -34,7 +34,7 @@ const normalizeRoleOrders = async (role) => {
  * Normalizes all roles across the database to fix legacy duplicate orders
  */
 const autoFixAllRolesOrders = async () => {
-  const roles = ['employee', 'employer', 'consultant', 'all'];
+  const roles = ['employee', 'employer', 'consultant', 'guest', 'all'];
   for (const r of roles) {
     await normalizeRoleOrders(r);
   }
@@ -47,6 +47,33 @@ const autoFixAllRolesOrders = async () => {
  */
 exports.getAllProblems = async (req, res) => {
   try {
+    // If guest (without login) role has 0 problems, check if any login-related problem was mistakenly put in other roles or seed defaults
+    const guestCount = await SupportProblem.countDocuments({ role: 'guest' });
+    if (guestCount === 0) {
+      // Move any mistakenly tagged login problems to guest
+      const misplacedLoginProblems = await SupportProblem.find({
+        role: { $in: ['consultant', 'employee', 'employer'] },
+        title: { $regex: /unable to login|login issue|otp not received/i }
+      });
+      for (const p of misplacedLoginProblems) {
+        await SupportProblem.updateOne({ _id: p._id }, { $set: { role: 'guest' } });
+      }
+
+      // Check count again
+      const refreshedGuestCount = await SupportProblem.countDocuments({ role: 'guest' });
+      if (refreshedGuestCount === 0) {
+        const defaultGuestProblems = [
+          { title: 'I am unable to login', role: 'guest', order: 0, isActive: true },
+          { title: 'OTP not received during login', role: 'guest', order: 1, isActive: true },
+          { title: 'Account locked / OTP attempts exceeded', role: 'guest', order: 2, isActive: true },
+          { title: 'Problem in registration / creating account', role: 'guest', order: 3, isActive: true },
+          { title: 'Forgot password / login credentials', role: 'guest', order: 4, isActive: true },
+          { title: 'Other login or account access issue', role: 'guest', order: 5, isActive: true },
+        ];
+        await SupportProblem.insertMany(defaultGuestProblems);
+      }
+    }
+
     // Automatically repair any legacy duplicate orders across all roles
     await autoFixAllRolesOrders();
 
@@ -60,6 +87,47 @@ exports.getAllProblems = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch problems',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Seed / restore standard pre-login (guest) support problems
+ * @route   POST /api/admin/support/problems/seed-guest
+ * @access  Admin
+ */
+exports.seedGuestProblems = async (req, res) => {
+  try {
+    const standardGuest = [
+      { title: 'I am unable to login', role: 'guest', order: 0, isActive: true },
+      { title: 'OTP not received during login', role: 'guest', order: 1, isActive: true },
+      { title: 'Account locked / OTP attempts exceeded', role: 'guest', order: 2, isActive: true },
+      { title: 'Problem in registration / creating account', role: 'guest', order: 3, isActive: true },
+      { title: 'Forgot password / login credentials', role: 'guest', order: 4, isActive: true },
+      { title: 'Other login or account access issue', role: 'guest', order: 5, isActive: true },
+    ];
+
+    for (const item of standardGuest) {
+      const exists = await SupportProblem.exists({ title: item.title, role: 'guest' });
+      if (!exists) {
+        await SupportProblem.create(item);
+      }
+    }
+
+    await autoFixAllRolesOrders();
+    const problems = await SupportProblem.find().sort({ role: 1, order: 1, createdAt: 1 }).lean();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Standard pre-login problems seeded successfully',
+      data: problems,
+    });
+  } catch (error) {
+    console.error('seedGuestProblems error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to seed guest problems',
       error: error.message,
     });
   }
@@ -81,7 +149,7 @@ exports.createProblem = async (req, res) => {
       });
     }
 
-    const targetRole = ['all', 'employee', 'employer', 'consultant'].includes(role) ? role : 'all';
+    const targetRole = ['all', 'employee', 'employer', 'consultant', 'guest'].includes(role) ? role : 'all';
     const targetOrder = Math.max(0, parseInt(order, 10) || 0);
 
     // Shift all existing problems in this role with order >= targetOrder down by 1
@@ -139,7 +207,7 @@ exports.updateProblem = async (req, res) => {
     const oldOrder = problem.order;
 
     let targetRole = oldRole;
-    if (role !== undefined && ['all', 'employee', 'employer', 'consultant'].includes(role)) {
+    if (role !== undefined && ['all', 'employee', 'employer', 'consultant', 'guest'].includes(role)) {
       targetRole = role;
     }
 

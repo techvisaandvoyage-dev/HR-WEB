@@ -88,7 +88,7 @@ function getCandidateProfile() {
       fullName,
       email,
       avatar,
-      designation: designation || 'Software Engineer',
+      designation: designation || 'Accountant',
       skills,
       location,
       exists: Boolean(designation || email),
@@ -270,13 +270,18 @@ export default function SjHomeView({
     [isLoggedIn, onOpenEmployeeLogin, showToast]
   );
 
-  // Candidate Role
-  const candidateRole = candidateProfile?.designation || 'Software Engineer';
+  // Candidate Role (defaults to Accountant if unassigned to match current feed jobs)
+  const candidateRole =
+    (candidateProfile?.designation ||
+      candidateProfile?.role ||
+      candidateProfile?.function ||
+      candidateProfile?.industry ||
+      '').trim() || 'Accountant';
   const matchedFilterLabel = `Matched for ${candidateRole}`;
 
   // Filter Bar Options
   const filterOptions = useMemo(
-    () => ['Remote', matchedFilterLabel, 'Not applied yet', 'Salary shown'],
+    () => ['Remote', matchedFilterLabel, 'Not applied yet'],
     [matchedFilterLabel]
   );
 
@@ -291,9 +296,37 @@ export default function SjHomeView({
     (job) => {
       if (!candidateRole) return false;
       const title = (job.title || job.t || '').toLowerCase();
-      const role = candidateRole.toLowerCase();
+      const role = candidateRole.toLowerCase().trim();
       const cat = (job.jobCategory || job.details?.jobCategory || '').toLowerCase();
-      return title.includes(role) || role.includes(title) || cat.includes(role);
+      const dept = (job.department || job.details?.department || '').toLowerCase();
+
+      // 1. Direct substring match
+      if (title.includes(role) || role.includes(title) || cat.includes(role) || dept.includes(role)) {
+        return true;
+      }
+
+      // 2. Token-based word match (e.g. "Accounts" in "Corporate Accounts & Finance Executive")
+      const roleTokens = role.split(/\s+/).filter((t) => t.length > 2);
+      if (roleTokens.some((t) => title.includes(t) || cat.includes(t) || dept.includes(t))) {
+        return true;
+      }
+
+      // 3. Industry / Synonym groups
+      const synonymGroups = [
+        ['accountant', 'account', 'accounts', 'accounting', 'finance', 'financial analyst', 'tax', 'auditor', 'cfo'],
+        ['hr', 'human resources', 'recruiter', 'recruitment', 'talent acquisition', 'consultant'],
+        ['developer', 'engineer', 'software', 'programmer', 'full stack', 'frontend', 'backend', 'tech'],
+        ['marketing', 'digital marketing', 'seo', 'social media', 'growth'],
+        ['sales', 'business development', 'bde', 'account manager'],
+      ];
+
+      for (const group of synonymGroups) {
+        const hasRole = group.some((term) => role.includes(term) || term.includes(role));
+        const hasJob = group.some((term) => title.includes(term) || cat.includes(term) || dept.includes(term));
+        if (hasRole && hasJob) return true;
+      }
+
+      return false;
     },
     [candidateRole]
   );
@@ -580,6 +613,7 @@ export default function SjHomeView({
           postingDate={searchPostingDate || 'Any time'}
           onPostingDateChange={setSearchPostingDate}
           jobs={jobs}
+          hideSearchOnMobile={isDrawerOpen}
           onOpenSearch={() => setIsSearchModalOpen(true)}
           onSubmitSearch={(q) => setSearchQuery(q)}
           onSelectSuggestion={(job) => setSearchQuery(job.title || job.t)}
@@ -609,13 +643,36 @@ export default function SjHomeView({
       {/* 2. Main Content */}
       <main id="sj-main-content">
         {showLoggedInFeed ? (
-          <div className="max-w-[1200px] mx-auto px-3.5 sm:px-6 py-3 sm:py-6 pb-24 sm:pb-8">
+          <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8">
+            {/* Heading */}
+            <h1 className="sj-heading">
+              {matchedFeedJobs.length > 0 ? (
+                <>
+                  {matchedFeedJobs.length} job{matchedFeedJobs.length > 1 ? 's' : ''} matched for <em>{candidateRole}.</em>
+                </>
+              ) : (
+                <>
+                  Explore <em>Jobs.</em>
+                </>
+              )}
+            </h1>
+
+            {/* Filter Bar */}
+            <SjJobFilterBar
+              filters={filterOptions}
+              activeFilters={activeFilters}
+              onToggleFilter={handleToggleFilter}
+              onClearFilters={() => setActiveFilters([])}
+              showingCount={filteredJobs.length}
+              totalCount={jobs.length}
+            />
+
             {/* Job List Feed */}
             <SjJobList
               jobs={filteredJobs}
               matchedJobs={matchedFeedJobs}
               otherJobs={otherFeedJobs}
-              userRole={userRole}
+              userRole={candidateRole}
               appliedJobIds={new Set(appliedJobs.map(String))}
               savedJobIds={new Set(savedJobs.map(String))}
               onSelectJob={handleOpenDrawer}

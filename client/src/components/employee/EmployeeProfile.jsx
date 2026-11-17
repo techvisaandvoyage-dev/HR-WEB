@@ -194,6 +194,8 @@ const EmployeeProfile = () => {
       introVideo: '',
       videoVisibility: 'everyone'
     },
+    isVideoApproved: false,
+    videoApprovalStatus: 'none',
     documentsMeta: {},
     professionalDetails: {
       currentSalary: '',
@@ -563,8 +565,15 @@ const EmployeeProfile = () => {
     } else if (!val) {
       delete updatedMeta[field];
     }
+    const extraVideoFields = field === 'introVideo'
+      ? (val
+          ? { isVideoApproved: false, videoApprovalStatus: 'pending', videoUploadedAt: new Date().toISOString() }
+          : { isVideoApproved: false, videoApprovalStatus: 'none', videoUploadedAt: null, videoApprovedAt: null })
+      : {};
+
     setFormData({
       ...formData,
+      ...extraVideoFields,
       documents: updatedDocs,
       documentsMeta: updatedMeta
     });
@@ -1016,6 +1025,7 @@ const EmployeeProfile = () => {
           onSubmitSearch={(q) => handleHeaderSearch(q, searchLocation, searchExperience, searchPostingDate)}
           onSelectSuggestion={(job) => handleHeaderSearch(job.title || job.t, searchLocation, searchExperience, searchPostingDate)}
           jobs={effectiveJobs}
+          hideSearchOnMobile={true}
           userProfile={formData}
           savedCount={savedJobsCount}
           hasUnreadMessages={hasUnreadMessages}

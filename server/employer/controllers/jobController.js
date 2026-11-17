@@ -419,7 +419,9 @@ exports.getApplicationsForEmployer = async (req, res) => {
         const cand = a.employeeId;
         if (cand) {
           const rawVideo = cand.introVideo || cand.documents?.introVideo || a.introVideo;
-          const hasVideo = Boolean(rawVideo);
+          const isVideoApproved = Boolean(cand.isVideoApproved);
+          // Video is only visible to employers if it exists AND admin has approved it
+          const hasVideo = Boolean(rawVideo && isVideoApproved);
           if (hasVideo) {
             cand.hasIntroVideo = true;
             a.hasIntroVideo = true;
@@ -438,8 +440,11 @@ exports.getApplicationsForEmployer = async (req, res) => {
           } else {
             cand.hasIntroVideo = false;
             cand.isVideoLocked = false;
+            cand.introVideo = '';
+            if (cand.documents) cand.documents.introVideo = '';
             a.hasIntroVideo = false;
             a.isVideoLocked = false;
+            a.introVideo = '';
           }
         }
         return a;

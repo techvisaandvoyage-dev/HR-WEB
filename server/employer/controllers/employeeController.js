@@ -34,7 +34,9 @@ exports.getAllEmployees = async (req, res) => {
       }
 
       const rawVideo = e.introVideo || e.documents?.introVideo;
-      const hasVideo = Boolean(rawVideo);
+      const isVideoApproved = Boolean(e.isVideoApproved);
+      // Video is only visible to employers if it exists AND admin has approved it
+      const hasVideo = Boolean(rawVideo && isVideoApproved);
 
       if (e.videoVisibility === 'applied' && !hasApplied) {
         e.introVideo = '';
@@ -52,8 +54,11 @@ exports.getAllEmployees = async (req, res) => {
           e.introVideo = rawVideo;
         }
       } else {
+        // Not approved by admin or no video
         e.hasIntroVideo = false;
         e.isVideoLocked = false;
+        e.introVideo = '';
+        if (e.documents) e.documents.introVideo = '';
       }
 
       e.isPrivate = false;

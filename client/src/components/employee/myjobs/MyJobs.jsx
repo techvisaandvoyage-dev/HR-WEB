@@ -416,6 +416,7 @@ const MyJobs = ({ jobs = [] }) => {
           postingDate={searchPostingDate}
           onPostingDateChange={(val) => setSearchPostingDate(val)}
           jobs={effectiveJobs}
+          hideSearchOnMobile={isDrawerOpen}
           userProfile={candidateProfile}
           savedCount={savedJobs.length}
           onSubmitSearch={(q) => handleHeaderSearch(q, searchLocation, searchExperience, searchPostingDate)}
@@ -644,7 +645,7 @@ const MyJobs = ({ jobs = [] }) => {
               <div className="myjobs-list">
                 {appliedList.map((job, index) => {
                   const targetId = String(job.id || job._id || '');
-                  const appliedData = appliedJobs.find(a => String(a.id) === targetId);
+                  const appliedData = appliedJobs.find(a => String(a.id || a._id) === targetId) || appliedJobs[index];
                   const displaySalary = formatSalary(job.salary, job.salaryNote || job.details?.salaryNote);
 
                   return (
@@ -665,10 +666,10 @@ const MyJobs = ({ jobs = [] }) => {
                         <span className={`myjobs-pill ${job.status === 'Closed' ? 'closed' : 'a'}`}>
                           {job.status === 'Closed' 
                             ? 'Closed' 
-                            : (applied.status === 'New' ? 'Applied' : (applied.status || 'Applied'))}
+                            : (appliedData?.status === 'New' ? 'Applied' : (appliedData?.status || 'Applied'))}
                         </span>
 
-                        <span>{applied.date || '11/3/2026'}</span>
+                        <span>{appliedData?.date || ''}</span>
                       </div>
 
                       {/* Job Title */}

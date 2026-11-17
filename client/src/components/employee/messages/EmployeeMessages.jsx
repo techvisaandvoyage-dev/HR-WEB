@@ -636,6 +636,7 @@ const EmployeeMessages = () => {
           onSubmitSearch={(q) => handleHeaderSearch(q, navSearchLocation, navSearchExperience, navSearchPostingDate)}
           onSelectSuggestion={(j) => handleHeaderSearch(j.title || j.t, navSearchLocation, navSearchExperience, navSearchPostingDate)}
           jobs={allJobsList}
+          hideSearchOnMobile={true}
           userProfile={candidateProfile}
           savedCount={savedJobsCount}
           hasUnreadMessages={totalUnreadCount > 0}

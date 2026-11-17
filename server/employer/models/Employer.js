@@ -141,7 +141,7 @@ const EmployerSchema = new mongoose.Schema({
     documents: [{
       category: {
         type: String,
-        enum: ['tax', 'incorporation', 'address', 'authorized_signatory', 'license', 'other'],
+        default: 'other',
         required: true
       },
       docType: {

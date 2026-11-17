@@ -30,8 +30,8 @@ export const DEFAULT_EMPLOYER_KYC_CONFIG = {
   breadcrumbLabel: '/ Employer Verification',
 
   // Stepper Labels
-  step1Label: 'Tax document',
-  step2Label: 'Incorporation document',
+  step1Label: 'Company KYC document',
+  step2Label: 'User KYC document',
   step3Label: 'Submit for review',
   step3ResubmitLabel: 'Re-submit for review',
 
@@ -55,10 +55,10 @@ export const DEFAULT_EMPLOYER_KYC_CONFIG = {
   },
   unverifiedBadgeText: 'Unverified',
 
-  // STEP 1: TAX DOCUMENT SETTINGS
+  // STEP 1: COMPANY KYC DOCUMENT SETTINGS
   taxDoc: {
-    title: 'Tax document',
-    helpText: 'Any one is enough. Document must be in your company name.',
+    title: 'Company KYC document',
+    helpText: 'Any one is enough. Document must be in your registered company name.',
     isMandatory: true, // Required vs Optional
     requiredBadgeText: 'Required',
     optionalBadgeText: 'Optional',
@@ -66,29 +66,34 @@ export const DEFAULT_EMPLOYER_KYC_CONFIG = {
     options: [
       { id: 'gst_certificate', label: 'GST Certificate', fullLabel: 'GST Registration Certificate (Form GST REG-06)', enabled: true },
       { id: 'pan_card_company', label: 'Company PAN', fullLabel: 'Company PAN Card', enabled: true },
+      { id: 'certificate_of_incorporation', label: 'Certificate of Incorporation', fullLabel: 'Certificate of Incorporation (COI)', enabled: true },
+      { id: 'msme_udyam_certificate', label: 'Udyam / MSME', fullLabel: 'Udyam / MSME Registration Certificate', enabled: true },
+      { id: 'cin_document', label: 'CIN / MCA Master Data', fullLabel: 'CIN / MCA Company Master Data', enabled: true },
+      { id: 'shop_establishment_license', label: 'Shop & Establishment', fullLabel: 'Shop & Establishment License', enabled: true },
+      { id: 'gumasta_trade_license', label: 'Trade License', fullLabel: 'Gumasta / Trade License', enabled: true },
       { id: 'tan_certificate', label: 'TAN', fullLabel: 'TAN Allotment Certificate', enabled: true },
       { id: 'itr_acknowledgement', label: 'ITR-V', fullLabel: 'Latest ITR-V / Acknowledgement', enabled: true },
-      { id: 'professional_tax_certificate', label: 'Professional Tax', fullLabel: 'Professional Tax Certificate', enabled: true }
+      { id: 'llp_agreement', label: 'LLP Agreement', fullLabel: 'LLP Agreement', enabled: true },
+      { id: 'partnership_deed', label: 'Partnership Deed', fullLabel: 'Registered Partnership Deed', enabled: true }
     ]
   },
 
-  // STEP 2: INCORPORATION DOCUMENT SETTINGS
+  // STEP 2: USER KYC DOCUMENT SETTINGS
   incorpDoc: {
-    title: 'Incorporation document',
-    helpText: 'Proof that your business is legally registered. Pick one and upload it.',
+    title: 'User KYC document',
+    helpText: 'Identity proof of the authorized person, founder, or employer. Pick one and upload it.',
     isMandatory: true, // Required vs Optional
     requiredBadgeText: 'Required',
     optionalBadgeText: 'Optional',
     doneBadgeText: 'Done',
     options: [
-      { id: 'certificate_of_incorporation', label: 'Certificate of Incorporation', fullLabel: 'Certificate of Incorporation (COI)', enabled: true },
-      { id: 'cin_document', label: 'CIN / MCA Master Data', fullLabel: 'CIN / MCA Company Master Data', enabled: true },
-      { id: 'moa_aoa', label: 'MOA / AOA', fullLabel: 'Memorandum & Articles of Association (MOA/AOA)', enabled: true },
-      { id: 'partnership_deed', label: 'Partnership Deed', fullLabel: 'Registered Partnership Deed', enabled: true },
-      { id: 'llp_agreement', label: 'LLP Agreement', fullLabel: 'LLP Agreement', enabled: true },
-      { id: 'msme_udyam_certificate', label: 'Udyam / MSME', fullLabel: 'Udyam / MSME Registration Certificate', enabled: true },
-      { id: 'shop_establishment_license', label: 'Shop & Establishment', fullLabel: 'Shop & Establishment License', enabled: true },
-      { id: 'gumasta_trade_license', label: 'Trade License', fullLabel: 'Gumasta / Trade License', enabled: true }
+      { id: 'aadhaar_card', label: 'Aadhaar Card', fullLabel: 'Aadhaar Card (Front & Back)', enabled: true },
+      { id: 'pan_card_personal', label: 'Personal PAN', fullLabel: 'Personal PAN Card of Signatory / Founder', enabled: true },
+      { id: 'passport', label: 'Passport', fullLabel: 'Passport (First & Last Page)', enabled: true },
+      { id: 'voter_id', label: 'Voter ID', fullLabel: 'Voter Identity Card', enabled: true },
+      { id: 'driving_license', label: 'Driving License', fullLabel: 'Driving License', enabled: true },
+      { id: 'authorized_person_id', label: 'Signatory ID', fullLabel: 'Authorized Signatory Govt ID Proof', enabled: true },
+      { id: 'authorization_letter', label: 'Authorization Letter', fullLabel: 'Board / Owner Authorization Letter', enabled: true }
     ]
   },
 
@@ -290,8 +295,9 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
     }));
   };
 
-  // Delete custom document option
+  // Delete document option
   const deleteOption = (section, optionId) => {
+    const docItem = config[section]?.options?.find(opt => (opt.id === optionId || opt.type === optionId));
     setConfig(prev => ({
       ...prev,
       [section]: {
@@ -299,6 +305,9 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
         options: prev[section].options.filter(opt => (opt.id !== optionId && opt.type !== optionId))
       }
     }));
+    if (docItem?.label) {
+      showToast(`Removed "${docItem.label}". Click 'Save KYC Settings' to apply.`);
+    }
   };
 
   // Add new document option
@@ -326,7 +335,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
     setNewDocLabel('');
     setNewDocFullLabel('');
     setNewDocSection(null);
-    showToast(`Added "${newOpt.label}" to ${section === 'taxDoc' ? 'Tax' : section === 'incorpDoc' ? 'Incorporation' : 'Extra'} documents!`);
+    showToast(`Added "${newOpt.label}" to ${section === 'taxDoc' ? 'Company KYC' : section === 'incorpDoc' ? 'User KYC' : 'Extra'} documents!`);
   };
 
   // Benefits list handlers
@@ -498,7 +507,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
       {activeTab === 'requirements' && (
         <div className="space-y-6">
 
-          {/* STEP 1: TAX DOCUMENT */}
+          {/* STEP 1: COMPANY KYC DOCUMENT */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200/90 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -506,7 +515,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                   1
                 </span>
                 <div>
-                  <h3 className="text-base font-extrabold text-gray-900">Step 1: Tax Document Controls</h3>
+                  <h3 className="text-base font-extrabold text-gray-900">Step 1: Company KYC Document Controls</h3>
                   <p className="text-xs text-gray-500 font-medium">Control title, instructions, mandatory flag, and accepted document types.</p>
                 </div>
               </div>
@@ -537,7 +546,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                   value={config.taxDoc.title || ''}
                   onChange={(e) => updateNested('taxDoc', 'title', e.target.value)}
                   className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                  placeholder="e.g. Tax document"
+                  placeholder="e.g. Company KYC document"
                 />
               </div>
 
@@ -557,7 +566,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-extrabold uppercase tracking-wider text-gray-500">
-                  Accepted Tax Document Types ({config.taxDoc.options.filter(o => o.enabled !== false).length} Active)
+                  Accepted Company KYC Document Types ({config.taxDoc.options.filter(o => o.enabled !== false).length} Active)
                 </label>
                 <button
                   type="button"
@@ -572,7 +581,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
               {/* Add New Doc Box */}
               {newDocSection === 'taxDoc' && (
                 <div className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl mb-3 space-y-2 animate-in fade-in">
-                  <div className="text-xs font-bold text-emerald-900">Add New Tax Document Type:</div>
+                  <div className="text-xs font-bold text-emerald-900">Add New Company KYC Document Type:</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
@@ -650,16 +659,14 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                         </div>
                       </div>
 
-                      {opt.isCustom && (
-                        <button
-                          type="button"
-                          onClick={() => deleteOption('taxDoc', optId)}
-                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer"
-                          title="Remove custom option"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => deleteOption('taxDoc', optId)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                        title="Remove document type"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   );
                 })}
@@ -667,7 +674,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
             </div>
           </div>
 
-          {/* STEP 2: INCORPORATION DOCUMENT */}
+          {/* STEP 2: USER KYC DOCUMENT */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200/90 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -675,8 +682,8 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                   2
                 </span>
                 <div>
-                  <h3 className="text-base font-extrabold text-gray-900">Step 2: Incorporation Document Controls</h3>
-                  <p className="text-xs text-gray-500 font-medium">Control title, instructions, mandatory flag, and entity registration types.</p>
+                  <h3 className="text-base font-extrabold text-gray-900">Step 2: User KYC Document Controls</h3>
+                  <p className="text-xs text-gray-500 font-medium">Control title, instructions, mandatory flag, and authorized person ID types.</p>
                 </div>
               </div>
 
@@ -706,7 +713,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                   value={config.incorpDoc.title || ''}
                   onChange={(e) => updateNested('incorpDoc', 'title', e.target.value)}
                   className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                  placeholder="e.g. Incorporation document"
+                  placeholder="e.g. User KYC document"
                 />
               </div>
 
@@ -717,7 +724,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                   value={config.incorpDoc.helpText || ''}
                   onChange={(e) => updateNested('incorpDoc', 'helpText', e.target.value)}
                   className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                  placeholder="e.g. Proof that your business is legally registered. Pick one and upload it."
+                  placeholder="e.g. Identity proof of the authorized person, founder, or employer. Pick one and upload it."
                 />
               </div>
             </div>
@@ -726,7 +733,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-extrabold uppercase tracking-wider text-gray-500">
-                  Accepted Incorporation Document Types ({config.incorpDoc.options.filter(o => o.enabled !== false).length} Active)
+                  Accepted User KYC Document Types ({config.incorpDoc.options.filter(o => o.enabled !== false).length} Active)
                 </label>
                 <button
                   type="button"
@@ -741,7 +748,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
               {/* Add New Doc Box */}
               {newDocSection === 'incorpDoc' && (
                 <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl mb-3 space-y-2 animate-in fade-in">
-                  <div className="text-xs font-bold text-blue-900">Add New Incorporation Document Type:</div>
+                  <div className="text-xs font-bold text-blue-900">Add New User KYC Document Type:</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
@@ -819,16 +826,14 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                         </div>
                       </div>
 
-                      {opt.isCustom && (
-                        <button
-                          type="button"
-                          onClick={() => deleteOption('incorpDoc', optId)}
-                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer"
-                          title="Remove custom option"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => deleteOption('incorpDoc', optId)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                        title="Remove document type"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   );
                 })}
@@ -988,16 +993,14 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                         </div>
                       </div>
 
-                      {opt.isCustom && (
-                        <button
-                          type="button"
-                          onClick={() => deleteOption('extraDoc', optId)}
-                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer"
-                          title="Remove custom option"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => deleteOption('extraDoc', optId)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                        title="Remove document type"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   );
                 })}
@@ -1075,7 +1078,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                   value={config.step1Label || ''}
                   onChange={(e) => setConfig(prev => ({ ...prev, step1Label: e.target.value }))}
                   className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold outline-none focus:border-emerald-500"
-                  placeholder="Tax document"
+                  placeholder="Company KYC document"
                 />
               </div>
 
@@ -1086,7 +1089,7 @@ export default function EmployerKycEditor({ onSaveSuccess }) {
                   value={config.step2Label || ''}
                   onChange={(e) => setConfig(prev => ({ ...prev, step2Label: e.target.value }))}
                   className="w-full px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-semibold outline-none focus:border-emerald-500"
-                  placeholder="Incorporation document"
+                  placeholder="User KYC document"
                 />
               </div>
 

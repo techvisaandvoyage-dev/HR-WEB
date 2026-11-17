@@ -8,6 +8,9 @@ export default function SjProfileDropdown({
   name = '',
   onNavigateHome,
   onNavigateProfile,
+  onNavigateMessages,
+  unreadCount = 0,
+  savedCount = 0,
   onNavigateSaved,
   onNavigateApplied,
   onNavigateSecurity,
@@ -41,9 +44,10 @@ export default function SjProfileDropdown({
     if (!isOpen) return;
 
     const handleOutsideClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        onClose();
+      if (e.target.closest('.sj-profile-trigger') || (ref.current && ref.current.contains(e.target))) {
+        return;
       }
+      onClose();
     };
 
     const handleKeyDown = (e) => {
@@ -103,6 +107,27 @@ export default function SjProfileDropdown({
         <span>Profile</span>
       </button>
 
+      {onNavigateMessages && (
+        <button
+          type="button"
+          className="sj-dm-item"
+          onClick={() => {
+            onClose();
+            onNavigateMessages();
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span className="flex-1 text-left">Messages</span>
+          {unreadCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-500 text-white ml-auto">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
+
       <button
         type="button"
         className="sj-dm-item"
@@ -114,7 +139,12 @@ export default function SjProfileDropdown({
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
         </svg>
-        <span>Saved Jobs</span>
+        <span className="flex-1 text-left">Saved Jobs</span>
+        {savedCount > 0 && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 ml-auto">
+            {savedCount}
+          </span>
+        )}
       </button>
 
       <button

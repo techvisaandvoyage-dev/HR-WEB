@@ -575,9 +575,9 @@
 /* segmented role switch */
 .sj-seg {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  padding: 4px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  padding: 5px;
   background: var(--bg2) !important;
   border: 1px solid var(--line) !important;
   border-radius: 14px;
@@ -818,14 +818,21 @@
   outline-offset: 2px;
 }
 
-/* Mobile responsive styles (<= 768px, where mobile bottom navigation bar is active) */
+/* Mobile responsive styles (<= 768px) */
 @media (max-width: 768px) {
   .sj-fab {
-    bottom: calc(86px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(22px + env(safe-area-inset-bottom, 0px)) !important;
     right: 16px !important;
-    width: 52px !important;
-    height: 52px !important;
+    width: 50px !important;
+    height: 50px !important;
   }
+
+  /* If a legacy bottom navigation bar is present on the page, adjust bottom offset */
+  body:has(.employee-bottom-nav) .sj-fab,
+  body:has(.bottom-navigation) .sj-fab {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
   .sj-fab svg {
     width: 24px !important;
     height: 24px !important;
@@ -841,10 +848,16 @@
     left: 10px !important;
     width: auto !important;
     max-width: none !important;
-    bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
-    height: calc(100dvh - 96px - env(safe-area-inset-bottom, 0px)) !important;
-    max-height: calc(100dvh - 96px) !important;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    height: calc(100dvh - 32px - env(safe-area-inset-bottom, 0px)) !important;
+    max-height: calc(100dvh - 32px) !important;
     border-radius: 20px !important;
+  }
+
+  body:has(.employee-bottom-nav) .sj-panel,
+  body:has(.bottom-navigation) .sj-panel {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    height: calc(100dvh - 84px - env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

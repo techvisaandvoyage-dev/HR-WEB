@@ -9,6 +9,11 @@ const ADMIN_URL = process.env.ADMIN_URL || 'https://sahijob.com/admin';
 const DOC_TYPE_LABELS = {
   gst_certificate: 'GST Certificate',
   pan_card_company: 'Company PAN Card',
+  pan_card_personal: 'Personal PAN Card',
+  aadhaar_card: 'Aadhaar Card',
+  passport: 'Passport',
+  voter_id: 'Voter ID',
+  driving_license: 'Driving License',
   tan_certificate: 'TAN Certificate',
   itr_acknowledgement: 'ITR Acknowledgement',
   professional_tax_certificate: 'Professional Tax Certificate',

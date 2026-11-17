@@ -86,6 +86,29 @@ const EmployeeSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  isVideoApproved: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  videoApprovalStatus: {
+    type: String,
+    enum: ['none', 'pending', 'approved', 'rejected'],
+    default: 'none',
+    index: true
+  },
+  videoUploadedAt: {
+    type: Date,
+    default: null
+  },
+  videoApprovedAt: {
+    type: Date,
+    default: null
+  },
+  videoRejectionReason: {
+    type: String,
+    default: ''
+  },
   videoVisibility: {
     type: String,
     enum: ['everyone', 'applied'],

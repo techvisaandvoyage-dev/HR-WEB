@@ -29,6 +29,10 @@ import {
   Unlock,
   Send,
   Copy,
+  Sparkles,
+  ArrowRight,
+  ArrowRightLeft,
+  Info,
 } from 'lucide-react';
 import OtpLockedUsers from './support/OtpLockedUsers';
 import BlockedAccounts from './support/BlockedAccounts';
@@ -71,8 +75,11 @@ export default function SupportTab() {
   const [problems, setProblems] = useState([]);
   const [loadingProblems, setLoadingProblems] = useState(false);
   const [problemsError, setProblemsError] = useState('');
-  const [problemRoleFilter, setProblemRoleFilter] = useState('all'); // 'all' | 'employee' | 'employer' | 'consultant' | 'universal'
+  const [problemPrimaryScope, setProblemPrimaryScope] = useState('without_login'); // 'without_login' | 'after_login'
+  const [postLoginRoleFilter, setPostLoginRoleFilter] = useState('employee'); // 'employee' | 'employer' | 'consultant' | 'universal' | 'all'
+  const [problemStatusFilter, setProblemStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
   const [problemSearch, setProblemSearch] = useState('');
+  const [isSeedingGuest, setIsSeedingGuest] = useState(false);
 
   // Problem modal state
   const [isProblemModalOpen, setIsProblemModalOpen] = useState(false);
@@ -526,17 +533,63 @@ export default function SupportTab() {
   const handleOpenAddProblem = (prefilledRole) => {
     setEditingProblem(null);
     setProblemFormTitle('');
-    const targetRole =
-      prefilledRole ||
-      (['employee', 'employer', 'consultant'].includes(problemRoleFilter)
-        ? problemRoleFilter
-        : 'employee');
+    let targetRole = 'guest';
+    if (prefilledRole) {
+      targetRole = prefilledRole;
+    } else if (problemPrimaryScope === 'without_login') {
+      targetRole = 'guest';
+    } else if (problemPrimaryScope === 'after_login') {
+      targetRole = postLoginRoleFilter === 'all' || postLoginRoleFilter === 'universal' ? 'employee' : postLoginRoleFilter;
+    }
     setProblemFormRole(targetRole);
     const roleProblems = problems.filter((p) => p.role === targetRole);
     setProblemFormOrder(roleProblems.length);
     setProblemFormActive(true);
     setProblemFormError('');
     setIsProblemModalOpen(true);
+  };
+
+  // Seed / restore default guest problems
+  const handleSeedGuestProblems = async () => {
+    setIsSeedingGuest(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/problems/seed-guest`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (json.success) {
+        if (Array.isArray(json.data)) {
+          setProblems(json.data);
+        } else {
+          fetchProblems();
+        }
+      } else {
+        alert(json.message || 'Failed to seed standard pre-login problems');
+      }
+    } catch (err) {
+      alert('Network error seeding pre-login problems');
+    } finally {
+      setIsSeedingGuest(false);
+    }
+  };
+
+  // Quick reassign role (e.g. Move to Without Login or Move to Candidate)
+  const handleQuickReassignRole = async (prob, newRole) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/support/problems/${prob._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        fetchProblems();
+      } else {
+        alert(json.message || 'Failed to update problem role');
+      }
+    } catch (err) {
+      alert('Error updating problem role');
+    }
   };
 
   // Open problem modal for edit
@@ -1309,213 +1362,401 @@ export default function SupportTab() {
       )}
 
       {/* =========================================================
-       * TAB 3: MANAGE PROBLEMS
+       * TAB 3: MANAGE PROBLEMS (PREDEFINED ISSUE CHOICES)
        * ========================================================= */}
-      {activeSubTab === 'problems' && (
-        <div className="space-y-6">
-          {/* Header Card */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
-            <div>
-              <h2 className="text-base font-bold text-gray-900">Predefined Selection Problems</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Manage and customize the issue options available for Candidate, Employer, and Consultant in the support widget.
-              </p>
+      {activeSubTab === 'problems' && (() => {
+        const withoutLoginList = problems.filter((p) => p.role === 'guest');
+        const postLoginList = problems.filter((p) => p.role !== 'guest');
+
+        const candidateCount = problems.filter((p) => p.role === 'employee').length;
+        const employerCount = problems.filter((p) => p.role === 'employer').length;
+        const consultantCount = problems.filter((p) => p.role === 'consultant').length;
+        const universalCount = problems.filter((p) => p.role === 'all').length;
+
+        // Current display list based on Primary Scope
+        let currentScopeList = [];
+        if (problemPrimaryScope === 'without_login') {
+          currentScopeList = withoutLoginList;
+        } else {
+          currentScopeList = postLoginList.filter((p) => {
+            if (postLoginRoleFilter === 'all') return true;
+            if (postLoginRoleFilter === 'universal') return p.role === 'all';
+            return p.role === postLoginRoleFilter || p.role === 'all';
+          });
+        }
+
+        // Apply search & status filters
+        const displayList = currentScopeList
+          .filter((prob) => {
+            const matchesSearch = problemSearch.trim()
+              ? prob.title.toLowerCase().includes(problemSearch.toLowerCase())
+              : true;
+            const matchesStatus =
+              problemStatusFilter === 'active'
+                ? prob.isActive
+                : problemStatusFilter === 'inactive'
+                ? !prob.isActive
+                : true;
+            return matchesSearch && matchesStatus;
+          })
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+        return (
+          <div className="space-y-6">
+            {/* Top Header Card */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-gray-900">Predefined Support Problems</h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-green-50 text-green-700 border border-green-200">
+                    {problems.length} Total Options
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Manage and customize the issue options available for visitors before login and users inside their logged-in dashboards.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSeedGuestProblems}
+                  disabled={isSeedingGuest}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold rounded-xl text-xs transition-colors cursor-pointer disabled:opacity-50"
+                  title="Seed or restore standard login and guest issues"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${isSeedingGuest ? 'animate-spin' : ''}`} />
+                  <span>{isSeedingGuest ? 'Restoring...' : 'Seed Standard Login Issues'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenAddProblem()}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs shadow-sm transition-colors cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>
+                    Add Problem {problemPrimaryScope === 'without_login' ? 'for Without Login' : `for ${postLoginRoleFilter === 'employee' ? 'Candidate' : postLoginRoleFilter === 'employer' ? 'Employer' : postLoginRoleFilter === 'consultant' ? 'Consultant' : 'Logged-in'}`}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleOpenAddProblem()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-sm shadow-sm transition-colors cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>
-                Add Problem {problemRoleFilter === 'employee' ? 'for Candidate' : problemRoleFilter === 'employer' ? 'for Employer' : problemRoleFilter === 'consultant' ? 'for Consultant' : ''}
-              </span>
-            </button>
-          </div>
+            {/* PRIMARY EXPERIENCE SELECTOR: Without Login vs After Login */}
+            <div className="bg-white p-2.5 rounded-2xl border border-gray-200 shadow-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {/* Mode 1: Without Login (Pre-Login / Guest) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProblemPrimaryScope('without_login');
+                    setProblemSearch('');
+                  }}
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                    problemPrimaryScope === 'without_login'
+                      ? 'border-sky-500 bg-gradient-to-br from-sky-50/90 to-blue-50/50 shadow-xs ring-2 ring-sky-500'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+                        problemPrimaryScope === 'without_login'
+                          ? 'bg-sky-600 text-white shadow-xs'
+                          : 'bg-sky-100 text-sky-700'
+                      }`}>
+                        🔓
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-gray-900">
+                            1. Without Login (Pre-Login Issues)
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                            problemPrimaryScope === 'without_login'
+                              ? 'bg-sky-600 text-white'
+                              : 'bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}>
+                            {withoutLoginList.length} Options
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Shown on Homepage, Login &amp; Register before signing in
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-sky-100/80 flex items-center gap-3 text-[11px] text-sky-800 font-semibold flex-wrap">
+                    <span>• Login problems</span>
+                    <span>• OTP not received</span>
+                    <span>• Account locked</span>
+                    <span>• Registration error</span>
+                  </div>
+                </button>
 
-          {/* Role Summary & Filter Metric Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <button
-              type="button"
-              onClick={() => setProblemRoleFilter('all')}
-              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                problemRoleFilter === 'all'
-                  ? 'border-green-600 bg-green-50/60 shadow-xs ring-1 ring-green-600'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-600">All Roles</span>
-                <span className="text-base font-extrabold text-gray-900">{problems.length}</span>
+                {/* Mode 2: After Login (Logged-In User Roles) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProblemPrimaryScope('after_login');
+                    setProblemSearch('');
+                  }}
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                    problemPrimaryScope === 'after_login'
+                      ? 'border-emerald-600 bg-gradient-to-br from-emerald-50/90 to-green-50/50 shadow-xs ring-2 ring-emerald-600'
+                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+                        problemPrimaryScope === 'after_login'
+                          ? 'bg-emerald-700 text-white shadow-xs'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        🔐
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-gray-900">
+                            2. After Login (Logged-In Roles)
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                            problemPrimaryScope === 'after_login'
+                              ? 'bg-emerald-700 text-white'
+                              : 'bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}>
+                            {postLoginList.length} Options
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Role-specific options shown inside Candidate, Employer &amp; Consultant portals
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-emerald-100/80 flex items-center gap-3 text-[11px] text-emerald-800 font-semibold flex-wrap">
+                    <span>👨‍💼 Candidate ({candidateCount})</span>
+                    <span>🏢 Employer ({employerCount})</span>
+                    <span>🤝 Consultant ({consultantCount})</span>
+                    <span>🌐 Universal ({universalCount})</span>
+                  </div>
+                </button>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1">Total defined choices</p>
-            </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => setProblemRoleFilter('employee')}
-              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                problemRoleFilter === 'employee'
-                  ? 'border-blue-600 bg-blue-50/70 shadow-xs ring-1 ring-blue-600'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-blue-700">👨‍💼 Candidate</span>
-                <span className="text-base font-extrabold text-blue-900">
-                  {problems.filter((p) => p.role === 'employee' || p.role === 'all').length}
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Options visible to candidates</p>
-            </button>
+            {/* SCOPE 1: WITHOUT LOGIN BANNER */}
+            {problemPrimaryScope === 'without_login' && (
+              <div className="bg-sky-50/70 border border-sky-200 p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 text-base shadow-xs">
+                    🔓
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sky-950 text-sm">
+                      Pre-Login &amp; Guest Support Options
+                    </h4>
+                    <p className="text-sky-800 mt-0.5 leading-relaxed">
+                      These issue options appear when visitors open the support widget <strong>before logging in</strong>.
+                      Visitors selecting these will provide their Name, Email, and Phone number so support staff can reach them.
+                    </p>
+                  </div>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => setProblemRoleFilter('employer')}
-              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                problemRoleFilter === 'employer'
-                  ? 'border-purple-600 bg-purple-50/70 shadow-xs ring-1 ring-purple-600'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-purple-700">🏢 Employer</span>
-                <span className="text-base font-extrabold text-purple-900">
-                  {problems.filter((p) => p.role === 'employer' || p.role === 'all').length}
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Options visible to employers</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setProblemRoleFilter('consultant')}
-              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                problemRoleFilter === 'consultant'
-                  ? 'border-amber-600 bg-amber-50/70 shadow-xs ring-1 ring-amber-600'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-700">🤝 Consultant</span>
-                <span className="text-base font-extrabold text-amber-900">
-                  {problems.filter((p) => p.role === 'consultant' || p.role === 'all').length}
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Options visible to consultants</p>
-            </button>
-          </div>
-
-          {/* Filter Bar with Search and Tabs */}
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-              {[
-                { id: 'all', label: 'All Roles', count: problems.length },
-                { id: 'employee', label: '👨‍💼 Candidate', count: problems.filter((p) => p.role === 'employee' || p.role === 'all').length },
-                { id: 'employer', label: '🏢 Employer', count: problems.filter((p) => p.role === 'employer' || p.role === 'all').length },
-                { id: 'consultant', label: '🤝 Consultant', count: problems.filter((p) => p.role === 'consultant' || p.role === 'all').length },
-                { id: 'universal', label: '🌐 Universal Only', count: problems.filter((p) => p.role === 'all').length },
-              ].map((tab) => {
-                const isActive = problemRoleFilter === tab.id;
-                return (
+                {withoutLoginList.length === 0 && (
                   <button
-                    key={tab.id}
                     type="button"
-                    onClick={() => setProblemRoleFilter(tab.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isActive
-                        ? 'bg-green-700 text-white shadow-xs'
+                    onClick={handleSeedGuestProblems}
+                    disabled={isSeedingGuest}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs whitespace-nowrap shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Auto-Populate 6 Standard Pre-Login Issues</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* SCOPE 2: AFTER LOGIN SUB-ROLE TABS */}
+            {problemPrimaryScope === 'after_login' && (
+              <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-xs space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-black text-gray-500 uppercase tracking-wider">
+                    Select Logged-In User Role:
+                  </span>
+                  <span className="text-[11px] text-gray-400">
+                    Each role sees only problems relevant to their dashboard
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {[
+                    { id: 'employee', label: 'Candidate', icon: '👨‍💼', count: candidateCount },
+                    { id: 'employer', label: 'Employer', icon: '🏢', count: employerCount },
+                    { id: 'consultant', label: 'Consultant', icon: '🤝', count: consultantCount },
+                    { id: 'universal', label: 'Universal', icon: '🌐', count: universalCount },
+                    { id: 'all', label: 'All Logged-In', icon: '📋', count: postLoginList.length },
+                  ].map((sub) => {
+                    const isSel = postLoginRoleFilter === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => {
+                          setPostLoginRoleFilter(sub.id);
+                          setProblemSearch('');
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                          isSel
+                            ? 'border-green-600 bg-green-50/70 ring-1 ring-green-600 shadow-xs'
+                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{sub.icon}</span>
+                          <span className={`text-xs font-bold ${isSel ? 'text-green-950 font-black' : 'text-gray-700'}`}>
+                            {sub.label}
+                          </span>
+                        </div>
+                        <span className={`text-[11px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                          isSel ? 'bg-green-700 text-white' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {sub.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="p-2.5 bg-gray-50 rounded-xl text-xs text-gray-600 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span>
+                    {postLoginRoleFilter === 'employee' && '👨‍💼 Displayed to job seekers in Candidate Portal, Job Feed, and Application Drawer.'}
+                    {postLoginRoleFilter === 'employer' && '🏢 Displayed to employers & recruiters in Employer Dashboard, Job Posting, and Verification.'}
+                    {postLoginRoleFilter === 'consultant' && '🤝 Displayed to partner consultants in Consultant Portal and Client Referral.'}
+                    {postLoginRoleFilter === 'universal' && '🌐 Universal options visible across all logged-in roles.'}
+                    {postLoginRoleFilter === 'all' && '📋 Overview showing all options across all logged-in user roles.'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Filter Toolbar (Search + Status Filter) */}
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              {/* Status Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+                <span className="text-xs font-bold text-gray-500 mr-1">Status:</span>
+                {[
+                  { id: 'all', label: 'All Status' },
+                  { id: 'active', label: 'Active Only' },
+                  { id: 'inactive', label: 'Inactive Only' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setProblemStatusFilter(st.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      problemStatusFilter === st.id
+                        ? 'bg-gray-900 text-white shadow-xs'
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                     }`}
                   >
-                    <span>{tab.label}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-white text-gray-600'
-                    }`}>
-                      {tab.count}
-                    </span>
+                    {st.label}
                   </button>
-                );
-              })}
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full md:w-64">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={problemSearch}
-                onChange={(e) => setProblemSearch(e.target.value)}
-                placeholder="Search problem title..."
-                className="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
-              />
-              {problemSearch && (
-                <button
-                  type="button"
-                  onClick={() => setProblemSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Problems List Card */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-            {loadingProblems ? (
-              <div className="py-16 text-center space-y-3">
-                <div className="w-8 h-8 border-3 border-green-700 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm font-bold text-gray-500">Loading problems...</p>
+                ))}
               </div>
-            ) : problemsError ? (
-              <div className="py-16 text-center space-y-3">
-                <AlertCircle className="w-10 h-10 text-red-500 mx-auto" />
-                <p className="text-sm font-bold text-red-600">{problemsError}</p>
-                <button
-                  type="button"
-                  onClick={fetchProblems}
-                  className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                >
-                  Retry
-                </button>
-              </div>
-            ) : (() => {
-              const displayList = problems
-                .filter((prob) => {
-                  const matchesRole =
-                    problemRoleFilter === 'all'
-                      ? true
-                      : problemRoleFilter === 'universal'
-                      ? prob.role === 'all'
-                      : prob.role === problemRoleFilter || prob.role === 'all';
-                  const matchesSearch = problemSearch.trim()
-                    ? prob.title.toLowerCase().includes(problemSearch.toLowerCase())
-                    : true;
-                  return matchesRole && matchesSearch;
-                })
-                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-              return displayList.length === 0 ? (
-                <div className="py-16 text-center space-y-3">
-                  <SlidersHorizontal className="w-10 h-10 text-gray-300 mx-auto" />
-                  <h4 className="text-base font-bold text-gray-800">No support problems found</h4>
-                  <p className="text-xs text-gray-500">
-                    {problemSearch
-                      ? `No problems matching "${problemSearch}"`
-                      : 'No problems defined for this role filter.'}
-                  </p>
+              {/* Search Box */}
+              <div className="relative w-full md:w-72">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={problemSearch}
+                  onChange={(e) => setProblemSearch(e.target.value)}
+                  placeholder={`Search ${problemPrimaryScope === 'without_login' ? 'pre-login' : 'post-login'} problems...`}
+                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-gray-200 text-xs outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600"
+                />
+                {problemSearch && (
                   <button
                     type="button"
-                    onClick={() => handleOpenAddProblem()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                    onClick={() => setProblemSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Create Problem Option</span>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Problems List Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+              {loadingProblems ? (
+                <div className="py-16 text-center space-y-3">
+                  <div className="w-8 h-8 border-3 border-green-700 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-sm font-bold text-gray-500">Loading problems...</p>
+                </div>
+              ) : problemsError ? (
+                <div className="py-16 text-center space-y-3">
+                  <AlertCircle className="w-10 h-10 text-red-500 mx-auto" />
+                  <p className="text-sm font-bold text-red-600">{problemsError}</p>
+                  <button
+                    type="button"
+                    onClick={fetchProblems}
+                    className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Retry
                   </button>
                 </div>
+              ) : displayList.length === 0 ? (
+                problemPrimaryScope === 'without_login' && withoutLoginList.length === 0 ? (
+                  <div className="py-16 text-center space-y-3 p-6">
+                    <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mx-auto text-2xl shadow-xs">
+                      🔓
+                    </div>
+                    <h4 className="text-base font-bold text-gray-900">No Without-Login Problems Defined</h4>
+                    <p className="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
+                      Visitors who are not logged in currently have 0 problem choices in the support widget.
+                      Click below to immediately create the 6 standard pre-login choices (Unable to login, OTP not received, Account locked, Registration error, etc.).
+                    </p>
+                    <div className="flex items-center justify-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleSeedGuestProblems}
+                        disabled={isSeedingGuest}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{isSeedingGuest ? 'Seeding...' : '⚡ Seed Standard Pre-Login Issues'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddProblem('guest')}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 font-bold rounded-xl text-xs border border-gray-300 transition-colors cursor-pointer shadow-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Custom Pre-Login Issue</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-16 text-center space-y-3">
+                    <SlidersHorizontal className="w-10 h-10 text-gray-300 mx-auto" />
+                    <h4 className="text-base font-bold text-gray-800">No support problems found</h4>
+                    <p className="text-xs text-gray-500">
+                      {problemSearch
+                        ? `No problems matching "${problemSearch}"`
+                        : 'No problems defined for this filter.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAddProblem()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Create Problem Option</span>
+                    </button>
+                  </div>
+                )
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -1523,9 +1764,10 @@ export default function SupportTab() {
                       <tr className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-black uppercase tracking-wider text-gray-500">
                         <th className="py-3.5 px-5 w-24">Order</th>
                         <th className="py-3.5 px-6">Problem Title</th>
-                        <th className="py-3.5 px-4 w-36">Role</th>
+                        <th className="py-3.5 px-4 w-40">Audience / Role</th>
                         <th className="py-3.5 px-5 w-28">Status</th>
-                        <th className="py-3.5 px-5 w-32 text-center">Toggle Active</th>
+                        <th className="py-3.5 px-5 w-28 text-center">Toggle Active</th>
+                        <th className="py-3.5 px-4 w-44">Quick Reassign</th>
                         <th className="py-3.5 px-5 text-right w-28">Actions</th>
                       </tr>
                     </thead>
@@ -1535,8 +1777,8 @@ export default function SupportTab() {
                           <tr key={prob._id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="py-3 px-5">
                               <div className="flex items-center gap-2">
-                                <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-bold font-mono text-xs border border-gray-200">
-                                  #{prob.order ?? 0}
+                                <span className="inline-flex items-center justify-center min-w-[34px] px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-bold font-mono text-xs border border-gray-200">
+                                  #{index + 1}
                                 </span>
                                 <div className="flex flex-col gap-0.5">
                                   <button
@@ -1566,7 +1808,12 @@ export default function SupportTab() {
                             </td>
 
                             <td className="py-4 px-4">
-                              {prob.role === 'employee' ? (
+                              {prob.role === 'guest' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                  <span>🔓</span>
+                                  <span>Without Login</span>
+                                </span>
+                              ) : prob.role === 'employee' ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                                   <span>👨‍💼</span>
                                   <span>Candidate</span>
@@ -1616,6 +1863,49 @@ export default function SupportTab() {
                               </button>
                             </td>
 
+                            {/* Quick Reassign Role Action */}
+                            <td className="py-4 px-4">
+                              {prob.role !== 'guest' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickReassignRole(prob, 'guest')}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-lg border border-sky-200 transition-colors cursor-pointer"
+                                  title="Transfer this problem to Without Login"
+                                >
+                                  <span>🔓</span>
+                                  <span>Move to Without Login</span>
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-gray-400 font-semibold mr-0.5">Move:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickReassignRole(prob, 'employee')}
+                                    className="px-1.5 py-0.5 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 cursor-pointer"
+                                    title="Move to Candidate"
+                                  >
+                                    Cand.
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickReassignRole(prob, 'employer')}
+                                    className="px-1.5 py-0.5 text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded border border-purple-200 cursor-pointer"
+                                    title="Move to Employer"
+                                  >
+                                    Emp.
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickReassignRole(prob, 'consultant')}
+                                    className="px-1.5 py-0.5 text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded border border-amber-200 cursor-pointer"
+                                    title="Move to Consultant"
+                                  >
+                                    Cons.
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+
                             <td className="py-4 px-5 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button
@@ -1652,11 +1942,11 @@ export default function SupportTab() {
                     </tbody>
                   </table>
                 </div>
-              );
-            })()}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* =========================================================
        * TAB 4: USER QUICK UPDATES RESPONSES (CMS)
@@ -1920,42 +2210,72 @@ export default function SupportTab() {
                 </div>
               )}
 
-              {/* Visual Role Picker */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Target Role <span className="text-red-500">*</span>
+              {/* Visual Role Picker with clear Pre-Login vs Post-Login Segmentation */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Target Audience / Where will this show? <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'employee', label: 'Candidate', icon: '👨‍💼', desc: 'Job seeker issues' },
-                    { id: 'employer', label: 'Employer', icon: '🏢', desc: 'Recruiter & company issues' },
-                    { id: 'consultant', label: 'Consultant', icon: '🤝', desc: 'Agency / partner issues' },
-                    { id: 'all', label: 'All Roles', icon: '🌐', desc: 'Universal to everyone' },
-                  ].map((r) => {
-                    const isSel = problemFormRole === r.id;
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setProblemFormRole(r.id)}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                          isSel
-                            ? 'border-green-600 bg-green-50/80 text-green-950 ring-1 ring-green-600 font-bold shadow-xs'
-                            : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white font-medium'
-                        }`}
-                      >
-                        <span className="text-lg">{r.icon}</span>
-                        <div>
-                          <div className="text-xs font-bold">{r.label}</div>
-                          <div className="text-[10px] text-gray-400 leading-tight">{r.desc}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
+
+                {/* Section 1: Pre-login (Without Login) */}
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-700 block mb-1.5 flex items-center gap-1">
+                    <span>🔓</span>
+                    <span>1. Pre-Login Audience (Without Login)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setProblemFormRole('guest')}
+                    className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                      problemFormRole === 'guest'
+                        ? 'border-sky-600 bg-sky-50 text-sky-950 ring-2 ring-sky-600 font-bold shadow-xs'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white font-medium'
+                    }`}
+                  >
+                    <span className="text-2xl">🔓</span>
+                    <div>
+                      <div className="text-xs font-bold text-sky-900">Without Login (Guest &amp; Visitors)</div>
+                      <div className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                        Shown to visitors on Homepage, Login &amp; Register before signing in (Login trouble, OTP locked, Sign up issue)
+                      </div>
+                    </div>
+                  </button>
                 </div>
-                <p className="text-[11px] text-gray-400 mt-1.5">
-                  Select which users will see this problem choice in their widget step 2.
-                </p>
+
+                {/* Section 2: Post-login Roles */}
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block mb-1.5 flex items-center gap-1">
+                    <span>🔐</span>
+                    <span>2. After-Login Audiences (Logged-In Portals)</span>
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      { id: 'employee', label: 'Candidate', icon: '👨‍💼', desc: 'Job seeker portal & application drawer' },
+                      { id: 'employer', label: 'Employer', icon: '🏢', desc: 'Recruiter dashboard & job posting CMS' },
+                      { id: 'consultant', label: 'Consultant', icon: '🤝', desc: 'Agency partner portal & referrals' },
+                      { id: 'all', label: 'Universal (All Roles)', icon: '🌐', desc: 'Common issues visible across all roles' },
+                    ].map((r) => {
+                      const isSel = problemFormRole === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setProblemFormRole(r.id)}
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                            isSel
+                              ? 'border-green-600 bg-green-50/80 text-green-950 ring-2 ring-green-600 font-bold shadow-xs'
+                              : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-white font-medium'
+                          }`}
+                        >
+                          <span className="text-lg">{r.icon}</span>
+                          <div>
+                            <div className="text-xs font-bold">{r.label}</div>
+                            <div className="text-[10px] text-gray-400 leading-tight">{r.desc}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Problem Title Input */}
@@ -1967,7 +2287,17 @@ export default function SupportTab() {
                   type="text"
                   value={problemFormTitle}
                   onChange={(e) => setProblemFormTitle(e.target.value)}
-                  placeholder="e.g. OTP not received, Unable to login, Resume upload error"
+                  placeholder={
+                    problemFormRole === 'guest'
+                      ? 'e.g. I am unable to login, OTP not received, Account locked'
+                      : problemFormRole === 'employee'
+                      ? 'e.g. Resume upload issue, Job application status, Profile error'
+                      : problemFormRole === 'employer'
+                      ? 'e.g. Job posting approval, Candidate CV download problem'
+                      : problemFormRole === 'consultant'
+                      ? 'e.g. Commission payout inquiry, Client candidate mapping'
+                      : 'e.g. Technical bug, Website error, Payment issue'
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 font-medium"
                   required
                 />

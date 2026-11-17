@@ -33,6 +33,11 @@ const getProfile = async (req, res) => {
         resume: employee.resume || '',
         coverLetter: employee.coverLetter || '',
         introVideo: employee.introVideo || '',
+        isVideoApproved: Boolean(employee.isVideoApproved),
+        videoApprovalStatus: employee.videoApprovalStatus || (employee.introVideo ? (employee.isVideoApproved ? 'approved' : 'pending') : 'none'),
+        videoUploadedAt: employee.videoUploadedAt || null,
+        videoApprovedAt: employee.videoApprovedAt || null,
+        videoRejectionReason: employee.videoRejectionReason || '',
         videoVisibility: employee.videoVisibility || 'everyone',
         isProfilePrivate: employee.isProfilePrivate !== undefined ? Boolean(employee.isProfilePrivate) : true,
         isOnboardingCompleted: employee.isOnboardingCompleted ?? false,
@@ -136,7 +141,27 @@ const updateProfile = async (req, res) => {
     if (coverLetter !== undefined) updateData.coverLetter = coverLetter;
 
     const introVideo = req.body.documents?.introVideo !== undefined ? req.body.documents.introVideo : req.body.introVideo;
-    if (introVideo !== undefined) updateData.introVideo = introVideo;
+    if (introVideo !== undefined) {
+      const trimmedVideo = String(introVideo || '').trim();
+      updateData.introVideo = trimmedVideo;
+
+      // When candidate uploads a new or changed video, default hidden pending admin approval
+      const currentEmployee = await Employee.findById(req.employee._id).select('introVideo isVideoApproved videoApprovalStatus');
+      if (trimmedVideo) {
+        if (!currentEmployee || currentEmployee.introVideo !== trimmedVideo) {
+          updateData.isVideoApproved = false;
+          updateData.videoApprovalStatus = 'pending';
+          updateData.videoUploadedAt = new Date();
+          updateData.videoRejectionReason = '';
+        }
+      } else {
+        // Video removed
+        updateData.isVideoApproved = false;
+        updateData.videoApprovalStatus = 'none';
+        updateData.videoUploadedAt = null;
+        updateData.videoRejectionReason = '';
+      }
+    }
 
     const videoVisibility = req.body.documents?.videoVisibility !== undefined 
       ? req.body.documents.videoVisibility 
@@ -176,6 +201,11 @@ const updateProfile = async (req, res) => {
         resume: updatedEmployee.resume,
         coverLetter: updatedEmployee.coverLetter,
         introVideo: updatedEmployee.introVideo,
+        isVideoApproved: Boolean(updatedEmployee.isVideoApproved),
+        videoApprovalStatus: updatedEmployee.videoApprovalStatus || (updatedEmployee.introVideo ? (updatedEmployee.isVideoApproved ? 'approved' : 'pending') : 'none'),
+        videoUploadedAt: updatedEmployee.videoUploadedAt || null,
+        videoApprovedAt: updatedEmployee.videoApprovedAt || null,
+        videoRejectionReason: updatedEmployee.videoRejectionReason || '',
         videoVisibility: updatedEmployee.videoVisibility || 'everyone',
         isProfilePrivate: updatedEmployee.isProfilePrivate !== undefined ? Boolean(updatedEmployee.isProfilePrivate) : true,
         isOnboardingCompleted: updatedEmployee.isOnboardingCompleted ?? false,

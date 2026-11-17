@@ -8,9 +8,11 @@ const VERIFICATION_DOC_TYPES = {
   tax: [
     'gst_certificate',
     'pan_card_company',
+    'pan_card_personal',
     'tan_certificate',
     'itr_acknowledgement',
-    'professional_tax_certificate'
+    'professional_tax_certificate',
+    'other'
   ],
   incorporation: [
     'certificate_of_incorporation',
@@ -20,20 +22,41 @@ const VERIFICATION_DOC_TYPES = {
     'llp_agreement',
     'msme_udyam_certificate',
     'shop_establishment_license',
-    'gumasta_trade_license'
+    'gumasta_trade_license',
+    'aadhaar_card',
+    'pan_card_personal',
+    'passport',
+    'voter_id',
+    'driving_license',
+    'authorized_person_id',
+    'authorization_letter',
+    'other'
   ],
   address: [
-    'address_proof'
+    'address_proof',
+    'other'
   ],
   authorized_signatory: [
     'authorization_letter',
-    'authorized_person_id'
+    'authorized_person_id',
+    'pan_card_personal',
+    'aadhaar_card',
+    'passport',
+    'voter_id',
+    'driving_license',
+    'other'
   ],
   license: [
-    'staffing_license'
+    'staffing_license',
+    'other'
   ],
   other: [
-    'other'
+    'other',
+    'pan_card_personal',
+    'aadhaar_card',
+    'passport',
+    'voter_id',
+    'driving_license'
   ]
 };
 
@@ -41,6 +64,11 @@ const VERIFICATION_DOC_TYPES = {
 const DOC_TYPE_LABELS = {
   gst_certificate: 'GST Certificate',
   pan_card_company: 'Company PAN Card',
+  pan_card_personal: 'Personal PAN Card',
+  aadhaar_card: 'Aadhaar Card',
+  passport: 'Passport',
+  voter_id: 'Voter ID',
+  driving_license: 'Driving License',
   tan_certificate: 'TAN Certificate',
   itr_acknowledgement: 'ITR Acknowledgement',
   professional_tax_certificate: 'Professional Tax Certificate',
@@ -154,37 +182,15 @@ exports.uploadVerificationDocument = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please attach a document file or cloud fileUrl' });
     }
 
-    const { category, docType } = req.body;
-    if (!category || !docType) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({ success: false, message: 'category and docType are required' });
-    }
+    const rawCategory = req.body.category || 'other';
+    const docType = String(req.body.docType || 'other').trim();
+    const validCategories = ['tax', 'incorporation', 'address', 'authorized_signatory', 'license', 'other'];
+    const category = validCategories.includes(rawCategory) ? rawCategory : 'other';
 
-    // Validate category
-    if (!VERIFICATION_DOC_TYPES[category]) {
+    // Max docs limit enforcement
+    if (Array.isArray(employer.verification.documents) && employer.verification.documents.length >= 20) {
       if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({ success: false, message: `Invalid category: ${category}` });
-    }
-
-    // Validate docType belongs to category
-    if (!VERIFICATION_DOC_TYPES[category].includes(docType)) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        success: false,
-        message: `Document type "${docType}" is not valid for category "${category}"`
-      });
-    }
-
-    // Restrict staffing_license to consultants only
-    if (docType === 'staffing_license' && !employer.isConsultant) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({ success: false, message: 'Staffing license is only applicable for consultant accounts' });
-    }
-
-    // Max 10 docs enforcement
-    if (Array.isArray(employer.verification.documents) && employer.verification.documents.length >= 10) {
-      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({ success: false, message: 'Maximum 10 verification documents allowed' });
+      return res.status(400).json({ success: false, message: 'Maximum verification documents allowed' });
     }
 
     // Strict 1 document per category rule (Tax & Incorporation):

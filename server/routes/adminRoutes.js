@@ -4,6 +4,7 @@ const {
   getDashboardStats,
   getAllEmployees,
   getEmployeeById,
+  updateEmployeeVideoApproval,
   getAllEmployers,
   getEmployerById,
   updateJobStatusAdmin,
@@ -21,6 +22,7 @@ const {
 router.get('/stats', getDashboardStats);
 router.get('/employees', getAllEmployees);
 router.get('/employees/:id', getEmployeeById);
+router.put('/employees/:id/video-approval', updateEmployeeVideoApproval);
 router.get('/employers', getAllEmployers);
 router.get('/employers/:id', getEmployerById);
 router.get('/jobs', getAllJobsAdmin);

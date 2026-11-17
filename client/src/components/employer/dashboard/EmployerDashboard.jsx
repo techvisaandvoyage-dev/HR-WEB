@@ -370,7 +370,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               <Route path="/company-profile" element={<CompanyProfileTab portalConfig={portalConfig?.account} employerProfile={employerProfile} />} />
               <Route path="/verification" element={
                 <React.Suspense fallback={<div className="p-12 text-center text-sm font-semibold text-gray-500">Loading verification workspace...</div>}>
-                  <VerificationPage employerProfile={employerProfile} />
+                  <VerificationPage employerProfile={employerProfile} portalConfig={portalConfig?.account} />
                 </React.Suspense>
               } />
               {/* Placeholders for Messages and Settings */}

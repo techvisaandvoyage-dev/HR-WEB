@@ -631,6 +631,56 @@ exports.updateEmployerControls = async (req, res) => {
   }
 };
 
+// @desc    Update candidate video approval status (approve / reject / toggle)
+// @route   PUT /api/admin/employees/:id/video-approval
+// @access  Admin
+exports.updateEmployeeVideoApproval = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isVideoApproved, videoApprovalStatus, videoRejectionReason = '' } = req.body;
+
+    const employee = await Employee.findById(id);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Candidate not found' });
+    }
+
+    const approved = isVideoApproved !== undefined ? Boolean(isVideoApproved) : videoApprovalStatus === 'approved';
+    employee.isVideoApproved = approved;
+    employee.videoApprovalStatus = approved ? 'approved' : (videoApprovalStatus || 'rejected');
+    if (approved) {
+      employee.videoApprovedAt = new Date();
+      employee.videoRejectionReason = '';
+    } else {
+      employee.videoApprovedAt = null;
+      employee.videoRejectionReason = String(videoRejectionReason || '').trim();
+    }
+
+    await employee.save();
+
+    // Trigger live Google Sheet sync for candidate if needed
+    try {
+      const { triggerLiveCandidateSync } = require('../services/googleSheetService');
+      triggerLiveCandidateSync();
+    } catch (_) {}
+
+    return res.status(200).json({
+      success: true,
+      message: approved ? 'Candidate video approved & made visible to employers' : 'Candidate video hidden from employers',
+      data: {
+        _id: employee._id,
+        id: employee._id,
+        isVideoApproved: employee.isVideoApproved,
+        videoApprovalStatus: employee.videoApprovalStatus,
+        videoApprovedAt: employee.videoApprovedAt,
+        videoRejectionReason: employee.videoRejectionReason
+      }
+    });
+  } catch (error) {
+    console.error('Error updating candidate video approval:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update video approval', error: error.message });
+  }
+};
+
 // @desc    Get Global Site Settings
 // @route   GET /api/admin/site-settings
 // @access  Public / Admin

@@ -8,7 +8,7 @@ const SupportProblemSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['all', 'employee', 'employer', 'consultant'],
+    enum: ['all', 'employee', 'employer', 'consultant', 'guest'],
     default: 'all',
     index: true,
   },

@@ -115,6 +115,7 @@ export default function DashboardOverview({ onNavigateTab }) {
   const [globalCardVisible, setGlobalCardVisible] = useState(true);
   const [globalLoading, setGlobalLoading] = useState(false);
   const [updatingControlId, setUpdatingControlId] = useState(null);
+  const [updatingCandidateVideoId, setUpdatingCandidateVideoId] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
   // Employers List State
@@ -696,6 +697,57 @@ export default function DashboardOverview({ onNavigateTab }) {
       alert('Failed to connect to server');
     } finally {
       setUpdatingControlId(null);
+    }
+  };
+
+  // Toggle Candidate Video Approval Status (Admin check & approval)
+  const handleToggleCandidateVideoApproval = async (employeeId, newApprovedStatus) => {
+    try {
+      setUpdatingCandidateVideoId(employeeId);
+      const res = await fetch(`${API_URL}/api/admin/employees/${employeeId}/video-approval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken') || ''}`,
+          'x-admin-auth': 'true'
+        },
+        body: JSON.stringify({ isVideoApproved: newApprovedStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmployees(prev => prev.map(emp => {
+          if ((emp._id || emp.id) === employeeId) {
+            return {
+              ...emp,
+              isVideoApproved: newApprovedStatus,
+              videoApprovalStatus: newApprovedStatus ? 'approved' : 'rejected'
+            };
+          }
+          return emp;
+        }));
+        if (selectedEmployee && (selectedEmployee._id || selectedEmployee.id) === employeeId) {
+          setSelectedEmployee(prev => ({
+            ...prev,
+            isVideoApproved: newApprovedStatus,
+            videoApprovalStatus: newApprovedStatus ? 'approved' : 'rejected'
+          }));
+        }
+        if (detailEmployee && (detailEmployee._id || detailEmployee.id) === employeeId) {
+          setDetailEmployee(prev => ({
+            ...prev,
+            isVideoApproved: newApprovedStatus,
+            videoApprovalStatus: newApprovedStatus ? 'approved' : 'rejected'
+          }));
+        }
+        showToast(newApprovedStatus ? 'Candidate video APPROVED & visible to employers' : 'Candidate video HIDDEN from employers');
+      } else {
+        alert(data.message || 'Failed to update candidate video approval');
+      }
+    } catch (err) {
+      console.error('Error updating candidate video approval:', err);
+      alert('Failed to connect to server');
+    } finally {
+      setUpdatingCandidateVideoId(null);
     }
   };
 
@@ -1545,7 +1597,8 @@ export default function DashboardOverview({ onNavigateTab }) {
     company: 'All',
     jobsApplied: 'All',
     registeredDate: 'All',
-    lastUpdate: 'All'
+    lastUpdate: 'All',
+    videoStatus: 'All'
   });
 
   const [empSort, setEmpSort] = useState({ column: 'registeredDate', direction: 'desc' });
@@ -1758,7 +1811,8 @@ export default function DashboardOverview({ onNavigateTab }) {
       company: 'All',
       jobsApplied: 'All',
       registeredDate: 'All',
-      lastUpdate: 'All'
+      lastUpdate: 'All',
+      videoStatus: 'All'
     });
   };
 
@@ -1766,6 +1820,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     let count = 0;
     if (employeeSearch.trim()) count++;
     if (employeeAccountStatusFilter !== 'All') count++;
+    if (empFilters.videoStatus && empFilters.videoStatus !== 'All') count++;
     if (empFilters.name.trim()) count++;
     if (empFilters.email.trim()) count++;
     if (empFilters.phone.trim()) count++;
@@ -1930,6 +1985,16 @@ export default function DashboardOverview({ onNavigateTab }) {
         if (empFilters.lastUpdate === 'month' && now - updateTime > 30 * 24 * 60 * 60 * 1000) return false;
       }
 
+      // 16. Video Status filter
+      if (empFilters.videoStatus && empFilters.videoStatus !== 'All') {
+        const hasVid = Boolean(emp.introVideo || emp.documents?.introVideo);
+        const isAppr = Boolean(emp.isVideoApproved);
+        if (empFilters.videoStatus === 'no_video' && hasVid) return false;
+        if (empFilters.videoStatus === 'approved' && (!hasVid || !isAppr)) return false;
+        if (empFilters.videoStatus === 'pending' && (!hasVid || isAppr)) return false;
+        if (empFilters.videoStatus === 'off' && (!hasVid || isAppr)) return false;
+      }
+
       return true;
     });
 
@@ -1939,6 +2004,11 @@ export default function DashboardOverview({ onNavigateTab }) {
       let valB = '';
 
       switch (empSort.column) {
+        case 'videoStatus': {
+          const vA = Boolean(a.introVideo || a.documents?.introVideo) ? (a.isVideoApproved ? 2 : 1) : 0;
+          const vB = Boolean(b.introVideo || b.documents?.introVideo) ? (b.isVideoApproved ? 2 : 1) : 0;
+          return empSort.direction === 'asc' ? vA - vB : vB - vA;
+        }
         case 'name':
           valA = a.name || '';
           valB = b.name || '';
@@ -3241,6 +3311,12 @@ export default function DashboardOverview({ onNavigateTab }) {
                         {empSort.column === 'lastUpdate' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
                       </div>
                     </th>
+                    <th onClick={() => handleSort('videoStatus')} className="px-4 py-3 cursor-pointer hover:bg-gray-100/70 transition-colors select-none text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span>Video Access</span>
+                        {empSort.column === 'videoStatus' ? (empSort.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />) : <ArrowUpDown className="w-3 h-3 text-gray-400 opacity-60" />}
+                      </div>
+                    </th>
                     <th className="px-4 py-3 text-center whitespace-nowrap">Account Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -3434,6 +3510,22 @@ export default function DashboardOverview({ onNavigateTab }) {
                       </select>
                     </th>
 
+                    {/* Video Access Filter */}
+                    <th className="p-2 text-center">
+                      <select
+                        value={empFilters.videoStatus || 'All'}
+                        onChange={(e) => setEmpFilters(prev => ({ ...prev, videoStatus: e.target.value }))}
+                        aria-label="Filter candidates by video access"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-normal text-gray-800 focus:border-emerald-500 focus:outline-none cursor-pointer max-w-[120px]"
+                      >
+                        <option value="All">All Video</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Active</option>
+                        <option value="off">Off</option>
+                        <option value="no_video">No Video</option>
+                      </select>
+                    </th>
+
                     {/* Account Status Filter */}
                     <th className="p-2">
                       <select
@@ -3605,6 +3697,53 @@ export default function DashboardOverview({ onNavigateTab }) {
                             <span className="font-bold text-gray-900 text-xs">
                               {getLastProfileUpdate(emp)}
                             </span>
+                          </td>
+
+                          {/* Video Access Toggle */}
+                          <td className="px-4 py-3.5 whitespace-nowrap align-middle text-center">
+                            {(() => {
+                              const hasVideo = Boolean(emp.introVideo || emp.documents?.introVideo);
+                              const isApproved = Boolean(emp.isVideoApproved);
+
+                              if (!hasVideo) {
+                                return (
+                                  <span className="text-[11px] font-semibold text-gray-400 italic">
+                                    No Video
+                                  </span>
+                                );
+                              }
+
+                              return (
+                                <div className="inline-flex flex-col items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={updatingCandidateVideoId === (emp._id || emp.id)}
+                                    onClick={() => handleToggleCandidateVideoApproval(emp._id || emp.id, !isApproved)}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                                      isApproved ? 'bg-emerald-600' : 'bg-gray-300 hover:bg-gray-400'
+                                    }`}
+                                    title={
+                                      isApproved
+                                        ? 'Candidate video access is ACTIVE (Approved). Click to revoke and hide from employers.'
+                                        : 'Candidate video access is OFF (Pending Review). Click to grant access and approve.'
+                                    }
+                                  >
+                                    <span className="sr-only">Toggle candidate video access</span>
+                                    <span
+                                      aria-hidden="true"
+                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                        isApproved ? 'translate-x-5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                  <span className={`text-[10px] font-black uppercase tracking-wider ${
+                                    isApproved ? 'text-emerald-700' : 'text-gray-400'
+                                  }`}>
+                                    {isApproved ? 'Active' : 'Off'}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </td>
 
                           {/* Account Status */}
@@ -7022,12 +7161,34 @@ export default function DashboardOverview({ onNavigateTab }) {
                     </div>
                   )}
 
-                  {/* Intro Video (Direct In-Drawer Video Player Preview) */}
-                  {(selectedEmployee.introVideo || selectedEmployee.documents?.introVideo) && (() => {
-                    const videoSrc = selectedEmployee.introVideo || selectedEmployee.documents?.introVideo;
+                  {/* Intro Video (Direct In-Drawer Video Player Preview & Admin Approval) */}
+                  {(() => {
+                    const candObj = detailEmployee || selectedEmployee;
+                    const videoSrc = candObj?.introVideo || candObj?.documents?.introVideo;
+                    const candId = candObj?._id || candObj?.id;
+                    const isApproved = Boolean(candObj?.isVideoApproved);
+
+                    if (!videoSrc) {
+                      return (
+                        <div className="p-4 bg-gray-50/70 rounded-2xl border border-gray-200/80 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-gray-200 text-gray-500 flex items-center justify-center shrink-0">
+                              <Video className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-gray-800">Introductory Video</p>
+                              <p className="text-[10px] text-gray-400">No video uploaded by candidate yet</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                            Not Uploaded
+                          </span>
+                        </div>
+                      );
+                    }
 
                     return (
-                      <div className="p-4 bg-gray-50/70 rounded-2xl border border-gray-200/80 space-y-3">
+                      <div className="p-4 bg-gray-50/70 rounded-2xl border border-gray-200/80 space-y-3.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
@@ -7038,14 +7199,74 @@ export default function DashboardOverview({ onNavigateTab }) {
                               <p className="text-[10px] text-gray-500">Direct candidate video presentation</p>
                             </div>
                           </div>
-                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            Live Preview
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                              isApproved
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}>
+                              {isApproved ? '✓ Approved / Visible' : '⏳ Pending Review / Hidden'}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Direct Video Player with native play controls */}
                         <div className="w-full rounded-xl overflow-hidden border border-gray-300 bg-black shadow-inner">
                           <AdminVideoPlayer url={videoSrc} />
+                        </div>
+
+                        {/* Admin Video Approval & Visibility Control Card */}
+                        <div className={`p-4 rounded-xl border space-y-3 ${
+                          isApproved
+                            ? 'bg-emerald-50/80 border-emerald-200'
+                            : 'bg-amber-50/80 border-amber-200'
+                        }`}>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2.5 h-2.5 rounded-full ${
+                                  isApproved ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'
+                                }`}></span>
+                                <span className={`text-xs font-black uppercase tracking-wider ${
+                                  isApproved ? 'text-emerald-950' : 'text-amber-950'
+                                }`}>
+                                  {isApproved ? 'Employer Visibility: ACTIVE (Approved)' : 'Employer Visibility: OFF (Hidden by Default)'}
+                                </span>
+                              </div>
+                              <p className={`text-[11px] leading-relaxed ${
+                                isApproved ? 'text-emerald-800' : 'text-amber-800'
+                              }`}>
+                                {isApproved
+                                  ? 'This video is verified and visible to employers who have video access enabled.'
+                                  : 'Newly uploaded candidate videos remain hidden from employers by default until reviewed and approved by admin.'}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={updatingCandidateVideoId === candId}
+                              onClick={() => handleToggleCandidateVideoApproval(candId, !isApproved)}
+                              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs cursor-pointer shrink-0 disabled:opacity-50 flex items-center gap-1.5 ${
+                                isApproved
+                                  ? 'bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 hover:border-rose-300'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              }`}
+                            >
+                              {updatingCandidateVideoId === candId ? (
+                                'Updating...'
+                              ) : isApproved ? (
+                                <>
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>Revoke / Hide Video</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Approve Video &amp; Make Visible</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );

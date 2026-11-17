@@ -51,21 +51,23 @@ export default function SjJobCard({
       onKeyDown={handleRowKeyDown}
       aria-label={`${title} at ${companyName}`}
     >
-      <div className="sj-job-main-col">
-        {/* 1. Company Avatar */}
+      {/* 1. Company Avatar */}
+      <div className="sj-avatar-cell">
         <SjAvatar
           src={logoUrl}
           name={companyName}
           size="md"
           alt={`${companyName} Logo`}
         />
+      </div>
 
-        {/* 2. Job Info */}
-        <div className="min-w-0 flex-1 sj-job-info-col">
-          <h2 className="sj-job-title">{title}</h2>
-          <div className="sj-job-sub">
-            <span className="sj-company-name">
-              {companyName}
+      {/* 2. Job Info (Title & Company) */}
+      <div className="min-w-0 sj-info-cell">
+        <h2 className="sj-job-title truncate">{title}</h2>
+        <div className="sj-job-sub">
+          <span className="sj-company-name">
+            {companyName}
+            {(job.employerId?.verification?.status === 'verified' || job.isVerified) && (
               <svg
                 className="sj-verified-check"
                 width="15"
@@ -76,35 +78,50 @@ export default function SjJobCard({
               >
                 <path d="M12 2l2.4 2 3.1-.3.9 3 2.7 1.6-1 3 1 3-2.7 1.6-.9 3-3.1-.3L12 22l-2.4-2-3.1.3-.9-3L2.9 15.7l1-3-1-3 2.7-1.6.9-3 3.1.3Zm-1 13 5-5-1.4-1.4L11 12.2 9.4 10.6 8 12Z" />
               </svg>
-            </span>
-
-            <span className="sj-job-location truncate">{location}</span>
-
-            {isMatched && matchedRole && (
-              <SjPill variant="accent" className="hidden sm:inline-flex">
-                ◎ Matched for {matchedRole}
-              </SjPill>
             )}
-          </div>
+          </span>
+
+          {location && (
+            <span className="sj-job-location truncate">{location}</span>
+          )}
+
+          {isMatched && matchedRole && (
+            <span className="sj-matched-badge">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="sj-matched-icon"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="4" fill="currentColor" />
+              </svg>
+              <span>Matched for {matchedRole}</span>
+            </span>
+          )}
         </div>
       </div>
 
-      {/* 3. Salary & Status */}
+      {/* 3. Salary & Status details */}
       <div className="sj-job-right">
-        {isMatched && matchedRole && (
-          <span className="sj-mobile-matched-pill sm:hidden">
-            ◎ Matched for {matchedRole}
+        {salaryDisplay && (
+          <div className="sj-job-pay">{salaryDisplay}</div>
+        )}
+        <div className="sj-job-meta-row">
+          <span className="sj-job-stat">
+            {openings} Opening{openings > 1 ? 's' : ''}
           </span>
-        )}
-        <div className="sj-job-pay">{salaryDisplay}</div>
-        <div className="sj-job-stat">
-          {openings} Opening{openings > 1 ? 's' : ''}
+          {isApplied && (
+            <span className="sj-applied-badge">
+              ✓ Already applied
+            </span>
+          )}
         </div>
-        {isApplied && (
-          <div className="sj-job-stat sj-applied">
-            ✓ Already applied
-          </div>
-        )}
       </div>
 
       {/* 4. Bookmark Action */}
