@@ -16,7 +16,8 @@ const CandidateProfileFullScreen = ({
   updateCandidateStatus,
   employerProfile = null,
   backLabel = 'Applications',
-  isCandidatesDirectory = false
+  isCandidatesDirectory = false,
+  onOpenMessage = null
 }) => {
   const isFromCandidates = isCandidatesDirectory || backLabel === 'Candidates';
   const navigate = useNavigate();
@@ -159,6 +160,10 @@ const CandidateProfileFullScreen = ({
   };
 
   const handleOpenMessage = () => {
+    if (onOpenMessage) {
+      onOpenMessage(app, cand);
+      return;
+    }
     onClose();
     navigate('/employer/messages', { 
       state: { 

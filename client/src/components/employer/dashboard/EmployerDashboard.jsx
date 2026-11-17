@@ -377,7 +377,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               <Route index element={<DashboardOverview portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} />} />
               <Route path="/post-job" element={<PostJob addJob={addJob} updateJob={updateJob} />} />
               <Route path="/manage-jobs" element={<ManageJobs portalConfig={portalConfig?.dashboard} employerProfile={employerProfile} jobs={jobs} candidates={candidates} toggleJobStatus={toggleJobStatus} updateJob={updateJob} />} />
-              <Route path="/applications" element={<CandidatesTab portalConfig={portalConfig?.applications} candidates={candidates} jobs={jobs} updateCandidateStatus={updateCandidateStatus} employerProfile={employerProfile} />} />
+              <Route path="/applications" element={<CandidatesTab portalConfig={portalConfig?.applications} candidates={candidates} jobs={jobs} updateCandidateStatus={updateCandidateStatus} employerProfile={employerProfile} triggerNavRefresh={() => setRefreshNav(prev => !prev)} />} />
               <Route path="/candidates" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} employerProfile={employerProfile} />} />
               <Route path="/all-employees" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} employerProfile={employerProfile} />} />
               <Route path="/company-profile" element={<CompanyProfileTab portalConfig={portalConfig?.account} employerProfile={employerProfile} />} />

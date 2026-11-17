@@ -7,13 +7,14 @@ import VideoPlayer from '../../common/VideoPlayer';
 import CustomDropdown from '../../common/CustomDropdown';
 import CandidateVideoCard from '../../common/CandidateVideoCard';
 import CandidateProfileFullScreen from './CandidateProfileFullScreen';
+import EmployerChatDrawer from '../messages/EmployerChatDrawer';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 import { 
   exportCandidateProfileAsPdf, 
   exportCandidateProfileAsDoc 
 } from '../../../utils/candidateProfileExporter';
 
-const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus, employerProfile = null }) => {
+const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs = [], updateCandidateStatus, employerProfile = null, triggerNavRefresh = null }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -25,6 +26,8 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   // Modals & Drawer States
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [chatDrawerApp, setChatDrawerApp] = useState(null);
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
   const [previewResume, setPreviewResume] = useState(null);
   const [previewCoverLetter, setPreviewCoverLetter] = useState(null);
   const [previewScreeningQA, setPreviewScreeningQA] = useState(null);
@@ -291,6 +294,37 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     } else {
       setSelectedApplication(null);
     }
+  };
+
+  const handleOpenChat = (item, cand) => {
+    const candidateObj = cand || item?.candidate || {};
+    const mergedApp = {
+      ...item,
+      appId: item?.appId || item?._id || item?.id || candidateObj._id || candidateObj.id,
+      displayAppId: item?.displayAppId || item?.applicationNumber || candidateObj.applicationNumber || '500101',
+      jobTitle: item?.jobTitle || candidateObj.appliedJob || 'General Application',
+      status: item?.status || candidateObj.status || 'New',
+      appliedDate: item?.appliedDate || item?.date || item?.createdAt || candidateObj.date || candidateObj.createdAt,
+      sourceLink: item?.sourceLink || candidateObj.sourceLink || 'Direct Apply',
+      candidate: candidateObj
+    };
+
+    // Auto mark viewed if new/applied
+    const curStatus = (mergedApp.status || '').toLowerCase();
+    if (curStatus === 'new' || curStatus === 'applied' || !mergedApp.status) {
+      const updatedStatus = 'Viewed';
+      if (updateCandidateStatus) {
+        updateCandidateStatus(mergedApp.appId, updatedStatus);
+      }
+      mergedApp.status = updatedStatus;
+      if (item) item.status = updatedStatus;
+      if (candidateObj.history) {
+        candidateObj.history = candidateObj.history.map(h => h.appId === mergedApp.appId ? { ...h, status: updatedStatus } : h);
+      }
+    }
+
+    setChatDrawerApp(mergedApp);
+    setIsChatDrawerOpen(true);
   };
 
   // Flatten every application into its own individual record
@@ -1537,13 +1571,9 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                           <div className="relative group/tip inline-flex items-center justify-center">
                             <button 
                               type="button"
-                              onClick={() => {
-                                navigate("/employer/messages", { 
-                                  state: { 
-                                    initialEmployee: cand,
-                                    initialApplication: item 
-                                  } 
-                                });
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenChat(item, cand);
                               }}
                               className="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-full border border-gray-200 hover:border-purple-300 bg-white transition-colors cursor-pointer shadow-none"
                               aria-label="Message Candidate"
@@ -1593,6 +1623,24 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         updateCandidateStatus={updateCandidateStatus}
         employerProfile={employerProfile}
         backLabel={isJobSpecificView ? 'Jobs' : 'Applications'}
+        onOpenMessage={(app, cand) => {
+          setSelectedCandidate(null);
+          setSelectedApplication(null);
+          handleOpenChat(app, cand);
+        }}
+      />
+
+      {/* Real-time Slide-in Chat Drawer */}
+      <EmployerChatDrawer
+        isOpen={isChatDrawerOpen}
+        onClose={() => {
+          setIsChatDrawerOpen(false);
+          setChatDrawerApp(null);
+        }}
+        application={chatDrawerApp}
+        employerProfile={employerProfile}
+        updateCandidateStatus={updateCandidateStatus}
+        triggerNavRefresh={triggerNavRefresh}
       />
 
       {/* Screening Q&A Quick Modal */}
