@@ -75,6 +75,7 @@ router.get('/status', verificationController.getVerificationStatus);
 router.post('/upload', handleUpload, verificationController.uploadVerificationDocument);
 router.delete('/document/:docId', verificationController.deleteVerificationDocument);
 router.post('/submit', verificationController.submitVerification);
+router.post('/cancel-submission', verificationController.cancelSubmission);
 router.get('/document/:docId/file', verificationController.streamDocumentFile);
 
 module.exports = router;

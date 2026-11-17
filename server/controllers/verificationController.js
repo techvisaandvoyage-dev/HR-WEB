@@ -260,24 +260,6 @@ exports.uploadVerificationDocument = async (req, res) => {
 
     employer.verification.documents.push(docRecord);
 
-    // Auto-pending ONLY on initial unverified submission.
-    // If status was 'rejected', DO NOT auto-submit! Keep status as 'rejected' so the employer
-    // can review, replace, or delete documents and MUST explicitly click the submit button.
-    if (currentStatus === 'unverified') {
-      const hasTax = employer.verification.documents.some(d => d.category === 'tax');
-      const hasIncorp = employer.verification.documents.some(d => d.category === 'incorporation');
-      if (hasTax && hasIncorp) {
-        employer.verification.status = 'pending';
-        employer.verification.submittedAt = new Date();
-        employer.verification.rejectionReason = '';
-
-        // Notify admin via email asynchronously
-        notifyAdminOnDocumentSubmission(employer).catch(e => {
-          console.warn('[VerificationNotification] Admin email error on auto-submit:', e.message);
-        });
-      }
-    }
-
     await employer.save();
 
     res.status(201).json({
@@ -476,6 +458,38 @@ exports.streamDocumentFile = async (req, res) => {
   } catch (err) {
     console.error('streamDocumentFile error:', err);
     res.status(500).send('Error streaming document file');
+  }
+};
+
+/**
+ * @desc    Retract / unlock submitted verification to edit or replace documents
+ * @route   POST /api/verification/cancel-submission
+ * @access  Private (Employer/Consultant)
+ */
+exports.cancelSubmission = async (req, res) => {
+  try {
+    const employer = await Employer.findById(req.user.id);
+    if (!employer) {
+      return res.status(404).json({ success: false, message: 'Account not found' });
+    }
+
+    if (employer.verification?.status === 'verified') {
+      return res.status(400).json({ success: false, message: 'Account is already verified.' });
+    }
+
+    if (employer.verification?.status === 'pending') {
+      employer.verification.status = 'unverified';
+      await employer.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Submission retracted. You can now preview, replace, or remove your documents.',
+      verification: employer.verification
+    });
+  } catch (err) {
+    console.error('cancelSubmission error:', err);
+    res.status(500).json({ success: false, message: 'Server error retracting verification' });
   }
 };
 
