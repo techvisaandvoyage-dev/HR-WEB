@@ -239,19 +239,6 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 px-1">
-            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-              employerProfile?.isConsultant ? 'text-[#667085]' : 'bg-[#101828] text-white'
-            }`}>
-              Employer
-            </span>
-            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-              employerProfile?.isConsultant ? 'bg-[#101828] text-white' : 'text-[#667085]'
-            }`}>
-              Consultant
-            </span>
-          </div>
-
           <button
             type="button"
             onClick={() => {
