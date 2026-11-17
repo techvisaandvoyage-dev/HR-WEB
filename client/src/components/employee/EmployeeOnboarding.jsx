@@ -16,6 +16,7 @@ import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import CountryCodeDropdown from '../common/CountryCodeDropdown';
 import { socket } from '../../utils/socket';
+import './EmployeeProfile.css';
 
 const formatMonthYear = (dateStr) => {
   if (!dateStr) return 'MM/YYYY';
@@ -1227,15 +1228,21 @@ const EmployeeOnboarding = () => {
 
     return (
       <div className="space-y-6 animate-fade-in pb-2">
-        <div className="mb-6 pb-2 border-b border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800">{s1Title}</h3>
+        <div className="mb-4 sm:mb-6 pb-2 border-b border-gray-100">
+          <h3 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">{s1Title}</h3>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <div id="field-firstName">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fFirstName.label} {fFirstName.isRequired && <span className="text-red-500">*</span>}
             </label>
-            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fFirstName.isRequired && !formData.firstName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fFirstName.placeholder} value={formData.firstName || ''} onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} />
+            <input 
+              type="text" 
+              className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${showStep1Errors && fFirstName.isRequired && !formData.firstName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 hover:border-gray-300'} rounded-xl text-gray-800 outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669] transition-all text-sm`} 
+              placeholder={fFirstName.placeholder} 
+              value={formData.firstName || ''} 
+              onChange={e => { setFormData({...formData, firstName: e.target.value}); setShowStep1Errors(false); }} 
+            />
             {showStep1Errors && fFirstName.isRequired && !formData.firstName && (
               <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1246,10 +1253,16 @@ const EmployeeOnboarding = () => {
             )}
           </div>
           <div id="field-lastName">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fLastName.label} {fLastName.isRequired && <span className="text-red-500">*</span>}
             </label>
-            <input type="text" className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLastName.isRequired && !formData.lastName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} placeholder={fLastName.placeholder} value={formData.lastName || ''} onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} />
+            <input 
+              type="text" 
+              className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${showStep1Errors && fLastName.isRequired && !formData.lastName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 hover:border-gray-300'} rounded-xl text-gray-800 outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669] transition-all text-sm`} 
+              placeholder={fLastName.placeholder} 
+              value={formData.lastName || ''} 
+              onChange={e => { setFormData({...formData, lastName: e.target.value}); setShowStep1Errors(false); }} 
+            />
             {showStep1Errors && fLastName.isRequired && !formData.lastName && (
               <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1260,17 +1273,17 @@ const EmployeeOnboarding = () => {
             )}
           </div>
           <div id="field-phone">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fPhone.label} {fPhone.isRequired && <span className="text-red-500">*</span>}
             </label>
-            <div className={`flex items-center bg-white border ${((showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10)) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all`}>
+            <div className={`flex items-center bg-white border ${((showStep1Errors && fPhone.isRequired && (!formData.phone || formData.phone.length < 10)) || phoneError) ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 hover:border-gray-300'} rounded-xl focus-within:border-[#059669] focus-within:ring-1 focus-within:ring-[#059669] transition-all`}>
               <CountryCodeDropdown
                 value={formData.countryCode || '+91'}
                 onChange={(code) => setFormData({ ...formData, countryCode: code })}
               />
               <input 
                 type="text" 
-                className="w-full px-4 py-3 bg-transparent text-gray-700 outline-none rounded-r-xl transition-all" 
+                className="w-full px-4 py-2.5 sm:py-3 bg-transparent text-gray-800 outline-none rounded-r-xl transition-all text-sm" 
                 placeholder={fPhone.placeholder} 
                 value={formData.phone || ''} 
                 onChange={e => { 
@@ -1307,13 +1320,13 @@ const EmployeeOnboarding = () => {
             )}
           </div>
           <div id="field-email">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fEmail.label} {fEmail.isRequired && <span className="text-red-500">*</span>}
             </label>
-            <input type="email" disabled className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed" value={formData.email || ''} />
+            <input type="email" disabled className="w-full px-4 py-2.5 sm:py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed text-sm" value={formData.email || ''} />
           </div>
           <div id="field-industry">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fIndustry.label} {fIndustry.isRequired && <span className="text-red-500">*</span>}
             </label>
             <CustomDropdown 
@@ -1348,7 +1361,7 @@ const EmployeeOnboarding = () => {
             )}
           </div>
           <div id="field-designation">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fDesignation.label} {fDesignation.isRequired && <span className="text-red-500">*</span>}
             </label>
             <CustomDropdown 
@@ -1387,7 +1400,7 @@ const EmployeeOnboarding = () => {
             )}
           </div>
           <div id="field-totalExperience">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fTotalExp.label} {fTotalExp.isRequired && <span className="text-red-500">*</span>}
             </label>
             <CustomDropdown 
@@ -1416,7 +1429,7 @@ const EmployeeOnboarding = () => {
             )}
           </div>
           <div id="field-location">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fLocation.label} {fLocation.isRequired && <span className="text-red-500">*</span>}
             </label>
             <MultiSelectLocationDropdown 
@@ -1432,7 +1445,7 @@ const EmployeeOnboarding = () => {
               onChange={(val) => { setFormData({...formData, location: val}); setShowStep1Errors(false); }}
               multiple={false}
               placeholder={fLocation.placeholder}
-              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fLocation.isRequired && !formData.location ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
+              className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${showStep1Errors && fLocation.isRequired && !formData.location ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 hover:border-gray-300'} rounded-xl text-gray-800 outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669] transition-all text-sm`}
             />
             {showStep1Errors && fLocation.isRequired && !formData.location && (
               <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
@@ -1443,8 +1456,8 @@ const EmployeeOnboarding = () => {
               </p>
             )}
           </div>
-          <div id="field-preferredLocation" className="col-span-2 sm:col-span-1">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+          <div id="field-preferredLocation" className="col-span-1 sm:col-span-2">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fPreferredLocation.label} {fPreferredLocation.isRequired && <span className="text-red-500">*</span>}
             </label>
             {(formData.preferredLocation ? formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean) : []).length > 0 && (
@@ -1452,7 +1465,7 @@ const EmployeeOnboarding = () => {
                 {formData.preferredLocation.split(',').map(s => s.trim()).filter(Boolean).map(loc => (
                   <span 
                     key={loc} 
-                    className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors shadow-2xs" 
+                    className="px-3 py-1 bg-emerald-50 text-[#059669] rounded-full text-xs font-bold border border-emerald-200 flex items-center gap-1.5 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors shadow-2xs" 
                     onClick={() => removePreferredLocation(loc)} 
                     title="Click to remove"
                   >
@@ -1477,7 +1490,7 @@ const EmployeeOnboarding = () => {
               onChange={(val) => { setFormData({...formData, preferredLocation: val}); setShowStep1Errors(false); }}
               multiple={true}
               placeholder={fPreferredLocation.placeholder}
-              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`}
+              className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 hover:border-gray-300'} rounded-xl text-gray-800 outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669] transition-all text-sm`}
             />
             {showStep1Errors && fPreferredLocation.isRequired && !formData.preferredLocation && (
               <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
@@ -1488,14 +1501,14 @@ const EmployeeOnboarding = () => {
               </p>
             )}
           </div>
-          <div id="field-brief" className="col-span-2">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+          <div id="field-brief" className="col-span-1 sm:col-span-2">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fBrief.label} {fBrief.isRequired && <span className="text-red-500">*</span>}
             </label>
             <textarea 
               rows="3"
               placeholder={fBrief.placeholder}
-              className={`w-full px-4 py-3 bg-white border ${showStep1Errors && fBrief.isRequired && !formData.brief ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all custom-scrollbar`} 
+              className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${showStep1Errors && fBrief.isRequired && !formData.brief ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 hover:border-gray-300'} rounded-xl text-gray-800 outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669] transition-all custom-scrollbar text-sm`} 
               value={formData.brief || ''} 
               onChange={e => setFormData({...formData, brief: e.target.value})} 
             ></textarea>
@@ -1811,8 +1824,13 @@ const EmployeeOnboarding = () => {
                 {eduError}
               </button>
             )}
-            <button type="button" onClick={handleAddEducation} className="text-green-500 hover:text-green-600 font-semibold text-sm cursor-pointer">
-              {s2AddBtn}
+            <button 
+              type="button" 
+              onClick={handleAddEducation} 
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#e6f6ef] hover:bg-emerald-100 text-[#047857] border border-[#bfe3d2] font-bold text-xs sm:text-sm rounded-full transition-all cursor-pointer shadow-2xs"
+            >
+              <span className="text-base leading-none font-bold">+</span>
+              <span>{s2AddBtn}</span>
             </button>
           </div>
         </div>
@@ -1834,7 +1852,7 @@ const EmployeeOnboarding = () => {
                                (q.educationType || 'Education')}
                             </h4>
                             {q.isPrimary && (
-                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase tracking-wider">Primary</span>
+                              <span className="px-2.5 py-0.5 bg-[#e6f6ef] text-[#047857] border border-[#bfe3d2] text-[10px] font-bold rounded-full uppercase tracking-wider">Primary</span>
                             )}
                             <button type="button" onClick={() => setExpandedEduIndex(idx)} className="text-gray-400 hover:text-blue-600 transition-colors">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
@@ -1970,7 +1988,7 @@ const EmployeeOnboarding = () => {
                                     </label>
                                     <input 
                                       type="text" 
-                                      className={`w-full px-4 py-3 bg-white border ${hasMarksError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                      className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${hasMarksError ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 text-sm outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`} 
                                       placeholder={getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').placeholder || '% marks of 100 maximum'} 
                                       value={q.percentage || ''} 
                                       onChange={e => { 
@@ -2005,7 +2023,7 @@ const EmployeeOnboarding = () => {
                                     setEduFieldErrors(prev => ({...prev, university: false})); 
                                   }} 
                                   placeholder={getStepField('step2', 'university', 'University / Institute', 'Search or enter university/institute...').placeholder || 'Search or enter university/institute...'} 
-                                  className={`w-full px-4 py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+                                  className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 text-sm outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`} 
                                 />
                                 {eduFieldErrors.university && (
                                   <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
@@ -2080,7 +2098,7 @@ const EmployeeOnboarding = () => {
                                         type="radio" 
                                         name={`courseType-${idx}`} 
                                         value={ct} 
-                                        className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" 
+                                        className="w-[18px] h-[18px] accent-[#047857] cursor-pointer" 
                                         checked={q.courseType === ct} 
                                         onChange={(e) => { 
                                           updateArray('qualifications', idx, 'courseType', e.target.value); 
@@ -2176,7 +2194,7 @@ const EmployeeOnboarding = () => {
                                           </label>
                                           <input 
                                             type="text" 
-                                            className={`w-full px-4 py-3 bg-white border ${hasGradeError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                            className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${hasGradeError ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 text-sm outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`} 
                                             placeholder={dynamicMarksPlaceholder} 
                                             value={q.percentage || ''} 
                                             onChange={e => { 
@@ -2203,19 +2221,19 @@ const EmployeeOnboarding = () => {
                           
                           {q.educationType && !q.isPrimary && (
                             <div className="flex items-center pt-2 border-t border-gray-100 mt-4">
-                              <input type="checkbox" id={`primary-edu-${idx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
-                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium cursor-pointer">Mark this as my primary education</label>
+                              <input type="checkbox" id={`primary-edu-${idx}`} className="w-5 h-5 rounded border-gray-300 accent-[#047857]" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
+                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium cursor-pointer text-sm">Mark this as my primary education</label>
                             </div>
                           )}
                           {q.educationType && q.isPrimary && (
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-4 text-xs font-bold text-green-700">
-                              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-4 text-xs font-bold text-[#047857]">
+                              <span className="w-2 h-2 rounded-full bg-[#047857]"></span>
                               <span>Primary Education</span>
                             </div>
                           )}
 
                           <div className="flex justify-end mt-4">
-                            <button type="button" onClick={handleSaveEducation} className="px-6 py-2 rounded-full bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors shadow-sm">Save</button>
+                            <button type="button" onClick={handleSaveEducation} className="px-6 py-2.5 rounded-xl bg-[#047857] hover:bg-[#059669] text-white font-bold text-sm transition-all shadow-sm">Save</button>
                           </div>
                         </div>
                       </div>
@@ -2225,9 +2243,9 @@ const EmployeeOnboarding = () => {
                   {(!formData.qualifications || formData.qualifications.length === 0) ? (
                     <div 
                       onClick={handleAddEducation}
-                      className="p-8 border-2 border-dashed border-gray-200 hover:border-green-400 rounded-2xl bg-gray-50/50 hover:bg-green-50/20 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 group"
+                      className="p-8 border-2 border-dashed border-gray-200 hover:border-[#059669] rounded-2xl bg-gray-50/50 hover:bg-emerald-50/30 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 group"
                     >
-                      <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <div className="w-12 h-12 rounded-full bg-[#e6f6ef] text-[#047857] flex items-center justify-center group-hover:scale-110 transition-transform">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
@@ -2239,7 +2257,7 @@ const EmployeeOnboarding = () => {
                       <button
                         type="button"
                         onClick={handleAddEducation}
-                        className="mt-2 px-5 py-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-full shadow-sm transition-colors cursor-pointer"
+                        className="mt-2 px-5 py-2.5 bg-[#047857] hover:bg-[#059669] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
                       >
                         + Add Education Details
                       </button>
@@ -2252,8 +2270,13 @@ const EmployeeOnboarding = () => {
                             {eduError}
                           </button>
                         )}
-                        <button type="button" onClick={handleAddEducation} className="text-green-500 font-semibold hover:text-green-600 text-sm cursor-pointer">
-                          Add +
+                        <button 
+                          type="button" 
+                          onClick={handleAddEducation} 
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#e6f6ef] hover:bg-emerald-100 text-[#047857] border border-[#bfe3d2] font-bold text-xs sm:text-sm rounded-full transition-all cursor-pointer shadow-2xs"
+                        >
+                          <span className="text-base leading-none font-bold">+</span>
+                          <span>Add +</span>
                         </button>
                       </div>
                     </div>
@@ -2275,8 +2298,13 @@ const EmployeeOnboarding = () => {
           {!formData.isFresher && (
             <div className="flex items-center gap-3">
               {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
-              <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm">
-                {s3AddBtn}
+              <button 
+                type="button" 
+                onClick={handleAddExperience} 
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#e6f6ef] hover:bg-emerald-100 text-[#047857] border border-[#bfe3d2] font-bold text-xs sm:text-sm rounded-full transition-all cursor-pointer shadow-2xs"
+              >
+                <span className="text-base leading-none font-bold">+</span>
+                <span>{s3AddBtn}</span>
               </button>
             </div>
           )}
@@ -2286,7 +2314,7 @@ const EmployeeOnboarding = () => {
             <label className="text-sm font-medium text-gray-700">{s3FresherLabel}</label>
             <div className="flex items-center gap-6">
               <label className="flex items-center cursor-pointer group">
-                <input type="radio" name="isFresher_onboarding" value="yes" className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
+                <input type="radio" name="isFresher_onboarding" value="yes" className="w-[18px] h-[18px] accent-[#047857] cursor-pointer" checked={formData.isFresher === true} onChange={() => setFormData({...formData, isFresher: true})} />
                 <span className={`ml-2.5 text-[15px] ${formData.isFresher === true ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>I am a Fresher</span>
               </label>
               <label className="flex items-center cursor-pointer group">
@@ -2294,7 +2322,7 @@ const EmployeeOnboarding = () => {
                   type="radio" 
                   name="isFresher_onboarding" 
                   value="no" 
-                  className="w-[18px] h-[18px] accent-gray-900 cursor-pointer" 
+                  className="w-[18px] h-[18px] accent-[#047857] cursor-pointer" 
                   checked={formData.isFresher === false} 
                   onChange={() => {
                     const isExpEmpty = !formData.experience || formData.experience.length === 0;
@@ -2336,10 +2364,10 @@ const EmployeeOnboarding = () => {
                                     </button>
                                   </div>
                                   
-                                  <div className="mt-4 pl-4 border-l-2 border-green-500 ml-2 space-y-5">
+                                  <div className="mt-4 pl-4 border-l-2 border-[#047857] ml-2 space-y-5">
                                     {(exp.roles || []).map((role, rIdx) => (
                                       <div key={rIdx} className="relative">
-                                        <div className="absolute w-3 h-3 bg-green-500 rounded-full -left-[23px] top-1.5 ring-4 ring-white"></div>
+                                        <div className="absolute w-3 h-3 bg-[#047857] rounded-full -left-[23px] top-1.5 ring-4 ring-white"></div>
                                         <div className="flex items-center gap-2">
                                           <p className="font-semibold text-gray-800">{role.jobTitle || 'Job Title'}</p>
                                           {role.currentCompany && (
@@ -2381,7 +2409,7 @@ const EmployeeOnboarding = () => {
                                         <label className="block text-sm font-bold text-gray-900 mb-1.5">{fCompany.label} {fCompany.isRequired && <span className="text-red-500">*</span>}</label>
                                         <CompanyAutocomplete 
                                           value={exp.companyName || ''} 
-                                          className={`w-full px-4 py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`}
+                                          className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${expFieldErrors.companyName ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 text-sm outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`}
                                           onChange={val => {
                                             const newExp = [...(formData.experience || [])];
                                             newExp[cIdx].companyName = val;
@@ -2399,12 +2427,12 @@ const EmployeeOnboarding = () => {
                                           </p>
                                         )}
                                       </div>
-                                      <div className="relative border-l-2 border-green-500 ml-3 mt-8 space-y-8 pb-4">
+                                      <div className="relative border-l-2 border-[#047857] ml-3 mt-8 space-y-8 pb-4">
                                         {(exp.roles || []).map((role, rIdx) => {
                                           const isRoleExpanded = expandedRoleIndex === rIdx;
                                           return (
                                           <div key={rIdx} className="relative pl-6">
-                                            <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-green-500 border-4 border-gray-50 shadow-sm"></div>
+                                            <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-[#047857] border-4 border-gray-50 shadow-sm"></div>
                                             
                                             <div className="border border-gray-200 rounded-xl bg-white shadow-sm relative group">
                                               {/* Clickable Header */}
@@ -2438,7 +2466,7 @@ const EmployeeOnboarding = () => {
                                                       <label className="block text-sm font-bold text-gray-900 mb-1.5">{fJobTitle.label} {fJobTitle.isRequired && <span className="text-red-500">*</span>}</label>
                                                       <JobTitleAutocomplete 
                                                         value={role.jobTitle || ''} 
-                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`}
+                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.jobTitle ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15`}
                                                         onChange={val => {
                                                           const newExp = [...(formData.experience || [])];
                                                           newExp[cIdx].roles[rIdx].jobTitle = val;
@@ -2491,7 +2519,7 @@ const EmployeeOnboarding = () => {
                                                       <input 
                                                         type="checkbox" 
                                                         id={`current-${cIdx}-${rIdx}`} 
-                                                        className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500 mr-3 cursor-pointer" 
+                                                        className="w-5 h-5 rounded border-gray-300 text-[#047857] focus:ring-[#059669] mr-3 cursor-pointer" 
                                                         checked={role.currentCompany || false} 
                                                         onChange={e => {
                                                           const isChecked = e.target.checked;
@@ -2571,7 +2599,7 @@ const EmployeeOnboarding = () => {
                                                     <div className="mt-2" id={`field-exp-roleDesc-${cIdx}-${rIdx}`}>
                                                       <label className="block text-sm font-bold text-gray-900 mb-1.5">{fRoleDesc.label} {fRoleDesc.isRequired && <span className="text-red-500">*</span>}</label>
                                                       <textarea 
-                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.roleDescription ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 h-24 resize-none outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500`} 
+                                                        className={`w-full px-4 py-3 bg-white border ${expFieldErrors.roles?.[rIdx]?.roleDescription ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 h-24 resize-none outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15`} 
                                                         placeholder={fRoleDesc.placeholder || "Briefly describe your roles & responsibilities"}
                                                         value={role.roleDescription || ''} 
                                                         onChange={e => {
@@ -2609,7 +2637,7 @@ const EmployeeOnboarding = () => {
                                           newExp[cIdx].roles.push({ jobTitle: '', employmentType: '', currentCompany: false, joiningDate: '', leavingDate: '', roleDescription: '' });
                                           setFormData({...formData, experience: newExp});
                                           setExpandedRoleIndex(newExp[cIdx].roles.length - 1);
-                                        }} className="flex items-center gap-1 text-sm font-bold text-green-600 hover:text-green-700 transition-colors">
+                                        }} className="flex items-center gap-1 text-sm font-bold text-[#047857] hover:text-[#059669] transition-colors">
                                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
                                           Add Role
                                         </button>
@@ -2650,7 +2678,7 @@ const EmployeeOnboarding = () => {
                               })()}
                                 
                                 <div className="flex justify-end pt-4 mt-2">
-                                  <button type="button" onClick={handleSaveExperience} className="px-6 py-2 rounded-full bg-green-500 text-white font-semibold hover:bg-green-600 transition-colors shadow-sm">Save</button>
+                                  <button type="button" onClick={handleSaveExperience} className="px-6 py-2 rounded-full bg-[#047857] text-white font-semibold hover:bg-[#059669] transition-colors shadow-sm">Save</button>
                                 </div>
                               </div>
                             );
@@ -2660,7 +2688,7 @@ const EmployeeOnboarding = () => {
                         {formData.isFresher !== true && (
                           <div className="flex items-center gap-3">
                             {expError && <span className="text-red-500 text-xs font-medium">{expError}</span>}
-                            <button type="button" onClick={handleAddExperience} className="text-green-500 font-semibold hover:text-green-600 text-sm whitespace-nowrap">
+                            <button type="button" onClick={handleAddExperience} className="text-[#047857] font-semibold hover:text-[#059669] text-sm whitespace-nowrap">
                               Add +
                             </button>
                           </div>
@@ -2708,14 +2736,14 @@ const EmployeeOnboarding = () => {
           <h3 className="text-xl font-bold text-gray-800">{s4Title}</h3>
           {s4Subtitle && <p className="text-sm text-gray-500 mt-1">{s4Subtitle}</p>}
         </div>
-        <div className="grid grid-cols-2 gap-6">
-          <div className="col-span-2" id="field-linkedinUrl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+          <div className="col-span-1 sm:col-span-2" id="field-linkedinUrl">
             <label className="block text-sm font-bold text-gray-900 mb-1.5">
               {fLinkedin.label} {fLinkedin.isRequired && <span className="text-red-500">*</span>}
             </label>
             <input 
               type="url" 
-              className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fLinkedin.isRequired && !p.linkedinUrl ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+              className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fLinkedin.isRequired && !p.linkedinUrl ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`} 
               placeholder={fLinkedin.placeholder || 'https://linkedin.com/in/...'}
               value={p.linkedinUrl || ''} 
               onChange={e => {
@@ -2733,22 +2761,24 @@ const EmployeeOnboarding = () => {
             )}
           </div>
           
-          <div className="col-span-2 grid grid-cols-2 gap-6">
+          <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div id="field-salaryType">
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
                 {fSalaryType.label || 'Salary Type'} {fSalaryType.isRequired && <span className="text-red-500">*</span>}
               </label>
-              <select 
-                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fSalaryType.isRequired && !p.salaryType ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer`} 
-                value={p.salaryType || 'Yearly'} 
-                onChange={e => {
-                  setP('salaryType', e.target.value);
+              <CustomDropdown
+                options={[
+                  { value: 'Yearly', label: 'Yearly' },
+                  { value: 'Monthly', label: 'Monthly' }
+                ]}
+                value={p.salaryType || 'Yearly'}
+                onChange={(val) => {
+                  setP('salaryType', val);
                   if (showStep4Errors) setShowStep4Errors(false);
                 }}
-              >
-                <option value="Yearly">Yearly</option>
-                <option value="Monthly">Monthly</option>
-              </select>
+                placeholder="Select Salary Type"
+                error={showStep4Errors && fSalaryType.isRequired && !p.salaryType}
+              />
               {showStep4Errors && fSalaryType.isRequired && !p.salaryType && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -2759,21 +2789,19 @@ const EmployeeOnboarding = () => {
               )}
             </div>
             <div id="field-currency">
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
                 {fCurrency.label || 'Currency'} {fCurrency.isRequired && <span className="text-red-500">*</span>}
               </label>
-              <select 
-                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fCurrency.isRequired && !p.currency ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all cursor-pointer`} 
-                value={p.currency || 'INR'} 
-                onChange={e => {
-                  setP('currency', e.target.value);
+              <CustomDropdown
+                options={DEFAULT_CURRENCY_OPTIONS}
+                value={p.currency || 'INR'}
+                onChange={(val) => {
+                  setP('currency', val);
                   if (showStep4Errors) setShowStep4Errors(false);
                 }}
-              >
-                {DEFAULT_CURRENCY_OPTIONS.map((curr) => (
-                  <option key={curr.value} value={curr.value}>{curr.label}</option>
-                ))}
-              </select>
+                placeholder="Select Currency"
+                error={showStep4Errors && fCurrency.isRequired && !p.currency}
+              />
               {showStep4Errors && fCurrency.isRequired && !p.currency && (
                 <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -2785,14 +2813,14 @@ const EmployeeOnboarding = () => {
             </div>
           </div>
 
-          <div className="col-span-2 grid grid-cols-2 gap-6">
+          <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div id="field-currentSalary">
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
                 {currentSalaryDisplayLabel} {fCurrentSalary.isRequired && <span className="text-red-500">*</span>}
               </label>
               <input 
                 type="text" 
-                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fCurrentSalary.isRequired && !p.currentSalary ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+                className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${showStep4Errors && fCurrentSalary.isRequired && !p.currentSalary ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all text-sm`} 
                 placeholder={currentSalaryDisplayPlaceholder} 
                 value={p.currentSalary || ''} 
                 onChange={e => {
@@ -2810,12 +2838,12 @@ const EmployeeOnboarding = () => {
               )}
             </div>
             <div id="field-expectedSalary">
-              <label className="block text-sm font-bold text-gray-900 mb-1.5">
+              <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
                 {expectedSalaryDisplayLabel} {fExpectedSalary.isRequired && <span className="text-red-500">*</span>}
               </label>
               <input 
                 type="text" 
-                className={`w-full px-4 py-3 bg-white border ${showStep4Errors && fExpectedSalary.isRequired && !p.expectedSalary ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200'} rounded-xl text-gray-700 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all`} 
+                className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${showStep4Errors && fExpectedSalary.isRequired && !p.expectedSalary ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all text-sm`} 
                 placeholder={expectedSalaryDisplayPlaceholder} 
                 value={p.expectedSalary || ''} 
                 onChange={e => {
@@ -2834,13 +2862,13 @@ const EmployeeOnboarding = () => {
             </div>
           </div>
 
-          <div className="col-span-2" id="field-skills">
-            <label className="block text-sm font-bold text-gray-900 mb-1.5">
+          <div className="col-span-1 sm:col-span-2" id="field-skills">
+            <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-1.5">
               {fSkills.label} {fSkills.isRequired && <span className="text-red-500">*</span>}
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
               {(p.skills ? p.skills.split(',').map(s => s.trim()).filter(s => s) : []).map(skill => (
-                <span key={skill} className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-100 flex items-center gap-1 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-colors" onClick={() => removeSkill(skill)} title="Click to remove">
+                <span key={skill} className="px-3 py-1 bg-emerald-50 text-[#047857] rounded-full text-xs font-bold border border-emerald-200 flex items-center gap-1.5 cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors" onClick={() => removeSkill(skill)} title="Click to remove">
                   {skill} <span className="text-[10px]">✕</span>
                 </span>
               ))}
@@ -2906,7 +2934,7 @@ const EmployeeOnboarding = () => {
                             if (showStep4Errors) setShowStep4Errors(false);
                           }
                         }}
-                        className="px-4 py-2 bg-white text-[#64748B] rounded-full text-[13px] font-medium border border-gray-200 hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition-all flex items-center gap-1 shadow-sm"
+                        className="px-4 py-2 bg-white text-slate-700 rounded-full text-[13px] font-medium border border-[#cfd7e4] hover:border-[#059669] hover:text-[#047857] hover:bg-emerald-50 transition-all flex items-center gap-1.5 shadow-2xs"
                       >
                         {suggestion} <span className="text-lg leading-none font-normal">+</span>
                       </button>
@@ -3596,12 +3624,12 @@ const EmployeeOnboarding = () => {
                     placeholder={linkInputPlaceholder}
                     value={videoLink}
                     onChange={(e) => setVideoLink(e.target.value)}
-                    className="flex-1 px-3.5 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-green-500 font-medium"
+                    className="flex-1 px-3.5 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#059669] font-medium"
                   />
                   <button
                     type="button"
                     onClick={handleAttachVideoLink}
-                    className="px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors shadow-xs flex-shrink-0 cursor-pointer"
+                    className="px-4 py-2 bg-[#047857] text-white text-xs font-bold rounded-lg hover:bg-[#059669] transition-colors shadow-xs flex-shrink-0 cursor-pointer"
                   >
                     {linkAttachButtonText}
                   </button>
@@ -3771,9 +3799,9 @@ const EmployeeOnboarding = () => {
     const p = formData.professionalDetails || {};
 
     return (
-      <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar text-sm bg-blue-50/30 p-4 rounded-xl border border-blue-100">
+      <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar text-sm bg-emerald-50/30 p-4 sm:p-6 rounded-2xl border border-emerald-100">
         <div className="text-center mb-6">
-          <h3 className="text-2xl font-black text-palette-900 mb-2">{s6Title}</h3>
+          <h3 className="text-2xl font-black text-[#047857] mb-2">{s6Title}</h3>
           <p className="text-gray-500">{s6Subtitle}</p>
         </div>
         
@@ -3978,33 +4006,37 @@ const EmployeeOnboarding = () => {
   const submitBtnText = cmsConfig?.buttons?.submitBtnText || 'Submit Profile';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 md:p-8 font-sans">
-      <div className="w-full max-w-4xl h-[90vh] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden animate-fade-in border border-gray-200">
+    <div className="min-h-screen sj-profile sj-theme flex items-center justify-center p-0 sm:p-4 md:p-8 font-['DM_Sans',sans-serif] bg-[#f3f5fa] text-[#101828]">
+      <div className="w-full max-w-4xl h-screen sm:h-[90vh] sm:max-h-[920px] bg-white rounded-none sm:rounded-[28px] shadow-[0_20px_50px_-15px_rgba(16,24,40,0.12)] flex flex-col overflow-hidden animate-fade-in border-0 sm:border sm:border-[#e3e8f0]">
         
         {/* Header & Progress */}
-        <div className="pt-6 pb-4 px-8 border-b border-gray-100 flex-shrink-0 bg-white z-10 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-black text-palette-900">{headerTitle}</h2>
+        <div className="pt-5 sm:pt-7 pb-4 sm:pb-5 px-5 sm:px-8 border-b border-[#e3e8f0] flex-shrink-0 bg-white z-10 shadow-2xs">
+          <div className="flex justify-between items-center mb-3 sm:mb-4">
+            <h2 className="text-xl sm:text-2xl font-black text-[#101828] tracking-tight flex items-center gap-2.5">
+              <span className="w-2.5 h-6 rounded-full bg-[#047857]"></span>
+              {headerTitle}
+            </h2>
           </div>
           
           <div className="relative pt-1">
-            <div className="flex mb-2 items-center justify-between">
+            <div className="flex mb-2.5 items-center justify-between">
               <div>
-                <span className="text-xs font-bold inline-block py-1 px-3 uppercase rounded-full text-green-700 bg-green-50 border border-green-100">
-                  {Math.round((currentStep / totalSteps) * 100)}% Completed
+                <span className="text-[11px] font-extrabold inline-flex items-center gap-1.5 py-1 px-3 uppercase rounded-full text-[#047857] bg-[#e6f6ef] border border-[#bfe3d2] tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#047857] animate-pulse"></span>
+                  {Math.round((currentStep / totalSteps) * 100)}% COMPLETED
                 </span>
               </div>
             </div>
-            <div className="overflow-hidden h-2.5 text-xs flex rounded-full bg-gray-100 inset-shadow">
-              <div style={{ width: `${(currentStep / totalSteps) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 transition-all duration-500"></div>
+            <div className="overflow-hidden h-2 sm:h-2.5 text-xs flex rounded-full bg-[#e3e8f0]">
+              <div style={{ width: `${(currentStep / totalSteps) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-[#047857] to-[#059669] transition-all duration-500 rounded-full"></div>
             </div>
           </div>
         </div>
 
         {/* Form Body */}
-        <div className="px-8 py-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col bg-gray-50/30">
+        <div className="px-4 sm:px-8 py-4 sm:py-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col bg-[#f8fafc]/60">
           <form id="onboardingForm" onSubmit={handleSubmit} className="flex flex-col flex-1 max-w-3xl w-full mx-auto">
-            <div className="flex-1 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex-1 bg-white p-5 sm:p-7 md:p-8 rounded-2xl shadow-xs border border-[#e3e8f0]">
               {currentStep === 1 && Step1BasicDetails()}
               {currentStep === 2 && Step2Education()}
               {currentStep === 3 && Step3Experience()}
@@ -4014,7 +4046,7 @@ const EmployeeOnboarding = () => {
             </div>
 
             {/* Footer Actions */}
-            <div className="mt-8 mb-4 flex flex-col sm:flex-row-reverse gap-4 justify-between max-w-3xl w-full mx-auto">
+            <div className="mt-5 sm:mt-7 mb-3 flex flex-col sm:flex-row-reverse gap-3 sm:gap-4 justify-between max-w-3xl w-full mx-auto">
               {currentStep < totalSteps ? (
                 <button 
                   key="onboarding-next-btn"
@@ -4024,9 +4056,12 @@ const EmployeeOnboarding = () => {
                     e.stopPropagation();
                     handleNext();
                   }}
-                  className="sm:w-auto px-10 py-3.5 bg-green-600 text-white font-bold rounded-xl shadow-lg shadow-green-600/30 hover:bg-green-700 transition-all hover:-translate-y-0.5 cursor-pointer"
+                  className="w-full sm:w-auto px-8 sm:px-10 py-3.5 bg-[#047857] hover:bg-[#059669] active:scale-[0.98] text-white font-bold rounded-xl shadow-md shadow-emerald-900/15 transition-all cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2"
                 >
-                  {nextBtnText}
+                  <span>{nextBtnText}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
                 </button>
               ) : (
                 <button 
@@ -4038,9 +4073,14 @@ const EmployeeOnboarding = () => {
                     handleSubmit(e);
                   }}
                   disabled={isSubmitting}
-                  className={`sm:w-auto px-10 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all cursor-pointer ${isSubmitting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 shadow-green-600/30 hover:bg-green-700 hover:-translate-y-0.5'}`}
+                  className={`w-full sm:w-auto px-8 sm:px-10 py-3.5 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2 ${isSubmitting ? 'bg-emerald-400 cursor-not-allowed' : 'bg-[#047857] hover:bg-[#059669] shadow-emerald-900/15 active:scale-[0.98]'}`}
                 >
-                  {isSubmitting ? 'Saving...' : submitBtnText}
+                  <span>{isSubmitting ? 'Saving...' : submitBtnText}</span>
+                  {!isSubmitting && (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  )}
                 </button>
               )}
               
@@ -4053,9 +4093,12 @@ const EmployeeOnboarding = () => {
                     e.stopPropagation();
                     handleBack();
                   }} 
-                  className="sm:w-auto px-10 py-3.5 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 cursor-pointer"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3.5 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl border border-[#e3e8f0] transition-colors cursor-pointer text-sm sm:text-base flex items-center justify-center gap-2"
                 >
-                  {backBtnText}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                  </svg>
+                  <span>{backBtnText}</span>
                 </button>
               )}
             </div>

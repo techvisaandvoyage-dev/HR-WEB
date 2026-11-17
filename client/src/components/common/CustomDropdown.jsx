@@ -5,9 +5,10 @@ const CustomDropdown = ({
   value, 
   onChange, 
   placeholder = "Select option", 
+  searchPlaceholder = "",
   error = false, 
   className = "", 
-  rounded = "rounded-lg",
+  rounded = "rounded-xl",
   dropdownClassName = "",
   allowCustomValue = true,
   disabled = false
@@ -69,8 +70,8 @@ const CustomDropdown = ({
     if (isOpen && wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      // If less than 260px below and more space above, open upward
-      if (spaceBelow < 260 && rect.top > spaceBelow) {
+      // If less than 280px below and more space above, open upward
+      if (spaceBelow < 280 && rect.top > spaceBelow) {
         setOpenUpward(true);
       } else {
         setOpenUpward(false);
@@ -90,6 +91,8 @@ const CustomDropdown = ({
   // Filter options based on search term (label, value, keywords, aliases, cleaned matches)
   const filteredOptions = safeOptions.filter(opt => {
     if (opt.isGroupLabel) return true;
+    if (!searchTerm.trim()) return true;
+
     const labelStr = opt.label.toLowerCase();
     const valueStr = opt.value.toLowerCase();
     const keywordsStr = opt.keywords.join(' ').toLowerCase();
@@ -123,108 +126,131 @@ const CustomDropdown = ({
     <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
       <div
         onClick={() => {
-          if (!disabled) setIsOpen(true);
+          if (!disabled) setIsOpen(!isOpen);
         }}
         aria-disabled={disabled}
-        className={`w-full ${className.includes('px-') ? '' : 'px-4'} ${className.includes('py-') ? '' : 'py-2.5'} bg-white border ${
-          isDropdownOpen ? 'border-palette-400 ring-1 ring-palette-400' : (error ? 'border-red-500 bg-red-50/20' : (className.includes('border-') ? '' : 'border-gray-200'))
-        } ${rounded} text-gray-700 flex justify-between items-center transition-all shadow-2xs ${disabled ? 'cursor-not-allowed bg-gray-100 opacity-70' : 'cursor-text'} text-sm ${className}`}
+        className={`w-full ${className.includes('px-') ? '' : 'px-4'} ${className.includes('py-') ? '' : 'py-3'} min-h-[48px] bg-white border ${
+          isDropdownOpen ? 'border-[#059669] ring-2 ring-[#059669]/20' : (error ? 'border-red-500 bg-red-50/20' : (className.includes('border-') ? '' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'))
+        } ${rounded} text-gray-700 flex justify-between items-center transition-all shadow-2xs ${disabled ? 'cursor-not-allowed bg-gray-100 opacity-70' : 'cursor-pointer'} text-sm ${className}`}
       >
-        <div className="flex-1 overflow-hidden pr-1.5">
-          {isDropdownOpen ? (
-            <input
-              ref={inputRef}
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (searchTerm.trim() !== '') {
-                    const firstMatch = filteredOptions.find(opt => !opt.isGroupLabel);
-                  if (firstMatch && firstMatch.value !== String(value ?? '')) {
-                      onChange(firstMatch.value);
-                    } else if (allowCustomValue) {
-                    if (searchTerm.trim() !== String(value ?? '')) onChange(searchTerm.trim());
-                    }
-                    if (firstMatch || allowCustomValue) {
-                      setIsOpen(false);
-                      setSearchTerm('');
-                    }
-                  }
-                }
-              }}
-              className={`w-full bg-transparent outline-none text-gray-900 placeholder-gray-400 ${labelTextSize}`}
-              placeholder={selectedOption ? selectedOption.label : (value || placeholder)}
-            />
-          ) : (
-            <span className={selectedOption || value ? `text-gray-900 block truncate ${labelTextSize}` : `text-[#9CA3AF] block truncate ${labelTextSize}`}>
-              {selectedOption ? selectedOption.label : (value || placeholder)}
-            </span>
-          )}
+        <div className="flex-1 overflow-hidden pr-2">
+          <span className={selectedOption || value ? `text-gray-900 font-medium block truncate ${labelTextSize}` : `text-gray-400 block truncate ${labelTextSize}`}>
+            {selectedOption ? selectedOption.label : (value || placeholder)}
+          </span>
         </div>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (disabled) return;
-            setIsOpen(!isOpen);
-            if (isOpen) setSearchTerm('');
-          }}
-          className="focus:outline-none flex-shrink-0 disabled:cursor-not-allowed"
-        >
-          <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-        </button>
+        <div className="focus:outline-none flex-shrink-0">
+          <svg className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-[#059669]' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </div>
 
       {isDropdownOpen && (
-        <div className={`absolute z-50 min-w-full ${dropdownClassName || 'w-full'} ${openUpward ? 'bottom-full mb-2' : 'mt-1.5'} bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar py-1.5`}>
-          {filteredOptions.some(opt => !opt.isGroupLabel) ? filteredOptions.map((opt, idx) => {
-            if (opt.isGroupLabel) {
-              // Hide group label if it has no children matching the search
-              const nextGroupIdx = filteredOptions.findIndex((o, i) => i > idx && o.isGroupLabel);
-              const children = filteredOptions.slice(idx + 1, nextGroupIdx === -1 ? filteredOptions.length : nextGroupIdx);
-              if (children.length === 0) return null;
+        <div className={`absolute z-50 min-w-full ${dropdownClassName || 'w-full'} ${openUpward ? 'bottom-full mb-2' : 'mt-1.5'} bg-white border border-gray-100 rounded-2xl shadow-xl flex flex-col overflow-hidden`}>
+          {/* Search bar inside dropdown menu */}
+          <div className="p-2.5 border-b border-gray-100 bg-gray-50/60 sticky top-0 z-10">
+            <div className="relative">
+              <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (searchTerm.trim() !== '') {
+                      const firstMatch = filteredOptions.find(opt => !opt.isGroupLabel);
+                      if (firstMatch && firstMatch.value !== String(value ?? '')) {
+                        onChange(firstMatch.value);
+                      } else if (allowCustomValue) {
+                        if (searchTerm.trim() !== String(value ?? '')) onChange(searchTerm.trim());
+                      }
+                      if (firstMatch || allowCustomValue) {
+                        setIsOpen(false);
+                        setSearchTerm('');
+                      }
+                    }
+                  }
+                }}
+                className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#059669] focus:ring-1 focus:ring-[#059669] transition-all text-gray-800 placeholder-gray-400"
+                placeholder={searchPlaceholder || `Search ${placeholder || 'options'}...`}
+                autoFocus
+              />
+            </div>
+          </div>
 
+          {/* Options List */}
+          <div className="max-h-60 overflow-y-auto custom-scrollbar p-1.5 space-y-0.5">
+            {filteredOptions.some(opt => !opt.isGroupLabel) ? filteredOptions.map((opt, idx) => {
+              if (opt.isGroupLabel) {
+                const nextGroupIdx = filteredOptions.findIndex((o, i) => i > idx && o.isGroupLabel);
+                const children = filteredOptions.slice(idx + 1, nextGroupIdx === -1 ? filteredOptions.length : nextGroupIdx);
+                if (children.length === 0) return null;
+
+                return (
+                  <div key={idx} className="px-3.5 py-1.5 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
+                    {opt.label}
+                  </div>
+                );
+              }
+              const isSelected = String(value ?? '') === String(opt.value);
               return (
-                <div key={idx} className="px-4 py-1.5 text-xs font-bold text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
-                  {opt.label}
+                <div
+                  key={idx}
+                  onClick={() => {
+                    if (opt.value !== String(value ?? '')) onChange(opt.value);
+                    setIsOpen(false);
+                    setSearchTerm('');
+                  }}
+                  className={`flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
+                    isSelected 
+                      ? 'bg-[#e6f4ea] text-[#0d652d] font-bold' 
+                      : 'hover:bg-gray-50 text-gray-700 font-medium'
+                  }`}
+                >
+                  <div className="relative flex items-center mr-3 shrink-0">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                      isSelected
+                        ? 'border-[#059669] bg-[#059669]'
+                        : 'border-gray-300 bg-white'
+                    }`}>
+                      {isSelected && (
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[14px] block truncate">
+                      {opt.label}
+                    </span>
+                  </div>
                 </div>
               );
-            }
-            return (
-              <div
-                key={idx}
-                onClick={() => {
-                  if (opt.value !== String(value ?? '')) onChange(opt.value);
-                  setIsOpen(false);
-                  setSearchTerm('');
-                }}
-                className={`px-4 py-2 cursor-pointer text-sm hover:bg-emerald-50/80 hover:text-[#059669] transition-colors ${value === opt.value ? 'bg-emerald-50 text-[#059669] font-semibold' : 'text-gray-700'}`}
-              >
-                {opt.label}
-              </div>
-            );
-          }) : (
-            searchTerm.trim() !== '' && allowCustomValue ? (
-              <div
-                onClick={() => {
-                  onChange(searchTerm);
-                  setIsOpen(false);
-                  setSearchTerm('');
-                }}
-                className="px-4 py-2.5 cursor-pointer text-sm text-[#059669] hover:bg-emerald-50 transition-colors font-medium flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-                Add "{searchTerm}"
-              </div>
-            ) : (
-              <div className="px-4 py-3 text-xs text-gray-500 text-center font-medium">
-                No options found
-              </div>
-            )
-          )}
+            }) : (
+              searchTerm.trim() !== '' && allowCustomValue ? (
+                <div
+                  onClick={() => {
+                    onChange(searchTerm);
+                    setIsOpen(false);
+                    setSearchTerm('');
+                  }}
+                  className="px-3.5 py-2.5 cursor-pointer text-xs text-[#059669] hover:bg-emerald-50 transition-colors font-bold flex items-center gap-2 rounded-xl"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                  Add "{searchTerm}"
+                </div>
+              ) : (
+                <div className="px-4 py-3 text-xs text-gray-500 text-center font-medium">
+                  No options found
+                </div>
+              )
+            )}
+          </div>
         </div>
       )}
     </div>
