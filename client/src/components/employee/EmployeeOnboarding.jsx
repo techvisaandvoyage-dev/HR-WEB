@@ -16,6 +16,7 @@ import JobTitleAutocomplete from '../common/JobTitleAutocomplete';
 import CompanyAutocomplete from '../common/CompanyAutocomplete';
 import CountryCodeDropdown from '../common/CountryCodeDropdown';
 import { socket } from '../../utils/socket';
+import EducationModal from './EducationModal';
 import './EmployeeProfile.css';
 
 const formatMonthYear = (dateStr) => {
@@ -595,6 +596,8 @@ const EmployeeOnboarding = () => {
 
   const totalSteps = 6;
   const [expandedEduIndex, setExpandedEduIndex] = useState(-1);
+  const [isEduModalOpen, setIsEduModalOpen] = useState(false);
+  const [editingEduIdx, setEditingEduIdx] = useState(-1);
   const [expandedExpIndex, setExpandedExpIndex] = useState(-1);
   const [expandedRoleIndex, setExpandedRoleIndex] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -913,19 +916,15 @@ const EmployeeOnboarding = () => {
       setShowStep1Errors(false);
     }
     if (currentStep === 2) {
-      const result = validateEducationData(expandedEduIndex >= 0 ? expandedEduIndex : null);
-      if (!result.isValid) {
-        if (result.eduIdx !== undefined && result.eduIdx >= 0) {
-          setExpandedEduIndex(result.eduIdx);
-        }
-        setEduFieldErrors(result.errors || {});
-        setEduError(result.message || 'Please fill all required education fields (*)');
-        scrollToFirstError(result.targetFieldId);
+      const isEduRequired = cmsConfig?.step2?.fields?.educationType?.isRequired !== false;
+      const quals = formData.qualifications || [];
+      if (isEduRequired && quals.length === 0) {
+        setEduError('Please add at least one education qualification');
+        handleOpenEducationModal(-1);
         return;
       }
       setEduError('');
       setEduFieldErrors({});
-      setExpandedEduIndex(-1);
     }
     if (currentStep === 3) {
       const result = validateExperienceData(expandedExpIndex >= 0 ? expandedExpIndex : null);
@@ -1806,10 +1805,70 @@ const EmployeeOnboarding = () => {
     saveToBackend(nextFormData);
   };
 
+
+  const handleOpenEducationModal = (idx = -1) => {
+    setEditingEduIdx(idx);
+    setIsEduModalOpen(true);
+    setEduError('');
+  };
+
+  const handleSaveEducationModal = (updatedEdu, idx) => {
+    setFormData(prev => {
+      let quals = [...(prev.qualifications || [])];
+      if (idx >= 0 && idx < quals.length) {
+        quals[idx] = updatedEdu;
+      } else {
+        quals.push(updatedEdu);
+      }
+
+      if (updatedEdu.isPrimary) {
+        quals = quals.map((q, i) => ({
+          ...q,
+          isPrimary: idx >= 0 ? i === idx : i === quals.length - 1
+        }));
+      } else if (!quals.some(q => q.isPrimary) && quals.length > 0) {
+        quals[0].isPrimary = true;
+      }
+
+      const sorted = sortQualifications(quals);
+      const nextFormData = { ...prev, qualifications: sorted };
+      try {
+        localStorage.setItem('userProfile', JSON.stringify(nextFormData));
+      } catch (_) {}
+      saveToBackend(nextFormData);
+      return nextFormData;
+    });
+    setEduError('');
+    setEduFieldErrors({});
+    setIsEduModalOpen(false);
+    setEditingEduIdx(-1);
+  };
+
+  const handleDeleteEducationModal = (idx) => {
+    setFormData(prev => {
+      let quals = [...(prev.qualifications || [])];
+      if (idx >= 0 && idx < quals.length) {
+        quals.splice(idx, 1);
+      }
+      if (quals.length > 0 && !quals.some(q => q.isPrimary)) {
+        quals[0].isPrimary = true;
+      }
+      const nextFormData = { ...prev, qualifications: quals };
+      try {
+        localStorage.setItem('userProfile', JSON.stringify(nextFormData));
+      } catch (_) {}
+      saveToBackend(nextFormData);
+      return nextFormData;
+    });
+    setIsEduModalOpen(false);
+    setEditingEduIdx(-1);
+  };
+
   const Step2Education = () => {
     const s2Title = cmsConfig?.step2?.title || 'Education';
-    const s2Subtitle = cmsConfig?.step2?.subtitle || 'Details like course, university, and more, help recruiters identify your educational background';
-    const s2AddBtn = cmsConfig?.step2?.addBtnText || 'Add +';
+    const s2Subtitle = cmsConfig?.step2?.subtitle || 'Details help recruiters identify your background';
+    const s2AddBtn = cmsConfig?.step2?.addBtnText || '+ Add';
+    const quals = formData.qualifications || [];
 
     return (
       <div className="space-y-6 animate-fade-in pr-2 custom-scrollbar pb-2">
@@ -1820,13 +1879,13 @@ const EmployeeOnboarding = () => {
           </div>
           <div className="flex items-center gap-3">
             {eduError && (
-              <button type="button" onClick={handleAddEducation} className="text-red-500 text-xs font-medium hover:underline cursor-pointer">
+              <span className="text-red-500 text-xs font-semibold">
                 {eduError}
-              </button>
+              </span>
             )}
             <button 
               type="button" 
-              onClick={handleAddEducation} 
+              onClick={() => handleOpenEducationModal(-1)} 
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#e6f6ef] hover:bg-emerald-100 text-[#047857] border border-[#bfe3d2] font-bold text-xs sm:text-sm rounded-full transition-all cursor-pointer shadow-2xs"
             >
               <span className="text-base leading-none font-bold">+</span>
@@ -1834,455 +1893,104 @@ const EmployeeOnboarding = () => {
             </button>
           </div>
         </div>
-                
-                <div className="space-y-6">
-                  {sortQualifications(formData.qualifications || []).map((q, idx) => {
-                    const eduData = cmsConfig?.step2?.educationData || DEFAULT_EDUCATION_DATA;
-                    const currentEduConfig = eduData[q.educationType];
-                    const isSchool = currentEduConfig ? currentEduConfig.category === 'school' : (q.educationType === '10th' || q.educationType === '12th');
-                    const isHigher = !isSchool && !!q.educationType;
-                    
-                    if (expandedEduIndex !== idx) {
-                      return (
-                        <div key={idx} className="group relative">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-gray-900 text-[15px]">
-                              {isHigher ? (q.course || q.educationType || 'Higher Education') : 
-                               isSchool ? (q.educationType === '12th' ? 'Class XII' : q.educationType === '10th' ? 'Class X' : (q.board || q.educationType)) : 
-                               (q.educationType || 'Education')}
-                            </h4>
-                            {q.isPrimary && (
-                              <span className="px-2.5 py-0.5 bg-[#e6f6ef] text-[#047857] border border-[#bfe3d2] text-[10px] font-bold rounded-full uppercase tracking-wider">Primary</span>
-                            )}
-                            <button type="button" onClick={() => setExpandedEduIndex(idx)} className="text-gray-400 hover:text-blue-600 transition-colors">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                            </button>
-                          </div>
-                          
-                          <p className="text-gray-800 mt-1">
-                            {isHigher ? (q.university || 'University not specified') : (q.board || 'Board not specified')}
-                          </p>
-                          
-                          <p className="text-gray-500 text-sm mt-0.5">
-                            {isHigher ? `${q.startYear || 'YYYY'} - ${q.endYear || 'YYYY'}` : (q.endYear || 'YYYY')}
-                          </p>
-                        </div>
-                      );
-                    }
-                    
-                    return (
-                      <div key={idx} className="p-6 border border-gray-200 rounded-xl bg-white shadow-sm relative">
-                        <button type="button" onClick={() => { removeArrayItem('qualifications', idx); setExpandedEduIndex(-1); }} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors z-10">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                        
-                        <div className="space-y-6 pt-2">
-                          <div id={`field-edu-type-${idx}`}>
-                            <label className="block text-sm font-bold text-gray-900 mb-1.5">Education <span className="text-red-500">*</span></label>
-                            <CustomDropdown
-                              options={Object.keys(eduData).map(t => ({ value: t, label: t }))}
-                              value={q.educationType || ''}
-                              onChange={val => {
-                                updateArray('qualifications', idx, 'educationType', val);
-                                setEduFieldErrors({...eduFieldErrors, educationType: false});
-                                if (val) setEduError('');
-                              }}
-                              placeholder="Select education type"
-                              error={eduFieldErrors.educationType}
-                            />
-                            {eduFieldErrors.educationType && (
-                              <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                Please select education type
-                              </p>
-                            )}
-                          </div>
 
-                          {isSchool && (
-                            <>
-                              <div id={`field-edu-board-${idx}`}>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                  {getStepField('step2', 'board', 'Board', 'Select board').label} {getStepField('step2', 'board').isRequired && <span className="text-red-500">*</span>}
-                                </label>
-                                <CustomDropdown
-                                  options={(currentEduConfig?.options && currentEduConfig.options.length > 10)
-                                    ? currentEduConfig.options.map(b => (typeof b === 'string' ? { value: b, label: b } : b))
-                                    : DEFAULT_BOARD_OPTIONS}
-                                  value={q.board || ''}
-                                  onChange={val => {
-                                    updateArray('qualifications', idx, 'board', val);
-                                    setEduFieldErrors({...eduFieldErrors, board: false});
-                                  }}
-                                  placeholder={getStepField('step2', 'board', 'Board', 'Select board').placeholder || 'Select board'}
-                                  error={eduFieldErrors.board}
-                                />
-                                {eduFieldErrors.board && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please select board
-                                  </p>
-                                )}
-                              </div>
-                              <div id={`field-edu-endYear-${idx}`}>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                  {getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').label} {getStepField('step2', 'endYear').isRequired && <span className="text-red-500">*</span>}
-                                </label>
-                                <CustomDropdown
-                                  options={getEndYearOptions(cmsConfig)}
-                                  value={q.endYear ? String(q.endYear) : ''}
-                                  onChange={val => {
-                                    updateArray('qualifications', idx, 'endYear', val);
-                                    setEduFieldErrors({...eduFieldErrors, endYear: false});
-                                  }}
-                                  placeholder={getStepField('step2', 'endYear', 'Passing out year', 'Select passing out year').placeholder || 'Select passing out year'}
-                                  error={eduFieldErrors.endYear}
-                                />
-                                {eduFieldErrors.endYear && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please select passing out year
-                                  </p>
-                                )}
-                              </div>
-                              <div id={`field-edu-schoolMedium-${idx}`}>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                  {getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').label} {getStepField('step2', 'schoolMedium').isRequired && <span className="text-red-500">*</span>}
-                                </label>
-                                <CustomDropdown
-                                  options={(cmsConfig?.step2?.mediumOptions || DEFAULT_MEDIUM_OPTIONS).map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt))}
-                                  value={q.schoolMedium || ''}
-                                  onChange={val => {
-                                    updateArray('qualifications', idx, 'schoolMedium', val);
-                                    setEduFieldErrors({...eduFieldErrors, schoolMedium: false});
-                                  }}
-                                  placeholder={getStepField('step2', 'schoolMedium', 'School medium', 'Select medium').placeholder || 'Select medium'}
-                                  error={eduFieldErrors.schoolMedium}
-                                />
-                                {eduFieldErrors.schoolMedium && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please select school medium
-                                  </p>
-                                )}
-                              </div>
-                              {(() => {
-                                const numMarks = parseFloat(q.percentage);
-                                const isOver100 = !isNaN(numMarks) && numMarks > 100;
-                                const hasMarksError = eduFieldErrors.percentage || isOver100;
-                                const marksErrorMsg = isOver100 
-                                  ? 'Marks / Percentage cannot be greater than 100%' 
-                                  : (typeof eduFieldErrors.percentage === 'string' ? eduFieldErrors.percentage : 'Please enter marks / percentage');
+        {quals.length === 0 ? (
+          <div 
+            onClick={() => handleOpenEducationModal(-1)}
+            className="p-8 border-2 border-dashed border-gray-200 hover:border-[#059669] rounded-2xl bg-gray-50/50 hover:bg-emerald-50/30 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-[#e6f6ef] text-[#047857] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <p className="text-sm font-bold text-gray-800">Add Your Education</p>
+            <p className="text-xs text-gray-500 max-w-sm">
+              Click here to add your degree, diploma, school, or other educational qualifications.
+            </p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenEducationModal(-1);
+              }}
+              className="mt-2 px-5 py-2.5 bg-[#047857] hover:bg-[#059669] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              + Add Education Details
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3.5">
+            {quals.map((q, idx) => {
+              const isSchool = q.educationType === '10th' || q.educationType === '12th';
+              const title = q.course || (isSchool ? (q.educationType === '12th' ? 'Class XII' : 'Class X') : q.educationType) || 'Education';
+              const institution = isSchool ? (q.board || 'Board not specified') : (q.university || 'University not specified');
+              const yearsText = q.startYear && q.endYear ? `${q.startYear} – ${q.endYear}` : (q.endYear ? `Passing: ${q.endYear}` : '');
 
-                                return (
-                                  <div id={`field-edu-percentage-${idx}`}>
-                                    <label className={`block text-sm font-bold ${hasMarksError ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
-                                      {getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').label} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input 
-                                      type="text" 
-                                      className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${hasMarksError ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 text-sm outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`} 
-                                      placeholder={getStepField('step2', 'percentage', 'Marks', '% marks of 100 maximum').placeholder || '% marks of 100 maximum'} 
-                                      value={q.percentage || ''} 
-                                      onChange={e => { 
-                                        updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
-                                        setEduFieldErrors({...eduFieldErrors, percentage: false}); 
-                                      }} 
-                                    />
-                                    {hasMarksError && (
-                                      <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                        </svg>
-                                        {marksErrorMsg}
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })()}
-                            </>
-                          )}
-
-                          {isHigher && (
-                            <>
-                              <div id={`field-edu-university-${idx}`}>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                  {getStepField('step2', 'university', 'University / Institute', 'Search or enter university/institute...').label} {getStepField('step2', 'university').isRequired && <span className="text-red-500">*</span>}
-                                </label>
-                                <InstituteAutocomplete 
-                                  value={q.university || ''} 
-                                  onChange={val => { 
-                                    updateArray('qualifications', idx, 'university', val); 
-                                    setEduFieldErrors(prev => ({...prev, university: false})); 
-                                  }} 
-                                  placeholder={getStepField('step2', 'university', 'University / Institute', 'Search or enter university/institute...').placeholder || 'Search or enter university/institute...'} 
-                                  className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${eduFieldErrors.university ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 text-sm outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`} 
-                                />
-                                {eduFieldErrors.university && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please enter or select university / institute
-                                  </p>
-                                )}
-                              </div>
-                              <div id={`field-edu-course-${idx}`}>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                  {getStepField('step2', 'course', 'Course', 'Select course').label} {getStepField('step2', 'course').isRequired && <span className="text-red-500">*</span>}
-                                </label>
-                                <CustomDropdown
-                                  options={(() => {
-                                    if (currentEduConfig?.options && currentEduConfig.options.length > 0) {
-                                      return currentEduConfig.options.map(c => (typeof c === 'string' ? { value: c, label: c } : c));
-                                    }
-                                    const opts = q.educationType === 'Accounting Degree' ? accountingDegrees :
-                                      q.educationType === 'Post Graduate Accounting & Finance' ? postGradAccountingDegrees :
-                                      q.educationType === 'Professional Qualification' ? professionalQualifications :
-                                      q.educationType === 'Accounting Certification' ? accountingCertifications :
-                                      q.educationType === 'Diploma' ? diplomaCourses :
-                                      q.educationType === 'Accounting Software' ? accountingSoftwareCourses :
-                                      q.educationType === 'Taxation' ? taxationCourses :
-                                      q.educationType === 'Audit' ? auditCourses :
-                                      q.educationType === 'Finance' ? financeCourses :
-                                      q.educationType === 'International Accounting' ? internationalAccountingCourses :
-                                      null;
-                                      
-                                    if (opts) {
-                                      return opts.map(opt => (typeof opt === 'string' ? { value: opt, label: opt } : opt));
-                                    } else {
-                                      return [
-                                        { value: "B.Tech/B.E.", label: "B.Tech/B.E." },
-                                        { value: "B.Sc", label: "B.Sc" },
-                                        { value: "B.Com", label: "B.Com" },
-                                        { value: "B.A", label: "B.A" },
-                                        { value: "BBA", label: "BBA" },
-                                        { value: "M.Tech/M.E.", label: "M.Tech/M.E." },
-                                        { value: "MBA/PGDM", label: "MBA/PGDM" },
-                                        { value: "MCA", label: "MCA" }
-                                      ];
-                                    }
-                                  })()}
-                                  value={q.course || ''}
-                                  onChange={val => {
-                                    updateArray('qualifications', idx, 'course', val);
-                                    setEduFieldErrors({...eduFieldErrors, course: false});
-                                  }}
-                                  placeholder={getStepField('step2', 'course', 'Course', 'Select course').placeholder || 'Select course'}
-                                  error={eduFieldErrors.course}
-                                />
-                                {eduFieldErrors.course && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please select course
-                                  </p>
-                                )}
-                              </div>
-                              <div id={`field-edu-courseType-${idx}`}>
-                                <label className={`block text-sm font-bold ${eduFieldErrors.courseType ? 'text-red-500' : 'text-gray-900'} mb-3`}>
-                                  {getStepField('step2', 'courseType', 'Course type', 'Select course type').label} {getStepField('step2', 'courseType').isRequired && <span className="text-red-500">*</span>}
-                                </label>
-                                <div className="flex flex-wrap items-center gap-6">
-                                  {(cmsConfig?.step2?.courseTypeOptions || DEFAULT_COURSE_TYPE_OPTIONS).map((ct) => (
-                                    <label key={ct} className="flex items-center cursor-pointer group">
-                                      <input 
-                                        type="radio" 
-                                        name={`courseType-${idx}`} 
-                                        value={ct} 
-                                        className="w-[18px] h-[18px] accent-[#047857] cursor-pointer" 
-                                        checked={q.courseType === ct} 
-                                        onChange={(e) => { 
-                                          updateArray('qualifications', idx, 'courseType', e.target.value); 
-                                          setEduFieldErrors({...eduFieldErrors, courseType: false}); 
-                                        }} 
-                                      />
-                                      <span className={`ml-2.5 text-[15px] ${q.courseType === ct ? 'text-gray-900 font-medium' : 'text-[#64748B]'}`}>
-                                        {ct}
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
-                                {eduFieldErrors.courseType && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please select course type
-                                  </p>
-                                )}
-                              </div>
-                              <div id={`field-edu-startYear-${idx}`}>
-                                <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                  Course duration {(getStepField('step2', 'startYear').isRequired || getStepField('step2', 'endYear').isRequired) && <span className="text-red-500">*</span>}
-                                </label>
-                                <div className="flex items-center gap-4">
-                                  <div className="flex-1">
-                                    <CustomDropdown
-                                      options={getStartYearOptions(cmsConfig)}
-                                      value={q.startYear ? String(q.startYear) : ''}
-                                      onChange={val => {
-                                        updateArray('qualifications', idx, 'startYear', val);
-                                        setEduFieldErrors({...eduFieldErrors, startYear: false});
-                                      }}
-                                      placeholder={getStepField('step2', 'startYear', 'Starting year', 'Starting year').placeholder || 'Starting year'}
-                                      error={eduFieldErrors.startYear}
-                                    />
-                                  </div>
-                                  <span className="font-bold text-gray-900">To</span>
-                                  <div className="flex-1">
-                                    <CustomDropdown
-                                      options={getEndYearOptions(cmsConfig)}
-                                      value={q.endYear ? String(q.endYear) : ''}
-                                      onChange={val => {
-                                        updateArray('qualifications', idx, 'endYear', val);
-                                        setEduFieldErrors({...eduFieldErrors, endYear: false});
-                                      }}
-                                      placeholder={getStepField('step2', 'endYear', 'Ending year', 'Ending year').placeholder || 'Ending year'}
-                                      error={eduFieldErrors.endYear}
-                                    />
-                                  </div>
-                                </div>
-                                {(eduFieldErrors.startYear || eduFieldErrors.endYear) && (
-                                  <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Please select starting and ending year
-                                  </p>
-                                )}
-                              </div>
-                              {(() => {
-                                const currentGradingSystems = normalizeGradingSystems(cmsConfig?.step2?.gradingSystems || DEFAULT_GRADING_SYSTEMS);
-                                const selectedGradingObj = currentGradingSystems.find(g => g.name === q.gradingSystem);
-                                const dynamicMarksLabel = selectedGradingObj?.label || 'Marks';
-                                const dynamicMarksPlaceholder = selectedGradingObj?.placeholder || 'Enter grade or marks';
-
-                                return (
-                                  <>
-                                    <div>
-                                      <label className="block text-sm font-bold text-gray-900 mb-1.5">
-                                        {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).label}
-                                        {getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).isRequired && <span className="text-red-500 font-bold ml-0.5">*</span>}
-                                      </label>
-                                      <CustomDropdown 
-                                        options={currentGradingSystems.map((gs) => ({ value: gs.name, label: gs.name }))}
-                                        value={q.gradingSystem || ''} 
-                                        onChange={val => updateArray('qualifications', idx, 'gradingSystem', val)}
-                                        placeholder={getStepField('step2', 'gradingSystem', 'Grading system', 'Select grading system', false).placeholder || 'Select grading system'}
-                                      />
-                                    </div>
-                                    {q.gradingSystem && q.gradingSystem !== 'Not Applicable' && (() => {
-                                      const gradeValidation = getGradingValidation(q.gradingSystem, q.percentage);
-                                      const hasGradeError = eduFieldErrors.percentage || (!gradeValidation.isValid && q.percentage);
-                                      const gradeErrorMsg = !gradeValidation.isValid 
-                                        ? gradeValidation.message 
-                                        : (typeof eduFieldErrors.percentage === 'string' ? eduFieldErrors.percentage : `Please enter ${dynamicMarksLabel}`);
-
-                                      return (
-                                        <div>
-                                          <label className={`block text-sm font-bold ${hasGradeError ? 'text-red-500' : 'text-gray-900'} mb-1.5`}>
-                                            {dynamicMarksLabel} {cmsConfig?.step2?.fields?.percentage?.isRequired !== false && <span className="text-red-500">*</span>}
-                                          </label>
-                                          <input 
-                                            type="text" 
-                                            className={`w-full px-4 py-2.5 sm:py-3 bg-white border ${hasGradeError ? 'border-red-500 ring-1 ring-red-500' : 'border-[#cfd7e4] hover:border-[#9fb0c8]'} rounded-xl text-gray-800 text-sm outline-none focus:border-[#059669] focus:ring-4 focus:ring-[#059669]/15 transition-all`} 
-                                            placeholder={dynamicMarksPlaceholder} 
-                                            value={q.percentage || ''} 
-                                            onChange={e => { 
-                                              updateArray('qualifications', idx, 'percentage', e.target.value.replace(/[^0-9.]/g, '')); 
-                                              setEduFieldErrors({...eduFieldErrors, percentage: false}); 
-                                            }} 
-                                          />
-                                          {hasGradeError && (
-                                            <p className="text-red-500 text-xs font-semibold mt-1.5 flex items-center gap-1">
-                                              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                              </svg>
-                                              {gradeErrorMsg}
-                                            </p>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
-                                  </>
-                                );
-                              })()}
-                            </>
-                          )}
-                          
-                          {q.educationType && !q.isPrimary && (
-                            <div className="flex items-center pt-2 border-t border-gray-100 mt-4">
-                              <input type="checkbox" id={`primary-edu-${idx}`} className="w-5 h-5 rounded border-gray-300 accent-[#047857]" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
-                              <label htmlFor={`primary-edu-${idx}`} className="ml-3 text-gray-700 font-medium cursor-pointer text-sm">Mark this as my primary education</label>
-                            </div>
-                          )}
-                          {q.educationType && q.isPrimary && (
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100 mt-4 text-xs font-bold text-[#047857]">
-                              <span className="w-2 h-2 rounded-full bg-[#047857]"></span>
-                              <span>Primary Education</span>
-                            </div>
-                          )}
-
-                          <div className="flex justify-end mt-4">
-                            <button type="button" onClick={handleSaveEducation} className="px-6 py-2.5 rounded-xl bg-[#047857] hover:bg-[#059669] text-white font-bold text-sm transition-all shadow-sm">Save</button>
-                          </div>
-                        </div>
+              return (
+                <div key={idx} className="p-4 sm:p-5 rounded-2xl border border-gray-200 hover:border-emerald-300 bg-white shadow-2xs transition-all relative group">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-gray-900 text-[15px] sm:text-base">
+                          {title}
+                        </h4>
+                        {q.isPrimary && (
+                          <span className="px-2.5 py-0.5 bg-[#e6f6ef] text-[#047857] border border-[#bfe3d2] text-[10px] font-bold rounded-full uppercase tracking-wider">
+                            Primary
+                          </span>
+                        )}
                       </div>
-                    );
-                  })}
-                  
-                  {(!formData.qualifications || formData.qualifications.length === 0) ? (
-                    <div 
-                      onClick={handleAddEducation}
-                      className="p-8 border-2 border-dashed border-gray-200 hover:border-[#059669] rounded-2xl bg-gray-50/50 hover:bg-emerald-50/30 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 group"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-[#e6f6ef] text-[#047857] flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                      </div>
-                      <p className="text-sm font-bold text-gray-800">Add Your Education</p>
-                      <p className="text-xs text-gray-500 max-w-sm">
-                        Click here to add your degree, diploma, school, or other educational qualifications.
+                      <p className="text-gray-700 text-sm font-medium mt-1">
+                        {institution}
                       </p>
+                      <p className="text-gray-500 text-xs mt-1 flex items-center gap-2 flex-wrap">
+                        <span>{q.educationType}</span>
+                        {q.courseType && <span>• {q.courseType}</span>}
+                        {yearsText && <span>• {yearsText}</span>}
+                        {q.percentage && <span>• {q.gradingSystem || 'Marks'}: {q.percentage}{q.gradingSystem === 'Percentage' ? '%' : ''}</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
-                        onClick={handleAddEducation}
-                        className="mt-2 px-5 py-2.5 bg-[#047857] hover:bg-[#059669] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
+                        onClick={() => handleOpenEducationModal(idx)}
+                        className="p-2 text-gray-400 hover:text-[#047857] hover:bg-emerald-50 rounded-xl transition-all cursor-pointer"
+                        title="Edit education"
                       >
-                        + Add Education Details
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEducationModal(idx)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                        title="Delete education"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
                       </button>
                     </div>
-                  ) : (
-                    <div className="pt-4">
-                      <div className="flex items-center gap-3 mt-4 md:mt-0">
-                        {eduError && (
-                          <button type="button" onClick={handleAddEducation} className="text-red-500 text-xs font-medium hover:underline cursor-pointer">
-                            {eduError}
-                          </button>
-                        )}
-                        <button 
-                          type="button" 
-                          onClick={handleAddEducation} 
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#e6f6ef] hover:bg-emerald-100 text-[#047857] border border-[#bfe3d2] font-bold text-xs sm:text-sm rounded-full transition-all cursor-pointer shadow-2xs"
-                        >
-                          <span className="text-base leading-none font-bold">+</span>
-                          <span>Add +</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>); };
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => handleOpenEducationModal(-1)}
+              className="w-full py-3 px-4 border border-dashed border-[#bfe3d2] hover:border-[#047857] hover:bg-[#e6f6ef]/40 text-[#047857] font-bold text-sm rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer mt-3"
+            >
+              <span className="text-lg leading-none font-bold">+</span>
+              <span>{cmsConfig?.step2?.addAnotherBtnText || 'Add another education'}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const Step3Experience = () => {
     const s3Title = cmsConfig?.step3?.title || 'Work Experience';
@@ -4105,8 +3813,22 @@ const EmployeeOnboarding = () => {
           </form>
         </div>
       </div>
+      {/* Education Modal popup matching Employee Profile */}
+      <EducationModal
+        isOpen={isEduModalOpen}
+        onClose={() => {
+          setIsEduModalOpen(false);
+          setEditingEduIdx(-1);
+        }}
+        initialData={editingEduIdx >= 0 ? (formData.qualifications || [])[editingEduIdx] : null}
+        editIndex={editingEduIdx}
+        onSave={handleSaveEducationModal}
+        onDelete={handleDeleteEducationModal}
+        cmsConfig={cmsConfig}
+      />
     </div>
   );
 };
+
 
 export default EmployeeOnboarding;
