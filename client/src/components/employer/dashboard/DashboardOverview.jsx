@@ -43,28 +43,28 @@ const DashboardOverview = ({ portalConfig, employerProfile, employerName, jobs =
   return (
     <div className="animate-in fade-in duration-150">
       {/* Stats Horizontal Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 border border-[#eaecf0] rounded-[12px] bg-white overflow-hidden mb-8">
-        <div className="p-5 sm:px-6 sm:py-5 border-b md:border-b-0 border-r border-[#eaecf0]">
-          <p className="m-0 text-[#667085] font-medium text-[14px]">Active jobs</p>
-          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+      <div className="grid grid-cols-2 md:grid-cols-4 border border-[#eaecf0] rounded-[12px] bg-white overflow-hidden mb-6 sm:mb-8">
+        <div className="p-3.5 sm:px-6 sm:py-5 border-b md:border-b-0 border-r border-[#eaecf0]">
+          <p className="m-0 text-[#667085] font-medium text-[12.5px] sm:text-[14px]">Active jobs</p>
+          <strong className="block font-bold text-[24px] sm:text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
             {activeJobsCount}
           </strong>
         </div>
-        <div className="p-5 sm:px-6 sm:py-5 border-b md:border-b-0 md:border-r border-[#eaecf0]">
-          <p className="m-0 text-[#667085] font-medium text-[14px]">Total applications</p>
-          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+        <div className="p-3.5 sm:px-6 sm:py-5 border-b md:border-b-0 md:border-r border-[#eaecf0]">
+          <p className="m-0 text-[#667085] font-medium text-[12.5px] sm:text-[14px]">Total applications</p>
+          <strong className="block font-bold text-[24px] sm:text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
             {totalAppsCount}
           </strong>
         </div>
-        <div className="p-5 sm:px-6 sm:py-5 border-r border-[#eaecf0] max-md:border-r-0">
-          <p className="m-0 text-[#667085] font-medium text-[14px]">Total candidates</p>
-          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+        <div className="p-3.5 sm:px-6 sm:py-5 border-r border-[#eaecf0] max-md:border-r-0">
+          <p className="m-0 text-[#667085] font-medium text-[12.5px] sm:text-[14px]">Total candidates</p>
+          <strong className="block font-bold text-[24px] sm:text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
             {totalCandidatesCount}
           </strong>
         </div>
-        <div className="p-5 sm:px-6 sm:py-5">
-          <p className="m-0 text-[#667085] font-medium text-[14px]">Shortlisted</p>
-          <strong className="block font-bold text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
+        <div className="p-3.5 sm:px-6 sm:py-5">
+          <p className="m-0 text-[#667085] font-medium text-[12.5px] sm:text-[14px]">Shortlisted</p>
+          <strong className="block font-bold text-[24px] sm:text-[30px] leading-[1.2] tracking-[-0.03em] text-[#101828] mt-0.5">
             {shortlistedCount}
           </strong>
         </div>

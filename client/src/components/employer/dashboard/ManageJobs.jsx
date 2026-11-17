@@ -118,9 +118,9 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
       )}
 
       {/* Toolbar */}
-      <div className="flex gap-3 justify-between flex-wrap mb-4">
+      <div className="flex gap-2.5 sm:gap-3 justify-between flex-wrap mb-4">
         {/* Search input (max 360px, search icon, green focus ring) */}
-        <label className="flex items-center gap-2.5 border border-[#d0d5dd] rounded-[8px] px-3 flex-1 max-w-[360px] text-[#98a2b3] focus-within:border-[#059669] focus-within:ring-2 focus-within:ring-[#ecfdf3] transition-all bg-white">
+        <label className="flex items-center gap-2.5 border border-[#d0d5dd] rounded-[8px] px-3 w-full sm:max-w-[360px] text-[#98a2b3] focus-within:border-[#059669] focus-within:ring-2 focus-within:ring-[#ecfdf3] transition-all bg-white">
           <svg className="w-[18px] h-[18px] shrink-0 text-[#98a2b3]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" />
@@ -136,7 +136,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
         </label>
 
         {/* Status filter select */}
-        <div className="w-full sm:w-auto min-w-[170px]" aria-label="Filter by status">
+        <div className="w-full sm:w-auto min-w-[150px] sm:min-w-[170px]" aria-label="Filter by status">
           <CustomDropdown
             options={[
               { value: 'All Status', label: 'All statuses' },
@@ -190,7 +190,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
             return (
               <div 
                 key={job.id || job._id}
-                className="grid min-[1000px]:grid-cols-[minmax(0,2fr)_75px_125px_minmax(0,1.6fr)_135px_135px] grid-cols-[1fr_auto] gap-x-4 gap-y-2.5 items-center py-4 px-2 border-b border-[#eaecf0] hover:bg-[#f9fafb] transition-colors"
+                className="grid min-[1000px]:grid-cols-[minmax(0,2fr)_75px_125px_minmax(0,1.6fr)_135px_135px] grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4 gap-y-2.5 items-center py-3.5 sm:py-4 px-3 sm:px-2 border border-[#eaecf0] sm:border-0 sm:border-b hover:bg-[#f9fafb] transition-colors rounded-xl sm:rounded-none bg-white sm:bg-transparent mb-3 sm:mb-0 shadow-2xs sm:shadow-none"
               >
                 {/* 1. Job Title & Meta */}
                 <div className="min-w-0 min-[1000px]:col-auto col-span-1">

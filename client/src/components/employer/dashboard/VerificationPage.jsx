@@ -585,21 +585,21 @@ export default function VerificationPage({ employerProfile, portalConfig: propPo
 
   const renderBody = () => (
     <>
-      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 sm:p-8 space-y-6">
+      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-4 sm:p-6 md:p-8 space-y-6">
 
         {/* Header Preview / Bar */}
-        <div className="border-b border-gray-100 pb-4 flex items-center justify-between">
+        <div className="border-b border-gray-100 pb-4 flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             {isEmbedded ? (
-              <span className="text-base font-bold text-gray-900">
+              <span className="text-sm sm:text-base font-bold text-gray-900">
                 Identity &amp; Business Verification
               </span>
             ) : (
-              <Link to="/employer" className="text-xl font-bold text-gray-900">
+              <Link to="/employer" className="text-lg sm:text-xl font-bold text-gray-900">
                 sahijob<span className="text-emerald-600">.com</span>
               </Link>
             )}
-            <span className="text-xs text-gray-400 font-medium">{kycConfig.breadcrumbLabel || (isConsultant ? '/ Consultant Verification' : '/ Employer Verification')}</span>
+            <span className="text-[11px] sm:text-xs text-gray-400 font-medium">{kycConfig.breadcrumbLabel || (isConsultant ? '/ Consultant Verification' : '/ Employer Verification')}</span>
           </div>
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
               status === 'verified'
@@ -668,12 +668,12 @@ export default function VerificationPage({ employerProfile, portalConfig: propPo
 
           {/* Title & Subtitle Preview */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{kycConfig.pageTitle || 'Get your company verified'}</h2>
-            <p className="text-sm text-gray-500 mt-1">{kycConfig.pageSubtitle || 'Upload 2 documents. Our team reviews them and your jobs go live for candidates.'}</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">{kycConfig.pageTitle || 'Get your company verified'}</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">{kycConfig.pageSubtitle || 'Upload 2 documents. Our team reviews them and your jobs go live for candidates.'}</p>
           </div>
 
           {/* Stepper Preview */}
-          <div className="flex items-center gap-3 overflow-x-auto pb-1 text-xs font-bold">
+          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 text-[11px] sm:text-xs font-bold">
             <div className={`flex items-center gap-2 ${hasTax ? 'text-emerald-800' : 'text-emerald-800'}`}>
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white ${hasTax ? 'bg-emerald-600' : 'bg-emerald-600'}`}>
                 {hasTax ? '✓' : '1'}

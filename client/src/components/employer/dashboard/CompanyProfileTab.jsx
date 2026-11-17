@@ -7,16 +7,13 @@ import { uploadFileToStorage, deleteFileFromStorage } from '../../../utils/fireb
 import { COUNTRY_CODES } from '../../../data/countryCodes';
 import VerificationPage from './VerificationPage';
 
-const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInitialTab }) => {
+const CompanyProfileTab = ({ portalConfig, employerProfile }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const storedTab = localStorage.getItem('employer_profile_active_tab');
 
-  const resolvedInitialTab = (propInitialTab === 'verification' || propInitialTab === 'company' || propInitialTab === 'account')
-    ? propInitialTab
-    : (tabFromUrl === 'verification' || tabFromUrl === 'company' || tabFromUrl === 'account')
-      ? tabFromUrl
-      : (storedTab === 'verification' || storedTab === 'company' || storedTab === 'account' ? storedTab : 'account');
+  const resolvedInitialTab = (tabFromUrl === 'verification' || tabFromUrl === 'company' || tabFromUrl === 'account')
+    ? tabFromUrl
+    : 'account';
 
   const [activeTab, setActiveTabState] = useState(resolvedInitialTab);
   const fileInputRef = useRef(null);
@@ -38,12 +35,12 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
   };
 
   useEffect(() => {
-    if (propInitialTab && propInitialTab !== activeTab) {
-      setActiveTabState(propInitialTab);
-    } else if (tabFromUrl && tabFromUrl !== activeTab && (tabFromUrl === 'verification' || tabFromUrl === 'company' || tabFromUrl === 'account')) {
+    if (tabFromUrl && (tabFromUrl === 'verification' || tabFromUrl === 'company' || tabFromUrl === 'account')) {
       setActiveTabState(tabFromUrl);
+    } else if (!tabFromUrl) {
+      setActiveTabState('account');
     }
-  }, [tabFromUrl, propInitialTab]);
+  }, [tabFromUrl]);
 
   const [accountData, setAccountData] = useState({
     name: '',
@@ -416,17 +413,17 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
     <div className="max-w-[1000px] w-full mx-auto pb-20 animate-in fade-in duration-150">
       
       {/* Top Header Section */}
-      <div className="mb-7">
-        <h1 className="text-[26px] sm:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2]">
+      <div className="mb-5 sm:mb-7">
+        <h1 className="text-[20px] sm:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2]">
           {getPageTitle()}
         </h1>
-        <p className="text-[#667085] text-[14px] mt-1">
+        <p className="text-[#667085] text-[12.5px] sm:text-[14px] mt-1">
           {getPageSubtitle()}
         </p>
       </div>
 
       {/* Unified Underline Navigation Tabs */}
-      <div className="flex items-center gap-6 sm:gap-8 border-b border-[#eaecf0] mb-8 overflow-x-auto">
+      <div className="flex items-center gap-4 sm:gap-8 border-b border-[#eaecf0] mb-6 sm:mb-8 overflow-x-auto scrollbar-none">
         <button 
           type="button"
           onClick={() => handleTabChange('account')}
@@ -489,7 +486,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
       {/* ================= TAB 1: ACCOUNT DETAILS ================= */}
       {activeTab === 'account' && (
         <form onSubmit={handleSaveAccount} className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-8">
+          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-8">
             <div className="flex items-center gap-3.5 pb-6 border-b border-gray-100">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -664,7 +661,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
               <button
                 type="submit"
                 disabled={savingAccount}
-                className="inline-flex items-center gap-2 bg-[#059669] hover:bg-[#047857] text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#059669] hover:bg-[#047857] text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60"
               >
                 {savingAccount && (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -681,7 +678,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
         <form onSubmit={handleSaveCompany} className="space-y-6 animate-in fade-in duration-200">
           
           {/* Card 1: Brand Logo Section */}
-          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-8">
+          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-8">
             <div className="flex items-center gap-3.5 pb-6 border-b border-gray-100">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -699,7 +696,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
               </div>
             </div>
 
-            <div className="pt-6 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div className="pt-6 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6">
               <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -788,7 +785,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
           </div>
 
           {/* Card 2: Company Details Form */}
-          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-8">
+          <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-8">
             <div className="flex items-center gap-3.5 pb-6 border-b border-gray-100">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-100">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -985,7 +982,7 @@ const CompanyProfileTab = ({ portalConfig, employerProfile, initialTab: propInit
               <button
                 type="submit"
                 disabled={savingCompany}
-                className="inline-flex items-center gap-2 bg-[#059669] hover:bg-[#047857] text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#059669] hover:bg-[#047857] text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-60"
               >
                 {savingCompany && (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
