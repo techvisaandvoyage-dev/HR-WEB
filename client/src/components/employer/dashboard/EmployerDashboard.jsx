@@ -10,9 +10,6 @@ import CompanyProfileTab from './CompanyProfileTab';
 import AllEmployeesTab from './AllEmployeesTab';
 import EmployerMessages from '../messages/EmployerMessages';
 import EmployerSettingsTab from './EmployerSettingsTab';
-
-const VerificationPage = React.lazy(() => import('./VerificationPage'));
-
 import EmployerUserMenu from './EmployerUserMenu';
 import { socket } from '../../../utils/socket';
 
@@ -133,7 +130,7 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
     { key: 'messages', name: sidebarCfg.messagesLabel || sidebarCfg.messages || 'Messages', path: '/employer/messages', icon: (
       <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg>
     )},
-    { key: 'verification', name: 'Verify Account', path: '/employer/verification', badge: (
+    { key: 'account', name: 'Account', path: '/employer/company-profile', badge: (
       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ml-auto ${
         vStatus === 'verified'
           ? 'bg-[#ecfdf3] text-[#047857]'
@@ -147,8 +144,8 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
       </span>
     ), icon: (
       <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        {vStatus === 'verified' && <path d="m9 12 2 2 4-4"/>}
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 21a8 8 0 0 1 16 0"/>
       </svg>
     )}
   ];
@@ -195,7 +192,9 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
         {/* Navigation */}
         <nav className="flex-1 px-3.5 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = item.key === 'account'
+              ? (location.pathname.startsWith('/employer/company-profile') || location.pathname.startsWith('/employer/account') || location.pathname.startsWith('/employer/verification'))
+              : location.pathname === item.path;
             return (
               <Link
                 key={item.key}
@@ -368,11 +367,8 @@ const EmployerDashboard = ({ onLogout, jobs, addJob, updateJob, candidates, rawA
               <Route path="/candidates" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} employerProfile={employerProfile} />} />
               <Route path="/all-employees" element={<AllEmployeesTab portalConfig={portalConfig?.candidates} candidates={candidates} jobs={jobs} employerProfile={employerProfile} />} />
               <Route path="/company-profile" element={<CompanyProfileTab portalConfig={portalConfig?.account} employerProfile={employerProfile} />} />
-              <Route path="/verification" element={
-                <React.Suspense fallback={<div className="p-12 text-center text-sm font-semibold text-gray-500">Loading verification workspace...</div>}>
-                  <VerificationPage employerProfile={employerProfile} portalConfig={portalConfig?.account} />
-                </React.Suspense>
-              } />
+              <Route path="/account" element={<CompanyProfileTab portalConfig={portalConfig?.account} employerProfile={employerProfile} />} />
+              <Route path="/verification" element={<CompanyProfileTab portalConfig={portalConfig?.account} employerProfile={employerProfile} initialTab="verification" />} />
               {/* Placeholders for Messages and Settings */}
               <Route path="/messages" element={<EmployerMessages portalConfig={portalConfig?.messages} candidates={candidates} jobs={jobs} triggerNavRefresh={() => setRefreshNav(prev => !prev)} updateCandidateStatus={updateCandidateStatus} employerProfile={employerProfile} />} />
               <Route path="/settings" element={<EmployerSettingsTab portalConfig={portalConfig?.settings} />} />

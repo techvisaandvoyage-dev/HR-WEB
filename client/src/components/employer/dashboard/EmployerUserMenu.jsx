@@ -76,7 +76,7 @@ const EmployerUserMenu = ({ employerProfile }) => {
           {/* Navigation Links */}
           <div className="flex flex-col gap-0.5">
             <Link
-              to="/employer/company-profile"
+              to="/employer/company-profile?tab=account"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 px-2.5 py-2 rounded-[8px] text-[#101828] font-semibold text-[14px] hover:bg-[#f9fafb] transition-colors"
             >
@@ -91,7 +91,7 @@ const EmployerUserMenu = ({ employerProfile }) => {
             </Link>
 
             <Link
-              to="/employer/verification"
+              to="/employer/company-profile?tab=verification"
               onClick={() => setIsOpen(false)}
               className="flex items-center justify-between px-2.5 py-2 rounded-[8px] text-[#101828] font-semibold text-[14px] hover:bg-[#f9fafb] transition-colors"
             >

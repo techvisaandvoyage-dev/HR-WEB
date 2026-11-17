@@ -116,7 +116,7 @@ const TAX_DOC_OPTIONS = DEFAULT_KYC_CONFIG.taxDoc.options;
 const INCORPORATION_DOC_OPTIONS = DEFAULT_KYC_CONFIG.incorpDoc.options;
 const EXTRA_DOC_OPTIONS = DEFAULT_KYC_CONFIG.extraDoc.options;
 
-export default function VerificationPage({ employerProfile, portalConfig: propPortalConfig }) {
+export default function VerificationPage({ employerProfile, portalConfig: propPortalConfig, isEmbedded = false, onStatusChange }) {
   const [loading, setLoading] = useState(true);
   const [statusData, setStatusData] = useState(null);
   const [portalConfig, setPortalConfig] = useState(propPortalConfig || null);
@@ -222,6 +222,9 @@ export default function VerificationPage({ employerProfile, portalConfig: propPo
             window.dispatchEvent(new Event('employer-profile-updated'));
           }
         } catch (_) {}
+        if (typeof onStatusChange === 'function') {
+          onStatusChange(data);
+        }
       } else {
         showToast(data.message || 'Failed to fetch verification status', 'error');
       }
@@ -580,75 +583,24 @@ export default function VerificationPage({ employerProfile, portalConfig: propPo
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#f5f7f6] text-[#0f172a] font-['Inter',system-ui,sans-serif] pb-16">
-      
-      {/* Toast Notification */}
-      {toast && (
-        <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2.5 transition-all ${
-          toast.type === 'error'
-            ? 'bg-red-50 text-red-800 border-red-200'
-            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-        }`}>
-          <span>{toast.message}</span>
-        </div>
-      )}
+  const renderBody = () => (
+    <>
+      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 sm:p-8 space-y-6">
 
-      {/* Main Verification Card matching Admin Live Preview */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-
-        {/* Profile Page Header & Underline Navigation Tabs */}
-        <div className="mb-7">
-          <h1 className="text-[26px] sm:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2]">
-            {pageTitle}
-          </h1>
-          <p className="text-[#667085] text-[14px] mt-1">
-            {pageSubtitle}
-          </p>
-        </div>
-
-        {/* Underline Tabs matching CompanyProfileTab */}
-        <div className="flex gap-6 border-b border-[#eaecf0] mb-7">
-          <Link
-            to="/employer/company-profile?tab=account"
-            className="pb-3 text-[14.5px] font-semibold border-b-2 border-transparent text-[#667085] hover:text-[#101828] transition-colors cursor-pointer"
-          >
-            {accountTabLabel}
-          </Link>
-          <Link
-            to="/employer/company-profile?tab=company"
-            className="pb-3 text-[14.5px] font-semibold border-b-2 border-transparent text-[#667085] hover:text-[#101828] transition-colors cursor-pointer"
-          >
-            {detailsTabLabel}
-          </Link>
-          <div
-            className="pb-3 text-[14.5px] font-semibold border-b-2 border-[#059669] text-[#047857] transition-colors flex items-center gap-1.5 cursor-default"
-          >
-            <span>Verification</span>
-            <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
-              status === 'verified'
-                ? 'bg-[#ecfdf3] text-[#047857]'
-                : status === 'pending'
-                ? 'bg-[#fef0c7] text-[#b54708]'
-                : status === 'rejected'
-                ? 'bg-[#fef2f2] text-[#b91c1c]'
-                : 'bg-[#fff7ed] text-[#c2410c]'
-            }`}>
-              {status === 'verified' ? 'Verified' : status === 'pending' ? 'Pending' : status === 'rejected' ? 'Rejected' : 'Verify'}
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-md p-6 space-y-6">
-
-          {/* Header Preview / Bar */}
-          <div className="border-b border-gray-100 pb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        {/* Header Preview / Bar */}
+        <div className="border-b border-gray-100 pb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isEmbedded ? (
+              <span className="text-base font-bold text-gray-900">
+                Identity &amp; Business Verification
+              </span>
+            ) : (
               <Link to="/employer" className="text-xl font-bold text-gray-900">
                 sahijob<span className="text-emerald-600">.com</span>
               </Link>
-              <span className="text-xs text-gray-400 font-medium">{kycConfig.breadcrumbLabel || (isConsultant ? '/ Consultant Verification' : '/ Employer Verification')}</span>
-            </div>
+            )}
+            <span className="text-xs text-gray-400 font-medium">{kycConfig.breadcrumbLabel || (isConsultant ? '/ Consultant Verification' : '/ Employer Verification')}</span>
+          </div>
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
               status === 'verified'
                 ? 'bg-[#e4f6ea] text-[#14753a] border border-[#cfe9d8]'
@@ -1398,8 +1350,6 @@ export default function VerificationPage({ employerProfile, portalConfig: propPo
 
       </div>
 
-      </div>
-
       {/* ================= MODAL: SUBMISSION CONFIRMATION ================= */}
       {confirmSubmitOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
@@ -1503,7 +1453,86 @@ export default function VerificationPage({ employerProfile, portalConfig: propPo
           </div>
         </div>
       )}
+    </>
+  );
 
+  if (isEmbedded) {
+    return (
+      <div className="w-full">
+        {/* Toast Notification */}
+        {toast && (
+          <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2.5 transition-all ${
+            toast.type === 'error'
+              ? 'bg-red-50 text-red-800 border-red-200'
+              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+          }`}>
+            <span>{toast.message}</span>
+          </div>
+        )}
+        {renderBody()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f5f7f6] text-[#0f172a] font-['Inter',system-ui,sans-serif] pb-16">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2.5 transition-all ${
+          toast.type === 'error'
+            ? 'bg-red-50 text-red-800 border-red-200'
+            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+        }`}>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
+      {/* Main Verification Card matching Admin Live Preview */}
+      <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Profile Page Header & Underline Navigation Tabs */}
+        <div className="mb-7">
+          <h1 className="text-[26px] sm:text-[28px] font-bold text-[#101828] tracking-[-0.025em] leading-[1.2]">
+            {pageTitle}
+          </h1>
+          <p className="text-[#667085] text-[14px] mt-1">
+            {pageSubtitle}
+          </p>
+        </div>
+
+        {/* Underline Tabs matching CompanyProfileTab */}
+        <div className="flex gap-6 border-b border-[#eaecf0] mb-7">
+          <Link
+            to="/employer/company-profile?tab=account"
+            className="pb-3 text-[14.5px] font-semibold border-b-2 border-transparent text-[#667085] hover:text-[#101828] transition-colors cursor-pointer"
+          >
+            {accountTabLabel}
+          </Link>
+          <Link
+            to="/employer/company-profile?tab=company"
+            className="pb-3 text-[14.5px] font-semibold border-b-2 border-transparent text-[#667085] hover:text-[#101828] transition-colors cursor-pointer"
+          >
+            {detailsTabLabel}
+          </Link>
+          <div
+            className="pb-3 text-[14.5px] font-semibold border-b-2 border-[#059669] text-[#047857] transition-colors flex items-center gap-1.5 cursor-default"
+          >
+            <span>Verification</span>
+            <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
+              status === 'verified'
+                ? 'bg-[#ecfdf3] text-[#047857]'
+                : status === 'pending'
+                ? 'bg-[#fef0c7] text-[#b54708]'
+                : status === 'rejected'
+                ? 'bg-[#fef2f2] text-[#b91c1c]'
+                : 'bg-[#fff7ed] text-[#c2410c]'
+            }`}>
+              {status === 'verified' ? 'Verified' : status === 'pending' ? 'Pending' : status === 'rejected' ? 'Rejected' : 'Verify'}
+            </span>
+          </div>
+        </div>
+
+        {renderBody()}
+      </div>
     </div>
   );
 }
