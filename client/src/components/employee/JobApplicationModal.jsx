@@ -1521,8 +1521,32 @@ const p = formData.professionalDetails || {};
                       })()}
                       {q.educationType !== 'Masters/Post-Graduation' && !q.isPrimary && (
                         <div className="flex items-center pt-2">
-                          <input type="checkbox" id={`primary-grad-${idx}`} className="w-5 h-5 rounded border-gray-300 text-green-500 focus:ring-green-500" checked={q.isPrimary || false} onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} />
-                          <label htmlFor={`primary-grad-${idx}`} className="ml-3 text-gray-700 font-medium cursor-pointer">Make this as my primary graduation/diploma</label>
+                          <label 
+                            htmlFor={`primary-grad-${idx}`} 
+                            className="flex items-center gap-3 cursor-pointer select-none group"
+                          >
+                            <div className={`w-[20px] h-[20px] rounded-[6px] border flex items-center justify-center transition-all ${
+                              q.isPrimary
+                                ? 'bg-[#059669] border-[#059669] text-white shadow-xs'
+                                : 'bg-white border-[#b8c2d3] group-hover:border-[#059669]'
+                            }`}>
+                              {q.isPrimary && (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3.2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              id={`primary-grad-${idx}`} 
+                              className="sr-only" 
+                              checked={Boolean(q.isPrimary)} 
+                              onChange={e => updateArray('qualifications', idx, 'isPrimary', e.target.checked)} 
+                            />
+                            <span className="text-gray-700 font-medium group-hover:text-gray-900 text-sm">
+                              Make this as my primary graduation/diploma
+                            </span>
+                          </label>
                         </div>
                       )}
                       {q.educationType !== 'Masters/Post-Graduation' && q.isPrimary && (

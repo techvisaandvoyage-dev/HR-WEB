@@ -60,7 +60,7 @@
   font-family: var(--sj-f) !important;
 }
 
-.sj-theme input:focus,
+.sj-theme input:not([type="checkbox"]):not([type="radio"]):focus,
 .sj-theme select:focus,
 .sj-theme textarea:focus {
   outline: 0 !important;

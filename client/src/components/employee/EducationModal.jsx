@@ -373,15 +373,37 @@ const EducationModal = ({
             </div>
 
             {/* Primary Education checkbox */}
-            <div className="sj-fld sj-full">
-              <label className="sj-chk-wrap">
+            <div className="sj-fld sj-full pt-1">
+              <label
+                className="sj-chk-wrap group flex items-center gap-3 cursor-pointer select-none"
+                onClick={(e) => {
+                  if (e.target.tagName !== 'INPUT') {
+                    setForm(prev => ({ ...prev, isPrimary: !prev.isPrimary }));
+                  }
+                }}
+              >
+                <div
+                  className={`w-[22px] h-[22px] rounded-[7px] border flex items-center justify-center transition-all ${
+                    form.isPrimary
+                      ? 'bg-[#059669] border-[#059669] text-white shadow-xs'
+                      : 'bg-white border-[#b8c2d3] group-hover:border-[#059669]'
+                  }`}
+                >
+                  {form.isPrimary && (
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3.2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
                 <input
                   type="checkbox"
-                  className="sj-chk"
-                  checked={form.isPrimary}
-                  onChange={(e) => setForm({ ...form, isPrimary: e.target.checked })}
+                  className="sr-only"
+                  checked={Boolean(form.isPrimary)}
+                  onChange={(e) => setForm(prev => ({ ...prev, isPrimary: e.target.checked }))}
                 />
-                <span>Mark this as my primary education</span>
+                <span className="text-sm font-semibold text-gray-800 group-hover:text-gray-900">
+                  Mark this as my primary education
+                </span>
               </label>
             </div>
           </div>

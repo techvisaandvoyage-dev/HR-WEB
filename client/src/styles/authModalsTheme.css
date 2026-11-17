@@ -345,10 +345,10 @@
 }
 
 /* Focus: Dark ink border with accent glow (Identical to mobile number pill) */
-.sj-auth-modals input:focus,
+.sj-auth-modals input:not([type="checkbox"]):not([type="radio"]):focus,
 .sj-auth-modals select:focus,
 .sj-auth-modals textarea:focus,
-.sj-auth-modals input:focus-visible,
+.sj-auth-modals input:not([type="checkbox"]):not([type="radio"]):focus-visible,
 .sj-auth-modals select:focus-visible {
   outline: 0 !important;
   border-color: var(--sj-ink, #0f172a) !important;
@@ -357,7 +357,7 @@
 }
 
 /* Hover: Subtle dark border + soft mint glow */
-.sj-auth-modals input:hover:not(:focus),
+.sj-auth-modals input:not([type="checkbox"]):not([type="radio"]):hover:not(:focus),
 .sj-auth-modals select:hover:not(:focus),
 .sj-auth-modals textarea:hover:not(:focus) {
   border-color: var(--sj-ink, #0f172a) !important;

@@ -506,15 +506,37 @@ const ExperienceModal = ({
                         </div>
 
                         {/* I currently work here */}
-                        <div className="sj-fld sj-full">
-                          <label className="sj-chk-wrap">
+                        <div className="sj-fld sj-full pt-1">
+                          <label
+                            className="sj-chk-wrap group flex items-center gap-3 cursor-pointer select-none"
+                            onClick={(e) => {
+                              if (e.target.tagName !== 'INPUT') {
+                                handleRoleChange(idx, 'currentCompany', !role.currentCompany);
+                              }
+                            }}
+                          >
+                            <div
+                              className={`w-[22px] h-[22px] rounded-[7px] border flex items-center justify-center transition-all ${
+                                role.currentCompany
+                                  ? 'bg-[#059669] border-[#059669] text-white shadow-xs'
+                                  : 'bg-white border-[#b8c2d3] group-hover:border-[#059669]'
+                              }`}
+                            >
+                              {role.currentCompany && (
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3.2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
                             <input
                               type="checkbox"
-                              className="sj-chk"
-                              checked={role.currentCompany}
+                              className="sr-only"
+                              checked={Boolean(role.currentCompany)}
                               onChange={(e) => handleRoleChange(idx, 'currentCompany', e.target.checked)}
                             />
-                            <span>{currentCompany.label}</span>
+                            <span className="text-sm font-semibold text-gray-800 group-hover:text-gray-900">
+                              {currentCompany.label}
+                            </span>
                           </label>
                         </div>
 

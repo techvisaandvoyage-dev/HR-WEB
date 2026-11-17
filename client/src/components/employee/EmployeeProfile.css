@@ -862,26 +862,45 @@
   cursor: pointer;
   font-size: 14px;
   color: var(--ink);
+  user-select: none;
 }
-.sj-profile input[type=checkbox] {
+.sj-profile input[type=checkbox],
+.sj-modal input[type=checkbox],
+input[type=checkbox].sj-chk {
   appearance: none;
   -webkit-appearance: none;
   width: 22px;
   height: 22px;
   border: 1.5px solid #b8c2d3;
   border-radius: 7px;
-  background: #fff;
-  transition: .2s;
+  background-color: #fff !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  transition: all .18s ease;
   cursor: pointer;
   flex-shrink: 0;
+  margin: 0;
+  padding: 0;
 }
-.sj-profile input[type=checkbox]:checked {
-  background: var(--p2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/14px no-repeat;
-  border-color: var(--p2);
+.sj-profile input[type=checkbox]:checked,
+.sj-modal input[type=checkbox]:checked,
+input[type=checkbox].sj-chk:checked {
+  background-color: #059669 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") !important;
+  background-position: center !important;
+  background-size: 14px 14px !important;
+  background-repeat: no-repeat !important;
+  border-color: #059669 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
 }
-.sj-profile input[type=checkbox]:focus-visible {
-  outline: 3px solid #86d9b8;
-  outline-offset: 2px;
+.sj-profile input[type=checkbox]:focus-visible,
+.sj-modal input[type=checkbox]:focus-visible,
+input[type=checkbox].sj-chk:focus-visible {
+  outline: 2px solid #059669 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.16) !important;
+  -webkit-box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.16) !important;
 }
 
 /* ── Role Card Accordion in ExperienceModal ───────────────────── */
