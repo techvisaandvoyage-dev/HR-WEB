@@ -73,6 +73,12 @@
   box-sizing: border-box;
 }
 
+@media (max-width: 860px) {
+  .sj-topbar-search {
+    display: none !important;
+  }
+}
+
 /* 3D effect ONLY on hover as requested */
 .sj-topbar-search:hover {
   box-shadow: 4px 4px 0 var(--sj-ink, #0f172a);
@@ -534,13 +540,13 @@
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 860px) {
   .sj-guest-desktop-actions {
     display: none !important;
   }
 
   .sj-hamburger-btn {
-    display: flex;
+    display: flex !important;
   }
 
   .sj-mobile-menu-drawer {
