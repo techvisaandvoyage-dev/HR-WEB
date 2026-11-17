@@ -76,7 +76,10 @@ const MultiSelectLocationDropdown = ({
   value, 
   onChange, 
   multiple = true,
-  placeholder = "Select locations",
+  placeholder = "Select options",
+  searchPlaceholder,
+  isLocation = true,
+  dropdownClassName = "",
   className = "w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-gray-700 transition-all shadow-sm"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -127,7 +130,7 @@ const MultiSelectLocationDropdown = ({
   useEffect(() => {
     const query = searchTerm.trim();
 
-    if (!query) {
+    if (!isLocation || !query) {
       setLiveOptions([]);
       setIsLoadingLive(false);
       return undefined;
@@ -209,10 +212,17 @@ const MultiSelectLocationDropdown = ({
 
     const debounceTimer = setTimeout(fetchLiveLocations, 180);
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, options]);
+  }, [searchTerm, options, isLocation]);
 
-  // If searching, show live combinations. Otherwise show default popular options.
-  const displayedOptions = searchTerm.trim().length > 0 ? liveOptions : options;
+  // If searching, show live combinations for location, or filtered static options for custom lists.
+  const displayedOptions = searchTerm.trim().length > 0 
+    ? (isLocation 
+        ? liveOptions 
+        : (options || []).filter(opt => {
+            const label = typeof opt === 'string' ? opt : (opt?.label || opt?.value || '');
+            return String(label).toLowerCase().includes(searchTerm.trim().toLowerCase());
+          }))
+    : options;
 
   return (
     <div className={`relative w-full text-left font-sans ${isOpen ? 'z-50' : 'z-0'}`} ref={wrapperRef}>
@@ -222,7 +232,15 @@ const MultiSelectLocationDropdown = ({
       >
         <div className="flex-1 overflow-hidden pr-2 truncate">
           {selectedValues.length > 0 ? (
-            <span className="text-gray-900 font-medium">{selectedValues.join(', ')}</span>
+            <span className="text-gray-900 font-medium">
+              {(() => {
+                const labels = selectedValues.map(val => {
+                  const matched = (options || []).find(o => (typeof o === 'string' ? o : o?.value) === val);
+                  return (typeof matched === 'object' ? matched?.label : matched) || val;
+                });
+                return labels.join(', ');
+              })()}
+            </span>
           ) : (
             <span className="text-gray-400">{placeholder}</span>
           )}
@@ -238,7 +256,7 @@ const MultiSelectLocationDropdown = ({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-80">
+        <div className={`absolute z-50 min-w-[200px] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-80 ${dropdownClassName}`}>
           <div className="p-3 border-b border-gray-100 bg-gray-50/50">
             <div className="relative">
               <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +264,7 @@ const MultiSelectLocationDropdown = ({
               </svg>
               <input
                 type="text"
-                placeholder="Type city, village, tehsil or state..."
+                placeholder={searchPlaceholder || (isLocation ? "Type city, village, tehsil or state..." : "Search options...")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
@@ -302,17 +320,19 @@ const MultiSelectLocationDropdown = ({
               <div className="px-4 py-4 text-sm text-gray-500 text-center">
                 {searchTerm.trim() ? (
                   <div>
-                    <p className="mb-1 text-gray-600">No exact match found for "{searchTerm}"</p>
-                    <button
-                      type="button"
-                      onClick={() => handleCheckboxChange(searchTerm.trim())}
-                      className="text-xs text-[#059669] hover:text-[#047857] font-semibold underline"
-                    >
-                      Use "{searchTerm.trim()}" as custom location
-                    </button>
+                    <p className="mb-1 text-gray-600">No matches found for "{searchTerm}"</p>
+                    {isLocation ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCheckboxChange(searchTerm.trim())}
+                        className="text-xs text-[#059669] hover:text-[#047857] font-semibold underline"
+                      >
+                        Use "{searchTerm.trim()}" as custom location
+                      </button>
+                    ) : null}
                   </div>
                 ) : (
-                  'No locations available'
+                  isLocation ? 'No locations available' : 'No options available'
                 )}
               </div>
             )}

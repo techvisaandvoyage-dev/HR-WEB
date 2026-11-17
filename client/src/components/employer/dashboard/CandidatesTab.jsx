@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import DateRangePicker from '../../common/DateRangePicker';
 import VideoPlayer from '../../common/VideoPlayer';
 import CustomDropdown from '../../common/CustomDropdown';
+import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 import CandidateVideoCard from '../../common/CandidateVideoCard';
 import CandidateProfileFullScreen from './CandidateProfileFullScreen';
 import EmployerChatDrawer from '../messages/EmployerChatDrawer';
@@ -37,6 +38,13 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
   const [exportNotice, setExportNotice] = useState(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [avatarFailedMap, setAvatarFailedMap] = useState({});
+
+  const getCandidateInitials = (name = '') => {
+    if (!name) return 'C';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  };
 
   // Column Filters State (Filter for every single column)
   const initialFilters = {
@@ -1155,188 +1163,167 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         </div>
       </div>
 
-      {/* Main Applications Table with Column Filter Controls */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+      {/* 2. Main Content Card (Round Filters + Applications Table) */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-visible relative">
+        
+        {/* Filters Section */}
+        <div className="mb-6 space-y-4">
+          
+          {/* Search bar */}
+          <div className="relative max-w-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input 
+              type="text" 
+              value={colFilters.candidate}
+              onChange={(e) => handleFilterChange('candidate', e.target.value)}
+              placeholder="Search by candidate name, role, email or application ID..." 
+              className="w-full pl-10 pr-10 py-2.5 bg-gray-50/80 hover:bg-white focus:bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-800 focus:outline-none focus:border-[#059669] transition-all placeholder-gray-400 shadow-none"
+            />
+            {colFilters.candidate && (
+              <button 
+                type="button"
+                onClick={() => handleFilterChange('candidate', '')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Filter Dropdowns Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Job Filter */}
+            {!isJobSpecificView && (
+              <div className="min-w-0">
+                <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Job Applied</span>
+                <MultiSelectLocationDropdown
+                  options={uniqueJobs.map((j) => ({ value: j, label: j === 'All' ? 'All Jobs' : j }))}
+                  value={colFilters.job}
+                  onChange={(val) => handleFilterChange('job', val)}
+                  multiple={false}
+                  isLocation={false}
+                  searchPlaceholder="Search jobs..."
+                  placeholder="All Jobs"
+                  className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                />
+              </div>
+            )}
+
+            {/* Functional Area */}
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Functional Area</span>
+              <MultiSelectLocationDropdown
+                options={uniqueFunctions.map((fn) => ({ value: fn, label: fn === 'All' ? 'All Functions' : fn }))}
+                value={colFilters.functionArea}
+                onChange={(val) => handleFilterChange('functionArea', val)}
+                multiple={false}
+                isLocation={false}
+                searchPlaceholder="Search functions..."
+                placeholder="All Functions"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+              />
+            </div>
+
+            {/* Primary Qualification */}
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qualification</span>
+              <MultiSelectLocationDropdown
+                options={uniqueQualifications.map((q) => ({ value: q, label: q === 'All' ? 'All Quals' : q }))}
+                value={colFilters.qualification}
+                onChange={(val) => handleFilterChange('qualification', val)}
+                multiple={false}
+                isLocation={false}
+                searchPlaceholder="Search qualifications..."
+                placeholder="All Quals"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+              />
+            </div>
+
+            {/* Work Experience */}
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Work Exp</span>
+              <MultiSelectLocationDropdown
+                options={uniqueWorkExps.map((exp) => ({ value: exp, label: exp === 'All' ? 'All Exp' : exp }))}
+                value={colFilters.workExp}
+                onChange={(val) => handleFilterChange('workExp', val)}
+                multiple={false}
+                isLocation={false}
+                searchPlaceholder="Search experience..."
+                placeholder="All Exp"
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+              />
+            </div>
+
+            {/* Application ID / Role text filter */}
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">App ID / Role</span>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={colFilters.appId || colFilters.designation}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.startsWith('#') || /^\d+$/.test(val) || val.toLowerCase().startsWith('id')) {
+                      handleFilterChange('appId', val);
+                    } else {
+                      handleFilterChange('designation', val);
+                    }
+                  }}
+                  placeholder="ID: 500101... or Role"
+                  className="w-full px-3.5 py-1.5 pr-7 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 focus:outline-none focus:border-[#059669] transition-colors shadow-none placeholder-gray-400"
+                />
+                {(colFilters.appId || colFilters.designation) && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      handleFilterChange('appId', '');
+                      handleFilterChange('designation', '');
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Sort Order */}
+            <div className="min-w-0">
+              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Applied Date</span>
+              <button
+                type="button"
+                onClick={() => handleFilterChange('sortDate', colFilters.sortDate === 'desc' ? 'asc' : 'desc')}
+                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 hover:border-gray-300 rounded-full text-xs font-bold text-gray-800 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-none"
+              >
+                <span>{colFilters.sortDate === 'desc' ? '⬇ Newest First' : '⬆ Oldest First'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              {/* Row 1: Main Column Headers */}
-              <tr className="bg-gray-100/90 border-b border-gray-200 text-gray-800 font-black uppercase tracking-wider text-[11px]">
+              <tr className="bg-[#f8fafc] text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
                 {!isJobSpecificView && (
-                  <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Application ID</th>
+                  <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap">Application ID</th>
                 )}
-                <th className="py-3 px-3 min-w-[200px] whitespace-nowrap">Candidate Name</th>
+                <th className="py-3.5 px-3 min-w-[200px] whitespace-nowrap">Candidate Name</th>
                 {!isJobSpecificView && (
-                  <th className="py-3 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
+                  <th className="py-3.5 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
                 )}
-                <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
-                <th className="py-3 px-3 min-w-[130px] whitespace-nowrap">Functional Area</th>
-                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
-                <th className="py-3 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
-                <th className="py-3 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
-                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap">Applied Date</th>
-                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap text-center">Status</th>
-                <th className="py-3 px-3 min-w-[120px] whitespace-nowrap text-center">Source Link</th>
-                <th className="py-3 px-3 min-w-[130px] text-right whitespace-nowrap">Actions</th>
-              </tr>
-
-              {/* Row 2: In-Column Dedicated Filter Inputs & Dropdowns */}
-              <tr className="bg-gray-50/95 border-b border-gray-200">
-                
-                {/* 0. Application ID Filter */}
-                {!isJobSpecificView && (
-                  <th className="p-1.5">
-                    <input 
-                      type="text"
-                      value={colFilters.appId}
-                      onChange={(e) => handleFilterChange('appId', e.target.value)}
-                      placeholder="ID: 500101..."
-                      className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 font-mono shadow-2xs"
-                    />
-                  </th>
-                )}
-
-                {/* 1. Candidate Filter */}
-                <th className="p-1.5">
-                  <input 
-                    type="text"
-                    value={colFilters.candidate}
-                    onChange={(e) => handleFilterChange('candidate', e.target.value)}
-                    placeholder="Name / Email..."
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 shadow-2xs"
-                  />
-                </th>
-
-                {/* 2. Job Applied Filter */}
-                {!isJobSpecificView && (
-                  <th className="p-1.5">
-                    <CustomDropdown
-                      options={uniqueJobs.map((jobTitle) => ({ value: jobTitle, label: jobTitle === 'All' ? 'All Jobs' : jobTitle }))}
-                      value={colFilters.job}
-                      onChange={(value) => handleFilterChange('job', value)}
-                      allowCustomValue={false}
-                      className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                      dropdownClassName="w-56"
-                    />
-                  </th>
-                )}
-
-                {/* 3. Primary Qualification Filter (Education) */}
-                <th className="p-1.5">
-                  <CustomDropdown
-                    options={uniqueQualifications.map((qualification) => ({ value: qualification, label: qualification === 'All' ? 'All Quals' : qualification }))}
-                    value={colFilters.qualification}
-                    onChange={(value) => handleFilterChange('qualification', value)}
-                    allowCustomValue={false}
-                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                    dropdownClassName="w-56"
-                  />
-                </th>
-
-                {/* 4. Function Filter */}
-                <th className="p-1.5">
-                  <CustomDropdown
-                    options={uniqueFunctions.map((fn) => ({ value: fn, label: fn === 'All' ? 'All Functions' : fn }))}
-                    value={colFilters.functionArea}
-                    onChange={(value) => handleFilterChange('functionArea', value)}
-                    allowCustomValue={false}
-                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                    dropdownClassName="w-56"
-                  />
-                </th>
-
-                {/* 5. Work Exp Filter */}
-                <th className="p-1.5">
-                  <CustomDropdown
-                    options={uniqueWorkExps.map((experience) => ({ value: experience, label: experience === 'All' ? 'All Exp' : experience }))}
-                    value={colFilters.workExp}
-                    onChange={(value) => handleFilterChange('workExp', value)}
-                    allowCustomValue={false}
-                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                    dropdownClassName="w-56"
-                  />
-                </th>
-
-                {/* 6. Current Designation Filter */}
-                <th className="p-1.5">
-                  <input 
-                    type="text"
-                    value={colFilters.designation}
-                    onChange={(e) => handleFilterChange('designation', e.target.value)}
-                    placeholder="Filter role..."
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 shadow-2xs"
-                  />
-                </th>
-
-                {/* 7. Current Company Filter */}
-                <th className="p-1.5">
-                  <input 
-                    type="text"
-                    value={colFilters.company}
-                    onChange={(e) => handleFilterChange('company', e.target.value)}
-                    placeholder="Filter company..."
-                    className="w-full h-7 px-2 bg-white border border-gray-200 rounded-md text-[11px] font-medium text-gray-800 focus:outline-none focus:border-emerald-500 transition-all placeholder-gray-400 shadow-2xs"
-                  />
-                </th>
-
-                {/* 8. Applied Date Sort Toggle */}
-                <th className="p-1.5">
-                  <button
-                    onClick={() => handleFilterChange('sortDate', colFilters.sortDate === 'desc' ? 'asc' : 'desc')}
-                    className="w-full h-7 px-2 bg-white border border-gray-200 hover:bg-gray-100 rounded-md text-[11px] font-bold text-gray-700 flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                    title="Toggle Date Sort Order"
-                  >
-                    <span>{colFilters.sortDate === 'desc' ? '⬇ Newest' : '⬆ Oldest'}</span>
-                  </button>
-                </th>
-
-                {/* 9. Status Filter */}
-                <th className="p-1.5">
-                  <CustomDropdown
-                    options={[
-                      { value: 'All', label: 'All Status' },
-                      ...statusOptions.map((status) => ({ value: status, label: status }))
-                    ]}
-                    value={colFilters.status}
-                    onChange={(value) => handleFilterChange('status', value)}
-                    allowCustomValue={false}
-                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                    dropdownClassName="w-44"
-                  />
-                </th>
-
-                {/* Source Link Filter (Right side of Status) */}
-                <th className="p-1.5">
-                  <CustomDropdown
-                    options={[
-                      { value: 'All', label: 'All Sources' },
-                      ...uniqueLinks.filter((link) => link !== 'All').map((link) => ({
-                        value: link,
-                        label: link === 'Portal' || link === 'Direct' ? '🌐 Portal' : `🔗 Link ${link}`
-                      }))
-                    ]}
-                    value={colFilters.sourceLink}
-                    onChange={(value) => handleFilterChange('sourceLink', value)}
-                    allowCustomValue={false}
-                    className="w-full !h-7 !px-2 !py-1 rounded-md text-[11px] font-semibold shadow-2xs"
-                    dropdownClassName="w-44"
-                  />
-                </th>
-
-                {/* 10. Actions Filter Reset */}
-                <th className="p-1.5 text-right">
-                  {hasActiveFilters ? (
-                    <button 
-                      onClick={resetAllFilters}
-                      className="h-7 px-2.5 bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-bold rounded-md transition-colors cursor-pointer border border-red-200 whitespace-nowrap shadow-2xs"
-                    >
-                      Clear
-                    </button>
-                  ) : (
-                    <span className="text-[10px] text-gray-400 font-normal px-2 block text-center">Ready</span>
-                  )}
-                </th>
-
+                <th className="py-3.5 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
+                <th className="py-3.5 px-3 min-w-[130px] whitespace-nowrap">Functional Area</th>
+                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
+                <th className="py-3.5 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
+                <th className="py-3.5 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
+                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap">Applied Date</th>
+                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap text-center">Status</th>
+                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap text-center">Source Link</th>
+                <th className="py-3.5 px-3 min-w-[130px] text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
 
@@ -1400,13 +1387,13 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                                   src={candAvatar}
                                   alt={cand.name || 'Candidate'}
                                   onError={() => setAvatarFailedMap(prev => ({ ...prev, [candKey]: true }))}
-                                  className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-200"
+                                  className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-gray-200 shadow-none"
                                 />
                               );
                             }
                             return (
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-2xs ${cand.bg || 'bg-emerald-600'}`}>
-                                {cand.initials || (cand.name ? cand.name.charAt(0).toUpperCase() : 'C')}
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-extrabold text-xs shrink-0 shadow-none bg-slate-900">
+                                {getCandidateInitials(cand.name)}
                               </div>
                             );
                           })()}
@@ -1752,11 +1739,16 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
               {/* Modal Top Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-b border-gray-100 bg-gray-50/90 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  {candAvatar ? (
-                    <img src={candAvatar} alt={cand.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+                  {candAvatar && !avatarFailedMap[cand._id || cand.id || cand.email] ? (
+                    <img 
+                      src={candAvatar} 
+                      alt={cand.name || 'Candidate'} 
+                      onError={() => setAvatarFailedMap(prev => ({ ...prev, [cand._id || cand.id || cand.email]: true }))}
+                      className="w-10 h-10 rounded-full object-cover ring-1 ring-gray-200 shrink-0" 
+                    />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-[#059669] flex items-center justify-center text-sm font-black shrink-0">
-                      {(cand.name || 'C').charAt(0).toUpperCase()}
+                    <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-extrabold shrink-0 shadow-none">
+                      {getCandidateInitials(cand.name)}
                     </div>
                   )}
                   <div className="min-w-0">

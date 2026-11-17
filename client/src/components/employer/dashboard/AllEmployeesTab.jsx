@@ -826,11 +826,16 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
               {/* Modal Top Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-b border-gray-100 bg-gray-50/90 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  {candAvatar ? (
-                    <img src={candAvatar} alt={cand.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+                  {candAvatar && !avatarFailedMap[cand._id || cand.id || cand.email] ? (
+                    <img 
+                      src={candAvatar} 
+                      alt={cand.name} 
+                      onError={() => setAvatarFailedMap(prev => ({ ...prev, [cand._id || cand.id || cand.email]: true }))}
+                      className="w-10 h-10 rounded-full object-cover ring-1 ring-gray-200 shrink-0" 
+                    />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-[#059669] flex items-center justify-center text-sm font-black shrink-0">
-                      {(cand.name || 'C').charAt(0).toUpperCase()}
+                    <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-extrabold shrink-0 shadow-none">
+                      {getCandidateInitials(cand.name)}
                     </div>
                   )}
                   <div className="min-w-0">

@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { socket } from '../../../utils/socket';
 import { formatPhoneWithCountryCode } from '../../../data/countryCodes';
 import CandidateProfileFullScreen from '../dashboard/CandidateProfileFullScreen';
+import MultiSelectLocationDropdown from '../../common/MultiSelectLocationDropdown';
 
 const EmployerMessages = ({ 
   portalConfig, 
@@ -26,12 +27,15 @@ const EmployerMessages = ({
   const [isTyping, setIsTyping] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Filters & Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
-  const [selectedJobFilter, setSelectedJobFilter] = useState('All jobs');
-  const [candidateColFilter, setCandidateColFilter] = useState('');
-  const [selectedChatFilter, setSelectedChatFilter] = useState('All');
+  // Two-Panel Job & Candidate View State
+  const [selectedJobTitle, setSelectedJobTitle] = useState('');
+  const [jobSearchTerm, setJobSearchTerm] = useState('');
+  const [mobileView, setMobileView] = useState('jobs'); // 'jobs' | 'candidates'
+
+  // Candidate Filters on the Right Panel
+  const [candidateSearch, setCandidateSearch] = useState('');
+  const [candidateStatusFilter, setCandidateStatusFilter] = useState('All');
+  const [candidateChatFilter, setCandidateChatFilter] = useState('All');
 
   // Popovers & Modals
   const [isInfoOpen, setIsInfoOpen] = useState(false);
@@ -40,6 +44,7 @@ const EmployerMessages = ({
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [isBlockLoading, setIsBlockLoading] = useState(false);
   const [activeStatusDropdownAppId, setActiveStatusDropdownAppId] = useState(null);
+  const [avatarFailedMap, setAvatarFailedMap] = useState({});
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -89,7 +94,7 @@ const EmployerMessages = ({
   };
 
   const getCurrentDesignation = (cand) => {
-    if (!cand) return 'N/A';
+    if (!cand) return 'Candidate';
     if (cand.currentDesignation) return cand.currentDesignation;
     if (cand.designation && cand.designation !== 'N/A' && cand.designation !== '') {
       return cand.designation;
@@ -101,7 +106,7 @@ const EmployerMessages = ({
       if (exps[0]?.roles?.[0]?.jobTitle) return exps[0].roles[0].jobTitle;
       if (exps[0]?.role) return exps[0].role;
     }
-    return 'Quality Analyst';
+    return 'Applicant';
   };
 
   const getCurrentCompany = (cand) => {
@@ -115,40 +120,22 @@ const EmployerMessages = ({
     if (cand.professionalDetails?.currentCompany) {
       return cand.professionalDetails.currentCompany;
     }
-    return cand.company || 'Infosys Limited';
+    return cand.company || 'N/A';
   };
 
   const getHighestQualification = (cand) => {
-    if (!cand) return 'Bachelor of Commerce (B.Com)';
+    if (!cand) return 'Graduate';
     const quals = cand.qualifications || cand.education || [];
-    if (!Array.isArray(quals) || quals.length === 0) return 'Bachelor of Commerce (B.Com)';
+    if (!Array.isArray(quals) || quals.length === 0) return 'Graduate';
     const primary = quals.find(q => q && (q.isPrimary === true || q.isPrimary === 'true' || q.isPrimary === 1)) || quals[0];
-    return primary?.course || primary?.educationType || primary?.degree || primary?.university || 'Bachelor of Commerce (B.Com)';
+    return primary?.course || primary?.educationType || primary?.degree || primary?.university || 'Graduate';
   };
 
   const getInitials = (name = '') => {
-    if (!name) return '?';
+    if (!name) return 'C';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-  };
-
-  const getAvatarBg = (name = '') => {
-    const colors = [
-      'bg-purple-600',
-      'bg-slate-900',
-      'bg-emerald-600',
-      'bg-blue-600',
-      'bg-indigo-600',
-      'bg-teal-600',
-      'bg-rose-600',
-      'bg-amber-600'
-    ];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
   };
 
   // 1. Fetch conversations metadata
@@ -288,7 +275,6 @@ const EmployerMessages = ({
         blockedBy: conv?.blockedBy || null
       };
     }).sort((a, b) => {
-      // Sort with conversations with recent messages or unreads first
       if (b.unreadCount !== a.unreadCount) {
         return b.unreadCount - a.unreadCount;
       }
@@ -296,26 +282,144 @@ const EmployerMessages = ({
     });
   }, [candidates, backendConversations, jobs]);
 
-  // Unique jobs for filter dropdown
-  const uniqueJobs = useMemo(() => {
-    const list = [
-      ...(jobs || []).map(j => j.title || j.jobTitle),
-      ...allConversations.map(a => a.jobTitle)
-    ].filter(Boolean);
-    return ['All jobs', ...new Set(list)];
+  // Master List of Posted Jobs (Compiled from jobs prop + applications)
+  const postedJobsList = useMemo(() => {
+    const jobMap = new Map();
+
+    // 1. Add posted jobs from employer database
+    (jobs || []).forEach(j => {
+      const title = j.title || j.jobTitle;
+      if (!title) return;
+      const key = title.trim().toLowerCase();
+      jobMap.set(key, {
+        id: j._id || j.id || key,
+        title: title.trim(),
+        status: j.status || 'Active',
+        openings: j.openings || j.vacancies || j.numberOfOpenings || 1,
+        jobType: j.jobType || j.type || 'Full-time',
+        workMode: j.workMode || j.workLocation || (j.isRemote ? 'Remote' : (j.location || 'Remote')),
+        createdAt: j.createdAt || j.date || 0,
+        postedDate: j.postedDate || j.date,
+        jobObject: j
+      });
+    });
+
+    // 2. Also ensure any job title from existing candidate applications exists
+    allConversations.forEach(app => {
+      const title = app.jobTitle;
+      if (!title) return;
+      const key = title.trim().toLowerCase();
+      if (!jobMap.has(key)) {
+        jobMap.set(key, {
+          id: `job-${key}`,
+          title: title.trim(),
+          status: app.jobStatus || 'Active',
+          openings: app.openings || 1,
+          jobType: 'Full-time',
+          workMode: 'Remote',
+          createdAt: app.createdAt || 0,
+          postedDate: app.appliedDate,
+          jobObject: null
+        });
+      }
+    });
+
+    // 3. For each job, count applicants and unread messages
+    const list = Array.from(jobMap.values()).map(job => {
+      const jobApps = allConversations.filter(app => 
+        (app.jobTitle || '').trim().toLowerCase() === job.title.toLowerCase()
+      );
+      const applicantsCount = jobApps.length;
+      const unreadCount = jobApps.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
+      
+      const latestActivity = jobApps.reduce((max, curr) => {
+        const t = new Date(curr.lastMessageTime || curr.createdAt || 0).getTime();
+        return t > max ? t : max;
+      }, new Date(job.createdAt || 0).getTime());
+
+      return {
+        ...job,
+        applicantsCount,
+        unreadCount,
+        latestActivity
+      };
+    });
+
+    // Sort: jobs with unread messages first, then by latest activity or creation
+    return list.sort((a, b) => {
+      if (b.unreadCount !== a.unreadCount) {
+        return b.unreadCount - a.unreadCount;
+      }
+      return b.latestActivity - a.latestActivity;
+    });
   }, [jobs, allConversations]);
 
-  // Counts for top status pills
-  const statusCounts = useMemo(() => {
+  // Filter posted jobs list by search term
+  const filteredPostedJobs = useMemo(() => {
+    if (!jobSearchTerm.trim()) return postedJobsList;
+    const q = jobSearchTerm.toLowerCase().trim();
+    return postedJobsList.filter(j => 
+      j.title.toLowerCase().includes(q) || 
+      (j.workMode && j.workMode.toLowerCase().includes(q)) ||
+      (j.jobType && j.jobType.toLowerCase().includes(q))
+    );
+  }, [postedJobsList, jobSearchTerm]);
+
+  // Handle route state initial selection or default select first job
+  useEffect(() => {
+    if (initialApplicationData || initialEmployeeData) {
+      const targetAppId = initialApplicationData?.appId || initialApplicationData?.id;
+      const targetEmail = (initialEmployeeData?.email || '').toLowerCase();
+
+      const matched = allConversations.find(a => 
+        (targetAppId && a.appId === targetAppId) ||
+        (targetEmail && a.candidate?.email?.toLowerCase() === targetEmail)
+      );
+
+      if (matched) {
+        setSelectedJobTitle(matched.jobTitle);
+        setSelectedAppId(matched.appId);
+        setIsDrawerOpen(true);
+        setMobileView('candidates');
+        return;
+      }
+    }
+
+    if (postedJobsList.length > 0) {
+      setSelectedJobTitle(prev => {
+        if (prev && postedJobsList.some(j => j.title.toLowerCase() === prev.toLowerCase())) {
+          return prev;
+        }
+        return postedJobsList[0].title;
+      });
+    }
+  }, [initialApplicationData, initialEmployeeData, allConversations, postedJobsList]);
+
+  // Current selected job object
+  const activeSelectedJob = useMemo(() => {
+    if (!selectedJobTitle) return postedJobsList[0] || null;
+    return postedJobsList.find(j => j.title.toLowerCase() === selectedJobTitle.toLowerCase()) || postedJobsList[0] || null;
+  }, [selectedJobTitle, postedJobsList]);
+
+  // Only candidates who applied for the selected job
+  const candidatesForSelectedJob = useMemo(() => {
+    if (!activeSelectedJob) return [];
+    return allConversations.filter(app => 
+      (app.jobTitle || '').trim().toLowerCase() === activeSelectedJob.title.toLowerCase()
+    );
+  }, [activeSelectedJob, allConversations]);
+
+  // Status counts for selected job
+  const jobStatusCounts = useMemo(() => {
     const counts = {
-      All: allConversations.length,
+      All: candidatesForSelectedJob.length,
       New: 0,
       Viewed: 0,
       Shortlisted: 0,
       Rejected: 0
     };
 
-    allConversations.forEach(item => {
+    candidatesForSelectedJob.forEach(item => {
       const s = (item.status || '').toLowerCase();
       if (s === 'new' || s === 'applied') {
         counts.New++;
@@ -329,88 +433,52 @@ const EmployerMessages = ({
     });
 
     return counts;
-  }, [allConversations]);
+  }, [candidatesForSelectedJob]);
 
-  // Filtered conversations list
-  const filteredConversations = useMemo(() => {
-    return allConversations.filter(item => {
+  // Filtered candidate list for the selected job
+  const filteredCandidates = useMemo(() => {
+    return candidatesForSelectedJob.filter(app => {
       // 1. Status filter
-      if (selectedStatusFilter !== 'All') {
-        const s = (item.status || '').toLowerCase();
-        if (selectedStatusFilter === 'New' && s !== 'new' && s !== 'applied') return false;
-        if (selectedStatusFilter === 'Viewed' && s !== 'viewed' && s !== 'under review') return false;
-        if (selectedStatusFilter === 'Shortlisted' && !['shortlisted', 'interview scheduled', 'technical round', 'hr round', 'offer sent', 'hired'].includes(s)) return false;
-        if (selectedStatusFilter === 'Rejected' && s !== 'rejected' && s !== 'withdrawn') return false;
+      if (candidateStatusFilter !== 'All') {
+        const s = (app.status || '').toLowerCase();
+        if (candidateStatusFilter === 'New' && s !== 'new' && s !== 'applied') return false;
+        if (candidateStatusFilter === 'Viewed' && s !== 'viewed' && s !== 'under review') return false;
+        if (candidateStatusFilter === 'Shortlisted' && !['shortlisted', 'interview scheduled', 'technical round', 'hr round', 'offer sent', 'hired'].includes(s)) return false;
+        if (candidateStatusFilter === 'Rejected' && s !== 'rejected' && s !== 'withdrawn') return false;
       }
 
-      // 2. Job dropdown filter
-      if (selectedJobFilter !== 'All jobs' && selectedJobFilter !== 'All') {
-        if ((item.jobTitle || '').toLowerCase() !== selectedJobFilter.toLowerCase()) return false;
+      // 2. Chat status filter
+      if (candidateChatFilter === 'Unread') {
+        if (!app.unreadCount || app.unreadCount <= 0) return false;
       }
 
-      // 3. Candidate dedicated column filter
-      if (candidateColFilter.trim()) {
-        const cq = candidateColFilter.toLowerCase().trim();
-        const candName = item.candidate?.name?.toLowerCase() || '';
-        const candEmail = item.candidate?.email?.toLowerCase() || '';
-        if (!candName.includes(cq) && !candEmail.includes(cq)) return false;
-      }
-
-      // 4. Chat filter (All / Unread)
-      if (selectedChatFilter === 'Unread') {
-        if (!item.unreadCount || item.unreadCount <= 0) return false;
-      }
-
-      // 5. Global Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const candName = item.candidate?.name?.toLowerCase() || '';
-        const candEmail = item.candidate?.email?.toLowerCase() || '';
-        const job = item.jobTitle?.toLowerCase() || '';
-        const appId = String(item.displayAppId);
-        if (!candName.includes(q) && !candEmail.includes(q) && !job.includes(q) && !appId.includes(q)) {
+      // 3. Search query
+      if (candidateSearch.trim()) {
+        const q = candidateSearch.toLowerCase().trim();
+        const candName = app.candidate?.name?.toLowerCase() || '';
+        const candEmail = app.candidate?.email?.toLowerCase() || '';
+        const candPhone = app.candidate?.phone || '';
+        const appId = String(app.displayAppId || '');
+        if (!candName.includes(q) && !candEmail.includes(q) && !candPhone.includes(q) && !appId.includes(q)) {
           return false;
         }
       }
 
       return true;
     });
-  }, [allConversations, selectedStatusFilter, selectedJobFilter, candidateColFilter, selectedChatFilter, searchQuery]);
+  }, [candidatesForSelectedJob, candidateStatusFilter, candidateChatFilter, candidateSearch]);
 
-  // Check if any filters are active
-  const hasActiveFilters = Boolean(
-    searchQuery.trim() ||
-    (selectedJobFilter !== 'All jobs' && selectedJobFilter !== 'All') ||
-    selectedStatusFilter !== 'All' ||
-    candidateColFilter.trim() ||
-    selectedChatFilter !== 'All'
+  const hasActiveCandidateFilters = Boolean(
+    candidateSearch.trim() ||
+    candidateStatusFilter !== 'All' ||
+    candidateChatFilter !== 'All'
   );
 
-  const resetAllFilters = () => {
-    setSearchQuery('');
-    setSelectedJobFilter('All jobs');
-    setSelectedStatusFilter('All');
-    setCandidateColFilter('');
-    setSelectedChatFilter('All');
+  const resetCandidateFilters = () => {
+    setCandidateSearch('');
+    setCandidateStatusFilter('All');
+    setCandidateChatFilter('All');
   };
-
-  // Handle route state initial selection
-  useEffect(() => {
-    if (initialApplicationData || initialEmployeeData) {
-      const targetAppId = initialApplicationData?.appId || initialApplicationData?.id;
-      const targetEmail = (initialEmployeeData?.email || '').toLowerCase();
-
-      const matched = allConversations.find(a => 
-        (targetAppId && a.appId === targetAppId) ||
-        (targetEmail && a.candidate?.email?.toLowerCase() === targetEmail)
-      );
-
-      if (matched) {
-        setSelectedAppId(matched.appId);
-        setIsDrawerOpen(true);
-      }
-    }
-  }, [initialApplicationData, initialEmployeeData, allConversations]);
 
   // Active selected conversation object
   const activeConversation = useMemo(() => {
@@ -717,349 +785,447 @@ const EmployerMessages = ({
     <div className="space-y-6 font-sans">
       
       {/* 1. TOP HEADER CARD */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-            <span className="bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0] px-3 py-1 rounded-full text-xs font-bold shrink-0">
-              {filteredConversations.length} of {allConversations.length} conversations
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+              {portalConfig?.title || 'Messages'}
+            </h1>
+            <span className="px-3 py-1 bg-emerald-50 text-[#059669] border border-emerald-200 rounded-full text-xs font-bold whitespace-nowrap">
+              {postedJobsList.length} Posted Job{postedJobsList.length === 1 ? '' : 's'} • {allConversations.length} Applicants
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Chat with candidates about their applications.
+          <p className="text-gray-500 text-xs mt-1">
+            {portalConfig?.subtitle || 'Select a posted job to view applicants and start messaging.'}
           </p>
         </div>
 
-        {/* Quick Status Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setSelectedStatusFilter('All')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              selectedStatusFilter === 'All'
-                ? 'bg-[#0f172a] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            All: {statusCounts.All}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedStatusFilter('New')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
-              selectedStatusFilter === 'New'
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-[#eff6ff] text-[#2563eb] border-[#bfdbfe] hover:bg-blue-100'
-            }`}
-          >
-            New: {statusCounts.New}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedStatusFilter('Viewed')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
-              selectedStatusFilter === 'Viewed'
-                ? 'bg-amber-600 text-white border-amber-600'
-                : 'bg-[#fffbeb] text-[#d97706] border-[#fde68a] hover:bg-amber-100'
-            }`}
-          >
-            Viewed: {statusCounts.Viewed}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedStatusFilter('Shortlisted')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
-              selectedStatusFilter === 'Shortlisted'
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-[#ecfdf5] text-[#059669] border-[#a7f3d0] hover:bg-emerald-100'
-            }`}
-          >
-            Shortlisted: {statusCounts.Shortlisted}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedStatusFilter('Rejected')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
-              selectedStatusFilter === 'Rejected'
-                ? 'bg-rose-600 text-white border-rose-600'
-                : 'bg-[#fff1f2] text-[#e11d48] border-[#fecdd3] hover:bg-rose-100'
-            }`}
-          >
-            Rejected: {statusCounts.Rejected}
-          </button>
-        </div>
+        {/* Selected Job Quick Badge on Mobile */}
+        {activeSelectedJob && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-400">Current Job:</span>
+            <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-bold truncate max-w-[220px]">
+              {activeSelectedJob.title}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* 2. SEARCH & FILTER ROW */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Search Input */}
-        <div className="relative w-full md:w-96">
-          <svg className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search by candidate, email or job"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#059669] focus:bg-white text-gray-800 placeholder-gray-400 transition"
-          />
-        </div>
-
-        {/* Job Filter Dropdown */}
-        <div className="w-full md:w-auto flex items-center gap-2">
-          <div className="relative inline-block w-full md:w-64">
-            <select
-              value={selectedJobFilter}
-              onChange={(e) => setSelectedJobFilter(e.target.value)}
-              className="w-full appearance-none bg-white border border-gray-200 px-4 py-2 pr-9 rounded-xl text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#059669] cursor-pointer shadow-2xs"
-            >
-              {uniqueJobs.map(job => (
-                <option key={job} value={job}>{job}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
+      {/* 2. TWO-PANEL MASTER-DETAIL VIEW */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* ========================================================= */}
+        {/* LEFT PANEL: POSTED JOBS LIST (col-span-12 lg:col-span-4)  */}
+        {/* ========================================================= */}
+        <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 flex flex-col lg:col-span-4 ${
+          mobileView === 'candidates' ? 'hidden lg:flex' : 'flex'
+        }`}>
+          
+          {/* Header */}
+          <div className="flex items-center justify-between gap-2 pb-3 border-b border-gray-100 mb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-extrabold text-gray-900 tracking-tight">
+                Posted Jobs
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700">
+                {postedJobsList.length}
+              </span>
             </div>
+            <span className="text-[11px] font-semibold text-gray-400">
+              Select a job to view applicants
+            </span>
+          </div>
+
+          {/* Search Posted Jobs */}
+          <div className="relative mb-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input 
+              type="text" 
+              value={jobSearchTerm}
+              onChange={(e) => setJobSearchTerm(e.target.value)}
+              placeholder="Search posted jobs..." 
+              className="w-full pl-9 pr-8 py-2 bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-800 focus:outline-none focus:border-[#059669] transition-all placeholder-gray-400"
+            />
+            {jobSearchTerm && (
+              <button 
+                type="button"
+                onClick={() => setJobSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Jobs List */}
+          <div className="space-y-2.5 max-h-[720px] overflow-y-auto pr-1 custom-scrollbar">
+            {filteredPostedJobs.length === 0 ? (
+              <div className="p-8 text-center text-gray-400">
+                <p className="text-xs font-semibold text-gray-500">No posted jobs found</p>
+                <p className="text-[11px] text-gray-400 mt-1">Try another search keyword.</p>
+              </div>
+            ) : (
+              filteredPostedJobs.map((job) => {
+                const isSelected = activeSelectedJob && activeSelectedJob.title.toLowerCase() === job.title.toLowerCase();
+
+                return (
+                  <button
+                    key={job.id || job.title}
+                    type="button"
+                    onClick={() => {
+                      setSelectedJobTitle(job.title);
+                      setMobileView('candidates');
+                    }}
+                    className={`w-full text-left p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer relative ${
+                      isSelected
+                        ? 'border-[#059669] bg-emerald-50/40 shadow-xs ring-1 ring-[#059669]/40'
+                        : 'border-gray-200/80 bg-white hover:border-gray-300 hover:bg-gray-50/60'
+                    }`}
+                  >
+                    {/* Active Left Indicator Bar */}
+                    {isSelected && (
+                      <span className="absolute left-0 top-3 bottom-3 w-1 bg-[#059669] rounded-r-full" />
+                    )}
+
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className={`font-bold text-sm leading-snug line-clamp-2 ${isSelected ? 'text-[#059669]' : 'text-gray-900'}`}>
+                        {job.title}
+                      </h3>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        job.status?.toLowerCase() === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}>
+                        {job.status || 'Active'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-1.5 font-medium">
+                      <span>{job.openings} opening{job.openings > 1 ? 's' : ''}</span>
+                      <span>•</span>
+                      <span>{job.workMode}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-gray-100">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700">
+                          {job.applicantsCount} applicant{job.applicantsCount === 1 ? '' : 's'}
+                        </span>
+                        {job.unreadCount > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-[#059669] animate-pulse">
+                            {job.unreadCount} unread
+                          </span>
+                        )}
+                      </div>
+
+                      <span className={`text-xs font-bold flex items-center gap-1 shrink-0 ${isSelected ? 'text-[#059669]' : 'text-gray-400'}`}>
+                        <span>View</span>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
-      </div>
 
-      {/* 3. MAIN CONVERSATIONS TABLE */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              {/* Row 1: Column Headers */}
-              <tr className="bg-[#f8fafc] border-b border-gray-100 text-[11px] font-bold text-gray-400 tracking-wider uppercase">
-                <th className="py-3 px-6 font-semibold min-w-[220px]">JOB TITLE</th>
-                <th className="py-3 px-6 font-semibold min-w-[200px]">CANDIDATE</th>
-                <th className="py-3 px-6 font-semibold min-w-[150px]">CANDIDATE STATUS</th>
-                <th className="py-3 px-6 font-semibold min-w-[260px]">CHAT</th>
-              </tr>
+        {/* =============================================================== */}
+        {/* RIGHT PANEL: APPLICANTS FOR SELECTED JOB (col-span-12 lg:col-8) */}
+        {/* =============================================================== */}
+        <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 flex flex-col lg:col-span-8 overflow-visible relative ${
+          mobileView === 'jobs' ? 'hidden lg:flex' : 'flex'
+        }`}>
+          
+          {activeSelectedJob ? (
+            <>
+              {/* Top Banner for Selected Job */}
+              <div className="pb-4 border-b border-gray-100 mb-5">
+                {/* Mobile Back Button */}
+                <button
+                  type="button"
+                  onClick={() => setMobileView('jobs')}
+                  className="lg:hidden mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#059669] hover:text-[#047857] cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span>← Back to All Jobs</span>
+                </button>
 
-              {/* Row 2: In-Column Dedicated Filters for All Columns */}
-              <tr className="bg-gray-50/90 border-b border-gray-200">
-                {/* Column 1: Job Filter */}
-                <th className="py-2 px-6">
-                  <div className="relative">
-                    <select
-                      value={selectedJobFilter}
-                      onChange={(e) => setSelectedJobFilter(e.target.value)}
-                      className="w-full h-8 px-2.5 pr-7 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer appearance-none"
-                    >
-                      <option value="All jobs">All jobs</option>
-                      {uniqueJobs.filter(j => j !== 'All jobs').map(j => (
-                        <option key={j} value={j}>{j}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-bold tracking-wider uppercase text-gray-400">
+                        Applicants for
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        activeSelectedJob.status?.toLowerCase() === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      }`}>
+                        {activeSelectedJob.status}
+                      </span>
                     </div>
+                    <h2 className="text-lg sm:text-xl font-black text-gray-950 mt-0.5">
+                      {activeSelectedJob.title}
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                      {activeSelectedJob.openings} opening{activeSelectedJob.openings > 1 ? 's' : ''} • {activeSelectedJob.workMode} • {activeSelectedJob.jobType}
+                    </p>
                   </div>
-                </th>
 
-                {/* Column 2: Candidate Name / Email Filter */}
-                <th className="py-2 px-6">
-                  <input
-                    type="text"
-                    value={candidateColFilter}
-                    onChange={(e) => setCandidateColFilter(e.target.value)}
-                    placeholder="Filter candidate / email..."
-                    className="w-full h-8 px-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-800 focus:outline-none focus:border-emerald-500 placeholder-gray-400 shadow-2xs"
-                  />
-                </th>
-
-                {/* Column 3: Status Filter */}
-                <th className="py-2 px-6">
-                  <div className="relative">
-                    <select
-                      value={selectedStatusFilter}
-                      onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                      className="w-full h-8 px-2.5 pr-7 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer appearance-none"
-                    >
-                      <option value="All">All Status</option>
-                      <option value="New">New</option>
-                      <option value="Viewed">Viewed</option>
-                      <option value="Shortlisted">Shortlisted</option>
-                      <option value="Rejected">Rejected</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                    </div>
+                  {/* Applicants Counter Badge */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-[#059669] border border-emerald-200 whitespace-nowrap">
+                      {hasActiveCandidateFilters 
+                        ? `${filteredCandidates.length} of ${candidatesForSelectedJob.length} Candidates` 
+                        : `${candidatesForSelectedJob.length} Candidates Applied`}
+                    </span>
                   </div>
-                </th>
+                </div>
+              </div>
 
-                {/* Column 4: Chat Filter & Reset */}
-                <th className="py-2 px-6">
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <select
-                        value={selectedChatFilter}
-                        onChange={(e) => setSelectedChatFilter(e.target.value)}
-                        className="w-full h-8 px-2.5 pr-7 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 focus:outline-none focus:border-emerald-500 shadow-2xs cursor-pointer appearance-none"
-                      >
-                        <option value="All">All Chats</option>
-                        <option value="Unread">Unread Only</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                      </div>
-                    </div>
-                    {hasActiveFilters && (
-                      <button
-                        type="button"
-                        onClick={resetAllFilters}
-                        className="h-8 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
-                        title="Reset all filters"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        <span>Reset</span>
-                      </button>
-                    )}
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
-              {filteredConversations.length === 0 ? (
-                <tr>
-                  <td colSpan="4" className="py-16 text-center text-gray-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              {/* Round Filters Row matching Candidates Tab */}
+              <div className="mb-5 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Candidate Search input */}
+                  <div>
+                    <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Search Candidate</span>
+                    <div className="relative">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
-                      <p className="font-semibold text-gray-500">No conversations found</p>
-                      <p className="text-xs text-gray-400">Try adjusting your search or filters.</p>
+                      <input 
+                        type="text" 
+                        value={candidateSearch}
+                        onChange={(e) => setCandidateSearch(e.target.value)}
+                        placeholder="Name, email or phone..." 
+                        className="w-full pl-9 pr-8 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 focus:outline-none focus:border-[#059669] transition-colors placeholder-gray-400 shadow-none"
+                      />
+                      {candidateSearch && (
+                        <button 
+                          type="button"
+                          onClick={() => setCandidateSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredConversations.map((app) => {
-                  const cand = app.candidate || {};
-                  const candAvatar = cand.avatar || cand.profilePhoto || cand.profilePicture || cand.photo;
-                  const avatarBg = cand.bg || getAvatarBg(cand.name || '');
-                  const statusPill = getStatusBadgePill(app.status);
+                  </div>
 
-                  return (
-                    <tr 
-                      key={app.appId} 
-                      className="hover:bg-gray-50/70 transition-colors group cursor-pointer"
-                      onClick={() => openChatDrawer(app)}
+                  {/* Candidate Status Dropdown */}
+                  <div>
+                    <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</span>
+                    <MultiSelectLocationDropdown
+                      options={[
+                        { value: 'All', label: `All Statuses (${jobStatusCounts.All})` },
+                        { value: 'New', label: `New (${jobStatusCounts.New})` },
+                        { value: 'Viewed', label: `Viewed (${jobStatusCounts.Viewed})` },
+                        { value: 'Shortlisted', label: `Shortlisted (${jobStatusCounts.Shortlisted})` },
+                        { value: 'Rejected', label: `Rejected (${jobStatusCounts.Rejected})` },
+                      ]}
+                      value={candidateStatusFilter}
+                      onChange={(val) => setCandidateStatusFilter(val)}
+                      multiple={false}
+                      isLocation={false}
+                      searchPlaceholder="Search status..."
+                      placeholder="All Status"
+                      className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                    />
+                  </div>
+
+                  {/* Chat Status Dropdown */}
+                  <div>
+                    <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Chat Status</span>
+                    <MultiSelectLocationDropdown
+                      options={[
+                        { value: 'All', label: 'All Chats' },
+                        { value: 'Unread', label: 'Unread Only' },
+                      ]}
+                      value={candidateChatFilter}
+                      onChange={(val) => setCandidateChatFilter(val)}
+                      multiple={false}
+                      isLocation={false}
+                      searchPlaceholder="Search chat status..."
+                      placeholder="All Chats"
+                      className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                    />
+                  </div>
+                </div>
+
+                {hasActiveCandidateFilters && (
+                  <div className="flex justify-end">
+                    <button 
+                      type="button"
+                      onClick={resetCandidateFilters}
+                      className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-none"
                     >
-                      {/* 1. JOB TITLE */}
-                      <td className="py-4 px-6 align-middle">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 group-hover:text-[#059669] transition-colors leading-tight">
-                            {app.jobTitle}
-                          </span>
-                          <span className="text-xs text-gray-400 mt-1 font-medium">
-                            {app.jobStatus} • {app.openings} opening{app.openings > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </td>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span>Reset Filters</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
-                      {/* 2. CANDIDATE */}
-                      <td className="py-4 px-6 align-middle">
-                        <div className="flex items-center gap-3">
-                          {candAvatar ? (
-                            <img 
-                              src={candAvatar} 
-                              alt={cand.name} 
-                              className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-100" 
-                            />
-                          ) : (
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs ${avatarBg}`}>
-                              {getInitials(cand.name)}
-                            </div>
-                          )}
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-gray-900 leading-tight truncate">
-                              {cand.name || 'Candidate'}
-                            </span>
-                            <span className="text-xs text-gray-500 truncate mt-0.5">
-                              {cand.email || 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* 3. CANDIDATE STATUS */}
-                      <td className="py-4 px-6 align-middle" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative inline-block" data-status-dropdown="true">
-                          <button
-                            type="button"
-                            onClick={() => setActiveStatusDropdownAppId(prev => prev === app.appId ? null : app.appId)}
-                            className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold tracking-wider flex items-center justify-between gap-2 shadow-2xs transition-colors cursor-pointer ${statusPill.style}`}
-                          >
-                            <span>{statusPill.label}</span>
-                            <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+              {/* Candidates Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#f8fafc] text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                      <th className="px-5 py-3.5 min-w-[220px] whitespace-nowrap">Candidate</th>
+                      <th className="px-5 py-3.5 min-w-[140px] whitespace-nowrap">Candidate Status</th>
+                      <th className="px-5 py-3.5 text-right min-w-[120px] whitespace-nowrap">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {filteredCandidates.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" className="py-16 text-center text-gray-400">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <svg className="w-9 h-9 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
-                          </button>
+                            <p className="font-bold text-gray-600">No candidates found for this job</p>
+                            <p className="text-xs text-gray-400">
+                              {hasActiveCandidateFilters ? 'Try adjusting your filters.' : 'Candidates who apply for this job will appear here.'}
+                            </p>
+                            {hasActiveCandidateFilters && (
+                              <button
+                                type="button"
+                                onClick={resetCandidateFilters}
+                                className="mt-2 px-3.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-full cursor-pointer"
+                              >
+                                Clear filters
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCandidates.map((app) => {
+                        const cand = app.candidate || {};
+                        const candAvatar = cand.avatar || cand.profilePhoto || cand.profilePicture || cand.photo || cand.personalDetails?.profilePhoto;
+                        const candKey = cand._id || cand.id || cand.email || app.appId;
+                        const statusPill = getStatusBadgePill(app.status);
 
-                          {activeStatusDropdownAppId === app.appId && (
-                            <div className="absolute left-0 mt-1 w-36 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
-                              {['New', 'Viewed', 'Shortlisted', 'Rejected'].map((opt) => (
+                        return (
+                          <tr 
+                            key={app.appId} 
+                            className="hover:bg-emerald-50/40 transition-colors group cursor-pointer"
+                            onClick={() => openChatDrawer(app)}
+                          >
+                            {/* 1. CANDIDATE */}
+                            <td className="px-5 py-3.5 align-middle">
+                              <div className="flex items-center gap-3">
+                                {candAvatar && !avatarFailedMap[candKey] ? (
+                                  <img 
+                                    src={candAvatar} 
+                                    alt={cand.name || 'Candidate'} 
+                                    onError={() => setAvatarFailedMap(prev => ({ ...prev, [candKey]: true }))}
+                                    className="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-gray-200 shadow-none" 
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-extrabold text-xs shrink-0 shadow-none bg-slate-900">
+                                    {getInitials(cand.name)}
+                                  </div>
+                                )}
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-bold text-gray-900 group-hover:text-[#059669] transition-colors leading-tight truncate">
+                                    {cand.name || 'Candidate'}
+                                  </span>
+                                  <span className="text-xs text-gray-500 truncate mt-0.5">
+                                    {cand.email || 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 2. CANDIDATE STATUS */}
+                            <td className="px-5 py-3.5 align-middle" onClick={(e) => e.stopPropagation()}>
+                              <div className="relative inline-block" data-status-dropdown="true">
                                 <button
-                                  key={opt}
                                   type="button"
-                                  onClick={() => handleUpdateStatus(app.appId, opt)}
-                                  className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors cursor-pointer"
+                                  onClick={() => setActiveStatusDropdownAppId(prev => prev === app.appId ? null : app.appId)}
+                                  className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold tracking-wider flex items-center justify-between gap-2 shadow-2xs transition-colors cursor-pointer ${statusPill.style}`}
                                 >
-                                  <span>{opt}</span>
-                                  {app.status?.toLowerCase() === opt.toLowerCase() && (
-                                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
+                                  <span>{statusPill.label}</span>
+                                  <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+
+                                {activeStatusDropdownAppId === app.appId && (
+                                  <div className="absolute left-0 mt-1 w-36 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                                    {['New', 'Viewed', 'Shortlisted', 'Rejected'].map((opt) => (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        onClick={() => handleUpdateStatus(app.appId, opt)}
+                                        className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors cursor-pointer"
+                                      >
+                                        <span>{opt}</span>
+                                        {app.status?.toLowerCase() === opt.toLowerCase() && (
+                                          <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                          </svg>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* 3. MESSAGE BUTTON ONLY */}
+                            <td className="px-5 py-3.5 align-middle text-right">
+                              <div className="flex items-center justify-end">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openChatDrawer(app);
+                                  }}
+                                  className="bg-[#059669] hover:bg-[#047857] text-white px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer shadow-xs"
+                                >
+                                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                  </svg>
+                                  <span>Message</span>
+                                  {app.unreadCount > 0 && (
+                                    <span className="w-4 h-4 rounded-full bg-white text-[#059669] text-[10px] font-black flex items-center justify-center shrink-0">
+                                      {app.unreadCount > 9 ? '9+' : app.unreadCount}
+                                    </span>
                                   )}
                                 </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 4. CHAT */}
-                      <td className="py-4 px-6 align-middle">
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-xs text-gray-500 truncate max-w-[240px] md:max-w-[280px]">
-                            {app.lastMessage || 'Hi, I have applied for this role...'}
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openChatDrawer(app);
-                            }}
-                            className="bg-[#059669] hover:bg-[#047857] text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
-                          >
-                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            <span>Message</span>
-                            {app.unreadCount > 0 && (
-                              <span className="w-4 h-4 rounded-full bg-white text-[#059669] text-[10px] font-black flex items-center justify-center shrink-0">
-                                {app.unreadCount > 9 ? '9+' : app.unreadCount}
-                              </span>
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="py-20 text-center text-gray-400">
+              <svg className="w-12 h-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <p className="font-bold text-gray-700">No Job Selected</p>
+              <p className="text-xs text-gray-400 mt-1">Select a job post from the left to view its applicants.</p>
+            </div>
+          )}
         </div>
+
       </div>
 
       {/* 4. SLIDE-IN RIGHT CHAT DRAWER */}
@@ -1081,17 +1247,26 @@ const EmployerMessages = ({
             {/* Header Top Bar */}
             <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-3 min-w-0">
-                {activeConversation.candidate?.avatar || activeConversation.candidate?.profilePhoto ? (
-                  <img 
-                    src={activeConversation.candidate.avatar || activeConversation.candidate.profilePhoto} 
-                    alt={activeConversation.candidate.name} 
-                    className="w-11 h-11 rounded-full object-cover shrink-0 border border-gray-100" 
-                  />
-                ) : (
-                  <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-2xs ${activeConversation.candidate?.bg || getAvatarBg(activeConversation.candidate?.name || '')}`}>
-                    {getInitials(activeConversation.candidate?.name)}
-                  </div>
-                )}
+                {(() => {
+                  const activeCand = activeConversation.candidate || {};
+                  const activeCandAvatar = activeCand.avatar || activeCand.profilePhoto || activeCand.profilePicture || activeCand.photo || activeCand.personalDetails?.profilePhoto;
+                  const activeCandKey = activeCand._id || activeCand.id || activeCand.email || activeConversation.appId;
+                  if (activeCandAvatar && !avatarFailedMap[activeCandKey]) {
+                    return (
+                      <img 
+                        src={activeCandAvatar} 
+                        alt={activeCand.name || 'Candidate'} 
+                        onError={() => setAvatarFailedMap(prev => ({ ...prev, [activeCandKey]: true }))}
+                        className="w-11 h-11 rounded-full object-cover shrink-0 ring-1 ring-gray-200 shadow-none" 
+                      />
+                    );
+                  }
+                  return (
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow-none bg-slate-900">
+                      {getInitials(activeCand.name)}
+                    </div>
+                  );
+                })()}
                 
                 <div className="min-w-0">
                   {/* Job Title Line */}
@@ -1134,7 +1309,7 @@ const EmployerMessages = ({
                     </svg>
                   </button>
 
-                  {/* Candidate Info Popover (Image 3) */}
+                  {/* Candidate Info Popover */}
                   {isInfoOpen && (
                     <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 z-50 animate-in fade-in zoom-in-95 duration-150">
                       <div className="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -1199,7 +1374,7 @@ const EmployerMessages = ({
                   )}
                 </div>
 
-                {/* ⋯ Three Dots More Options Menu (Image 4) */}
+                {/* ⋯ Three Dots More Options Menu */}
                 <div className="relative" ref={optionsRef}>
                   <button
                     type="button"

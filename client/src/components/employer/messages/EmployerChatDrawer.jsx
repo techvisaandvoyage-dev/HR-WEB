@@ -27,6 +27,7 @@ const EmployerChatDrawer = ({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [isBlockLoading, setIsBlockLoading] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -43,6 +44,7 @@ const EmployerChatDrawer = ({
       setIsBlocked(Boolean(application.isBlocked));
       setBlockedBy(application.blockedBy || null);
       setCurrentStatus(application.status || 'New');
+      setAvatarFailed(false);
     }
   }, [application]);
 
@@ -134,7 +136,7 @@ const EmployerChatDrawer = ({
   };
 
   const getInitials = (name = '') => {
-    if (!name) return '?';
+    if (!name) return 'C';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
@@ -430,14 +432,15 @@ const EmployerChatDrawer = ({
         {/* Header Top Bar */}
         <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
           <div className="flex items-center gap-3 min-w-0">
-            {candAvatar ? (
+            {candAvatar && !avatarFailed ? (
               <img 
                 src={candAvatar} 
                 alt={candidate.name || 'Candidate'} 
-                className="w-11 h-11 rounded-full object-cover shrink-0 border border-gray-100 shadow-2xs" 
+                onError={() => setAvatarFailed(true)}
+                className="w-11 h-11 rounded-full object-cover shrink-0 ring-1 ring-gray-200 shadow-none" 
               />
             ) : (
-              <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-2xs ${candidate.bg || getAvatarBg(candidate.name || '')}`}>
+              <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow-none bg-slate-900">
                 {getInitials(candidate.name)}
               </div>
             )}
