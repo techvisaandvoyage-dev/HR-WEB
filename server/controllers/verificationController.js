@@ -363,17 +363,51 @@ exports.submitVerification = async (req, res) => {
     const documents = employer.verification?.documents || [];
     const hasTaxDoc = documents.some(d => d.category === 'tax');
     const hasIncorporationDoc = documents.some(d => d.category === 'incorporation');
+    const hasExtraDoc = documents.some(d => d.category !== 'tax' && d.category !== 'incorporation');
+
+    // Dynamically check mandatory document requirements from KYC CMS config
+    let isTaxMandatory = true;
+    let isIncorpMandatory = true;
+    let isExtraMandatory = false;
+    let taxLabel = 'Tax Document (GST / Company PAN / TAN / ITR)';
+    let incorpLabel = 'Incorporation Document (COI / CIN / Udyam / Shop License)';
+    let extraLabel = 'Supporting Document';
+
+    try {
+      const HomepageConfig = require('../models/HomepageConfig');
+      const homepageCfg = await HomepageConfig.findOne();
+      const kycCfg = homepageCfg?.employerKyc || {};
+      if (typeof kycCfg.taxDoc?.isMandatory !== 'undefined') {
+        isTaxMandatory = Boolean(kycCfg.taxDoc.isMandatory);
+      }
+      if (typeof kycCfg.incorpDoc?.isMandatory !== 'undefined') {
+        isIncorpMandatory = Boolean(kycCfg.incorpDoc.isMandatory);
+      }
+      if (typeof kycCfg.extraDoc?.isMandatory !== 'undefined') {
+        isExtraMandatory = Boolean(kycCfg.extraDoc.isMandatory);
+      }
+      if (kycCfg.taxDoc?.title) taxLabel = kycCfg.taxDoc.title;
+      if (kycCfg.incorpDoc?.title) incorpLabel = kycCfg.incorpDoc.title;
+      if (kycCfg.extraDoc?.title) extraLabel = kycCfg.extraDoc.title;
+    } catch (cmsErr) {
+      console.warn('[Verification] Could not read HomepageConfig for KYC mandatory flags:', cmsErr.message);
+    }
 
     const missing = [];
-    if (!hasTaxDoc) missing.push('Tax Document (GST / Company PAN / TAN / ITR)');
-    if (!hasIncorporationDoc) missing.push('Incorporation Document (COI / CIN / Udyam / Shop License)');
+    if (isTaxMandatory && !hasTaxDoc) missing.push(taxLabel);
+    if (isIncorpMandatory && !hasIncorporationDoc) missing.push(incorpLabel);
+    if (isExtraMandatory && !hasExtraDoc) missing.push(extraLabel);
+
+    if (!isTaxMandatory && !isIncorpMandatory && !isExtraMandatory && documents.length === 0) {
+      missing.push('At least one verification document');
+    }
 
     if (missing.length > 0) {
       return res.status(400).json({
         success: false,
         code: 'MISSING_REQUIRED_DOCS',
         missing,
-        message: `Please upload at least one Tax document and one Incorporation document before submitting. Missing: ${missing.join(', ')}`
+        message: `Please upload the required verification documents before submitting. Missing: ${missing.join(', ')}`
       });
     }
 

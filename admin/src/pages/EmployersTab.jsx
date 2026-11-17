@@ -54,6 +54,7 @@ import EmployerPortalEditor, { DEFAULT_EMPLOYER_PORTAL_CONFIG } from './homepage
 import DirectJobApplyEditor from './homepage-cms/components/DirectJobApplyEditor';
 import ProfilePromptModalEditor from './homepage-cms/components/ProfilePromptModalEditor';
 import EmployerVisibilityEditor from './homepage-cms/components/EmployerVisibilityEditor';
+import EmployerKycEditor from './homepage-cms/components/EmployerKycEditor';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -350,16 +351,17 @@ export default function EmployersTab() {
     { id: 'visibility', label: 'Job Display & Visibility CMS', icon: Eye },
     { id: 'portal', label: 'Portal & Dashboard', icon: LayoutDashboard },
     { id: 'direct-apply', label: 'Direct Job Apply CMS', icon: Link2 },
-    { id: 'profile-modal', label: 'Profile Completion Modal', icon: Sparkles }
+    { id: 'profile-modal', label: 'Profile Completion Modal', icon: Sparkles },
+    { id: 'kyc', label: 'KYC Page', icon: ShieldCheck }
   ];
 
   // Navigation State
   const [activeSection, setActiveSectionState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const sec = params.get('section');
-    if (sec && ['auth', 'post-job', 'visibility', 'portal', 'direct-apply', 'profile-modal'].includes(sec)) return sec;
+    if (sec && ['auth', 'post-job', 'visibility', 'portal', 'direct-apply', 'profile-modal', 'kyc'].includes(sec)) return sec;
     const saved = localStorage.getItem('adminEmployerSection');
-    if (saved && ['auth', 'post-job', 'visibility', 'portal', 'direct-apply', 'profile-modal'].includes(saved)) return saved;
+    if (saved && ['auth', 'post-job', 'visibility', 'portal', 'direct-apply', 'profile-modal', 'kyc'].includes(saved)) return saved;
     return 'auth';
   });
 
@@ -2361,6 +2363,17 @@ export default function EmployersTab() {
           <ProfilePromptModalEditor
             onSaveSuccess={() => {
               showToast('Profile Completion Modal CMS settings updated successfully!');
+            }}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 6. EMPLOYER KYC PAGE CMS SECTION                                          */}
+        {/* ========================================================================= */}
+        {activeSection === 'kyc' && (
+          <EmployerKycEditor
+            onSaveSuccess={() => {
+              showToast('Employer KYC Page CMS settings updated successfully!');
             }}
           />
         )}

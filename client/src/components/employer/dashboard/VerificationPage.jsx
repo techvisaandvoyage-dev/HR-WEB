@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { uploadFileToStorage, deleteFileFromStorage } from '../../../utils/firebaseStorage';
 
@@ -11,36 +11,110 @@ const formatBytes = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const TAX_DOC_OPTIONS = [
-  { type: 'gst_certificate', label: 'GST Certificate', fullLabel: 'GST Registration Certificate (Form GST REG-06)' },
-  { type: 'pan_card_company', label: 'Company PAN', fullLabel: 'Company PAN Card' },
-  { type: 'tan_certificate', label: 'TAN', fullLabel: 'TAN Allotment Certificate' },
-  { type: 'itr_acknowledgement', label: 'ITR-V', fullLabel: 'Latest ITR-V / Acknowledgement' },
-  { type: 'professional_tax_certificate', label: 'Professional Tax', fullLabel: 'Professional Tax Certificate' }
-];
+const DEFAULT_KYC_CONFIG = {
+  pageTitle: 'Get your company verified',
+  pageSubtitle: 'Upload 2 documents. Our team reviews them and your jobs go live for candidates.',
+  breadcrumbLabel: '/ Employer Verification',
+  step1Label: 'Tax document',
+  step2Label: 'Incorporation document',
+  step3Label: 'Submit for review',
+  step3ResubmitLabel: 'Re-submit for review',
+  verifiedBanner: {
+    title: 'Account Verified Successfully!',
+    description: 'Your business is verified. All your active jobs are now live and visible to candidates with the green Verified Employer badge.',
+    badgeText: 'Verified'
+  },
+  pendingBanner: {
+    title: 'Verification Under Review',
+    description: 'Document uploads are locked while our compliance team reviews your business registration.',
+    badgeText: 'Under Review'
+  },
+  rejectedBanner: {
+    title: 'Verification Submission Rejected',
+    descriptionPrefix: 'Reason from Admin:',
+    defaultReason: 'Documents did not meet criteria. Please re-upload clearer documents.',
+    helperText: 'Remove the rejected documents below, upload updated documents under 300 KB, and re-submit for review.',
+    badgeText: 'Verification Rejected'
+  },
+  unverifiedBadgeText: 'Unverified',
+  taxDoc: {
+    title: 'Tax document',
+    helpText: 'Any one is enough. Document must be in your company name.',
+    isMandatory: true,
+    requiredBadgeText: 'Required',
+    optionalBadgeText: 'Optional',
+    doneBadgeText: 'Done',
+    options: [
+      { type: 'gst_certificate', label: 'GST Certificate', fullLabel: 'GST Registration Certificate (Form GST REG-06)', enabled: true },
+      { type: 'pan_card_company', label: 'Company PAN', fullLabel: 'Company PAN Card', enabled: true },
+      { type: 'tan_certificate', label: 'TAN', fullLabel: 'TAN Allotment Certificate', enabled: true },
+      { type: 'itr_acknowledgement', label: 'ITR-V', fullLabel: 'Latest ITR-V / Acknowledgement', enabled: true },
+      { type: 'professional_tax_certificate', label: 'Professional Tax', fullLabel: 'Professional Tax Certificate', enabled: true }
+    ]
+  },
+  incorpDoc: {
+    title: 'Incorporation document',
+    helpText: 'Proof that your business is legally registered. Pick one and upload it.',
+    isMandatory: true,
+    requiredBadgeText: 'Required',
+    optionalBadgeText: 'Optional',
+    doneBadgeText: 'Done',
+    options: [
+      { type: 'certificate_of_incorporation', label: 'Certificate of Incorporation', fullLabel: 'Certificate of Incorporation (COI)', enabled: true },
+      { type: 'cin_document', label: 'CIN / MCA Master Data', fullLabel: 'CIN / MCA Company Master Data', enabled: true },
+      { type: 'moa_aoa', label: 'MOA / AOA', fullLabel: 'Memorandum & Articles of Association (MOA/AOA)', enabled: true },
+      { type: 'partnership_deed', label: 'Partnership Deed', fullLabel: 'Registered Partnership Deed', enabled: true },
+      { type: 'llp_agreement', label: 'LLP Agreement', fullLabel: 'LLP Agreement', enabled: true },
+      { type: 'msme_udyam_certificate', label: 'Udyam / MSME', fullLabel: 'Udyam / MSME Registration Certificate', enabled: true },
+      { type: 'shop_establishment_license', label: 'Shop & Establishment', fullLabel: 'Shop & Establishment License', enabled: true },
+      { type: 'gumasta_trade_license', label: 'Trade License', fullLabel: 'Gumasta / Trade License', enabled: true }
+    ]
+  },
+  extraDoc: {
+    title: 'Extra documents',
+    helpText: 'Address proof, authorization letter, signatory ID, staffing license. Speeds up approval.',
+    isMandatory: false,
+    requiredBadgeText: 'Required',
+    optionalBadgeText: 'Optional',
+    options: [
+      { type: 'address_proof', label: 'Address Proof', category: 'address', fullLabel: 'Company Address Proof (Utility Bill / Lease)', enabled: true },
+      { type: 'authorization_letter', label: 'Authorization Letter', category: 'authorized_signatory', fullLabel: 'Board / Owner Authorization Letter', enabled: true },
+      { type: 'authorized_person_id', label: 'Signatory ID', category: 'authorized_signatory', fullLabel: 'Authorized Signatory Govt ID', enabled: true },
+      { type: 'staffing_license', label: 'Staffing License', category: 'license', consultantOnly: true, fullLabel: 'Staffing / Recruitment Agency License', enabled: true },
+      { type: 'other', label: 'Other Document', category: 'other', fullLabel: 'Other Supporting Business Proof', enabled: true }
+    ]
+  },
+  progressCard: {
+    title: 'Your progress',
+    submitButtonText: 'Submit for verification',
+    resubmitButtonText: 'Re-submit for verification',
+    submittingText: 'Submitting...',
+    resubmittingText: 'Re-submitting...',
+    requirementsMetText: 'All requirements met! Ready to submit.',
+    resubmitReadyText: 'Updated documents ready! Click to re-submit for review.',
+    lockedPendingTitle: 'Verification In Review',
+    lockedPendingDesc: 'Our team is reviewing your documents.',
+    lockedVerifiedTitle: 'Account Verified',
+    lockedVerifiedDesc: 'All candidate visibility privileges are active.'
+  },
+  benefitsCard: {
+    title: 'After approval you get',
+    benefits: [
+      'Green Verified Employer badge',
+      'Your jobs visible to all candidates',
+      'Tracked application links enabled'
+    ]
+  }
+};
 
-const INCORPORATION_DOC_OPTIONS = [
-  { type: 'certificate_of_incorporation', label: 'Certificate of Incorporation', fullLabel: 'Certificate of Incorporation (COI)' },
-  { type: 'cin_document', label: 'CIN / MCA Master Data', fullLabel: 'CIN / MCA Company Master Data' },
-  { type: 'moa_aoa', label: 'MOA / AOA', fullLabel: 'Memorandum & Articles of Association (MOA/AOA)' },
-  { type: 'partnership_deed', label: 'Partnership Deed', fullLabel: 'Registered Partnership Deed' },
-  { type: 'llp_agreement', label: 'LLP Agreement', fullLabel: 'LLP Agreement' },
-  { type: 'msme_udyam_certificate', label: 'Udyam / MSME', fullLabel: 'Udyam / MSME Registration Certificate' },
-  { type: 'shop_establishment_license', label: 'Shop & Establishment', fullLabel: 'Shop & Establishment License' },
-  { type: 'gumasta_trade_license', label: 'Trade License', fullLabel: 'Gumasta / Trade License' }
-];
-
-const EXTRA_DOC_OPTIONS = [
-  { type: 'address_proof', label: 'Address Proof', category: 'address', fullLabel: 'Company Address Proof (Utility Bill / Lease)' },
-  { type: 'authorization_letter', label: 'Authorization Letter', category: 'authorized_signatory', fullLabel: 'Board / Owner Authorization Letter' },
-  { type: 'authorized_person_id', label: 'Signatory ID', category: 'authorized_signatory', fullLabel: 'Authorized Signatory Govt ID' },
-  { type: 'staffing_license', label: 'Staffing License', category: 'license', consultantOnly: true, fullLabel: 'Staffing / Recruitment Agency License' },
-  { type: 'other', label: 'Other Document', category: 'other', fullLabel: 'Other Supporting Business Proof' }
-];
+const TAX_DOC_OPTIONS = DEFAULT_KYC_CONFIG.taxDoc.options;
+const INCORPORATION_DOC_OPTIONS = DEFAULT_KYC_CONFIG.incorpDoc.options;
+const EXTRA_DOC_OPTIONS = DEFAULT_KYC_CONFIG.extraDoc.options;
 
 export default function VerificationPage({ employerProfile }) {
   const [loading, setLoading] = useState(true);
   const [statusData, setStatusData] = useState(null);
+  const [kycConfig, setKycConfig] = useState(DEFAULT_KYC_CONFIG);
   const [selectedTaxDocType, setSelectedTaxDocType] = useState('gst_certificate');
   const [selectedIncorpDocType, setSelectedIncorpDocType] = useState('certificate_of_incorporation');
   const [selectedExtraDocType, setSelectedExtraDocType] = useState('address_proof');
@@ -72,6 +146,57 @@ export default function VerificationPage({ employerProfile }) {
 
   const getAuthToken = () => localStorage.getItem('employerToken') || '';
 
+  const fetchKycConfig = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/homepage`);
+      const data = await res.json();
+      if (data.success && data.data?.employerKyc) {
+        const fetched = data.data.employerKyc;
+        setKycConfig(prev => ({
+          ...prev,
+          ...fetched,
+          verifiedBanner: { ...prev.verifiedBanner, ...(fetched.verifiedBanner || {}) },
+          pendingBanner: { ...prev.pendingBanner, ...(fetched.pendingBanner || {}) },
+          rejectedBanner: { ...prev.rejectedBanner, ...(fetched.rejectedBanner || {}) },
+          taxDoc: {
+            ...prev.taxDoc,
+            ...(fetched.taxDoc || {}),
+            options: Array.isArray(fetched.taxDoc?.options) && fetched.taxDoc.options.length > 0
+              ? fetched.taxDoc.options
+              : prev.taxDoc.options
+          },
+          incorpDoc: {
+            ...prev.incorpDoc,
+            ...(fetched.incorpDoc || {}),
+            options: Array.isArray(fetched.incorpDoc?.options) && fetched.incorpDoc.options.length > 0
+              ? fetched.incorpDoc.options
+              : prev.incorpDoc.options
+          },
+          extraDoc: {
+            ...prev.extraDoc,
+            ...(fetched.extraDoc || {}),
+            options: Array.isArray(fetched.extraDoc?.options) && fetched.extraDoc.options.length > 0
+              ? fetched.extraDoc.options
+              : prev.extraDoc.options
+          },
+          progressCard: {
+            ...prev.progressCard,
+            ...(fetched.progressCard || {})
+          },
+          benefitsCard: {
+            ...prev.benefitsCard,
+            ...(fetched.benefitsCard || {}),
+            benefits: Array.isArray(fetched.benefitsCard?.benefits)
+              ? fetched.benefitsCard.benefits
+              : prev.benefitsCard.benefits
+          }
+        }));
+      }
+    } catch (err) {
+      console.warn('Could not load dynamic KYC config:', err);
+    }
+  };
+
   const fetchStatus = async () => {
     try {
       const res = await fetch(`${API_URL}/api/verification/status`, {
@@ -101,6 +226,7 @@ export default function VerificationPage({ employerProfile }) {
 
   useEffect(() => {
     fetchStatus();
+    fetchKycConfig();
   }, []);
 
   const verification = statusData?.verification || {};
@@ -115,8 +241,63 @@ export default function VerificationPage({ employerProfile }) {
 
   const hasTax = taxDocs.length > 0;
   const hasIncorp = incorpDocs.length > 0;
-  const progressCount = (hasTax ? 1 : 0) + (hasIncorp ? 1 : 0);
-  const canSubmit = hasTax && hasIncorp && !isLocked;
+  const hasExtra = extraDocs.length > 0;
+
+  // Active options lists filtered by enabled !== false
+  const activeTaxOptions = useMemo(() => {
+    const list = kycConfig.taxDoc?.options || DEFAULT_KYC_CONFIG.taxDoc.options;
+    return list.filter(o => o.enabled !== false).map(o => ({ ...o, type: o.id || o.type }));
+  }, [kycConfig.taxDoc?.options]);
+
+  const activeIncorpOptions = useMemo(() => {
+    const list = kycConfig.incorpDoc?.options || DEFAULT_KYC_CONFIG.incorpDoc.options;
+    return list.filter(o => o.enabled !== false).map(o => ({ ...o, type: o.id || o.type }));
+  }, [kycConfig.incorpDoc?.options]);
+
+  const activeExtraOptions = useMemo(() => {
+    const list = kycConfig.extraDoc?.options || DEFAULT_KYC_CONFIG.extraDoc.options;
+    return list.filter(o => o.enabled !== false && (!o.consultantOnly || employerProfile?.isConsultant || statusData?.isConsultant))
+      .map(o => ({ ...o, type: o.id || o.type }));
+  }, [kycConfig.extraDoc?.options, employerProfile?.isConsultant, statusData?.isConsultant]);
+
+  // Sync selected types to first available active option
+  useEffect(() => {
+    if (activeTaxOptions.length > 0 && !activeTaxOptions.some(o => o.type === selectedTaxDocType)) {
+      setSelectedTaxDocType(activeTaxOptions[0].type);
+    }
+  }, [activeTaxOptions, selectedTaxDocType]);
+
+  useEffect(() => {
+    if (activeIncorpOptions.length > 0 && !activeIncorpOptions.some(o => o.type === selectedIncorpDocType)) {
+      setSelectedIncorpDocType(activeIncorpOptions[0].type);
+    }
+  }, [activeIncorpOptions, selectedIncorpDocType]);
+
+  useEffect(() => {
+    if (activeExtraOptions.length > 0 && !activeExtraOptions.some(o => o.type === selectedExtraDocType)) {
+      setSelectedExtraDocType(activeExtraOptions[0].type);
+    }
+  }, [activeExtraOptions, selectedExtraDocType]);
+
+  // Mandatory checks & canSubmit logic
+  const isTaxMandatory = kycConfig.taxDoc?.isMandatory !== false;
+  const isIncorpMandatory = kycConfig.incorpDoc?.isMandatory !== false;
+  const isExtraMandatory = kycConfig.extraDoc?.isMandatory === true;
+
+  const canSubmit = !isLocked && (
+    (!isTaxMandatory || hasTax) &&
+    (!isIncorpMandatory || hasIncorp) &&
+    (!isExtraMandatory || hasExtra) &&
+    (hasTax || hasIncorp || hasExtra)
+  );
+
+  const totalMandatoryCount = (isTaxMandatory ? 1 : 0) + (isIncorpMandatory ? 1 : 0) + (isExtraMandatory ? 1 : 0);
+  const doneMandatoryCount = (isTaxMandatory && hasTax ? 1 : 0) + 
+                             (isIncorpMandatory && hasIncorp ? 1 : 0) + 
+                             (isExtraMandatory && hasExtra ? 1 : 0);
+
+  const displayTotalCount = totalMandatoryCount > 0 ? totalMandatoryCount : 2;
+  const displayDoneCount = totalMandatoryCount > 0 ? doneMandatoryCount : (hasTax ? 1 : 0) + (hasIncorp ? 1 : 0);
 
   // Handles auto-compression and uploading
   const processAndUploadFile = async (rawFile, category, docType) => {
@@ -274,7 +455,7 @@ export default function VerificationPage({ employerProfile }) {
 
   const handleSubmit = async () => {
     if (!canSubmit) {
-      showToast('Please upload at least 1 Tax document and 1 Incorporation document before submitting.', 'error');
+      showToast('Please upload all required verification documents before submitting.', 'error');
       return;
     }
     setSubmitting(true);
@@ -310,8 +491,12 @@ export default function VerificationPage({ employerProfile }) {
   };
 
   const getDocTypeDisplayLabel = (docType) => {
-    const all = [...TAX_DOC_OPTIONS, ...INCORPORATION_DOC_OPTIONS, ...EXTRA_DOC_OPTIONS];
-    const match = all.find(d => d.type === docType);
+    const all = [
+      ...(kycConfig.taxDoc?.options || TAX_DOC_OPTIONS),
+      ...(kycConfig.incorpDoc?.options || INCORPORATION_DOC_OPTIONS),
+      ...(kycConfig.extraDoc?.options || EXTRA_DOC_OPTIONS)
+    ];
+    const match = all.find(d => (d.type === docType || d.id === docType));
     return match?.label || match?.fullLabel || docType;
   };
 
@@ -344,7 +529,7 @@ export default function VerificationPage({ employerProfile }) {
           <Link to="/employer" className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
             sahijob<span className="text-[#1f9d4c]">.com</span>
           </Link>
-          <span className="text-xs text-gray-400 font-medium hidden sm:inline">/ Employer Verification</span>
+          <span className="text-xs text-gray-400 font-medium hidden sm:inline">{kycConfig.breadcrumbLabel || '/ Employer Verification'}</span>
         </div>
 
         {/* Status Pill in Header */}
@@ -354,7 +539,7 @@ export default function VerificationPage({ employerProfile }) {
               <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              Verified
+              {kycConfig.verifiedBanner?.badgeText || 'Verified'}
             </span>
           )}
           {status === 'pending' && (
@@ -362,7 +547,7 @@ export default function VerificationPage({ employerProfile }) {
               <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
               </svg>
-              Under Review
+              {kycConfig.pendingBanner?.badgeText || 'Under Review'}
             </span>
           )}
           {status === 'rejected' && (
@@ -370,12 +555,12 @@ export default function VerificationPage({ employerProfile }) {
               <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              Verification Rejected
+              {kycConfig.rejectedBanner?.badgeText || 'Verification Rejected'}
             </span>
           )}
           {status === 'unverified' && (
             <span className="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-[#fff1e3] text-[#b4540a] border border-[#fbd8b5]">
-              Unverified
+              {kycConfig.unverifiedBadgeText || 'Unverified'}
             </span>
           )}
         </div>
@@ -390,12 +575,12 @@ export default function VerificationPage({ employerProfile }) {
               !
             </div>
             <div>
-              <h4 className="font-bold text-red-900 text-sm">Verification Submission Rejected</h4>
+              <h4 className="font-bold text-red-900 text-sm">{kycConfig.rejectedBanner?.title || 'Verification Submission Rejected'}</h4>
               <p className="text-xs text-red-700 mt-1">
                 <strong>Reason from Admin:</strong> {verification.rejectionReason || 'Documents did not meet criteria. Please re-upload clearer documents.'}
               </p>
               <p className="text-[11px] text-red-600 mt-1">
-                Remove the rejected documents below, upload updated documents under 300 KB, and re-submit for review.
+                {kycConfig.rejectedBanner?.description || 'Remove the rejected documents below, upload updated documents under 300 KB, and re-submit for review.'}
               </p>
             </div>
           </div>
@@ -408,9 +593,9 @@ export default function VerificationPage({ employerProfile }) {
               ⏱
             </div>
             <div>
-              <h4 className="font-bold text-amber-900 text-sm">Verification Under Review</h4>
+              <h4 className="font-bold text-amber-900 text-sm">{kycConfig.pendingBanner?.title || 'Verification Under Review'}</h4>
               <p className="text-xs text-amber-800 mt-1">
-                Your documents were submitted on {verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString() : 'recently'}. Document uploads are locked while our compliance team reviews your business registration.
+                {kycConfig.pendingBanner?.description || `Your documents were submitted on ${verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString() : 'recently'}. Document uploads are locked while our compliance team reviews your business registration.`}
               </p>
             </div>
           </div>
@@ -423,9 +608,9 @@ export default function VerificationPage({ employerProfile }) {
               ✓
             </div>
             <div>
-              <h4 className="font-bold text-[#14753a] text-sm">Account Verified Successfully!</h4>
+              <h4 className="font-bold text-[#14753a] text-sm">{kycConfig.verifiedBanner?.title || 'Account Verified Successfully!'}</h4>
               <p className="text-xs text-[#216b3d] mt-1">
-                Your business is verified. All your active jobs are now live and visible to candidates with the green Verified Employer badge.
+                {kycConfig.verifiedBanner?.description || 'Your business is verified. All your active jobs are now live and visible to candidates with the green Verified Employer badge.'}
               </p>
             </div>
           </div>
@@ -433,10 +618,10 @@ export default function VerificationPage({ employerProfile }) {
 
         {/* Page Titles */}
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0f172a] mb-1">
-          Get your company verified
+          {kycConfig.pageTitle || 'Get your company verified'}
         </h1>
         <p className="text-sm sm:text-base text-[#5a6a61] mb-7">
-          Upload 2 documents. Our team reviews them and your jobs go live for candidates.
+          {kycConfig.pageSubtitle || 'Upload documents. Our team reviews them and your jobs go live for candidates.'}
         </p>
 
         {/* Stepper Bar */}
@@ -453,7 +638,7 @@ export default function VerificationPage({ employerProfile }) {
               ) : '1'}
             </div>
             <span className={`text-sm ${hasTax ? 'font-bold text-[#0f172a]' : 'font-semibold text-gray-700'}`}>
-              Tax document
+              {kycConfig.step1Label || 'Tax document'}
             </span>
           </div>
 
@@ -471,7 +656,7 @@ export default function VerificationPage({ employerProfile }) {
               ) : '2'}
             </div>
             <span className={`text-sm ${hasIncorp ? 'font-bold text-[#0f172a]' : 'font-semibold text-gray-700'}`}>
-              Incorporation document
+              {kycConfig.step2Label || 'Incorporation document'}
             </span>
           </div>
 
@@ -482,7 +667,7 @@ export default function VerificationPage({ employerProfile }) {
             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
               isLocked 
                 ? 'bg-[#1f9d4c] text-white' 
-                : (hasTax && hasIncorp ? 'bg-[#0f172a] text-white' : 'bg-[#e3e8e5] text-[#5a6a61]')
+                : (canSubmit ? 'bg-[#0f172a] text-white' : 'bg-[#e3e8e5] text-[#5a6a61]')
             }`}>
               {isLocked ? (
                 <svg className="w-4 h-4 fill-none stroke-current stroke-3" viewBox="0 0 24 24">
@@ -490,8 +675,8 @@ export default function VerificationPage({ employerProfile }) {
                 </svg>
               ) : '3'}
             </div>
-            <span className={`text-sm ${hasTax && hasIncorp ? 'font-bold text-[#0f172a]' : 'font-medium text-[#5a6a61]'}`}>
-              {status === 'rejected' ? 'Re-submit for review' : 'Submit for review'}
+            <span className={`text-sm ${canSubmit ? 'font-bold text-[#0f172a]' : 'font-medium text-[#5a6a61]'}`}>
+              {status === 'rejected' ? (kycConfig.step3ResubmitLabel || 'Re-submit for review') : (kycConfig.step3Label || 'Submit for review')}
             </span>
           </div>
         </div>
@@ -513,25 +698,31 @@ export default function VerificationPage({ employerProfile }) {
                   }`}>
                     1
                   </div>
-                  <h2 className="text-lg font-bold text-[#0f172a]">Tax document</h2>
+                  <h2 className="text-lg font-bold text-[#0f172a]">
+                    {kycConfig.taxDoc?.title || 'Tax document'}
+                  </h2>
                 </div>
                 {hasTax ? (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#e4f6ea] text-[#14753a]">
-                    Done
+                    {kycConfig.taxDoc?.doneBadgeText || 'Done'}
+                  </span>
+                ) : isTaxMandatory ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fdecec] text-[#b42318]">
+                    {kycConfig.taxDoc?.requiredBadgeText || 'Required'}
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fdecec] text-[#b42318]">
-                    Required
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eef1ef] text-[#4b5a52]">
+                    {kycConfig.taxDoc?.optionalBadgeText || 'Optional'}
                   </span>
                 )}
               </div>
               <p className="text-sm text-[#5a6a61] ml-11 mb-4">
-                Any one is enough. Document must be in your company name.
+                {kycConfig.taxDoc?.helpText || 'Any one is enough. Document must be in your company name.'}
               </p>
 
               {/* Doc Type Selector Chips */}
               <div className="flex flex-wrap gap-2 mb-4">
-                {TAX_DOC_OPTIONS.map((item) => (
+                {activeTaxOptions.map((item) => (
                   <button
                     key={item.type}
                     type="button"
@@ -659,7 +850,7 @@ export default function VerificationPage({ employerProfile }) {
                         </svg>
                       </div>
                       <p className="font-semibold text-sm text-[#0f172a] mb-0.5">
-                        Drag & drop {TAX_DOC_OPTIONS.find(d => d.type === selectedTaxDocType)?.label || 'Tax Document'} here
+                        Drag & drop {activeTaxOptions.find(d => d.type === selectedTaxDocType)?.label || 'Tax Document'} here
                       </p>
                       <p className="text-xs text-[#5a6a61] mb-3">
                         PDF, JPG or PNG · <strong className="text-emerald-700 font-semibold">under 300 KB</strong> (Auto-compressed)
@@ -688,25 +879,31 @@ export default function VerificationPage({ employerProfile }) {
                   }`}>
                     2
                   </div>
-                  <h2 className="text-lg font-bold text-[#0f172a]">Incorporation document</h2>
+                  <h2 className="text-lg font-bold text-[#0f172a]">
+                    {kycConfig.incorpDoc?.title || 'Incorporation document'}
+                  </h2>
                 </div>
                 {hasIncorp ? (
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#e4f6ea] text-[#14753a]">
-                    Done
+                    {kycConfig.incorpDoc?.doneBadgeText || 'Done'}
+                  </span>
+                ) : isIncorpMandatory ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fdecec] text-[#b42318]">
+                    {kycConfig.incorpDoc?.requiredBadgeText || 'Required'}
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#fdecec] text-[#b42318]">
-                    Required
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eef1ef] text-[#4b5a52]">
+                    {kycConfig.incorpDoc?.optionalBadgeText || 'Optional'}
                   </span>
                 )}
               </div>
               <p className="text-sm text-[#5a6a61] ml-11 mb-4">
-                Proof that your business is legally registered. Pick one and upload it.
+                {kycConfig.incorpDoc?.helpText || 'Proof that your business is legally registered. Pick one and upload it.'}
               </p>
 
               {/* Doc Type Selector Chips */}
               <div className="flex flex-wrap gap-2 mb-4">
-                {INCORPORATION_DOC_OPTIONS.map((item) => (
+                {activeIncorpOptions.map((item) => (
                   <button
                     key={item.type}
                     type="button"
@@ -834,7 +1031,7 @@ export default function VerificationPage({ employerProfile }) {
                         </svg>
                       </div>
                       <p className="font-semibold text-sm text-[#0f172a] mb-0.5">
-                        Drag & drop {INCORPORATION_DOC_OPTIONS.find(d => d.type === selectedIncorpDocType)?.label || 'Incorporation Document'} here
+                        Drag & drop {activeIncorpOptions.find(d => d.type === selectedIncorpDocType)?.label || 'Incorporation Document'} here
                       </p>
                       <p className="text-xs text-[#5a6a61] mb-3">
                         PDF, JPG or PNG · <strong className="text-emerald-700 font-semibold">under 300 KB</strong> (Auto-compressed)
@@ -852,7 +1049,7 @@ export default function VerificationPage({ employerProfile }) {
               )}
             </div>
 
-            {/* CARD 3: EXTRA DOCUMENTS (OPTIONAL) */}
+            {/* CARD 3: EXTRA DOCUMENTS (OPTIONAL / CMS MANAGED) */}
             <div className="bg-white rounded-2xl p-6 border border-[#e3e8e5]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -861,13 +1058,25 @@ export default function VerificationPage({ employerProfile }) {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <b className="text-base text-[#0f172a]">Extra documents</b>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#eef1ef] text-[#4b5a52]">
-                        Optional
-                      </span>
+                      <b className="text-base text-[#0f172a]">
+                        {kycConfig.extraDoc?.title || 'Extra documents'}
+                      </b>
+                      {hasExtra ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#e4f6ea] text-[#14753a]">
+                          {kycConfig.extraDoc?.doneBadgeText || 'Done'}
+                        </span>
+                      ) : isExtraMandatory ? (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#fdecec] text-[#b42318]">
+                          {kycConfig.extraDoc?.requiredBadgeText || 'Required'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#eef1ef] text-[#4b5a52]">
+                          {kycConfig.extraDoc?.optionalBadgeText || 'Optional'}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs sm:text-sm text-[#5a6a61] mt-0.5">
-                      Address proof, authorization letter, signatory ID, staffing license. Speeds up approval.
+                      {kycConfig.extraDoc?.helpText || 'Address proof, authorization letter, signatory ID, staffing license. Speeds up approval.'}
                     </p>
                   </div>
                 </div>
@@ -935,7 +1144,7 @@ export default function VerificationPage({ employerProfile }) {
               {extraDocsOpen && !isLocked && (
                 <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
                   <div className="flex flex-wrap gap-2">
-                    {EXTRA_DOC_OPTIONS.filter(o => !o.consultantOnly || employerProfile?.isConsultant || statusData?.isConsultant).map((item) => (
+                    {activeExtraOptions.map((item) => (
                       <button
                         key={item.type}
                         type="button"
@@ -958,8 +1167,8 @@ export default function VerificationPage({ employerProfile }) {
                       e.preventDefault();
                       setDragOverExtra(false);
                       const file = e.dataTransfer.files?.[0];
-                      const activeOpt = EXTRA_DOC_OPTIONS.find(d => d.type === selectedExtraDocType);
-                      if (file && activeOpt) processAndUploadFile(file, activeOpt.category, selectedExtraDocType);
+                      const activeOpt = activeExtraOptions.find(d => d.type === selectedExtraDocType);
+                      if (file && activeOpt) processAndUploadFile(file, activeOpt.category || 'other', selectedExtraDocType);
                     }}
                     className={`border-2 border-dashed rounded-xl p-5 text-center flex flex-col items-center justify-center transition-all ${
                       dragOverExtra
@@ -974,8 +1183,8 @@ export default function VerificationPage({ employerProfile }) {
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        const activeOpt = EXTRA_DOC_OPTIONS.find(d => d.type === selectedExtraDocType);
-                        if (file && activeOpt) processAndUploadFile(file, activeOpt.category, selectedExtraDocType);
+                        const activeOpt = activeExtraOptions.find(d => d.type === selectedExtraDocType);
+                        if (file && activeOpt) processAndUploadFile(file, activeOpt.category || 'other', selectedExtraDocType);
                         e.target.value = '';
                       }}
                     />
@@ -988,7 +1197,7 @@ export default function VerificationPage({ employerProfile }) {
                     ) : (
                       <>
                         <p className="font-semibold text-xs sm:text-sm text-[#0f172a] mb-0.5">
-                          Upload {EXTRA_DOC_OPTIONS.find(d => d.type === selectedExtraDocType)?.label}
+                          Upload {activeExtraOptions.find(d => d.type === selectedExtraDocType)?.label || 'Document'}
                         </p>
                         <p className="text-[11px] text-[#5a6a61] mb-2.5">
                           PDF, JPG or PNG · under 300 KB (Auto-compressed)
@@ -1015,9 +1224,11 @@ export default function VerificationPage({ employerProfile }) {
             {/* PROGRESS CARD */}
             <div className="bg-white rounded-2xl p-6 border border-[#e3e8e5] shadow-xs">
               <div className="flex justify-between items-baseline mb-2">
-                <b className="text-base text-[#0f172a]">Your progress</b>
+                <b className="text-base text-[#0f172a]">
+                  {kycConfig.progressCard?.title || 'Your progress'}
+                </b>
                 <span className="text-xs font-medium text-[#5a6a61]">
-                  {progressCount} of 2 done
+                  {displayDoneCount} of {displayTotalCount} done
                 </span>
               </div>
 
@@ -1025,33 +1236,50 @@ export default function VerificationPage({ employerProfile }) {
               <div className="h-2 bg-[#e3e8e5] rounded-full overflow-hidden mb-4">
                 <div
                   className="h-full bg-[#1f9d4c] transition-all duration-300 rounded-full"
-                  style={{ width: `${(progressCount / 2) * 100}%` }}
+                  style={{ width: `${Math.min(100, Math.round((displayDoneCount / Math.max(1, displayTotalCount)) * 100))}%` }}
                 />
               </div>
 
               {/* Checklist */}
               <div className="flex flex-col gap-2.5 text-sm mb-5">
-                <div className="flex items-center gap-2.5">
-                  {hasTax ? (
-                    <span className="text-[#14753a] font-bold text-base">✓</span>
-                  ) : (
-                    <span className="text-[#b42318] text-base font-bold">○</span>
-                  )}
-                  <span className={hasTax ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
-                    Tax document
-                  </span>
-                </div>
+                {(isTaxMandatory || hasTax) && (
+                  <div className="flex items-center gap-2.5">
+                    {hasTax ? (
+                      <span className="text-[#14753a] font-bold text-base">✓</span>
+                    ) : (
+                      <span className="text-[#b42318] text-base font-bold">○</span>
+                    )}
+                    <span className={hasTax ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
+                      {kycConfig.taxDoc?.title || 'Tax document'}
+                    </span>
+                  </div>
+                )}
 
-                <div className="flex items-center gap-2.5">
-                  {hasIncorp ? (
-                    <span className="text-[#14753a] font-bold text-base">✓</span>
-                  ) : (
-                    <span className="text-[#b42318] text-base font-bold">○</span>
-                  )}
-                  <span className={hasIncorp ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
-                    Incorporation document
-                  </span>
-                </div>
+                {(isIncorpMandatory || hasIncorp) && (
+                  <div className="flex items-center gap-2.5">
+                    {hasIncorp ? (
+                      <span className="text-[#14753a] font-bold text-base">✓</span>
+                    ) : (
+                      <span className="text-[#b42318] text-base font-bold">○</span>
+                    )}
+                    <span className={hasIncorp ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
+                      {kycConfig.incorpDoc?.title || 'Incorporation document'}
+                    </span>
+                  </div>
+                )}
+
+                {(isExtraMandatory || hasExtra) && (
+                  <div className="flex items-center gap-2.5">
+                    {hasExtra ? (
+                      <span className="text-[#14753a] font-bold text-base">✓</span>
+                    ) : (
+                      <span className="text-[#b42318] text-base font-bold">○</span>
+                    )}
+                    <span className={hasExtra ? 'font-semibold text-[#0f172a]' : 'text-gray-600'}>
+                      {kycConfig.extraDoc?.title || 'Extra documents'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Submit for Verification Button */}
@@ -1080,16 +1308,14 @@ export default function VerificationPage({ employerProfile }) {
                   >
                     {submitting 
                       ? (status === 'rejected' ? 'Re-submitting...' : 'Submitting...') 
-                      : (status === 'rejected' ? 'Re-submit for verification' : 'Submit for verification')}
+                      : (status === 'rejected' 
+                          ? (kycConfig.progressCard?.resubmitButtonText || 'Re-submit for verification') 
+                          : (kycConfig.progressCard?.submitButtonText || 'Submit for verification'))}
                   </button>
 
                   <p className="text-xs text-[#5a6a61] text-center mt-2.5">
-                    {!hasTax && !hasIncorp
-                      ? 'Upload 1 tax and 1 incorporation document to continue'
-                      : !hasTax
-                      ? 'Upload 1 tax document to continue'
-                      : !hasIncorp
-                      ? 'Upload 1 incorporation document to continue'
+                    {!canSubmit
+                      ? 'Upload all required documents to continue'
                       : (status === 'rejected'
                           ? 'Updated documents ready! Click to re-submit for review.'
                           : 'All requirements met! Ready to submit.')}
@@ -1101,21 +1327,22 @@ export default function VerificationPage({ employerProfile }) {
             {/* BENEFITS CARD */}
             <div className="bg-[#f2fbf5] border border-[#cfe9d8] rounded-2xl p-6">
               <b className="text-base text-[#0f172a] block mb-3.5">
-                After approval you get
+                {kycConfig.benefitsCard?.title || 'After approval you get'}
               </b>
               <div className="flex flex-col gap-3 text-xs sm:text-sm text-gray-800 leading-relaxed">
-                <div className="flex items-start gap-2.5">
-                  <span className="text-[#14753a] font-bold text-base leading-none">✓</span>
-                  <span>Green Verified Employer badge</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="text-[#14753a] font-bold text-base leading-none">✓</span>
-                  <span>Your jobs visible to all candidates</span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <span className="text-[#14753a] font-bold text-base leading-none">✓</span>
-                  <span>Tracked application links enabled</span>
-                </div>
+                {(kycConfig.benefitsCard?.benefits && kycConfig.benefitsCard.benefits.length > 0 
+                  ? kycConfig.benefitsCard.benefits 
+                  : [
+                      'Green Verified Employer badge',
+                      'Your jobs visible to all candidates',
+                      'Tracked application links enabled'
+                    ]
+                ).map((benefit, idx) => (
+                  <div key={idx} className="flex items-start gap-2.5">
+                    <span className="text-[#14753a] font-bold text-base leading-none">✓</span>
+                    <span>{benefit}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1142,16 +1369,16 @@ export default function VerificationPage({ employerProfile }) {
             </p>
             <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 text-xs text-gray-700 space-y-1 mb-5">
               <div className="flex justify-between">
-                <span className="text-gray-500">Tax Documents:</span>
+                <span className="text-gray-500">{kycConfig.taxDoc?.title || 'Tax Documents'}:</span>
                 <span className="font-semibold">{taxDocs.length} uploaded</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Incorporation Documents:</span>
+                <span className="text-gray-500">{kycConfig.incorpDoc?.title || 'Incorporation Documents'}:</span>
                 <span className="font-semibold">{incorpDocs.length} uploaded</span>
               </div>
               {extraDocs.length > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Additional Documents:</span>
+                  <span className="text-gray-500">{kycConfig.extraDoc?.title || 'Additional Documents'}:</span>
                   <span className="font-semibold">{extraDocs.length} uploaded</span>
                 </div>
               )}

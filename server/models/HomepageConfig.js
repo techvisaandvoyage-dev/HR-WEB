@@ -119,6 +119,10 @@ const homepageConfigSchema = new mongoose.Schema({
   directJobApply: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  employerKyc: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true,
