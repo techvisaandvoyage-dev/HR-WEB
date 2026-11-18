@@ -155,11 +155,12 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
       {/* Table-style Jobs List */}
       <div className="border-t border-[#eaecf0]">
         {/* Header Row (Desktop >= 1000px) */}
-        <div className="hidden min-[1000px]:grid grid-cols-[minmax(0,2fr)_75px_125px_minmax(0,1.6fr)_135px_135px] gap-4 items-center py-2.5 px-2 text-[#98a2b3] text-[13px] font-semibold border-b border-[#eaecf0]">
+        <div className="hidden min-[1000px]:grid grid-cols-[minmax(0,2fr)_65px_125px_minmax(0,1.4fr)_110px_130px_115px] gap-4 items-center py-2.5 px-2 text-[#98a2b3] text-[13px] font-semibold border-b border-[#eaecf0]">
           <span>Job</span>
           <span>Views</span>
           <span>Total Applications</span>
           <span>Tracked Links</span>
+          <span className="text-center">View Applicants</span>
           <span>Status</span>
           <span></span>
         </div>
@@ -190,7 +191,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
             return (
               <div 
                 key={job.id || job._id}
-                className="grid min-[1000px]:grid-cols-[minmax(0,2fr)_75px_125px_minmax(0,1.6fr)_135px_135px] grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4 gap-y-2.5 items-center py-3.5 sm:py-4 px-3 sm:px-2 border border-[#eaecf0] sm:border-0 sm:border-b hover:bg-[#f9fafb] transition-colors rounded-xl sm:rounded-none bg-white sm:bg-transparent mb-3 sm:mb-0 shadow-2xs sm:shadow-none"
+                className="grid min-[1000px]:grid-cols-[minmax(0,2fr)_65px_125px_minmax(0,1.4fr)_110px_130px_115px] grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4 gap-y-2.5 items-center py-3.5 sm:py-4 px-3 sm:px-2 border border-[#eaecf0] sm:border-0 sm:border-b hover:bg-[#f9fafb] transition-colors rounded-xl sm:rounded-none bg-white sm:bg-transparent mb-3 sm:mb-0 shadow-2xs sm:shadow-none"
               >
                 {/* 1. Job Title & Meta */}
                 <div className="min-w-0 min-[1000px]:col-auto col-span-1">
@@ -268,8 +269,30 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                   })()}
                 </div>
 
-                {/* 5. Status (Desktop 5th col) */}
-                <div className="min-[1000px]:order-5 min-[1000px]:col-auto col-span-1 justify-self-end min-[1000px]:justify-self-start">
+                {/* 5. View Applicants Column (Left of Status) */}
+                <div className="min-[1000px]:order-5 col-span-2 min-[1000px]:col-span-1 flex items-center min-[1000px]:justify-center py-1 min-[1000px]:py-0">
+                  <div className="relative group/tip flex items-center justify-center">
+                    <Link
+                      to="/employer/applications"
+                      state={{ jobTitle: job.title, fromJobCandidates: true }}
+                      className="inline-flex items-center justify-center gap-1.5 min-[1000px]:w-[38px] min-[1000px]:h-[38px] px-3 min-[1000px]:px-0 py-1.5 min-[1000px]:py-0 rounded-full border border-[#bfe3d2] bg-[#ecfdf5] text-[#047857] hover:bg-[#047857] hover:text-white hover:border-[#047857] transition-all cursor-pointer shadow-2xs"
+                      aria-label="View Applicants"
+                    >
+                      <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="9" cy="8" r="3.5" />
+                        <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8" />
+                      </svg>
+                      <span className="min-[1000px]:hidden text-xs font-bold">View Applicants</span>
+                    </Link>
+                    <div className="hidden min-[1000px]:block absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 bg-[#0f172a] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
+                      View Applicants
+                      <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Status (Desktop 6th col) */}
+                <div className="min-[1000px]:order-6 min-[1000px]:col-auto col-span-1 justify-self-end min-[1000px]:justify-self-start">
                   <div className="relative min-w-[100px]" onClick={(event) => event.stopPropagation()}>
                     <CustomDropdown
                       options={['Active', 'Closed']}
@@ -292,18 +315,18 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                   </small>
                 </div>
 
-                {/* 3. Views */}
+                {/* 2. Views */}
                 <div className="min-[1000px]:order-2 font-semibold text-[14.5px] text-[#101828]">
                   {viewsCount} <span className="min-[1000px]:hidden text-[#667085] font-normal text-[13px]">views</span>
                 </div>
 
-                {/* 4. Applications */}
+                {/* 3. Applications */}
                 <div className="min-[1000px]:order-3 font-semibold text-[14.5px] text-[#101828]">
                   {appsCount} <span className="min-[1000px]:hidden text-[#667085] font-normal text-[13px]">total applications</span>
                 </div>
 
-                {/* 6. Actions with Support-style dark tooltips */}
-                <div className="min-[1000px]:order-6 flex items-center justify-end gap-1 shrink-0 col-span-2 min-[1000px]:col-span-1 pt-1 min-[1000px]:pt-0">
+                {/* 7. Actions with Support-style dark tooltips */}
+                <div className="min-[1000px]:order-7 flex items-center justify-end gap-1 shrink-0 col-span-2 min-[1000px]:col-span-1 pt-1 min-[1000px]:pt-0">
                   {/* 1. Share Job */}
                   <div className="relative group/tip flex items-center justify-center">
                     <button
@@ -343,26 +366,7 @@ const ManageJobs = ({ portalConfig, employerProfile, jobs = [], candidates = [],
                     </div>
                   </div>
 
-                  {/* 3. View Applicants */}
-                  <div className="relative group/tip flex items-center justify-center">
-                    <Link 
-                      to="/employer/applications" 
-                      state={{ jobTitle: job.title, fromJobCandidates: true }} 
-                      className="w-[34px] h-[34px] rounded-full border-0 bg-transparent text-[#98a2b3] hover:text-[#047857] hover:bg-[#ecfdf3] flex items-center justify-center transition-all cursor-pointer" 
-                      aria-label="View Applicants"
-                    >
-                      <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="9" cy="8" r="3.5" />
-                        <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8" />
-                      </svg>
-                    </Link>
-                    <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 bg-[#0f172a] text-white text-[11.5px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
-                      View Applicants
-                      <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
-                    </div>
-                  </div>
-
-                  {/* 4. Job Details */}
+                  {/* 3. Job Details */}
                   <div className="relative group/tip flex items-center justify-center">
                     <button 
                       type="button"

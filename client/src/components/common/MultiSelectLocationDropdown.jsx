@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const cleanTerm = (text) => {
   if (!text) return '';
@@ -87,6 +88,30 @@ const MultiSelectLocationDropdown = ({
   const [liveOptions, setLiveOptions] = useState([]);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const wrapperRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuStyle, setMenuStyle] = useState(null);
+
+  const updateMenuPosition = () => {
+    if (!wrapperRef.current) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const minWidth = Math.max(rect.width, 220);
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    let left = rect.left;
+    if (left + minWidth > viewportWidth - 12) {
+      left = Math.max(12, viewportWidth - minWidth - 12);
+    }
+    const spaceBelow = viewportHeight - rect.bottom;
+    const openUpward = spaceBelow < 240 && rect.top > spaceBelow;
+    setMenuStyle({
+      position: 'fixed',
+      left: `${left}px`,
+      width: `${minWidth}px`,
+      top: openUpward ? 'auto' : `${rect.bottom + 6}px`,
+      bottom: openUpward ? `${viewportHeight - rect.top + 6}px` : 'auto',
+      zIndex: 9999
+    });
+  };
 
   // Multi-select values are comma-separated; single-select values remain one location.
   const selectedValues = (Array.isArray(value) 
@@ -95,8 +120,22 @@ const MultiSelectLocationDropdown = ({
   ).map(v => (typeof v === 'string' ? v : (v?.value || v?.label || String(v || '')))).filter(Boolean);
 
   useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+    const handleReposition = () => updateMenuPosition();
+    window.addEventListener('resize', handleReposition);
+    window.addEventListener('scroll', handleReposition, true);
+    return () => {
+      window.removeEventListener('resize', handleReposition);
+      window.removeEventListener('scroll', handleReposition, true);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+      const insideTrigger = wrapperRef.current && wrapperRef.current.contains(event.target);
+      const insideMenu = menuRef.current && menuRef.current.contains(event.target);
+      if (!insideTrigger && !insideMenu) {
         setIsOpen(false);
       }
     };
@@ -255,8 +294,12 @@ const MultiSelectLocationDropdown = ({
         </button>
       </div>
 
-      {isOpen && (
-        <div className={`absolute z-50 min-w-[200px] w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-80 ${dropdownClassName}`}>
+      {isOpen && menuStyle && createPortal(
+        <div
+          ref={menuRef}
+          style={menuStyle}
+          className={`bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-80 font-sans ${dropdownClassName}`}
+        >
           <div className="p-3 border-b border-gray-100 bg-gray-50/50">
             <div className="relative">
               <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -337,7 +380,8 @@ const MultiSelectLocationDropdown = ({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

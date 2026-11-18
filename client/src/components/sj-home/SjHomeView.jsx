@@ -644,29 +644,6 @@ export default function SjHomeView({
       <main id="sj-main-content">
         {showLoggedInFeed ? (
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8">
-            {/* Heading */}
-            <h1 className="sj-heading">
-              {matchedFeedJobs.length > 0 ? (
-                <>
-                  {matchedFeedJobs.length} job{matchedFeedJobs.length > 1 ? 's' : ''} matched for <em>{candidateRole}.</em>
-                </>
-              ) : (
-                <>
-                  Explore <em>Jobs.</em>
-                </>
-              )}
-            </h1>
-
-            {/* Filter Bar */}
-            <SjJobFilterBar
-              filters={filterOptions}
-              activeFilters={activeFilters}
-              onToggleFilter={handleToggleFilter}
-              onClearFilters={() => setActiveFilters([])}
-              showingCount={filteredJobs.length}
-              totalCount={jobs.length}
-            />
-
             {/* Job List Feed */}
             <SjJobList
               jobs={filteredJobs}

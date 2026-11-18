@@ -53,9 +53,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     job: initialJob !== 'All Jobs' && initialJob !== 'All Job' ? initialJob : 'All',
     workExp: 'All',
     functionArea: 'All',
-    designation: '',
-    company: '',
+    designation: 'All',
+    company: 'All',
     qualification: 'All',
+    screening: 'All',
     sourceLink: location.state?.sourceLink || 'All',
     status: 'All',
     sortDate: 'desc' // 'desc' | 'asc'
@@ -92,9 +93,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       job: isJobSpecificView ? (specificJobTitle || 'All') : 'All',
       workExp: 'All',
       functionArea: 'All',
-      designation: '',
-      company: '',
+      designation: 'All',
+      company: 'All',
       qualification: 'All',
+      screening: 'All',
       sourceLink: 'All',
       status: 'All',
       sortDate: 'desc'
@@ -109,9 +111,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     (!isJobSpecificView && colFilters.job !== 'All') ||
     colFilters.workExp !== 'All' ||
     colFilters.functionArea !== 'All' ||
-    colFilters.designation !== '' ||
-    colFilters.company !== '' ||
+    (colFilters.designation !== '' && colFilters.designation !== 'All') ||
+    (colFilters.company !== '' && colFilters.company !== 'All') ||
     colFilters.qualification !== 'All' ||
+    colFilters.screening !== 'All' ||
     colFilters.sourceLink !== 'All' ||
     colFilters.status !== 'All' ||
     dateRange.start !== '' ||
@@ -419,6 +422,16 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return ['All', ...new Set(list)];
   }, [jobs, flattenedApplications]);
 
+  const uniqueDesignations = useMemo(() => {
+    const list = flattenedApplications.map(a => getCurrentDesignation(a.candidate)).filter(Boolean);
+    return ['All', ...new Set(list)];
+  }, [jobs, flattenedApplications]);
+
+  const uniqueCompanies = useMemo(() => {
+    const list = flattenedApplications.map(a => getCurrentCompany(a.candidate)).filter(Boolean);
+    return ['All', ...new Set(list)];
+  }, [jobs, flattenedApplications]);
+
   const uniqueLinks = useMemo(() => {
     const jobLinkCodes = [];
     (jobs || []).forEach(j => {
@@ -485,14 +498,14 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
       }
 
       // 5. Designation Filter
-      if (colFilters.designation.trim()) {
+      if (colFilters.designation && colFilters.designation !== 'All' && colFilters.designation.trim()) {
         if (!desig.toLowerCase().includes(colFilters.designation.toLowerCase().trim())) {
           return false;
         }
       }
 
       // 6. Company Filter
-      if (colFilters.company.trim()) {
+      if (colFilters.company && colFilters.company !== 'All' && colFilters.company.trim()) {
         if (!comp.toLowerCase().includes(colFilters.company.toLowerCase().trim())) {
           return false;
         }
@@ -503,6 +516,13 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         if (qual.trim().toLowerCase() !== colFilters.qualification.trim().toLowerCase()) {
           return false;
         }
+      }
+
+      // 7.5. Screening Questions Filter
+      if (colFilters.screening && colFilters.screening !== 'All') {
+        const hasAnswers = Array.isArray(item.screeningAnswers) && item.screeningAnswers.some(a => a && String(a.answer || '').trim() !== '');
+        if (colFilters.screening === 'Answered' && !hasAnswers) return false;
+        if (colFilters.screening === 'Not Answered' && hasAnswers) return false;
       }
 
       // 8. Status Filter
@@ -1163,167 +1183,225 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
         </div>
       </div>
 
-      {/* 2. Main Content Card (Round Filters + Applications Table) */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-visible relative">
-        
-        {/* Filters Section */}
-        <div className="mb-6 space-y-4">
-          
-          {/* Search bar */}
-          <div className="relative max-w-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input 
-              type="text" 
-              value={colFilters.candidate}
-              onChange={(e) => handleFilterChange('candidate', e.target.value)}
-              placeholder="Search by candidate name, role, email or application ID..." 
-              className="w-full pl-10 pr-10 py-2.5 bg-gray-50/80 hover:bg-white focus:bg-white border border-gray-200 rounded-full text-xs font-medium text-gray-800 focus:outline-none focus:border-[#059669] transition-all placeholder-gray-400 shadow-none"
-            />
-            {colFilters.candidate && (
-              <button 
-                type="button"
-                onClick={() => handleFilterChange('candidate', '')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Filter Dropdowns Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {/* Job Filter */}
-            {!isJobSpecificView && (
-              <div className="min-w-0">
-                <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Job Applied</span>
-                <MultiSelectLocationDropdown
-                  options={uniqueJobs.map((j) => ({ value: j, label: j === 'All' ? 'All Jobs' : j }))}
-                  value={colFilters.job}
-                  onChange={(val) => handleFilterChange('job', val)}
-                  multiple={false}
-                  isLocation={false}
-                  searchPlaceholder="Search jobs..."
-                  placeholder="All Jobs"
-                  className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
-                />
-              </div>
-            )}
-
-            {/* Functional Area */}
-            <div className="min-w-0">
-              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Functional Area</span>
-              <MultiSelectLocationDropdown
-                options={uniqueFunctions.map((fn) => ({ value: fn, label: fn === 'All' ? 'All Functions' : fn }))}
-                value={colFilters.functionArea}
-                onChange={(val) => handleFilterChange('functionArea', val)}
-                multiple={false}
-                isLocation={false}
-                searchPlaceholder="Search functions..."
-                placeholder="All Functions"
-                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
-              />
-            </div>
-
-            {/* Primary Qualification */}
-            <div className="min-w-0">
-              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qualification</span>
-              <MultiSelectLocationDropdown
-                options={uniqueQualifications.map((q) => ({ value: q, label: q === 'All' ? 'All Quals' : q }))}
-                value={colFilters.qualification}
-                onChange={(val) => handleFilterChange('qualification', val)}
-                multiple={false}
-                isLocation={false}
-                searchPlaceholder="Search qualifications..."
-                placeholder="All Quals"
-                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
-              />
-            </div>
-
-            {/* Work Experience */}
-            <div className="min-w-0">
-              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Work Exp</span>
-              <MultiSelectLocationDropdown
-                options={uniqueWorkExps.map((exp) => ({ value: exp, label: exp === 'All' ? 'All Exp' : exp }))}
-                value={colFilters.workExp}
-                onChange={(val) => handleFilterChange('workExp', val)}
-                multiple={false}
-                isLocation={false}
-                searchPlaceholder="Search experience..."
-                placeholder="All Exp"
-                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
-              />
-            </div>
-
-            {/* Application ID / Role text filter */}
-            <div className="min-w-0">
-              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">App ID / Role</span>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={colFilters.appId || colFilters.designation}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val.startsWith('#') || /^\d+$/.test(val) || val.toLowerCase().startsWith('id')) {
-                      handleFilterChange('appId', val);
-                    } else {
-                      handleFilterChange('designation', val);
-                    }
-                  }}
-                  placeholder="ID: 500101... or Role"
-                  className="w-full px-3.5 py-1.5 pr-7 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-800 hover:border-gray-300 focus:outline-none focus:border-[#059669] transition-colors shadow-none placeholder-gray-400"
-                />
-                {(colFilters.appId || colFilters.designation) && (
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      handleFilterChange('appId', '');
-                      handleFilterChange('designation', '');
-                    }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-xs font-bold cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Sort Order */}
-            <div className="min-w-0">
-              <span className="block text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-1">Applied Date</span>
-              <button
-                type="button"
-                onClick={() => handleFilterChange('sortDate', colFilters.sortDate === 'desc' ? 'asc' : 'desc')}
-                className="w-full px-3.5 py-1.5 bg-white border border-gray-200 hover:border-gray-300 rounded-full text-xs font-bold text-gray-800 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-none"
-              >
-                <span>{colFilters.sortDate === 'desc' ? '⬇ Newest First' : '⬆ Oldest First'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
+      {/* 2. Main Content Card (Applications Table with Per-Column Filters) */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative">
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
+              {/* Row 1: Column Headers */}
               <tr className="bg-[#f8fafc] text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
                 {!isJobSpecificView && (
-                  <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap">Application ID</th>
+                  <th className="pt-3.5 pb-2 px-3 min-w-[130px] whitespace-nowrap">Application ID</th>
                 )}
-                <th className="py-3.5 px-3 min-w-[200px] whitespace-nowrap">Candidate Name</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[210px] whitespace-nowrap">Candidate Name</th>
                 {!isJobSpecificView && (
-                  <th className="py-3.5 px-3 min-w-[160px] whitespace-nowrap">Job Applied</th>
+                  <th className="pt-3.5 pb-2 px-3 min-w-[180px] whitespace-nowrap">Job Applied</th>
                 )}
-                <th className="py-3.5 px-3 min-w-[140px] whitespace-nowrap">Primary Qualification</th>
-                <th className="py-3.5 px-3 min-w-[130px] whitespace-nowrap">Functional Area</th>
-                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap">Work Experience</th>
-                <th className="py-3.5 px-3 min-w-[150px] whitespace-nowrap">Current Designation</th>
-                <th className="py-3.5 px-3 min-w-[140px] whitespace-nowrap">Current Company</th>
-                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap">Applied Date</th>
-                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap text-center">Status</th>
-                <th className="py-3.5 px-3 min-w-[120px] whitespace-nowrap text-center">Source Link</th>
-                <th className="py-3.5 px-3 min-w-[130px] text-right whitespace-nowrap">Actions</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[165px] whitespace-nowrap">Primary Qualification</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[155px] whitespace-nowrap">Functional Area</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[135px] whitespace-nowrap">Work Experience</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[165px] whitespace-nowrap">Current Designation</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[155px] whitespace-nowrap">Current Company</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[135px] whitespace-nowrap">Applied Date</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[145px] whitespace-nowrap text-center">Screening Questions</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[135px] whitespace-nowrap text-center">Status</th>
+                <th className="pt-3.5 pb-2 px-3 min-w-[120px] text-right whitespace-nowrap">Actions</th>
+              </tr>
+
+              {/* Row 2: Dedicated Per-Column Filter Controls */}
+              <tr className="bg-[#f8fafc] border-b border-gray-200/80">
+                {/* 0. Application ID Filter */}
+                {!isJobSpecificView && (
+                  <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={colFilters.appId}
+                        onChange={(e) => handleFilterChange('appId', e.target.value)}
+                        placeholder="ID: 500101..."
+                        className="w-full h-8 px-3 pr-6 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 focus:outline-none focus:border-[#059669] transition-colors placeholder-gray-400"
+                      />
+                      {colFilters.appId && (
+                        <button
+                          type="button"
+                          onClick={() => handleFilterChange('appId', '')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-[10px] font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </th>
+                )}
+
+                {/* 1. Candidate Name / Email / Phone Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={colFilters.candidate}
+                      onChange={(e) => handleFilterChange('candidate', e.target.value)}
+                      placeholder="Name / Email..."
+                      className="w-full h-8 px-3 pr-6 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 focus:outline-none focus:border-[#059669] transition-colors placeholder-gray-400"
+                    />
+                    {colFilters.candidate && (
+                      <button
+                        type="button"
+                        onClick={() => handleFilterChange('candidate', '')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-[10px] font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </th>
+
+                {/* 2. Job Applied Filter */}
+                {!isJobSpecificView && (
+                  <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                    <MultiSelectLocationDropdown
+                      options={uniqueJobs.map((j) => ({ value: j, label: j === 'All' ? 'All Jobs' : j }))}
+                      value={colFilters.job}
+                      onChange={(val) => handleFilterChange('job', val)}
+                      multiple={false}
+                      isLocation={false}
+                      searchPlaceholder="Search jobs..."
+                      placeholder="All Jobs"
+                      className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                    />
+                  </th>
+                )}
+
+                {/* 3. Primary Qualification Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <MultiSelectLocationDropdown
+                    options={uniqueQualifications.map((q) => ({ value: q, label: q === 'All' ? 'All Quals' : q }))}
+                    value={colFilters.qualification}
+                    onChange={(val) => handleFilterChange('qualification', val)}
+                    multiple={false}
+                    isLocation={false}
+                    searchPlaceholder="Search qualifications..."
+                    placeholder="All Quals"
+                    className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                  />
+                </th>
+
+                {/* 4. Functional Area Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <MultiSelectLocationDropdown
+                    options={uniqueFunctions.map((fn) => ({ value: fn, label: fn === 'All' ? 'All Functions' : fn }))}
+                    value={colFilters.functionArea}
+                    onChange={(val) => handleFilterChange('functionArea', val)}
+                    multiple={false}
+                    isLocation={false}
+                    searchPlaceholder="Search functions..."
+                    placeholder="All Functions"
+                    className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                  />
+                </th>
+
+                {/* 5. Work Experience Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <MultiSelectLocationDropdown
+                    options={uniqueWorkExps.map((exp) => ({ value: exp, label: exp === 'All' ? 'All Exp' : exp }))}
+                    value={colFilters.workExp}
+                    onChange={(val) => handleFilterChange('workExp', val)}
+                    multiple={false}
+                    isLocation={false}
+                    searchPlaceholder="Search experience..."
+                    placeholder="All Exp"
+                    className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                  />
+                </th>
+
+                {/* 6. Current Designation Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <MultiSelectLocationDropdown
+                    options={uniqueDesignations.map((d) => ({ value: d, label: d === 'All' ? 'All Roles' : d }))}
+                    value={colFilters.designation || 'All'}
+                    onChange={(val) => handleFilterChange('designation', val)}
+                    multiple={false}
+                    isLocation={false}
+                    searchPlaceholder="Search designation..."
+                    placeholder="All Roles"
+                    className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                  />
+                </th>
+
+                {/* 7. Current Company Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <MultiSelectLocationDropdown
+                    options={uniqueCompanies.map((c) => ({ value: c, label: c === 'All' ? 'All Companies' : c }))}
+                    value={colFilters.company || 'All'}
+                    onChange={(val) => handleFilterChange('company', val)}
+                    multiple={false}
+                    isLocation={false}
+                    searchPlaceholder="Search company..."
+                    placeholder="All Companies"
+                    className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                  />
+                </th>
+
+                {/* 8. Applied Date Sort Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <button
+                    type="button"
+                    onClick={() => handleFilterChange('sortDate', colFilters.sortDate === 'desc' ? 'asc' : 'desc')}
+                    className="w-full h-8 px-3 bg-white border border-gray-200 hover:border-gray-300 rounded-full text-xs font-semibold text-gray-800 flex items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    <span>{colFilters.sortDate === 'desc' ? '⬇ Newest' : '⬆ Oldest'}</span>
+                  </button>
+                </th>
+
+                {/* 9. Screening Questions Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <MultiSelectLocationDropdown
+                    options={[
+                      { value: 'All', label: 'All' },
+                      { value: 'Answered', label: 'Answered' },
+                      { value: 'Not Answered', label: 'Not Answered' }
+                    ]}
+                    value={colFilters.screening || 'All'}
+                    onChange={(val) => handleFilterChange('screening', val)}
+                    multiple={false}
+                    isLocation={false}
+                    searchPlaceholder="Filter screening..."
+                    placeholder="All"
+                    className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                  />
+                </th>
+
+                {/* 10. Status Filter */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle">
+                  <MultiSelectLocationDropdown
+                    options={[
+                      { value: 'All', label: 'All Status' },
+                      ...statusOptions.map((s) => ({ value: s, label: s }))
+                    ]}
+                    value={colFilters.status}
+                    onChange={(val) => handleFilterChange('status', val)}
+                    multiple={false}
+                    isLocation={false}
+                    searchPlaceholder="Search status..."
+                    placeholder="All Status"
+                    className="w-full h-8 px-3 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-800 hover:border-gray-300 transition-colors shadow-none"
+                  />
+                </th>
+
+                {/* 11. Actions Column Reset Button */}
+                <th className="pb-3 pt-1 px-3 font-normal align-middle text-right">
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={resetAllFilters}
+                      className="h-8 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-full text-xs font-bold inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                      title="Reset all filters"
+                    >
+                      <span>✕ Reset</span>
+                    </button>
+                  )}
+                </th>
               </tr>
             </thead>
 
@@ -1455,6 +1533,25 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                         {item.appliedDate}
                       </td>
 
+                      {/* 8.5. Screening Questions */}
+                      <td className="py-3.5 px-3 text-center align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewScreeningQA({
+                            candidateName: cand.name,
+                            jobTitle: item.jobTitle,
+                            answers: item.screeningAnswers || []
+                          })}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#ecfdf5] hover:bg-[#047857] text-[#047857] hover:text-white border border-[#bfe3d2] hover:border-[#047857] transition-all cursor-pointer shadow-2xs"
+                          title="View Screening Question Answers"
+                        >
+                          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>Ans</span>
+                        </button>
+                      </td>
+
                       {/* 9. Status (Dropdown) */}
                       <td className="py-3 px-3 text-center align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="relative inline-flex items-center min-w-[120px]">
@@ -1476,44 +1573,11 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
                         </div>
                       </td>
 
-                      {/* Link Source (Right side of Status) */}
-                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
-                          item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct'
-                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                            : 'bg-gray-100 text-gray-600 border border-gray-200'
-                        }`}>
-                          {item.sourceLink && item.sourceLink !== 'Portal' && item.sourceLink !== 'Direct' ? `Link ${item.sourceLink}` : 'Portal'}
-                        </span>
-                      </td>
-
                       {/* 10. Actions */}
                       <td className="py-3 px-3 text-right align-middle whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          
-                          {/* 1. Screening Q&A icon (Question) */}
-                          <div className="relative group/tip inline-flex items-center justify-center">
-                            <button 
-                              type="button"
-                              onClick={() => setPreviewScreeningQA({ 
-                                candidateName: cand.name, 
-                                jobTitle: item.jobTitle, 
-                                answers: item.screeningAnswers || [] 
-                              })}
-                              className="w-7 h-7 inline-flex items-center justify-center text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-full transition-colors cursor-pointer border border-emerald-200 shadow-none"
-                              aria-label="Screening Questions"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </button>
-                            <div className="absolute bottom-[calc(100%+7px)] left-1/2 -translate-x-1/2 bg-[#0f172a] text-white text-[11px] font-bold px-2.5 py-1 rounded-[8px] shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 group-hover/tip:-translate-y-0.5 transition-all duration-150 z-50">
-                              Screening Questions
-                              <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[5px] border-x-transparent border-t-[5px] border-t-[#0f172a]" />
-                            </div>
-                          </div>
 
-                          {/* 2. View Profile (Eye) */}
+                          {/* 1. View Profile (Eye) */}
                           <div className="relative group/tip inline-flex items-center justify-center">
                             <button 
                               type="button"

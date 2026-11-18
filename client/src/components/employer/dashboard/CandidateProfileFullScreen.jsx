@@ -349,38 +349,6 @@ const CandidateProfileFullScreen = ({
             )}
           </div>
 
-          {/* Quick Shortlist / Select Pill Button */}
-          <button
-            type="button"
-            onClick={() => handleStatusChange('Shortlisted')}
-            className={`h-10 px-5 rounded-full font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer ${
-              currentStatus.toLowerCase() === 'shortlisted'
-                ? 'bg-emerald-800 text-white'
-                : 'bg-[#059669] hover:bg-[#047857] text-white'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-            </svg>
-            <span>{currentStatus.toLowerCase() === 'shortlisted' ? 'Shortlisted ✓' : 'Shortlist Candidate'}</span>
-          </button>
-
-          {/* Quick Reject Pill Button */}
-          <button
-            type="button"
-            onClick={() => handleStatusChange('Rejected')}
-            className={`h-10 px-5 rounded-full font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer ${
-              currentStatus.toLowerCase() === 'rejected'
-                ? 'bg-rose-600 text-white border border-rose-600'
-                : 'border border-rose-300 text-rose-600 hover:bg-rose-50'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>{currentStatus.toLowerCase() === 'rejected' ? 'Rejected ✓' : 'Reject'}</span>
-          </button>
-
           {/* Message Candidate Pill Button */}
           <button
             type="button"
