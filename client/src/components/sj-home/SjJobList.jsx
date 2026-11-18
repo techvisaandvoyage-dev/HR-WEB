@@ -55,11 +55,11 @@ export default function SjJobList({
 
   return (
     <div className="w-full">
-      {/* 1. Matched Jobs Section */}
+      {/* 1. Recommended Jobs Section */}
       {hasMatched && (
-        <section aria-label="Matched jobs">
+        <section aria-label="Recommended Jobs">
           <div className="sj-list-label sj-matched-label">
-            Matched for {userRole || 'Your Profile'}
+            Recommended Jobs
           </div>
           <div>
             {matchedJobs.map((job) => {
@@ -83,10 +83,10 @@ export default function SjJobList({
 
       {/* 2. Other Jobs Section */}
       {hasOther && (
-        <section aria-label="More opportunities">
+        <section aria-label="Other Jobs">
           {hasMatched && (
             <div className="sj-list-label">
-              More jobs
+              Other Jobs
             </div>
           )}
           <div>

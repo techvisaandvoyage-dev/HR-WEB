@@ -13,6 +13,7 @@ const getProfile = async (req, res) => {
     if (employee) {
       const nameParts = (employee.name || '').split(' ');
       res.json({
+        _id: employee._id,
         firstName: nameParts[0] || '',
         lastName: nameParts.slice(1).join(' ') || '',
         email: employee.email || '',
@@ -61,6 +62,26 @@ const updateProfile = async (req, res) => {
 
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Strict cross-account protection: never allow stale tab/localStorage from another user to overwrite this account
+    if (req.body._id && String(req.body._id) !== String(employee._id)) {
+      console.warn(`[profileController] Blocked cross-account profile overwrite: body._id=${req.body._id} vs token._id=${employee._id}`);
+      return res.status(409).json({
+        message: 'Session switched to another account. Please refresh the page.',
+        accountMismatch: true
+      });
+    }
+    if (
+      req.body.email &&
+      employee.email &&
+      String(req.body.email).trim().toLowerCase() !== String(employee.email).trim().toLowerCase()
+    ) {
+      console.warn(`[profileController] Blocked cross-account profile overwrite: body.email=${req.body.email} vs token.email=${employee.email}`);
+      return res.status(409).json({
+        message: 'Session switched to another account. Please refresh the page.',
+        accountMismatch: true
+      });
     }
 
     const updateData = {};
@@ -182,6 +203,7 @@ const updateProfile = async (req, res) => {
     res.json({
       message: 'Profile updated successfully',
       profile: {
+        _id: updatedEmployee._id,
         firstName: nameParts[0] || '',
         lastName: nameParts.slice(1).join(' ') || '',
         email: updatedEmployee.email,

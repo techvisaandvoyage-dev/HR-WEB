@@ -386,9 +386,13 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
           const freshData = await res.json();
           if (freshData && typeof freshData === 'object') {
             const existing = JSON.parse(localStorage.getItem('userProfile') || '{}');
-            const merged = { ...existing, ...freshData };
-            localStorage.setItem('userProfile', JSON.stringify(merged));
-            const parsed = parseProfileData(merged);
+            const isSameUser =
+              existing.email &&
+              freshData.email &&
+              String(existing.email).trim().toLowerCase() === String(freshData.email).trim().toLowerCase();
+            const nextProfile = isSameUser ? { ...existing, ...freshData } : { ...freshData };
+            localStorage.setItem('userProfile', JSON.stringify(nextProfile));
+            const parsed = parseProfileData(nextProfile);
             if (parsed) {
               setCandidateProfile(parsed);
             }

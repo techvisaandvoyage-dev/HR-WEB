@@ -834,12 +834,15 @@ const EmployeeOnboarding = () => {
   });
 
   const [initialLoading, setInitialLoading] = useState(true);
+  const sessionTokenRef = useRef(localStorage.getItem('employeeToken'));
+  const loadedAccountEmailRef = useRef('');
 
   // Fetch Profile if exists
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('employeeToken');
+        sessionTokenRef.current = token;
         if (!token) return;
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
           headers: {
@@ -850,6 +853,7 @@ const EmployeeOnboarding = () => {
         
         // Profile controller directly returns the object, or a message on error
         if (res.ok && data && !data.message) {
+          loadedAccountEmailRef.current = String(data.email || '').trim().toLowerCase();
           if (data.onboardingStep && data.onboardingStep >= 1 && data.onboardingStep <= 6) {
             const params = new URLSearchParams(window.location.search);
             if (!params.get('step')) {
@@ -858,29 +862,50 @@ const EmployeeOnboarding = () => {
             }
           }
           setFormData(prev => {
+            const isSameUser =
+              prev?.email &&
+              data?.email &&
+              String(prev.email).trim().toLowerCase() === String(data.email).trim().toLowerCase();
+            const base = isSameUser ? prev : {};
             const next = {
-              ...prev,
-              firstName: data.firstName || prev.firstName,
-              lastName: data.lastName || prev.lastName,
-              email: data.email || prev.email,
-              phone: data.phone || prev.phone,
-              isFresher: data.isFresher !== undefined ? data.isFresher : prev.isFresher,
-              designation: data.designation || prev.designation,
-              totalExperience: data.totalExperience || prev.totalExperience,
-              location: data.location || prev.location,
-              preferredLocation: data.preferredLocation || prev.preferredLocation,
-              industry: data.industry || prev.industry,
-              brief: data.brief || prev.brief,
-              qualifications: (data.qualifications && data.qualifications.length > 0) ? sortQualifications(data.qualifications) : prev.qualifications,
-              experience: (data.experience && data.experience.length > 0) ? sortExperience(data.experience) : prev.experience,
-              professionalDetails: data.professionalDetails ? { ...(prev.professionalDetails || {}), ...data.professionalDetails } : prev.professionalDetails,
-              videoVisibility: data.videoVisibility || data.documents?.videoVisibility || prev.videoVisibility || 'everyone',
-              documents: data.documents ? { 
-                ...(prev.documents || {}), 
-                ...data.documents,
-                videoVisibility: data.videoVisibility || data.documents.videoVisibility || prev.videoVisibility || 'everyone'
-              } : prev.documents,
-              isProfilePrivate: data.isProfilePrivate !== undefined ? Boolean(data.isProfilePrivate) : (prev.isProfilePrivate !== undefined ? Boolean(prev.isProfilePrivate) : true)
+              _id: data._id || base._id || '',
+              firstName: data.firstName ?? (isSameUser ? base.firstName || '' : ''),
+              lastName: data.lastName ?? (isSameUser ? base.lastName || '' : ''),
+              countryCode: data.countryCode || (isSameUser ? base.countryCode : '+91') || '+91',
+              email: data.email || '',
+              phone: data.phone ?? (isSameUser ? base.phone || '' : ''),
+              avatar: data.avatar ?? (isSameUser ? base.avatar || '' : ''),
+              isFresher: data.isFresher !== undefined ? Boolean(data.isFresher) : (isSameUser ? Boolean(base.isFresher) : false),
+              designation: data.designation ?? (isSameUser ? base.designation || '' : ''),
+              totalExperience: data.totalExperience ?? (isSameUser ? base.totalExperience || '' : ''),
+              noticePeriod: data.noticePeriod ?? (isSameUser ? base.noticePeriod || '' : ''),
+              location: data.location ?? (isSameUser ? base.location || '' : ''),
+              preferredLocation: data.preferredLocation ?? (isSameUser ? base.preferredLocation || '' : ''),
+              industry: data.industry ?? (isSameUser ? base.industry || '' : ''),
+              brief: data.brief ?? (isSameUser ? base.brief || '' : ''),
+              qualifications: Array.isArray(data.qualifications)
+                ? sortQualifications(data.qualifications)
+                : [],
+              experience: Array.isArray(data.experience)
+                ? sortExperience(data.experience)
+                : [],
+              professionalDetails: {
+                currentDesignation: '',
+                currentSalary: '',
+                expectedSalary: '',
+                noticePeriod: '',
+                skills: '',
+                ...(isSameUser ? (base.professionalDetails || {}) : {}),
+                ...(data.professionalDetails || {})
+              },
+              videoVisibility: data.videoVisibility || data.documents?.videoVisibility || 'everyone',
+              documents: {
+                resume: data.resume || data.documents?.resume || null,
+                coverLetter: data.coverLetter || data.documents?.coverLetter || null,
+                introVideo: data.introVideo || data.documents?.introVideo || null,
+                videoVisibility: data.videoVisibility || data.documents?.videoVisibility || 'everyone'
+              },
+              isProfilePrivate: data.isProfilePrivate !== undefined ? Boolean(data.isProfilePrivate) : true
             };
             localStorage.setItem('userProfile', JSON.stringify(next));
             return next;
@@ -909,22 +934,34 @@ const EmployeeOnboarding = () => {
 
   const saveToBackend = async (dataToSave = formData) => {
     try {
-      localStorage.setItem('userProfile', JSON.stringify(dataToSave));
       const token = localStorage.getItem('employeeToken');
-      if (token) {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(dataToSave)
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.profile) {
-            localStorage.setItem('userProfile', JSON.stringify(data.profile));
-          }
+      if (!token) return;
+      // Guard against cross-tab account switch: never write Account A's data with Account B's token
+      if (sessionTokenRef.current && token !== sessionTokenRef.current) {
+        console.warn('[EmployeeOnboarding] Session switched to another account in another tab; skipping save.');
+        return;
+      }
+      if (
+        loadedAccountEmailRef.current &&
+        dataToSave?.email &&
+        String(dataToSave.email).trim().toLowerCase() !== loadedAccountEmailRef.current
+      ) {
+        console.warn('[EmployeeOnboarding] Account email mismatch; skipping save.');
+        return;
+      }
+      localStorage.setItem('userProfile', JSON.stringify(dataToSave));
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(dataToSave)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.profile) {
+          localStorage.setItem('userProfile', JSON.stringify(data.profile));
         }
       }
     } catch (err) {

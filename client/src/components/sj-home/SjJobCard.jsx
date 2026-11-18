@@ -85,7 +85,7 @@ export default function SjJobCard({
             <span className="sj-job-location truncate">{location}</span>
           )}
 
-          {isMatched && matchedRole && (
+          {isMatched && (
             <span className="sj-matched-badge">
               <svg
                 width="13"
@@ -101,7 +101,7 @@ export default function SjJobCard({
                 <circle cx="12" cy="12" r="10" />
                 <circle cx="12" cy="12" r="4" fill="currentColor" />
               </svg>
-              <span>Matched for {matchedRole}</span>
+              <span>Recommended</span>
             </span>
           )}
         </div>

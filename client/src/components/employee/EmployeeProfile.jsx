@@ -365,9 +365,88 @@ const EmployeeProfile = () => {
     return () => socket.off('employee_onboarding_config_updated', handleCmsUpdate);
   }, []);
 
-  // Fetch initial profile from localStorage and API
+  const sessionTokenRef = useRef(localStorage.getItem('employeeToken'));
+  const loadedEmailRef = useRef('');
+  const skipFirstAutosaveRef = useRef(true);
+
+  // Fetch initial profile strictly from authoritative API (never merge stale cross-account localStorage)
   useEffect(() => {
     const fetchLatestProfile = async () => {
+      const token = localStorage.getItem('employeeToken');
+      sessionTokenRef.current = token;
+
+      if (token) {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (res.ok && data && data.email) {
+            loadedEmailRef.current = String(data.email).trim().toLowerCase();
+            const freshProfile = {
+              _id: data._id || '',
+              firstName: data.firstName || '',
+              lastName: data.lastName || '',
+              countryCode: data.countryCode || '+91',
+              phone: data.phone || '',
+              email: data.email || '',
+              avatar: data.avatar || '',
+              brief: data.brief || '',
+              designation: data.designation || '',
+              industry: data.industry || '',
+              totalExperience: data.totalExperience || '',
+              noticePeriod: data.noticePeriod || data.professionalDetails?.noticePeriod || '',
+              location: data.location || '',
+              preferredLocation: data.preferredLocation || '',
+              isFresher: Boolean(data.isFresher),
+              qualifications: sortQualifications(
+                (Array.isArray(data.qualifications) ? data.qualifications : []).filter(q => q && (q.educationType || q.course || q.board || q.university))
+              ),
+              experience: sortExperience(
+                (Array.isArray(data.experience) ? data.experience : []).filter(e => e && (e.companyName || e.roles?.some(r => r.jobTitle || r.employmentType)))
+              ),
+              professionalDetails: {
+                currentDesignation: '',
+                salaryType: 'Yearly',
+                currency: 'INR',
+                currentSalary: '',
+                expectedSalary: '',
+                noticePeriod: '',
+                linkedinUrl: '',
+                skills: '',
+                ...(data.professionalDetails || {})
+              },
+              documents: {
+                resume: data.resume || '',
+                coverLetter: data.coverLetter || '',
+                introVideo: data.introVideo || '',
+                videoVisibility: data.videoVisibility || 'everyone'
+              },
+              resume: data.resume || '',
+              coverLetter: data.coverLetter || '',
+              introVideo: data.introVideo || '',
+              isVideoApproved: Boolean(data.isVideoApproved),
+              videoApprovalStatus: data.videoApprovalStatus || 'none',
+              videoUploadedAt: data.videoUploadedAt || null,
+              videoApprovedAt: data.videoApprovedAt || null,
+              videoRejectionReason: data.videoRejectionReason || '',
+              videoVisibility: data.videoVisibility || 'everyone',
+              isProfilePrivate: data.isProfilePrivate !== undefined ? Boolean(data.isProfilePrivate) : true,
+              isOnboardingCompleted: Boolean(data.isOnboardingCompleted),
+              onboardingStep: data.onboardingStep || 1
+            };
+            skipFirstAutosaveRef.current = true;
+            setFormData(freshProfile);
+            localStorage.setItem('userProfile', JSON.stringify(freshProfile));
+            setIsLoaded(true);
+            return;
+          }
+        } catch (err) {
+          console.error("Failed to fetch latest profile:", err);
+        }
+      }
+
+      // Fallback to localStorage only if unauthenticated or API unreachable (do NOT mark dirty for autosave)
       const saved = localStorage.getItem('userProfile');
       if (saved) {
         try {
@@ -391,72 +470,56 @@ const EmployeeProfile = () => {
           console.error("Failed to parse local profile data");
         }
       }
-
-      try {
-        const token = localStorage.getItem('employeeToken');
-        if (token) {
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const data = await res.json();
-          if (data && data.email) {
-            setFormData(prev => ({
-              ...prev,
-              ...data,
-              countryCode: data.countryCode || prev.countryCode || '+91',
-              qualifications: sortQualifications(
-                (data.qualifications || prev.qualifications || []).filter(q => q && (q.educationType || q.course || q.board || q.university))
-              ),
-              experience: sortExperience(
-                (data.experience || prev.experience || []).filter(e => e && (e.companyName || e.roles?.some(r => r.jobTitle || r.employmentType)))
-              ),
-              documents: {
-                ...(prev.documents || {}),
-                resume: data.resume || prev.documents?.resume || '',
-                coverLetter: data.coverLetter || prev.documents?.coverLetter || '',
-                introVideo: data.introVideo || prev.documents?.introVideo || '',
-                videoVisibility: data.videoVisibility || prev.documents?.videoVisibility || 'everyone'
-              },
-              videoVisibility: data.videoVisibility || 'everyone'
-            }));
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch latest profile:", err);
-      } finally {
-        setIsLoaded(true);
-      }
     };
 
     fetchLatestProfile();
   }, []);
 
-  // Autosave to API debounced
+  // Autosave to API debounced (only after authoritative load & actual user edit, with cross-account guard)
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('userProfile', JSON.stringify(formData));
-      localStorage.setItem('hasProfile', 'true');
-
-      const timer = setTimeout(async () => {
-        try {
-          const token = localStorage.getItem('employeeToken');
-          if (token) {
-            await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify(formData)
-            });
-          }
-        } catch (err) {
-          console.error("Profile autosave error:", err);
-        }
-      }, 1500);
-
-      return () => clearTimeout(timer);
+    if (!isLoaded) return;
+    if (skipFirstAutosaveRef.current) {
+      skipFirstAutosaveRef.current = false;
+      return;
     }
+
+    const token = localStorage.getItem('employeeToken');
+    if (!token || (sessionTokenRef.current && token !== sessionTokenRef.current)) {
+      console.warn('[EmployeeProfile] Session switched in another tab; skipping autosave.');
+      return;
+    }
+    if (
+      !loadedEmailRef.current ||
+      !formData?.email ||
+      String(formData.email).trim().toLowerCase() !== loadedEmailRef.current
+    ) {
+      console.warn('[EmployeeProfile] Email mismatch; skipping autosave.');
+      return;
+    }
+
+    localStorage.setItem('userProfile', JSON.stringify(formData));
+    localStorage.setItem('hasProfile', 'true');
+
+    const timer = setTimeout(async () => {
+      try {
+        const latestToken = localStorage.getItem('employeeToken');
+        if (!latestToken || (sessionTokenRef.current && latestToken !== sessionTokenRef.current)) {
+          return;
+        }
+        await fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${latestToken}`
+          },
+          body: JSON.stringify(formData)
+        });
+      } catch (err) {
+        console.error("Profile autosave error:", err);
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
   }, [formData, isLoaded]);
 
   // Intersection observer for sidebar highlight
