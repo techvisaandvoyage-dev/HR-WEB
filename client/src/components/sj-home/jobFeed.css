@@ -160,7 +160,7 @@
 }
 
 .sj-verified-check {
-  color: var(--sj-ok, #059669);
+  color: #0284c7;
   display: inline-flex;
   flex-shrink: 0;
 }

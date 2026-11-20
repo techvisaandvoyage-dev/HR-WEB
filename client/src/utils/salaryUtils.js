@@ -24,6 +24,9 @@ export function formatSalary(val, note = '') {
     s = s.replace(/^\((.+)\)$/, (_, inner) => inner.trim());
   }
 
+  // Remove any leading CTC: if present
+  s = s.replace(/^ctc:?\s*/i, '').trim();
+
   const sLower = s.toLowerCase();
   const isGenericPlaceholder =
     sLower === 'as per industry standards' ||
@@ -33,17 +36,6 @@ export function formatSalary(val, note = '') {
 
   if (isGenericPlaceholder) {
     return s;
-  }
-
-  // If it already starts with CTC, normalize to "CTC: "
-  if (/^ctc:?\s*/i.test(s)) {
-    return s.replace(/^ctc:?\s*/i, 'CTC: ');
-  }
-
-  // If there are NO digits and NO currency symbols (₹, $, €, £), it is purely a note
-  // Prepend "CTC: "
-  if (!/[\d₹$€£]/.test(s)) {
-    return `CTC: ${s}`;
   }
 
   return s;
@@ -59,7 +51,7 @@ export function buildJobSalary(min, max, salaryType, cSym, salaryNote) {
         ? `${cSym} ${min}-${max} PA`
         : `${cSym}${min} - ${cSym}${max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`)
     : '';
-  const trimmedNote = (salaryNote || '').trim();
+  const trimmedNote = (salaryNote || '').replace(/^ctc:?\s*/i, '').trim();
 
   if (baseSalary && trimmedNote) {
     return `${baseSalary} (${trimmedNote})`;
@@ -68,9 +60,7 @@ export function buildJobSalary(min, max, salaryType, cSym, salaryNote) {
     return baseSalary;
   }
   if (trimmedNote) {
-    return /^ctc:?\s*/i.test(trimmedNote)
-      ? trimmedNote.replace(/^ctc:?\s*/i, 'CTC: ')
-      : `CTC: ${trimmedNote}`;
+    return trimmedNote;
   }
   return 'Not specified';
 }
@@ -85,7 +75,7 @@ export function getListingSalaryPreview(min, max, salaryType, cSym, salaryNote) 
         ? `${cSym} ${min}-${max} PA`
         : `${cSym}${min} - ${cSym}${max} ${salaryType === 'Monthly' ? 'PM' : 'PH'}`)
     : '';
-  const trimmedNote = (salaryNote || '').trim();
+  const trimmedNote = (salaryNote || '').replace(/^ctc:?\s*/i, '').trim();
 
   if (baseSalary && trimmedNote) {
     return `${baseSalary} (${trimmedNote})`;
@@ -94,9 +84,7 @@ export function getListingSalaryPreview(min, max, salaryType, cSym, salaryNote) 
     return baseSalary;
   }
   if (trimmedNote) {
-    return /^ctc:?\s*/i.test(trimmedNote)
-      ? trimmedNote.replace(/^ctc:?\s*/i, 'CTC: ')
-      : `CTC: ${trimmedNote}`;
+    return trimmedNote;
   }
   return !min ? 'Not specified' : '';
 }

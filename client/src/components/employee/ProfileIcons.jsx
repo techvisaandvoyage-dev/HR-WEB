@@ -27,7 +27,7 @@ export const IconMail = ({ className = "w-4 h-4" }) => (
   </svg>
 );
 
-export const IconVerified = ({ className = "w-4 h-4 text-emerald-600" }) => (
+export const IconVerified = ({ className = "w-4 h-4 text-[#0284c7]" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
     <circle cx="12" cy="12" r="10" fill="currentColor" stroke="none" />
     <path d="m8 12.5 2.5 2.5L16 9.5" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />

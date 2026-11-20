@@ -84,26 +84,6 @@ export default function SjJobCard({
           {location && (
             <span className="sj-job-location truncate">{location}</span>
           )}
-
-          {isMatched && (
-            <span className="sj-matched-badge">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="sj-matched-icon"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="4" fill="currentColor" />
-              </svg>
-              <span>Recommended</span>
-            </span>
-          )}
         </div>
       </div>
 

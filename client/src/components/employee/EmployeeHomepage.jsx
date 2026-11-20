@@ -1066,7 +1066,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="text-sm font-medium text-gray-700">{job.company}</p>
                       {(job.employerId?.verification?.status === 'verified' || job.isVerified) && (
-                        <span className="inline-flex items-center text-emerald-600" title="Verified Employer">
+                        <span className="inline-flex items-center text-[#0284c7]" title="Verified Employer">
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                             <path fillRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" clipRule="evenodd" />
                           </svg>
@@ -1343,7 +1343,7 @@ const EmployeeHomepage = ({ jobs = [], applyToJob }) => {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h2 className="text-lg font-bold text-gray-900">{selectedJob.company}</h2>
                           {(selectedJob.employerId?.verification?.status === 'verified' || selectedJob.isVerified) && (
-                            <span className="inline-flex items-center text-emerald-600" title="Verified Employer">
+                            <span className="inline-flex items-center text-[#0284c7]" title="Verified Employer">
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                                 <path fillRule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" clipRule="evenodd" />
                               </svg>

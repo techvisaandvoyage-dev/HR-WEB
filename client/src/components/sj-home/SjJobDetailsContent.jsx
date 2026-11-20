@@ -296,9 +296,8 @@ export default function SjJobDetailsContent({
               <dd>
                 <span className="font-semibold text-[var(--sj-ink)]">{salaryDisplay}</span>
                 {salaryNote && 
-                 !salaryDisplay.toLowerCase().includes(salaryNote.toLowerCase()) && 
-                 !salaryDisplay.toLowerCase().includes(salaryNote.toLowerCase().replace(/^ctc:?\s*/i, '')) && (
-                  <span className="text-xs text-[var(--sj-mute)] ml-1.5 font-normal">({salaryNote})</span>
+                 !salaryDisplay.toLowerCase().includes(salaryNote.toLowerCase().replace(/^ctc:?\s*/i, '').trim()) && (
+                  <span className="text-xs text-[var(--sj-mute)] ml-1.5 font-normal">({salaryNote.replace(/^ctc:?\s*/i, '').trim()})</span>
                 )}
               </dd>
             </>
