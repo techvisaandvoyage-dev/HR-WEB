@@ -2587,8 +2587,15 @@ const EmployeeOnboarding = () => {
         } else if (meta) {
           updatedMeta[field] = meta;
         }
+        const extraVideoFields = field === 'introVideo'
+          ? (val
+              ? { isVideoApproved: false, videoApprovalStatus: 'pending', videoUploadedAt: new Date().toISOString() }
+              : { isVideoApproved: false, videoApprovalStatus: 'none', videoUploadedAt: null, videoApprovedAt: null })
+          : {};
         const updated = {
           ...prev,
+          [field]: val || '',
+          ...extraVideoFields,
           documents: updatedDocs,
           documentsMeta: updatedMeta
         };

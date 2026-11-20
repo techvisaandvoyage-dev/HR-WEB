@@ -879,7 +879,7 @@ export default function DashboardOverview({ onNavigateTab }) {
     if (activeSubTab === 'employers' && employers.length === 0) {
       fetchEmployers();
       fetchGlobalSettings();
-    } else if ((activeSubTab === 'candidate' || activeSubTab === 'employees' || activeSubTab === 'candidates') && employees.length === 0) {
+    } else if (activeSubTab === 'candidate' || activeSubTab === 'employees' || activeSubTab === 'candidates') {
       fetchEmployees();
     } else if (activeSubTab === 'jobs') {
       fetchJobs();

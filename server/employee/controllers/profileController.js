@@ -166,22 +166,29 @@ const updateProfile = async (req, res) => {
       const trimmedVideo = String(introVideo || '').trim();
       updateData.introVideo = trimmedVideo;
 
-      // When candidate uploads a new or changed video, default hidden pending admin approval
+      // When candidate uploads a new, replaces, or removes video:
+      // Turn video access OFF (isVideoApproved = false) and require admin to review & approve again!
       const currentEmployee = await Employee.findById(req.employee._id).select('introVideo isVideoApproved videoApprovalStatus');
-      if (trimmedVideo) {
-        if (!currentEmployee || currentEmployee.introVideo !== trimmedVideo) {
-          updateData.isVideoApproved = false;
-          updateData.videoApprovalStatus = 'pending';
-          updateData.videoUploadedAt = new Date();
-          updateData.videoRejectionReason = '';
-        }
-      } else {
-        // Video removed
+      const oldVideo = String(currentEmployee?.introVideo || '').trim();
+
+      if (!trimmedVideo) {
+        // Video was removed by employee -> turn video access OFF, status to 'none'
         updateData.isVideoApproved = false;
         updateData.videoApprovalStatus = 'none';
         updateData.videoUploadedAt = null;
+        updateData.videoApprovedAt = null;
+        updateData.videoRejectionReason = '';
+      } else if (!oldVideo || oldVideo !== trimmedVideo || req.body.isVideoApproved === false || req.body.videoApprovalStatus === 'pending') {
+        // Video was newly added, replaced, or re-uploaded by employee -> reset access OFF to pending for admin review
+        updateData.isVideoApproved = false;
+        updateData.videoApprovalStatus = 'pending';
+        updateData.videoUploadedAt = new Date();
+        updateData.videoApprovedAt = null;
         updateData.videoRejectionReason = '';
       }
+    } else if (req.body.isVideoApproved === false) {
+      updateData.isVideoApproved = false;
+      if (req.body.videoApprovalStatus) updateData.videoApprovalStatus = req.body.videoApprovalStatus;
     }
 
     const videoVisibility = req.body.documents?.videoVisibility !== undefined 

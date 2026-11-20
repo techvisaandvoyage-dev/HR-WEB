@@ -609,8 +609,8 @@ const EmployeeProfile = () => {
   const docsMeta = formData.documentsMeta || {};
 
   const setDoc = (field, val, file = null) => {
-    const updatedDocs = { ...docs, [field]: val };
-    const updatedMeta = { ...docsMeta };
+    const updatedDocs = { ...(formData.documents || {}), [field]: val };
+    const updatedMeta = { ...(formData.documentsMeta || {}) };
     if (val && file) {
       const origSize = file.originalSize || file.size;
       const compSize = file.size;
@@ -634,12 +634,43 @@ const EmployeeProfile = () => {
           : { isVideoApproved: false, videoApprovalStatus: 'none', videoUploadedAt: null, videoApprovedAt: null })
       : {};
 
-    setFormData({
+    const nextState = {
       ...formData,
+      [field]: val || '',
       ...extraVideoFields,
       documents: updatedDocs,
       documentsMeta: updatedMeta
-    });
+    };
+
+    setFormData(nextState);
+    localStorage.setItem('userProfile', JSON.stringify(nextState));
+
+    // When candidate updates, replaces or removes introVideo, immediately persist to backend
+    // so video access is turned OFF right away without waiting for debounced autosave!
+    if (field === 'introVideo') {
+      const token = localStorage.getItem('employeeToken');
+      if (token) {
+        fetch(`${import.meta.env.VITE_API_URL}/api/employee/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            introVideo: val || '',
+            documents: {
+              ...(formData.documents || {}),
+              introVideo: val || ''
+            },
+            isVideoApproved: false,
+            videoApprovalStatus: val ? 'pending' : 'none',
+            videoUploadedAt: val ? new Date().toISOString() : null,
+            videoApprovedAt: null,
+            videoRejectionReason: ''
+          })
+        }).catch(err => console.error("Immediate video update save error:", err));
+      }
+    }
   };
 
   const handleOpenPreview = (type) => {
