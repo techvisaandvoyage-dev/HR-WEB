@@ -24,6 +24,7 @@ const EmployerChatDrawer = ({
   // Popovers & Modals
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [isBlockLoading, setIsBlockLoading] = useState(false);
@@ -34,6 +35,7 @@ const EmployerChatDrawer = ({
   const typingTimeoutRef = useRef(null);
   const infoRef = useRef(null);
   const optionsRef = useRef(null);
+  const statusRef = useRef(null);
 
   const appId = application?.appId || application?._id || application?.id;
   const candidate = application?.candidate || {};
@@ -56,6 +58,9 @@ const EmployerChatDrawer = ({
       }
       if (optionsRef.current && !optionsRef.current.contains(e.target)) {
         setIsOptionsOpen(false);
+      }
+      if (statusRef.current && !statusRef.current.contains(e.target)) {
+        setIsStatusDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -168,7 +173,13 @@ const EmployerChatDrawer = ({
         style: 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]'
       };
     }
-    if (s === 'shortlisted' || s === 'hired') {
+    if (s === 'hired') {
+      return {
+        label: 'HIRED',
+        style: 'border-green-300 bg-green-100 text-green-800 font-bold'
+      };
+    }
+    if (s === 'shortlisted') {
       return {
         label: 'SHORTLISTED',
         style: 'border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46]'
@@ -459,9 +470,14 @@ const EmployerChatDrawer = ({
                 <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
                   {candidate.name || 'Candidate'}
                 </h3>
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${getStatusBadgePill(currentStatus).style}`}>
+                <button
+                  type="button"
+                  onClick={() => setIsStatusDropdownOpen(prev => !prev)}
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-85 transition-opacity ${getStatusBadgePill(currentStatus).style}`}
+                  title="Change status"
+                >
                   • {currentStatus}
-                </span>
+                </button>
               </div>
             </div>
           </div>
@@ -617,37 +633,46 @@ const EmployerChatDrawer = ({
           </div>
         </div>
 
-        {/* Action Row Below Header: ✓ Shortlist & ✕ Reject */}
-        <div className="px-5 py-2.5 bg-gray-50/60 border-b border-gray-100 flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleUpdateStatus('Shortlisted')}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
-              currentStatus.toLowerCase() === 'shortlisted'
-                ? 'bg-emerald-700 text-white'
-                : 'bg-[#059669] hover:bg-[#047857] text-white'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-            </svg>
-            <span>{currentStatus.toLowerCase() === 'shortlisted' ? 'Shortlisted ✓' : 'Shortlist'}</span>
-          </button>
+        {/* Action Row Below Header: Status Dropdown */}
+        <div className="px-5 py-2.5 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-semibold text-gray-500">Status:</span>
+            <div className="relative inline-block" ref={statusRef} data-status-dropdown="true">
+              <button
+                type="button"
+                onClick={() => setIsStatusDropdownOpen(prev => !prev)}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-bold tracking-wider flex items-center gap-2 shadow-2xs transition-all cursor-pointer ${getStatusBadgePill(currentStatus).style}`}
+              >
+                <span>{getStatusBadgePill(currentStatus).label}</span>
+                <svg className={`w-3.5 h-3.5 opacity-70 transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => handleUpdateStatus('Rejected')}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer ${
-              currentStatus.toLowerCase() === 'rejected'
-                ? 'bg-rose-600 text-white border-rose-600'
-                : 'border border-rose-300 text-rose-600 hover:bg-rose-50'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>{currentStatus.toLowerCase() === 'rejected' ? 'Rejected ✓' : 'Reject'}</span>
-          </button>
+              {isStatusDropdownOpen && (
+                <div className="absolute left-0 mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  {['New', 'Viewed', 'Shortlisted', 'Hired', 'Rejected'].map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        handleUpdateStatus(opt);
+                        setIsStatusDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <span>{opt}</span>
+                      {(currentStatus || 'New').toLowerCase() === opt.toLowerCase() && (
+                        <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Chat Messages Body */}
