@@ -9,6 +9,7 @@ import {
   exportCandidateProfileAsPdf, 
   exportCandidateProfileAsDoc 
 } from '../../../utils/candidateProfileExporter';
+import { downloadFile } from '../../../utils/fileDownloader';
 
 // Mapping algorithm to categorize employee designations into broader industries
 const designationToIndustryMap = {
@@ -768,16 +769,10 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
         const isClFile = Boolean(clUrl && clUrl.startsWith('http'));
         const hasCoverLetter = Boolean(clText || isClFile);
 
-        const handleDownloadResume = () => {
+        const handleDownloadResume = async () => {
           if (resUrl) {
-            const a = document.createElement('a');
-            a.href = resUrl;
-            a.download = `${(cand.name || 'Candidate').replace(/\s+/g, '_')}_Resume`;
-            a.target = '_blank';
-            a.rel = 'noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const safeName = `${(cand.name || 'Candidate').replace(/[^a-zA-Z0-9_-]/g, '_')}_Resume.pdf`;
+            await downloadFile(resUrl, safeName);
           } else {
             exportCandidateProfileAsPdf(cand, [], { 
               hasApplied: true, 
@@ -788,23 +783,17 @@ const AllEmployeesTab = ({ portalConfig, candidates = [], jobs = [], employerPro
           }
         };
 
-        const handleDownloadCoverLetter = () => {
+        const handleDownloadCoverLetter = async () => {
           if (isClFile) {
-            const a = document.createElement('a');
-            a.href = clUrl;
-            a.download = `${(cand.name || 'Candidate').replace(/\s+/g, '_')}_Cover_Letter`;
-            a.target = '_blank';
-            a.rel = 'noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const safeName = `${(cand.name || 'Candidate').replace(/[^a-zA-Z0-9_-]/g, '_')}_Cover_Letter.pdf`;
+            await downloadFile(clUrl, safeName);
           } else if (clText) {
             const txt = `COVER LETTER\n\nCandidate: ${cand.name || 'Candidate'}\nApplied Role: ${item.jobTitle || cand.designation || 'Not specified'}\nEmail: ${cand.email || ''}\nPhone: ${cand.phone || cand.mobile || ''}\nDate: ${new Date().toLocaleDateString()}\n\n--------------------------------------------------\n\n${clText}\n\n--------------------------------------------------\nGenerated via SahiJob.com`;
             const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${(cand.name || 'Candidate').replace(/\s+/g, '_')}_Cover_Letter.txt`;
+            a.download = `${(cand.name || 'Candidate').replace(/[^a-zA-Z0-9_-]/g, '_')}_Cover_Letter.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

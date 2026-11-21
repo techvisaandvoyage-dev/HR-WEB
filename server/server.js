@@ -114,6 +114,7 @@ app.use('/api/admin/support', require('./routes/adminSupportRoutes'));
 app.use('/api/admin/otp-locks', require('./routes/adminOtpLockRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
 app.use('/api/admin/verifications', require('./routes/adminVerificationRoutes'));
+app.use('/api/download', require('./routes/downloadRoutes'));
 
 // SEO, Sitemap & Robots
 const seoRoutes = require('./routes/seoRoutes');
