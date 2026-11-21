@@ -638,6 +638,12 @@ const EmployerMessages = ({
     setIsInfoOpen(false);
     setIsOptionsOpen(false);
 
+    // Immediately mark as read locally so unread highlight resets to normal instantly!
+    setBackendConversations(prev => prev.map(c => 
+      String(c.applicationId || c.id || c._id) === String(app.appId) ? { ...c, unreadCount: 0 } : c
+    ));
+    if (triggerNavRefresh) triggerNavRefresh();
+
     // Auto update status from New/Applied to Viewed upon viewing
     const curStatus = (app.status || '').toLowerCase();
     if (curStatus === 'new' || curStatus === 'applied') {
@@ -939,124 +945,164 @@ const EmployerMessages = ({
                       <p className="text-xs text-gray-400">Try adjusting your search or filters.</p>
                     </div>
                   </td>
-                </tr>
-              ) : (
-                filteredConversations.map((app) => {
-                  const cand = app.candidate || {};
-                  const candAvatar = cand.avatar || cand.profilePhoto || cand.profilePicture || cand.photo;
-                  const avatarBg = cand.bg || getAvatarBg(cand.name || '');
-                  const statusPill = getStatusBadgePill(app.status);
+                  </tr>
+                ) : (
+                  filteredConversations.map((app) => {
+                    const cand = app.candidate || {};
+                    const candAvatar = cand.avatar || cand.profilePhoto || cand.profilePicture || cand.photo;
+                    const avatarBg = cand.bg || getAvatarBg(cand.name || '');
+                    const statusPill = getStatusBadgePill(app.status);
+                    const isUnread = Boolean(app.unreadCount && app.unreadCount > 0);
 
-                  return (
-                    <tr 
-                      key={app.appId} 
-                      className="hover:bg-gray-50/70 transition-colors group cursor-pointer"
-                      onClick={() => openChatDrawer(app)}
-                    >
-                      {/* 1. JOB TITLE */}
-                      <td className="py-4 px-6 align-middle">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 group-hover:text-[#059669] transition-colors leading-tight">
-                            {app.jobTitle}
-                          </span>
-                          <span className="text-xs text-gray-400 mt-1 font-medium">
-                            {app.jobStatus} • {app.openings} opening{app.openings > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 2. CANDIDATE */}
-                      <td className="py-4 px-6 align-middle">
-                        <div className="flex items-center gap-3">
-                          {candAvatar ? (
-                            <img 
-                              src={candAvatar} 
-                              alt={cand.name} 
-                              className="w-10 h-10 rounded-full object-cover shrink-0 border border-gray-100" 
-                            />
-                          ) : (
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs ${avatarBg}`}>
-                              {getInitials(cand.name)}
-                            </div>
-                          )}
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-gray-900 leading-tight truncate">
-                              {cand.name || 'Candidate'}
+                    return (
+                      <tr 
+                        key={app.appId} 
+                        className={`transition-all duration-200 group cursor-pointer border-l-4 ${
+                          isUnread
+                            ? 'bg-[#f0f9ff] hover:bg-[#e0f2fe] border-l-[#0284c7] shadow-2xs'
+                            : 'bg-white hover:bg-gray-50/70 border-l-transparent'
+                        }`}
+                        onClick={() => openChatDrawer(app)}
+                      >
+                        {/* 1. JOB TITLE */}
+                        <td className="py-4 px-6 align-middle">
+                          <div className="flex flex-col">
+                            <span className={`leading-tight transition-colors ${
+                              isUnread 
+                                ? 'font-black text-gray-950 group-hover:text-[#0284c7]' 
+                                : 'font-bold text-gray-800 group-hover:text-[#059669]'
+                            }`}>
+                              {app.jobTitle}
                             </span>
-                            <span className="text-xs text-gray-500 truncate mt-0.5">
-                              {cand.email || 'N/A'}
+                            <span className={`text-xs mt-1 font-medium ${isUnread ? 'text-gray-600 font-semibold' : 'text-gray-400'}`}>
+                              {app.jobStatus} • {app.openings} opening{app.openings > 1 ? 's' : ''}
                             </span>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* 3. CANDIDATE STATUS */}
-                      <td className="py-4 px-6 align-middle" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative inline-block" data-status-dropdown="true">
-                          <button
-                            type="button"
-                            onClick={() => setActiveStatusDropdownAppId(prev => prev === app.appId ? null : app.appId)}
-                            className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold tracking-wider flex items-center justify-between gap-2 shadow-2xs transition-colors cursor-pointer ${statusPill.style}`}
-                          >
-                            <span>{statusPill.label}</span>
-                            <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-
-                          {activeStatusDropdownAppId === app.appId && (
-                            <div className="absolute left-0 mt-1 w-36 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
-                              {['New', 'Viewed', 'Shortlisted', 'Rejected'].map((opt) => (
-                                <button
-                                  key={opt}
-                                  type="button"
-                                  onClick={() => handleUpdateStatus(app.appId, opt)}
-                                  className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors cursor-pointer"
-                                >
-                                  <span>{opt}</span>
-                                  {app.status?.toLowerCase() === opt.toLowerCase() && (
-                                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 4. CHAT */}
-                      <td className="py-4 px-6 align-middle">
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-xs text-gray-500 truncate max-w-[240px] md:max-w-[280px]">
-                            {app.lastMessage || 'Hi, I have applied for this role...'}
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openChatDrawer(app);
-                            }}
-                            className="bg-[#059669] hover:bg-[#047857] text-white px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
-                          >
-                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            <span>Message</span>
-                            {app.unreadCount > 0 && (
-                              <span className="w-4 h-4 rounded-full bg-white text-[#059669] text-[10px] font-black flex items-center justify-center shrink-0">
-                                {app.unreadCount > 9 ? '9+' : app.unreadCount}
-                              </span>
+                        {/* 2. CANDIDATE */}
+                        <td className="py-4 px-6 align-middle">
+                          <div className="flex items-center gap-3">
+                            {candAvatar ? (
+                              <div className="relative shrink-0">
+                                <img 
+                                  src={candAvatar} 
+                                  alt={cand.name} 
+                                  className={`w-10 h-10 rounded-full object-cover shrink-0 border ${
+                                    isUnread ? 'border-[#0284c7] ring-2 ring-[#0284c7]/20' : 'border-gray-100'
+                                  }`} 
+                                />
+                                {isUnread && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#0284c7] border-2 border-white rounded-full"></span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="relative shrink-0">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs ${
+                                  isUnread ? 'bg-[#0284c7] ring-2 ring-[#0284c7]/20' : avatarBg
+                                }`}>
+                                  {getInitials(cand.name)}
+                                </div>
+                                {isUnread && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#0284c7] border-2 border-white rounded-full"></span>
+                                )}
+                              </div>
                             )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={`leading-tight truncate ${
+                                  isUnread ? 'font-black text-gray-950 text-[14.5px]' : 'font-bold text-gray-900'
+                                }`}>
+                                  {cand.name || 'Candidate'}
+                                </span>
+                                {isUnread && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#0284c7] text-white shadow-xs tracking-wider uppercase shrink-0">
+                                    New
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`text-xs truncate mt-0.5 ${
+                                isUnread ? 'text-gray-700 font-semibold' : 'text-gray-500 font-normal'
+                              }`}>
+                                {cand.email || 'N/A'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 3. CANDIDATE STATUS */}
+                        <td className="py-4 px-6 align-middle" onClick={(e) => e.stopPropagation()}>
+                          <div className="relative inline-block" data-status-dropdown="true">
+                            <button
+                              type="button"
+                              onClick={() => setActiveStatusDropdownAppId(prev => prev === app.appId ? null : app.appId)}
+                              className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold tracking-wider flex items-center justify-between gap-2 shadow-2xs transition-colors cursor-pointer ${statusPill.style}`}
+                            >
+                              <span>{statusPill.label}</span>
+                              <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+
+                            {activeStatusDropdownAppId === app.appId && (
+                              <div className="absolute left-0 mt-1 w-36 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
+                                {['New', 'Viewed', 'Shortlisted', 'Rejected'].map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => handleUpdateStatus(app.appId, opt)}
+                                    className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center justify-between transition-colors cursor-pointer"
+                                  >
+                                    <span>{opt}</span>
+                                    {app.status?.toLowerCase() === opt.toLowerCase() && (
+                                      <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 4. CHAT */}
+                        <td className="py-4 px-6 align-middle">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className={`text-xs truncate max-w-[240px] md:max-w-[280px] ${
+                              isUnread ? 'font-bold text-gray-950' : 'text-gray-500 font-normal'
+                            }`}>
+                              {app.lastMessage || 'Hi, I have applied for this role...'}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openChatDrawer(app);
+                              }}
+                              className={`${
+                                isUnread
+                                  ? 'bg-[#0284c7] hover:bg-[#0369a1] text-white ring-2 ring-[#0284c7]/30 shadow-sm'
+                                  : 'bg-[#059669] hover:bg-[#047857] text-white'
+                              } px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer`}
+                            >
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              <span>Message</span>
+                              {isUnread && (
+                                <span className="min-w-4 h-4 px-1 rounded-full bg-white text-[#0284c7] text-[10px] font-black flex items-center justify-center shrink-0">
+                                  {app.unreadCount > 9 ? '9+' : app.unreadCount}
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
             </tbody>
           </table>
         </div>

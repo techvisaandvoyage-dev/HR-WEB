@@ -780,9 +780,18 @@ const EmployeeMessages = () => {
                       <div className="flex-1 min-w-0">
                         {/* Row 1: Company Name + Time */}
                         <div className="flex justify-between items-baseline gap-2 mb-1">
-                          <h3 className="font-bold text-sm text-slate-900 truncate">
-                            {chat.companyName}
-                          </h3>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <h3 className={`text-sm truncate ${
+                              chat.unreadCount > 0 ? 'font-black text-slate-950' : 'font-bold text-slate-900'
+                            }`}>
+                              {chat.companyName}
+                            </h3>
+                            {chat.unreadCount > 0 && (
+                              <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-[#0284c7] text-white shadow-xs tracking-wider uppercase shrink-0">
+                                New
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {chat.unreadCount > 0 && (
                               <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">
