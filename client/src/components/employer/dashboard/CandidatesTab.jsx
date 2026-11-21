@@ -140,7 +140,7 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     return map[key] || map['new'];
   };
 
-  const statusOptions = ['New', 'Viewed', 'Shortlisted', 'Rejected'];
+  const statusOptions = ['New', 'Viewed', 'Shortlisted', 'Hired', 'Rejected'];
 
   // Helper extraction methods
   const getWorkExp = (cand) => {
@@ -654,9 +654,10 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
     const total = targetPool.length;
     const newCount = targetPool.filter(a => (a.status || 'New').toLowerCase() === 'new').length;
     const shortlistedCount = targetPool.filter(a => (a.status || '').toLowerCase() === 'shortlisted').length;
+    const hiredCount = targetPool.filter(a => (a.status || '').toLowerCase() === 'hired').length;
     const viewedCount = targetPool.filter(a => (a.status || '').toLowerCase() === 'viewed').length;
     const rejectedCount = targetPool.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
-    return { total, newCount, shortlistedCount, viewedCount, rejectedCount };
+    return { total, newCount, shortlistedCount, hiredCount, viewedCount, rejectedCount };
   }, [flattenedApplications, colFilters, dateRange]);
 
   const getInstitute = (cand) => {
@@ -1168,6 +1169,12 @@ const CandidatesTab = ({ portalConfig, candidates: globalCandidates = [], jobs =
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'Shortlisted' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
           >
             Shortlisted: {stats.shortlistedCount}
+          </button>
+          <button 
+            onClick={() => handleFilterChange('status', 'Hired')} 
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${colFilters.status === 'Hired' ? 'bg-green-700 text-white' : 'bg-green-50 text-green-800 hover:bg-green-100'}`}
+          >
+            Hired: {stats.hiredCount}
           </button>
           <button 
             onClick={() => handleFilterChange('status', 'Viewed')} 

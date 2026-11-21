@@ -473,16 +473,25 @@ exports.updateApplicationStatus = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized' });
     }
 
-    application.status = status;
-    
-    // Set status color based on status
-    if (status.toLowerCase() === 'shortlisted') {
+    // Set normalized status and status color
+    const normalized = (status || '').trim().toLowerCase();
+    if (normalized === 'hired') {
+      application.status = 'Hired';
+      application.statusColor = 'bg-green-100 text-green-800 border border-green-300 font-bold';
+    } else if (normalized === 'shortlisted') {
+      application.status = 'Shortlisted';
       application.statusColor = 'bg-green-50 text-green-600 border border-green-100';
-    } else if (status.toLowerCase() === 'rejected') {
+    } else if (normalized === 'rejected') {
+      application.status = 'Rejected';
       application.statusColor = 'bg-red-50 text-red-600 border border-red-100';
-    } else if (status.toLowerCase() === 'viewed') {
+    } else if (normalized === 'viewed') {
+      application.status = 'Viewed';
       application.statusColor = 'bg-gray-100 text-gray-700 border border-gray-200';
+    } else if (normalized === 'contacted') {
+      application.status = 'Contacted';
+      application.statusColor = 'bg-purple-50 text-purple-700 border border-purple-200';
     } else {
+      application.status = 'New';
       application.statusColor = 'bg-blue-50 text-blue-600 border border-blue-100'; // Default / New
     }
 

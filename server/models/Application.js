@@ -23,7 +23,7 @@ const ApplicationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['New', 'Viewed', 'Shortlisted', 'Rejected'],
+    enum: ['New', 'Viewed', 'Shortlisted', 'Rejected', 'Hired', 'Contacted'],
     default: 'New'
   },
   statusColor: {

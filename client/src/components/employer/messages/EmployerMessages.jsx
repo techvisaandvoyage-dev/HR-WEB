@@ -312,6 +312,7 @@ const EmployerMessages = ({
       New: 0,
       Viewed: 0,
       Shortlisted: 0,
+      Hired: 0,
       Rejected: 0
     };
 
@@ -321,7 +322,9 @@ const EmployerMessages = ({
         counts.New++;
       } else if (s === 'viewed' || s === 'under review') {
         counts.Viewed++;
-      } else if (s === 'shortlisted' || s === 'interview scheduled' || s === 'technical round' || s === 'hr round' || s === 'offer sent' || s === 'hired') {
+      } else if (s === 'hired') {
+        counts.Hired++;
+      } else if (s === 'shortlisted' || s === 'interview scheduled' || s === 'technical round' || s === 'hr round' || s === 'offer sent') {
         counts.Shortlisted++;
       } else if (s === 'rejected' || s === 'withdrawn') {
         counts.Rejected++;
@@ -339,7 +342,8 @@ const EmployerMessages = ({
         const s = (item.status || '').toLowerCase();
         if (selectedStatusFilter === 'New' && s !== 'new' && s !== 'applied') return false;
         if (selectedStatusFilter === 'Viewed' && s !== 'viewed' && s !== 'under review') return false;
-        if (selectedStatusFilter === 'Shortlisted' && !['shortlisted', 'interview scheduled', 'technical round', 'hr round', 'offer sent', 'hired'].includes(s)) return false;
+        if (selectedStatusFilter === 'Hired' && s !== 'hired') return false;
+        if (selectedStatusFilter === 'Shortlisted' && !['shortlisted', 'interview scheduled', 'technical round', 'hr round', 'offer sent'].includes(s)) return false;
         if (selectedStatusFilter === 'Rejected' && s !== 'rejected' && s !== 'withdrawn') return false;
       }
 
@@ -665,7 +669,13 @@ const EmployerMessages = ({
         style: 'border-[#fde68a] bg-[#fffbeb] text-[#b45309] hover:bg-[#fef3c7]'
       };
     }
-    if (s === 'shortlisted' || s === 'hired') {
+    if (s === 'hired') {
+      return {
+        label: 'HIRED',
+        style: 'border-green-300 bg-green-100 text-green-800 font-bold hover:bg-green-200'
+      };
+    }
+    if (s === 'shortlisted') {
       return {
         label: 'SHORTLISTED',
         style: 'border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46] hover:bg-[#d1fae5]'
@@ -788,6 +798,18 @@ const EmployerMessages = ({
 
           <button
             type="button"
+            onClick={() => setSelectedStatusFilter('Hired')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
+              selectedStatusFilter === 'Hired'
+                ? 'bg-green-700 text-white border-green-700'
+                : 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100'
+            }`}
+          >
+            Hired: {statusCounts.Hired || 0}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setSelectedStatusFilter('Rejected')}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border ${
               selectedStatusFilter === 'Rejected'
@@ -894,6 +916,7 @@ const EmployerMessages = ({
                       <option value="New">New</option>
                       <option value="Viewed">Viewed</option>
                       <option value="Shortlisted">Shortlisted</option>
+                      <option value="Hired">Hired</option>
                       <option value="Rejected">Rejected</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
@@ -1046,7 +1069,7 @@ const EmployerMessages = ({
 
                             {activeStatusDropdownAppId === app.appId && (
                               <div className="absolute left-0 mt-1 w-36 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
-                                {['New', 'Viewed', 'Shortlisted', 'Rejected'].map((opt) => (
+                                {['New', 'Viewed', 'Shortlisted', 'Hired', 'Rejected'].map((opt) => (
                                   <button
                                     key={opt}
                                     type="button"
