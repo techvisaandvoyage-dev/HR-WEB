@@ -829,8 +829,8 @@ const EmployeeMessages = () => {
               <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
                 
                 {/* Chat Top Header */}
-                <div className="px-5 md:px-7 py-4 bg-white border-b border-slate-100 flex justify-between items-center shrink-0">
-                  <div className="flex gap-3 items-center min-w-0">
+                <div className="px-3.5 sm:px-5 md:px-7 py-3 md:py-4 bg-white border-b border-slate-100 flex items-center justify-between gap-2 shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1">
                     {/* Back arrow on mobile to return to inbox */}
                     <button
                       type="button"
@@ -844,21 +844,21 @@ const EmployeeMessages = () => {
                     </button>
 
                     {/* Dark Squircle Avatar */}
-                    <div className="w-11 h-11 rounded-xl bg-[#0b1320] text-white font-bold flex items-center justify-center text-base shrink-0 shadow-2xs">
+                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-[#0b1320] text-white font-bold flex items-center justify-center text-sm sm:text-base shrink-0 shadow-2xs">
                       {selectedChat.companyName?.trim()?.charAt(0)?.toUpperCase() || 'C'}
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h2 className="font-bold text-slate-900 text-base leading-none">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+                        <h2 className="font-bold text-slate-900 text-sm sm:text-base leading-tight truncate">
                           {selectedChat.companyName}
                         </h2>
-                        <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                        <span className="text-[11px] sm:text-xs font-bold text-emerald-600 flex items-center gap-1 shrink-0">
                           <span>•</span>
                           <span>Recruiter</span>
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 truncate mt-1 font-medium">
+                      <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-0.5 font-medium">
                         <span>{selectedChat.jobTitle}</span>
                         {selectedChat.location && (
                           <span> • {selectedChat.location}</span>
@@ -868,14 +868,14 @@ const EmployeeMessages = () => {
                   </div>
 
                   {/* Top Action Buttons (Pill outlines) */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <button 
                       type="button"
                       onClick={() => setIsJobDrawerOpen(true)}
-                      className="px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                      className="px-2.5 sm:px-3.5 py-1.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-full transition-all inline-flex items-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap"
                       title="View Job"
                     >
-                      <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                       <span>View Job</span>
@@ -885,7 +885,7 @@ const EmployeeMessages = () => {
                       selectedChat.blockedBy === 'Employee' && (
                         <button 
                           onClick={openBlockModal}
-                          className="px-3.5 py-1.5 text-xs font-bold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                          className="px-2.5 sm:px-3.5 py-1.5 text-xs font-bold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-300 rounded-full transition-all inline-flex items-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer shrink-0 whitespace-nowrap"
                         >
                           Unblock
                         </button>
@@ -893,10 +893,10 @@ const EmployeeMessages = () => {
                     ) : (
                       <button 
                         onClick={openBlockModal}
-                        className="px-3.5 py-1.5 text-xs font-bold text-red-600 bg-white hover:bg-red-50 border border-red-300 rounded-full transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                        className="px-2.5 sm:px-3.5 py-1.5 text-xs font-bold text-red-600 bg-white hover:bg-red-50 border border-red-300 rounded-full transition-all inline-flex items-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap"
                         title="Block this chat"
                       >
-                        <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <circle cx="12" cy="12" r="10" strokeWidth="2" />
                           <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" strokeWidth="2" />
                         </svg>

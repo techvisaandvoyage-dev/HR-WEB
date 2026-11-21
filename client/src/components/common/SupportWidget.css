@@ -821,16 +821,25 @@
 /* Mobile responsive styles (<= 768px) */
 @media (max-width: 768px) {
   .sj-fab {
-    bottom: calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(85px + env(safe-area-inset-bottom, 0px)) !important;
     right: 16px !important;
-    width: 50px !important;
-    height: 50px !important;
+    width: 48px !important;
+    height: 48px !important;
   }
 
-  /* If a legacy bottom navigation bar is present on the page, adjust bottom offset */
+  /* If a bottom navigation bar or action bar is present on the page, adjust bottom offset */
   body:has(.employee-bottom-nav) .sj-fab,
-  body:has(.bottom-navigation) .sj-fab {
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  body:has(.bottom-navigation) .sj-fab,
+  body:has([class*="bottom-nav"]) .sj-fab {
+    bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* When inside messages/chat drawer where input composer, send button, and quick-reply buttons are at the bottom */
+  .sj-fab.is-in-messages,
+  body:has([placeholder*="message" i]) .sj-fab,
+  body:has([placeholder*="Write a message" i]) .sj-fab,
+  body:has([placeholder*="Type a message" i]) .sj-fab {
+    bottom: calc(135px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .sj-fab svg {

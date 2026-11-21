@@ -1179,13 +1179,15 @@ export default function SupportWidget() {
     return null;
   }
 
+  const isMessagesPage = location.pathname.includes('/messages');
+
   return (
     <>
       {/* Floating Action Button (FAB) */}
       <button
         id="sjFab"
         type="button"
-        className={`sj-fab ${isOpen ? 'is-open' : ''}`}
+        className={`sj-fab ${isOpen ? 'is-open' : ''} ${isMessagesPage ? 'is-in-messages' : ''}`}
         style={
           drawerOffset === 'to-left'
             ? { left: '24px', right: 'auto' }
