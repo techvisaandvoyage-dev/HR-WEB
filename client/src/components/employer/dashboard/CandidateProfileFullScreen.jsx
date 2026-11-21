@@ -191,7 +191,8 @@ const CandidateProfileFullScreen = ({
 
   return createPortal(
     <div 
-      className="fixed inset-y-0 right-0 left-0 min-[860px]:left-[248px] z-40 bg-white overflow-y-auto font-sans shadow-lg border-l border-gray-100" 
+      data-ignore-drawer="true"
+      className="candidate-profile-view fixed inset-y-0 right-0 left-0 min-[860px]:left-[248px] z-40 bg-white overflow-y-auto font-sans shadow-lg border-l border-gray-100" 
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       

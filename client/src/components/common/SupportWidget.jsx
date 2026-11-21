@@ -274,28 +274,23 @@ export default function SupportWidget() {
 
       let maxDrawerWidth = 0;
       for (const el of drawers) {
+        if (el.getAttribute('data-ignore-drawer') === 'true' || el.classList.contains('candidate-profile-view')) continue;
+
         const rect = el.getBoundingClientRect();
         const style = window.getComputedStyle(el);
         if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") continue;
 
-        // Drawer must take real width and be docked to the right viewport edge
-        if (rect.width >= 200 && rect.right >= window.innerWidth - 20) {
+        // Drawer must take real width, be docked to the right viewport edge,
+        // and NOT be a full-screen or main content container (max 540px width and <= 50% of viewport)
+        if (rect.width >= 200 && rect.width <= Math.min(540, window.innerWidth * 0.5) && rect.right >= window.innerWidth - 20) {
           if (rect.width > maxDrawerWidth) {
             maxDrawerWidth = Math.round(rect.width);
           }
         }
       }
 
-      if (maxDrawerWidth > 0) {
-        if (window.innerWidth > 768) {
-          if (window.innerWidth - maxDrawerWidth > 120) {
-            setDrawerOffset(maxDrawerWidth + 24);
-          } else {
-            setDrawerOffset("to-left");
-          }
-        } else {
-          setDrawerOffset("to-left");
-        }
+      if (maxDrawerWidth > 0 && window.innerWidth > 768 && (window.innerWidth - maxDrawerWidth > 120)) {
+        setDrawerOffset(maxDrawerWidth + 24);
         return;
       }
       setDrawerOffset(0);
@@ -634,11 +629,11 @@ export default function SupportWidget() {
     };
     const handleOpenWidget = (e) => {
       setIsOpen(true);
-      const rightDrawer = document.querySelector('[data-right-drawer="true"], .fixed.inset-y-0.right-0, [class*="right-0"][class*="inset-y-0"]');
+      const rightDrawer = document.querySelector('[data-right-drawer="true"]:not([data-ignore-drawer="true"]), [data-chat-drawer="true"]:not([data-ignore-drawer="true"])');
       if (rightDrawer && window.innerWidth > 768) {
         const rect = rightDrawer.getBoundingClientRect();
         const drawerWidth = Math.round(window.innerWidth - rect.left);
-        if (drawerWidth > 150 && rect.left > 60) {
+        if (drawerWidth > 150 && drawerWidth <= Math.min(540, window.innerWidth * 0.5) && rect.left > 60) {
           setDrawerOffset(drawerWidth + 16);
         }
       }
@@ -1189,11 +1184,9 @@ export default function SupportWidget() {
         type="button"
         className={`sj-fab ${isOpen ? 'is-open' : ''} ${isMessagesPage ? 'is-in-messages' : ''}`}
         style={
-          drawerOffset === 'to-left'
-            ? { left: '24px', right: 'auto' }
-            : (typeof drawerOffset === 'number' && drawerOffset > 0)
-              ? { right: `${drawerOffset}px`, left: 'auto' }
-              : undefined
+          (typeof drawerOffset === 'number' && drawerOffset > 0)
+            ? { right: `${drawerOffset}px`, left: 'auto' }
+            : undefined
         }
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
